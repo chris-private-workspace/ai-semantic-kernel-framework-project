@@ -1,0 +1,193 @@
+# ===================================================================
+# File: .github/workflows/e2e-real-llm-smoke.yml
+# Purpose: E2E real-LLM smoke gate (Sprint 57.6 US-5 / R5 part 2 /
+#          closes AD-Reality-5 + 57.5 D-19 V2 Reality Check finding).
+# Category: CI / E2E real-LLM verification
+# Scope: Sprint 57.6 Day 3 US-5
+#
+# Description:
+#   Sprint 57.5 V2 Reality Check found CI workflows pass without ever
+#   exercising the full chat router → real LLM → DB persist path.
+#   This workflow closes that gap: spins up Postgres + Redis + V2 backend,
+#   posts a single real-LLM chat request via api.main:app, and verifies:
+#     - HTTP 200 (NOT 503)
+#     - SSE stream contains `loop_completed` event
+#     - cost_ledger row count delta ≥ 2 (input + output split per 57.2)
+#     - audit_log row count delta ≥ 1 (Sprint 57.6 Day 2 wiring)
+#
+# Triggers:
+#   - workflow_dispatch (manual only — always available)
+#   - schedule daily 04:00 UTC (COMMENTED OUT — re-enable per AD-CI-6
+#     when Phase 58 production launch completes Azure secrets provisioning)
+#
+# Required-check status: NOT added to branch protection 5 active checks.
+#   This workflow is informational only; failure does NOT block PRs.
+#   Branch protection upgrade considered Phase 58+ production launch.
+#
+# Cost guard: max_tokens=100 + single chat request per run.
+#   Estimated cost <$0.005 per run × ~30 runs/month = <$0.15/month
+#   (negligible vs Phase 56-58 SaaS Stage 1 production budget).
+#
+# Modification History:
+#   - 2026-05-08: Sprint 57.6 US-5 — initial creation (closes AD-Reality-5)
+#
+# Related:
+#   - .claude/rules/anti-patterns-checklist.md §AP-7 Context Rot / §AP-9 Verification
+#   - 57.5 reality check D-19 — `0 real-LLM E2E gate in CI` finding
+#   - claudedocs/CLAUDE.md — Phase 58 production launch checklist
+# ===================================================================
+
+name: E2E Real-LLM Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_tokens:
+        description: "Cost guard max_tokens (default 100)"
+        required: false
+        default: "100"
+        type: string
+  # Sprint 57.6 + AD-CI-6: schedule disabled until Phase 58 production launch
+  # provisions AZURE_OPENAI_API_KEY secret in repo settings + DR plan validates
+  # cost-tracking dashboards. Uncomment to enable daily smoke at 04:00 UTC.
+  # schedule:
+  #   - cron: "0 4 * * *"
+
+jobs:
+  e2e-real-llm-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: ipa_v2_test
+          POSTGRES_USER: ipa
+          POSTGRES_PASSWORD: ipa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install backend deps
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Configure env (.env)
+        working-directory: backend
+        run: |
+          cat > .env <<EOF
+          DB_NAME=ipa_v2_test
+          DB_USER=ipa
+          DB_PASSWORD=ipa
+          DB_HOST=localhost
+          DB_PORT=5432
+          REDIS_HOST=localhost
+          REDIS_PORT=6379
+          AZURE_OPENAI_ENDPOINT=${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_KEY=${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_DEPLOYMENT_NAME=${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
+          AZURE_OPENAI_API_VERSION=2024-02-15-preview
+          MAX_TOKENS_PER_CALL=${{ inputs.max_tokens || '100' }}
+          EOF
+
+      - name: Run Alembic migrations
+        working-directory: backend
+        run: alembic upgrade head
+
+      - name: Seed default tenant + admin user (smoke setup)
+        working-directory: backend
+        run: |
+          python -c "
+          import asyncio
+          from infrastructure.db.session import get_db_session_with_tenant
+          from infrastructure.db.models.identity import Tenant, User
+          import uuid
+          async def seed():
+              async with get_db_session_with_tenant(tenant_id=None) as db:
+                  t = Tenant(id=uuid.uuid4(), name='smoke-tenant', state='active', plan='enterprise')
+                  db.add(t)
+                  await db.flush()
+                  u = User(id=uuid.uuid4(), tenant_id=t.id, email='smoke@example.com')
+                  db.add(u)
+                  await db.commit()
+                  print(f'TENANT_ID={t.id}')
+          asyncio.run(seed())
+          "
+
+      - name: Start backend
+        working-directory: backend
+        run: |
+          python -m uvicorn api.main:app --app-dir src --host 0.0.0.0 --port 8000 &
+          echo $! > backend.pid
+          # Wait for /health
+          for i in {1..30}; do
+            curl -sf http://localhost:8000/api/v1/health && break
+            sleep 1
+          done
+
+      - name: Capture pre-chat row counts
+        working-directory: backend
+        run: |
+          PRE_AUDIT=$(PGPASSWORD=ipa psql -h localhost -U ipa -d ipa_v2_test -tAc "SELECT count(*) FROM audit_log;")
+          PRE_COST=$(PGPASSWORD=ipa psql -h localhost -U ipa -d ipa_v2_test -tAc "SELECT count(*) FROM cost_ledger;")
+          echo "PRE_AUDIT=$PRE_AUDIT" >> $GITHUB_ENV
+          echo "PRE_COST=$PRE_COST" >> $GITHUB_ENV
+
+      - name: POST /api/v1/chat (real_llm mode, single message, max_tokens guard)
+        run: |
+          set -eo pipefail
+          curl -sf -N \
+            -H "Content-Type: application/json" \
+            -H "X-Tenant-Id: ${{ env.TENANT_ID }}" \
+            -d '{"mode":"real_llm","message":"Say hello in 5 words"}' \
+            http://localhost:8000/api/v1/chat/ | tee /tmp/sse.log
+          # Verify SSE stream contains loop_completed frame.
+          grep -q "event: loop_completed" /tmp/sse.log || (echo "MISSING loop_completed event" && exit 1)
+
+      - name: Capture post-chat row counts + verify deltas
+        working-directory: backend
+        run: |
+          POST_AUDIT=$(PGPASSWORD=ipa psql -h localhost -U ipa -d ipa_v2_test -tAc "SELECT count(*) FROM audit_log;")
+          POST_COST=$(PGPASSWORD=ipa psql -h localhost -U ipa -d ipa_v2_test -tAc "SELECT count(*) FROM cost_ledger;")
+          AUDIT_DELTA=$((POST_AUDIT - $PRE_AUDIT))
+          COST_DELTA=$((POST_COST - $PRE_COST))
+          echo "audit_log delta: $AUDIT_DELTA (expect ≥1 per 57.6 Day 2 audit_log wiring)"
+          echo "cost_ledger delta: $COST_DELTA (expect ≥2 per 57.2 input+output split)"
+          [ "$AUDIT_DELTA" -ge 1 ] || (echo "FAIL: audit_log delta < 1" && exit 1)
+          [ "$COST_DELTA" -ge 2 ] || (echo "FAIL: cost_ledger delta < 2" && exit 1)
+
+      - name: Stop backend
+        if: always()
+        working-directory: backend
+        run: |
+          if [ -f backend.pid ]; then
+            kill $(cat backend.pid) || true
+          fi

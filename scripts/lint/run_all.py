@@ -9,6 +9,7 @@ Category: Cross-cutting / DevOps tooling
 Scope: Sprint 53.7 US-1 (closes AD-Lint-1) / Sprint 55.3 (adds 7th lint via AD-Cat7-1)
 
 Modification History:
+    - 2026-05-08: Sprint 57.6 Day 3 — add 9th lint check_ap4_frontend_placeholder (closes AD-Reality-5)
     - 2026-05-06: Sprint 56.1 Day 4 — add 8th lint check_rls_policies (closes US-5)
     - 2026-05-04: Sprint 55.3 — add 7th lint check_sole_mutator (closes AD-Cat7-1)
     - 2026-05-04: Sprint 53.7 — initial 6-lint wrapper (closes AD-Lint-1)
@@ -71,6 +72,12 @@ LINTS: list[tuple[str, list[str]]] = [
     ("check_sole_mutator.py", ["--root", "backend/src"]),
     # Sprint 56.1 Day 4 (US-5): RLS coverage on TenantScopedMixin tables.
     ("check_rls_policies.py", ["--root", "backend/src"]),
+    # Sprint 57.6 Day 3 (US-5; AD-Reality-5): AP-4 Potemkin frontend page
+    # placeholder text — prevents future ship-regression after a real ship.
+    # Existing 3 known placeholder pages (chat-v2 / governance / verification)
+    # are EXPECTED non-zero findings until Phase 57.7-57.9 ship per
+    # 16-frontend-design.md §V2 Ship Timeline (closes AD-Reality-4-partial).
+    ("check_ap4_frontend_placeholder.py", ["--root", "frontend/src/pages"]),
 ]
 
 
@@ -92,7 +99,7 @@ def run_one(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Run all 8 V2 architecture lint scripts with correct args."
+        description="Run all 9 V2 architecture lint scripts with correct args."
     )
     parser.add_argument(
         "--verbose",

@@ -791,6 +791,54 @@ E2E:
 
 ---
 
+## V2 Ship Timeline (NEW Sprint 57.6 US-4 — closes AD-Reality-4-partial / R4)
+
+**Modification History (newest-first)**
+- 2026-05-08: Sprint 57.6 Day 3 US-4 — add V2 Ship Timeline section per Decision 3 (a) (closes AD-Reality-4-partial + AD-Reality-7). Honest reality framing: Phase 57+ frontend SaaS 推進 N/12 真實 ship status, NOT V3 defer.
+
+### Reality framing
+
+V2 重構完成（Phase 49-55,22/22 sprint）+ Phase 56-58 SaaS Stage 1 backend 3/3 已 ship。Frontend 部分按 Phase 57+ 逐個 ship。Sprint 57.5 reality check 確認 12-page claim vs 真實 4 ship + 3 placeholder + 5 not-yet-developed。**此 timeline 非 V3 defer**:Phase 57.x sprint 將逐個 ship 真實 page 至 Phase 58 production launch 前完成關鍵 3 priority。
+
+### 4 已 ship pages
+
+| Page | Sprint | Backend | Status |
+|------|--------|---------|--------|
+| cost-dashboard | 57.1 | 56.3 cost_ledger backend | ✅ Production ship; 7 Vitest + 2 Playwright e2e |
+| sla-dashboard | 57.1 | 56.3 SLA monitor backend | ✅ Production ship; 7 Vitest + 2 Playwright e2e |
+| tenant-settings | 57.3 | 56.1 + 57.3 admin tenants.py R+U | ✅ Production ship; 8 Vitest + 4 Playwright e2e |
+| admin-tenants list | 57.4 | 57.4 admin tenants.py list endpoint | ✅ Production ship; 12 Vitest + 4 Playwright e2e |
+
+### 3 priority Phase 57.7-57.9 ship (~10-12 hr each)
+
+| Page | Backend ready since | Sprint candidate | Notes |
+|------|---------------------|------------------|-------|
+| chat-v2 | 50.2 + Cat 1+2+9+10+12 | Phase 57.7 (TBD per user) | Replace 50.2 skeleton with real chat UX wired to chat router SSE; ApprovalCard + verification panel inline |
+| governance approvals | 53.5 | Phase 57.8 (TBD) | Replace placeholder with real approver queue + audit log frontend view |
+| verification panel | 54.1 + 54.2 | Phase 57.9 (TBD) | Replace placeholder with verifier output + correction loop visibility |
+
+### 5 deferred (Phase 57.10-57.13+ ~5-7 sprints)
+
+| Page | Backend status | Defer rationale |
+|------|----------------|-----------------|
+| agents / workflows | Cat 1+11 ship 50.1 + 54.2 | Lower priority — internal admin use; user not blocking |
+| incidents | business_domain/incident 51.0 + 55.1 | Mock-mode only;real-mode swap pending business onboarding |
+| memory inspector | Cat 3 ship 51.2 | Power-user DevUI feature;低 priority production user |
+| audit log frontend | 53.5 + 53.6 backend | Phase 57.x candidate consume `mixed-pattern-reuse` ~0.40 fast ROI per AD-Sprint-Plan-6 |
+| tools / admin-extended / dashboard-extended / devui | mixed | Lower-priority DevUI / admin tooling;defer to V3 production hardening or per real demand |
+
+### Sprint slot mapping (rolling planning;non-binding)
+
+| Sprint | Page | Effort | Notes |
+|--------|------|--------|-------|
+| Phase 57.7 | chat-v2 OR alternate per user instruct | ~10-12 hr | First Phase 57.x feature work after Sprint 57.6 reality gap fix sprint |
+| Phase 57.8-9 | governance / verification | ~10-12 hr each | TBD ordering per user |
+| Phase 57.10+ | deferred 5 OR Onboarding self-serve / Audit log / Compliance / DR / Stage 2 SaaS | various | Per rolling planning 紀律 — user instruct each sprint scope |
+
+**NOT V3 defer statement** (per Sprint 57.5 Day 4.5 Decision 3 (a)):此 frontend 推進是 Phase 57.x V2 closure scope,NOT push to V3。V3 production launch (Phase 58+) 預期 2026 Q3-Q4 已具備所有 priority 3 page + 部分 deferred 5。逐個 ship 而非 big-bang launch — 與 V2 22/22 漸進式紀律一致。
+
+---
+
 ## 結語
 
 V2 frontend：
