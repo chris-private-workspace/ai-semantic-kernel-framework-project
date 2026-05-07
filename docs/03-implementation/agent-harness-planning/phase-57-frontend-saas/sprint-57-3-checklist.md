@@ -9,15 +9,15 @@
 ## Day 0 — Setup + Day-0 三-prong 探勘 + Pre-flight Verify
 
 ### 0.1 Branch + plan + checklist commit
-- [ ] **Branch from main(57a5daaf)**
+- [x] **Branch from main(57a5daaf)**
   - DoD:`git checkout -b feature/sprint-57-3-tenant-settings-bundle`
   - Verify:`git branch --show-current` → `feature/sprint-57-3-tenant-settings-bundle`
-- [ ] **Commit plan + checklist**
+- [x] **Commit plan + checklist**
   - DoD:both files staged + committed with conventional message `docs(plan, sprint-57-3): add plan + checklist for Tenant Settings bundle`
-  - Verify:`git log --oneline -1` shows commit;`git status --short` clean
+  - Verify:`git log --oneline -1` shows commit `7b6361fc`;`git status --short` clean
 
 ### 0.2 Day-0 三-prong 探勘 v2(per AD-Plan-3 + AD-Plan-4 fold-in promoted)
-- [ ] **Prong 1 Path Verify**(per AD-Plan-2 path verify)
+- [x] **Prong 1 Path Verify**(per AD-Plan-2 path verify)
   - `frontend/src/features/tenant-settings/` 不存在(expect — NEW US-3+US-4)
   - `frontend/src/pages/tenant-settings/` 不存在(expect — NEW US-4)
   - `frontend/tests/e2e/tenant_settings_*.spec.ts` 不存在(expect — NEW US-5)
@@ -26,47 +26,47 @@
   - `backend/src/platform_layer/identity/auth.py:140 require_admin_platform_role` exists(56.2 reuse)
   - `backend/src/infrastructure/db/audit_helper.py:90 append_audit` exists(53.5/53.6 reuse)
   - Verify:Glob + Grep results;0 unexpected drift(若有 → catalogue D9+)
-- [ ] **Prong 2 Content Verify**(per AD-Plan-3 content verify promoted)
+- [x] **Prong 2 Content Verify**(per AD-Plan-3 content verify promoted)
   - `tenants.py` GET/PUT/PATCH for `/{id}` entity 不存在(D1 RED already caught — already user-confirmed Option B pivot)
   - `TenantState` + `TenantPlan` enum 已定義 in `identity.py:73 + 88`
   - `VALID_TRANSITIONS` 已定義 in `lifecycle.py:63`
   - `_load_tenant_or_404` helper 已存在 in `tenants.py:167`
   - `append_audit` signature 完整 reusable(check params:db, tenant_id, action, actor_user_id, details)
   - Pydantic v2 `ConfigDict(extra="forbid")` 用法 — 既有 56.x 慣例 grep verify
-  - Verify:0 new wrong-content drift(若有 → catalogue D9+)
-- [ ] **Prong 3 Schema Verify**(per AD-Plan-4-Schema-Grep promoted)
+  - Verify:0 new wrong-content drift(D1 RED catch already user-confirmed Option B pivot 2026-05-07)
+- [x] **Prong 3 Schema Verify**(per AD-Plan-4-Schema-Grep promoted)
   - 此 sprint 無新 DB schema/migration → Schema verify N/A
   - **但 attempt 完成** per fold-in spirit:Grep `migrations/versions/0017_*.py` 不存在 confirm;Grep `class Tenant` ORM 9 fields 全 verified
   - Verify:N/A verdict logged in progress.md;not skip silently
 
 ### 0.3 Calibration multiplier pre-read
-- [ ] **`mixed` 0.60 mid-band 3rd application**
+- [x] **`mixed` 0.60 mid-band 3rd application**
   - 2-data-point evidence:53.7 mixed 0.55 ratio 1.01(1st)+ 56.2 mixed 0.60 ratio 1.17(2nd)= mean **1.09 ✅** in band
   - 此 sprint:bottom-up ~17 hr × 0.60 = **~10.2 hr** commit
   - Day 4 retro Q2 verify:若 ratio in band → 3-data-point window opens;若 mean < 1.05 in next 1-2 sprints → consider reduce 0.55(per AD-Sprint-Plan-4 matrix discipline)
 
 ### 0.4 Pre-flight verify(main green baseline)
-- [ ] **Backend baselines**
+- [x] **Backend baselines**
   - `python -m pytest backend/tests/ -q --tb=no` → 1574 collected / 0 failures(Sprint 57.2 baseline)
   - `python -m mypy backend/src --strict` → 0 errors / 295 source files
   - `python scripts/lint/run_all.py` → 8 V2 lints 8/8 green
   - `grep -rn "import openai\|import anthropic" backend/src/agent_harness/` → 0 results(LLM SDK leak)
-  - Verify:All 4 baselines documented in progress.md
-- [ ] **Frontend baselines**
+  - Verify:All 4 baselines documented in progress.md ✅ (1574 / 0/295 / 8/8 / 0)
+- [x] **Frontend baselines**
   - `cd frontend && npm run lint` → clean
   - `cd frontend && npm run build` → success
   - `cd frontend && npm run test` → 15 unit tests pass(57.1 v2 baseline)
-  - Verify:All 3 baselines documented in progress.md
+  - Verify:All 3 baselines documented in progress.md ✅ (ESLint clean / Vite 196.55 kB / Vitest 15/15)
 
 ### 0.5 Day 0 progress.md commit + push
-- [ ] **Catalogue D-findings + cross-reference v1 abort**
+- [x] **Catalogue D-findings + cross-reference v1 abort**
   - D1 closed by user-confirmed Option B 2026-05-07
   - D2-D8 informational(per plan §Risks)
   - Document Day 0 三-prong first fully-applied sprint attempt time + findings count
-  - Verify:`docs/03-implementation/agent-harness-execution/phase-57/sprint-57-3/progress.md` exists with Day 0 section
-- [ ] **Day 0 commit + push**
-  - DoD:progress.md staged + committed `docs(progress, sprint-57-3): Day 0 三-prong 探勘 + pre-flight verify`
-  - Verify:`git log --oneline -1` shows commit;remote up-to-date
+  - Verify:`docs/03-implementation/agent-harness-execution/phase-57/sprint-57-3/progress.md` exists with Day 0 section ✅
+- [x] **Day 0 commit + push**
+  - DoD:progress.md staged + committed `docs(progress, sprint-57-3): Day 0 三-prong 探勘 + pre-flight baseline verify`
+  - Verify:`git log --oneline -1` shows commit `92d1dc79`;remote up-to-date(branch pushed to origin)
 
 ---
 
