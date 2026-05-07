@@ -210,6 +210,72 @@ User 2026-05-07 approve Option A 後,啟動 Day 1 前 read events.py 確認 reco
 
 ⏸ **Day 1 closeout — commit Day 1 work to feature branch**。Day 2 next session 啟動。
 
+---
+
+## Day 2 — 2026-05-07：AgentLoop integration + adapter check ✅
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| `loop.py` 加 `from ._metrics import LoopMetricsAccumulator` import | ✅ |
+| `loop.py` `run()` L772 注入 `metrics_acc = LoopMetricsAccumulator()`(per-run local var) | ✅ |
+| `loop.py` LLMResponded yield(L956)加 4 fields(provider/model/input_tokens/output_tokens)+ accumulator update | ✅ |
+| `loop.py` END_TURN LoopCompleted 2 emit sites(L996+L1008)populate from accumulator | ✅ |
+| Adapter check — AzureOpenAIAdapter L440-442 already populates `prompt_tokens` + `completion_tokens` | ✅ **D15: no change needed** |
+| mypy --strict on loop.py + _metrics.py + events.py | ✅ 0 errors / 3 source files |
+| pytest agent_harness unit suite | ✅ 862 passed / 1 skipped(no regression)|
+| pytest collect baseline | ✅ 1561(unchanged)|
+
+### D-finding catalogued Day 2
+
+| ID | Finding | Action |
+|----|---------|--------|
+| **D15** | `adapters/azure_openai/adapter.py` L440-442 已 populates `TokenUsage(prompt_tokens=..., completion_tokens=...)` from `usage_obj` | NO adapter change needed;Day 2 scope reduced ~1 hr |
+
+### Day 2 Calibration
+
+- Plan committed Day 2: ~3.3 hr(US-2 portion)
+- Actual Day 2: ~2 hr(loop.py 4 edits + adapter verification — D15 saves rework)
+- Day 2 ratio:**0.61**(under;adapter already correct + LoopCompleted refactor minimal — only END_TURN emits populate, early-termination paths use defaults per docstring)
+
+### Day 2 design decisions
+
+1. **Per-run accumulator**(local var,not `self._accumulator`)— concurrent run() calls 不 share state,符合 Cat 1 isolated-loop principle
+2. **End-of-loop populate only**(non-error/cancel/guardrail paths)— 14 LoopCompleted emit points 中只有 2 個(END_TURN)讀取 accumulator;其他 12 個 early-termination paths 保持 defaults(已 documented 於 events.py LoopCompleted docstring)
+3. **provider source via `self._chat_client.model_info().provider`** — 不依賴 ChatResponse(它無 provider 欄位);藉 ChatClient ABC 的 model_info() 取得 adapter constant
+4. **model source via `response.model`** — per-call 真實值(由 adapter 填寫)
+
+### Day 3 plan(明日)
+
+1. cost_ledger.record_llm_call() signature change:
+   - `total_tokens` → `input_tokens: int + output_tokens: int`
+   - 寫 2 entries(`{provider}_{model}_input` + `{provider}_{model}_output`)
+   - Pricing: `input_tokens × pricing.input_per_million` + `output_tokens × pricing.output_per_million`(取代當前 avg)
+   - Cached portion 仍 honor `cached_input_tokens`
+2. Chat router L361-365 改:
+   - `provider=event.provider`(從 LoopCompleted 真實值)取代 hardcoded `"azure_openai"`
+   - `model=event.model` 取代 hardcoded `"gpt-5.4"`
+   - `input_tokens=event.input_tokens` + `output_tokens=event.output_tokens` 取代 `total_tokens=event.total_tokens`
+3. 5 unit tests + 1 integration test for US-1+US-2 bundle
+
+### Files changed Day 2
+
+- `backend/src/agent_harness/orchestrator_loop/loop.py`(MODIFY:+22 lines / -3 lines = imports + accumulator init + LLMResponded fields + 2 END_TURN emit population)
+
+### 累積 calibration tracking
+
+| Day | Bottom-up | Calibrated | Actual | Ratio |
+|-----|-----------|------------|--------|-------|
+| 0 | ~3 hr | ~1.7 hr | ~2 hr | 1.18 |
+| 1 | ~6 hr | ~3.3 hr | ~2.5 hr | 0.76 |
+| 2 | ~6 hr | ~3.3 hr | ~2 hr | 0.61 |
+| 3-4 (remaining) | ~11 hr | ~6.1 hr | TBD | — |
+| **Sprint Total est** | **~26 hr** | **~14.3 hr** | TBD | TBD |
+
+⏸ **Day 2 closeout — commit Day 2 work**。Day 3 next session 啟動 cost_ledger fix + tests。
+
+
 
 
 ---

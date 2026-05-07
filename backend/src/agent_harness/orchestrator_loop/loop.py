@@ -168,6 +168,7 @@ from agent_harness.state_mgmt import Checkpointer, Reducer
 from agent_harness.tools import ToolExecutor, ToolRegistry  # public path per category-boundaries.md
 
 from ._abc import AgentLoop
+from ._metrics import LoopMetricsAccumulator
 from .termination import (
     TerminationReason,
     should_terminate_by_cancellation,
@@ -769,6 +770,11 @@ class AgentLoopImpl(AgentLoop):
 
         turn_count = 0
         tokens_used = 0
+        # Sprint 57.2 US-1+US-2 bundled: per-run metrics accumulator
+        # (closes AD-Cost-Ledger-Token-Split + Provider-Attribution +
+        # Cat10-Cat11-LoopMetricsAccumulator). Local var (per-run, not
+        # per-instance) so concurrent run() calls don't share state.
+        metrics_acc = LoopMetricsAccumulator()
 
         async with self._tracer.start_span(
             name="agent_loop.run",
@@ -948,15 +954,34 @@ class AgentLoopImpl(AgentLoop):
                 if response.usage is not None:
                     tokens_used += response.usage.total_tokens
 
+                # Sprint 57.2 US-1+US-2 bundled: capture per-call metadata for
+                # LoopCompleted aggregation (provider via adapter.model_info(),
+                # model from ChatResponse, input/output split from usage).
+                _provider = self._chat_client.model_info().provider
+                _input_tokens = response.usage.prompt_tokens if response.usage else 0
+                _output_tokens = response.usage.completion_tokens if response.usage else 0
+                metrics_acc.cumulative_input_tokens += _input_tokens
+                metrics_acc.cumulative_output_tokens += _output_tokens
+                if _provider:
+                    metrics_acc.last_provider = _provider
+                if response.model:
+                    metrics_acc.last_model = response.model
+                metrics_acc.total_turns += 1
+
                 # === Parse + emit LLMResponded + Thinking ==================
                 parsed = await self._output_parser.parse(response, trace_context=ctx)
                 # 50.2: LLMResponded carries the canonical (content, tool_calls, thinking) tuple
                 # per 02-architecture-design.md §SSE llm_response schema. Thinking event is kept
                 # for 50.1 test backward compatibility but no longer the SSE-canonical form.
+                # 57.2: per-call provider/model/input_tokens/output_tokens added.
                 yield LLMResponded(
                     content=parsed.text,
                     tool_calls=tuple(parsed.tool_calls),
                     thinking=None,
+                    provider=_provider,
+                    model=response.model,
+                    input_tokens=_input_tokens,
+                    output_tokens=_output_tokens,
                     trace_context=ctx,
                 )
                 yield Thinking(text=parsed.text, trace_context=ctx)
@@ -997,6 +1022,11 @@ class AgentLoopImpl(AgentLoop):
                         stop_reason=TerminationReason.END_TURN.value,
                         total_turns=turn_count,
                         total_tokens=tokens_used,
+                        # Sprint 57.2 US-1+US-2 bundled: accumulator-sourced split
+                        input_tokens=metrics_acc.cumulative_input_tokens,
+                        output_tokens=metrics_acc.cumulative_output_tokens,
+                        provider=metrics_acc.last_provider,
+                        model=metrics_acc.last_model,
                         trace_context=ctx,
                     )
                     return
@@ -1009,6 +1039,11 @@ class AgentLoopImpl(AgentLoop):
                         stop_reason=TerminationReason.END_TURN.value,
                         total_turns=turn_count,
                         total_tokens=tokens_used,
+                        # Sprint 57.2 US-1+US-2 bundled: accumulator-sourced split
+                        input_tokens=metrics_acc.cumulative_input_tokens,
+                        output_tokens=metrics_acc.cumulative_output_tokens,
+                        provider=metrics_acc.last_provider,
+                        model=metrics_acc.last_model,
                         trace_context=ctx,
                     )
                     return
