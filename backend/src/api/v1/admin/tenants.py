@@ -46,6 +46,7 @@ Created: 2026-05-06 (Sprint 56.1 Day 1)
 Last Modified: 2026-05-07
 
 Modification History:
+    - 2026-05-07: Sprint 57.4 Day 1 — add GET "" list endpoint + TenantListItem + TenantListResponse (US-1 closes D1)
     - 2026-05-07: Sprint 57.3 Day 2 — add PATCH /{id} + TenantUpdateRequest + audit chain (US-2)
     - 2026-05-07: Sprint 57.3 Day 1 — add GET /{tenant_id} + TenantResponse (US-1 closes D1)
     - 2026-05-06: Sprint 56.2 Day 1 — RBAC dep replaces token stub (closes AD-AdminAuth-1)
@@ -68,9 +69,9 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from infrastructure.db.audit_helper import append_audit
@@ -148,6 +149,91 @@ async def create_tenant(
         code=tenant.code,
         state=tenant.state,
         estimated_ready_in_seconds=60,
+    )
+
+
+# ---------------------------------------------------------------------
+# Sprint 57.4 (US-1): List endpoint with filter + pagination
+# ---------------------------------------------------------------------
+
+
+class TenantListItem(BaseModel):
+    """Lightweight subset of Tenant ORM for paginated list responses.
+
+    Excludes provisioning_progress / onboarding_progress / meta_data
+    JSONB fields to keep list payload small; clients fetch full detail
+    via GET /{tenant_id} (Sprint 57.3).
+    """
+
+    id: UUID
+    code: str
+    display_name: str
+    state: TenantState
+    plan: TenantPlan
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TenantListResponse(BaseModel):
+    """Paginated list response wrapper (Sprint 57.4 US-1)."""
+
+    items: list[TenantListItem]
+    total: int
+    limit: int
+    offset: int
+
+
+@router.get(
+    "",
+    response_model=TenantListResponse,
+    dependencies=[Depends(require_admin_platform_role)],
+)
+async def list_tenants(
+    state: TenantState | None = Query(None),
+    plan: TenantPlan | None = Query(None),
+    search: str | None = Query(None, max_length=128),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db_session),
+) -> TenantListResponse:
+    """List tenants with optional filter by state / plan + ILIKE search.
+
+    Sprint 57.4 (US-1) — closes plan-time D1 RED finding (backend was
+    missing a list endpoint at the entity prefix). Powers the Admin
+    Tenants Console frontend page (US-2..US-5).
+
+    Auth: super-admin only via require_admin_platform_role.
+    Order: created_at DESC (newest first).
+    """
+    base_stmt = select(Tenant)
+    if state is not None:
+        base_stmt = base_stmt.where(Tenant.state == state)
+    if plan is not None:
+        base_stmt = base_stmt.where(Tenant.plan == plan)
+    if search is not None:
+        like = f"%{search}%"
+        base_stmt = base_stmt.where(
+            or_(Tenant.code.ilike(like), Tenant.display_name.ilike(like))
+        )
+
+    count_stmt = select(func.count()).select_from(base_stmt.subquery())
+    total_raw = (await db.execute(count_stmt)).scalar()
+    total = int(total_raw or 0)
+
+    page_stmt = (
+        base_stmt.order_by(Tenant.created_at.desc(), Tenant.id.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    rows = (await db.execute(page_stmt)).scalars().all()
+
+    return TenantListResponse(
+        items=[TenantListItem.model_validate(t) for t in rows],
+        total=total,
+        limit=limit,
+        offset=offset,
     )
 
 
