@@ -119,6 +119,58 @@ Day 0 ratio: ~1.0 ✅(within band);Sprint cumulative tracking starts here
 
 ---
 
-## Day 1 — pending
+## Day 1 — 2026-05-07 — US-1 Backend GET endpoint ✅
 
-(US-1 Backend GET endpoint)
+### 1.1 + 1.2 TenantResponse + GET endpoint ✅
+
+- `backend/src/api/v1/admin/tenants.py` modified:
+  - File header MHist + Description updated for Sprint 57.3 entry(MHist 1-line per AD-Lint-3)
+  - Imports: added `from datetime import datetime` + `ConfigDict` from pydantic
+  - NEW `class TenantResponse(BaseModel)` with 10 ORM-mirror fields + `ConfigDict(from_attributes=True)`
+  - NEW `@router.get("/{tenant_id}", response_model=TenantResponse, dependencies=[Depends(require_admin_platform_role)])` endpoint
+  - `dependencies=[]` decorator pattern consistent with existing 56.1/56.2 admin endpoints(no admin_user_id needed for read)
+  - Reuses `_load_tenant_or_404` helper from `tenants.py:167`(per D5 GREEN)
+
+### 1.3 NEW test file `test_admin_tenant_get.py` (6 tests)
+
+- Path:`backend/tests/integration/api/test_admin_tenant_get.py` per D9 path drift catalogue(see below)
+- Test 1:`test_get_tenant_401_without_auth` ✅
+- Test 2:`test_get_tenant_403_wrong_role` ✅(message asserts "Platform admin")
+- Test 3:`test_get_tenant_404_not_found` ✅
+- Test 4:`test_get_tenant_happy_path` ✅(state=REQUESTED + plan=ENTERPRISE per D10)
+- Test 5:`test_get_tenant_response_shape` ✅(set comparison 10 keys exact)
+- Test 6:`test_get_tenant_meta_data_jsonb_round_trip` ✅(nested dict 3-level round-trip)
+
+### 1.4 Day 1 sanity checks ✅
+
+| Baseline | Day 0 | Day 1 | Delta |
+|----------|-------|-------|-------|
+| pytest collected | 1574 | **1580** | +6 ✅ |
+| mypy --strict source files | 295 | **295** | unchanged(modify existing,no new file)|
+| mypy --strict errors | 0 | **0** | ✅ |
+| 8 V2 lints | 8/8 | **8/8** | ✅(0.88s)|
+| LLM SDK leak | 0 | **0** | ✅ |
+
+### Day 1 D-findings
+
+- **D9** 🟢 GREEN — Test path convention drift:plan said `backend/tests/integration/api/v1/admin/test_tenant_get.py`(nested);existing 56.x convention is flat `backend/tests/integration/api/test_admin_*.py`(5 sibling files:test_admin_tenants_rbac / onboarding / sla_reports / cost_summary)→ Decision:follow existing convention,renamed to `test_admin_tenant_get.py`。Per AP-3(no cross-directory scattering)+ category-boundaries.md。
+- **D10** 🟠 YELLOW — TenantState default 是 `REQUESTED`(not `PROVISIONING` as plan-time assumed)→ test fix L125 `TenantState.REQUESTED.value`;informational catalogue;不影響 production behavior
+- **Source file count assumption shift** — plan §Sprint-Wide acceptance said 295 → 297+(假設 US-1+US-2 添加 NEW source files);reality:both 是 existing tenants.py extensions;Day 4 final tally 預期 295 unchanged。Plan §Sprint-Wide line 應 retro Q4 update。
+
+### Day 1 actual vs estimate
+
+| Task | Est | Actual |
+|------|-----|--------|
+| 1.1+1.2 (model + endpoint + file header) | ~50 min | ~25 min |
+| 1.3 (6 tests + D10 fix) | ~50 min | ~25 min |
+| 1.4 (sanity: pytest + mypy + lints + LLM SDK) | ~10 min | ~5 min |
+| 1.5 (commit + push + progress.md) | ~10 min | in progress |
+| **Day 1 total** | **~120 min** | **~60 min** |
+
+Day 1 ratio: ~0.5(under bottom-up estimate;mixed scope class historically over-estimates by ~50%);cumulative Sprint actual after Day 0+1 = ~140 min / committed ~600 min = 23%(progress healthy)。
+
+---
+
+## Day 2 — pending
+
+(US-2 Backend PATCH endpoint)

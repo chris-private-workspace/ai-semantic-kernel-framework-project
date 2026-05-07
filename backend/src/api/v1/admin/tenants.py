@@ -1,15 +1,15 @@
 """
 File: backend/src/api/v1/admin/tenants.py
-Purpose: System-admin tenant lifecycle endpoints — provisioning + onboarding API surface.
-Category: API Layer / Admin (Sprint 56.1 SaaS Stage 1)
-Scope: Sprint 56.1 Day 1 (US-1) + Day 3 (US-3 part 2 onboarding endpoints)
+Purpose: System-admin tenant lifecycle + settings CRUD endpoints — provisioning + onboarding + read/update API surface.
+Category: API Layer / Admin (Sprint 56.1 SaaS Stage 1 + Sprint 57.3 Tenant Settings)
+Scope: Sprint 56.1 Day 1 (US-1) + Day 3 (US-3 part 2 onboarding) + Sprint 57.3 Day 1+2 (US-1 GET + US-2 PATCH)
 Owner: api/v1/admin owner
 
 Description:
-    Day 1 (US-1):
+    Sprint 56.1 Day 1 (US-1):
         POST /api/v1/admin/tenants — create new tenant + run ProvisioningWorkflow.
 
-    Day 3 (US-3 part 2):
+    Sprint 56.1 Day 3 (US-3 part 2):
         GET  /api/v1/admin/tenants/{id}/onboarding-status — snapshot
         POST /api/v1/admin/tenants/{id}/onboarding/{step} — advance step
             with auto-transition to ACTIVE when all 6 steps complete + health
@@ -23,19 +23,30 @@ Description:
     or "platform_admin". `tenant_admin` role is intentionally excluded —
     tenant-scoped admins cannot create / suspend / archive other tenants.
 
+    Sprint 57.3 Day 1+2 (US-1 + US-2 — closes Day 0 D1 RED finding via
+    Option B pivot user-confirmed 2026-05-07):
+        GET   /api/v1/admin/tenants/{tenant_id} — read full tenant entity
+            (10-field TenantResponse mirroring ORM fields).
+        PATCH /api/v1/admin/tenants/{tenant_id} — partial update for
+            display_name + meta_data only (extra='forbid' rejects other
+            fields); writes audit chain entry on actual change.
+
     D11 (carryover): no Cat 12 obs span — structured logging only (consistent
     with provisioning.py D11 / chat router L121 D4).
 
 Key Components:
     - TenantCreateRequest / TenantCreateResponse Pydantic schemas
     - OnboardingStatusResponse / OnboardingAdvanceRequest schemas (Day 3)
+    - TenantResponse / TenantUpdateRequest schemas (Sprint 57.3)
     - router: APIRouter prefix /admin/tenants
     - create_tenant / get_onboarding_status / advance_onboarding_step
+    - get_tenant / update_tenant (Sprint 57.3)
 
 Created: 2026-05-06 (Sprint 56.1 Day 1)
-Last Modified: 2026-05-06
+Last Modified: 2026-05-07
 
 Modification History:
+    - 2026-05-07: Sprint 57.3 Day 1 — add GET /{tenant_id} + TenantResponse (US-1 closes D1)
     - 2026-05-06: Sprint 56.2 Day 1 — RBAC dep replaces token stub (closes AD-AdminAuth-1)
     - 2026-05-06: Sprint 56.1 Day 4 CI — replace EmailStr with regex (avoid email-validator dep)
     - 2026-05-06: Sprint 56.1 Day 3 — onboarding-status GET + onboarding/{step} POST (US-3 part 2)
@@ -52,11 +63,12 @@ Related:
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -266,3 +278,48 @@ async def advance_onboarding_step(
         health_check=health_report_dict,
         transitioned_to_active=transitioned,
     )
+
+
+# ---------------------------------------------------------------------
+# Sprint 57.3 Day 1+2 (US-1 + US-2): Tenant settings read + partial update
+# Closes Day 0 D1 RED finding via Option B pivot user-confirmed 2026-05-07.
+# ---------------------------------------------------------------------
+
+
+class TenantResponse(BaseModel):
+    """Read-only response for GET /admin/tenants/{tenant_id}.
+
+    Mirrors all 10 ORM fields of the Tenant model. Used as response_model
+    for both GET (US-1) and PATCH (US-2 — caller sees post-update state).
+    """
+
+    id: UUID
+    code: str
+    display_name: str
+    state: TenantState
+    plan: TenantPlan
+    provisioning_progress: dict[str, Any]
+    onboarding_progress: dict[str, Any]
+    meta_data: dict[str, Any]
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+@router.get(
+    "/{tenant_id}",
+    response_model=TenantResponse,
+    dependencies=[Depends(require_admin_platform_role)],
+)
+async def get_tenant(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db_session),
+) -> TenantResponse:
+    """Return full tenant entity (10 fields) given tenant_id.
+
+    Auth: require_admin_platform_role (super-admin only). 404 if tenant
+    not found via _load_tenant_or_404.
+    """
+    tenant = await _load_tenant_or_404(db, tenant_id)
+    return TenantResponse.model_validate(tenant)

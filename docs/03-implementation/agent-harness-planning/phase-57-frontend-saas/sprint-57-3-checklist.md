@@ -73,21 +73,21 @@
 ## Day 1 — US-1 Backend GET endpoint
 
 ### 1.1 TenantResponse Pydantic model
-- [ ] **Add `class TenantResponse(BaseModel)` to tenants.py**
+- [x] **Add `class TenantResponse(BaseModel)` to tenants.py**
   - 9 fields:id (UUID) / code (str) / display_name (str) / state (TenantState) / plan (TenantPlan) / provisioning_progress (dict) / onboarding_progress (dict) / meta_data (dict) / created_at (datetime) / updated_at (datetime) — actual = 10 fields
   - `model_config = ConfigDict(from_attributes=True)` for ORM serialization
   - File header MHist:`+ N+1 line: 2026-05-08: Sprint 57.3 — add TenantResponse + TenantUpdateRequest + GET/PATCH endpoints (closes D1 RED)`
   - Verify:`grep -n "class TenantResponse" backend/src/api/v1/admin/tenants.py` → 1 result
 
 ### 1.2 GET /{tenant_id} endpoint
-- [ ] **Add `@router.get("/{tenant_id}", response_model=TenantResponse)` endpoint**
+- [x] **Add `@router.get("/{tenant_id}", response_model=TenantResponse)` endpoint**
   - Path:`/{tenant_id}` accepts UUID
   - Auth:`Depends(require_admin_platform_role)` per 56.2 RBAC pattern
   - Body:`tenant = await _load_tenant_or_404(db, tenant_id); return TenantResponse.model_validate(tenant)`
   - Verify:`grep -n "@router.get" backend/src/api/v1/admin/tenants.py` shows new entry
 
 ### 1.3 NEW test file test_tenant_get.py
-- [ ] **Create `backend/tests/integration/api/v1/admin/test_tenant_get.py`**
+- [x] **Create `backend/tests/integration/api/test_admin_tenant_get.py`**(D9 path follows existing 56.x flat convention)
   - Test 1:`test_get_tenant_happy_path` — admin user + valid tenant_id → 200 + all 10 fields populated + correct types
   - Test 2:`test_get_tenant_404_not_found` — random UUID not in DB → 404
   - Test 3:`test_get_tenant_401_unauthenticated` — no Authorization header → 401
@@ -97,7 +97,7 @@
   - Verify:`python -m pytest backend/tests/integration/api/v1/admin/test_tenant_get.py -v` → ≥5 pass / 0 fail
 
 ### 1.4 Day 1 sanity checks
-- [ ] **Backend baselines verify**
+- [x] **Backend baselines verify**
   - `python -m pytest backend/tests/ -q --tb=no` → 1579+ collected / 0 failures(+5)
   - `python -m mypy backend/src/api/v1/admin/tenants.py --strict` → 0 errors
   - `python scripts/lint/run_all.py` → 8 V2 lints 8/8 green
@@ -105,7 +105,7 @@
   - Verify:All 4 sanity checks pass + recorded in progress.md
 
 ### 1.5 Day 1 commit + push + progress.md
-- [ ] **Commit US-1 + push**
+- [x] **Commit US-1 + push**
   - Commit message:`feat(api, sprint-57-3): add GET /admin/tenants/{id} endpoint with TenantResponse Pydantic (US-1)`
   - Co-author:`Co-Authored-By: Claude <noreply@anthropic.com>`
   - progress.md Day 1 section recorded(actual_hr / est_hr ratio note)
