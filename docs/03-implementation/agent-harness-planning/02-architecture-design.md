@@ -597,6 +597,56 @@ type LoopEvent =
 
 ---
 
+## §Naming Drift Note (Sprint 57.6+ — closes AD-Reality-6)
+
+**Modification History**:
+- 2026-05-08: Sprint 57.6 Day 4 US-4 — fold-in 02.md flat-layer drift per Sprint 57.5 V2 reality check 21-doc audit
+
+### 真實 backend layer structure(per V2 22/22 closure 真實 ship)
+
+V2 規劃 02-architecture-design.md 早期 §Architecture Diagram 描述 **5-layer flat structure**: `agent_harness/`, `platform/`, `adapters/`, `business_domain/`, `infrastructure/`。Sprint 57.5 V2 reality check 21-doc paper audit 確認真實 backend layer 結構為 **nested platform_layer/{...}** form,not flat:
+
+```
+backend/src/
+├── agent_harness/         # 11+1 範疇 (Cat 1-12)
+├── adapters/              # _base/ + azure_openai/ ...
+├── api/                   # api/v1/* HTTP endpoints
+├── business_domain/       # 5 domains: patrol/correlation/rootcause/audit/incident
+├── core/                  # config / logging / settings
+├── infrastructure/        # db/ + redis/
+├── middleware/            # tenant_context.py
+├── mock_services/         # 51.0 mock business
+├── platform_layer/        # ⭐ NESTED (NOT flat per paper claim):
+│   ├── billing/           # CostLedgerService + PricingLoader (56.3)
+│   ├── governance/        # audit/ + hitl/ + risk/ + service_factory (53.4-53.6)
+│   ├── identity/          # auth + JWT (52.5)
+│   ├── middleware/        # TenantContextMiddleware (49.3)
+│   ├── observability/     # OTel + SLA + Tracer (49.4 + 56.3)
+│   ├── tenant/            # quota / lifecycle (56.1 + 56.2)
+│   └── workers/           # Celery / Temporal selection (49.4)
+└── runtime/               # platform_layer-orchestrated runtime utilities
+```
+
+### Why drift exists
+
+Phase 49.1 V2 foundation skeleton 起初按 paper flat-layer 結構建立(`platform/governance/`, `platform/identity/` etc.)。Phase 53.4 (§HITL Centralization backend) 起,`platform_layer/` 子目錄逐步 nested(governance / hitl / risk merged under governance/),per natural modularization needs。Phase 56.1-56.3 SaaS Stage 1 nested 進一步深入(billing / tenant / observability split out)。
+
+**Paper claim vs reality**:Paper 仍稱 "flat 5-layer";reality has converged to **nested 7-subdir under platform_layer/** + `agent_harness/` + `adapters/` + `api/` + `business_domain/` + `core/` + `infrastructure/` + `middleware/` + `mock_services/` + `runtime/`。
+
+### Implication for new code
+
+新代碼應對齐 nested form(per `cd backend/src/ && ls` 真實結構),NOT 假設 flat-layer(會導致 import path 錯誤 + Sprint 49.1-era pattern misuse)。`category-boundaries.md` 已對齐 nested form per Sprint 53.4-onwards updates;此 drift note 是 02.md catch-up 補登記 per Sprint 57.5 reality check audit。
+
+### Phase 57.7+ remediation candidates
+
+- (a) Refactor `platform_layer/` 子目錄 to flat per paper claim — large effort,low ROI(reality-direction 已成熟 nested,paper-direction 過時)
+- (b) Update 02.md §Architecture Diagram to match reality(this section + future sprint cleanup)— **CHOSEN per AD-Reality-6**
+- (c) No-op,leave drift documented — too lazy,reality check already flagged
+
+This Sprint 57.6 closeout adopts (b) by adding this Naming Drift Note。Future sprint cleanup may revise §Architecture Diagram inline to match reality(low priority,not blocking)。
+
+---
+
 ## 下一步
 
 確認架構後：

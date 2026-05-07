@@ -71,6 +71,22 @@ Plan §Workload (or equivalent header) **must** state estimate in this three-seg
 
 **First plan to apply**: Sprint 53.7 itself (`sprint-53-7-plan.md` §Workload).
 
+#### Scope-class multiplier matrix (Sprint 57.6+ — closes AD-Reality-10 + AD-Sprint-Plan-7)
+
+Per AD-Sprint-Plan-4 (logged Sprint 55.3) + 4-sprint window evidence,one-multiplier-fits-all approach loses signal when scope class differs。Below matrix記錄 active classes per scope。`mid-band` value 0.55 for default unclassified scopes;diversification per evidence。
+
+| Scope class | Multiplier (mid-band) | Data points (sprint=ratio) | 3-sprint mean | Status |
+|-------------|----------------------|----------------------------|---------------|--------|
+| `mixed` (greenfield + reuse) | 0.60 | 53.7=1.01 / 56.2=1.17 / 57.3=0.57 / 57.4=0.42 (4) | mean **0.79** ⬇️ below band | AD-Sprint-Plan-6 propose split `mixed-greenfield` 0.60 vs `mixed-pattern-reuse` 0.40 |
+| `medium-backend` | 0.80 (0.65 base + 0.05 audit-cycle surcharge + Day 0 fixed offset) | 55.5=1.14 / 55.6=0.92 (2) | mean **1.03** ✅ in band | KEEP 0.80 — 2-data-point sufficient |
+| `medium-frontend` | 0.65 | 57.1=0.85 (1) | n/a 1-data-point | KEEP 0.65 baseline opens |
+| `large multi-domain` | 0.55 | 56.1=1.00 / 56.3=1.04 / 57.2=0.77 (3) | mean **0.94** ✅ in band | KEEP 0.55 |
+| **`reality-check` (NEW Sprint 57.5)** | **0.85** | **57.5=1.04 (1)** | **n/a 1-data-point** | **NEW class baseline opens (closes AD-Sprint-Plan-7);pending 2-3 sprint window evidence** |
+| **`reality-gap-fix` (NEW Sprint 57.6)** | **0.50** | **57.6=0.54 (1)** | **n/a 1-data-point** | **NEW class baseline opens;ratio below [0.85, 1.20] band by 0.31 → AD-Sprint-Plan-8 propose pending 2-3 sprint validation;potentially adjust to 0.35** |
+
+**Modification History**:
+- 2026-05-08: Sprint 57.6 Day 4 — add scope-class multiplier matrix (closes AD-Reality-10);+2 NEW rows `reality-check` 0.85 1-data-point baseline (closes AD-Sprint-Plan-7) + `reality-gap-fix` 0.50 1-data-point baseline (NEW AD-Sprint-Plan-8 pending 2-3 sprint validation)
+
 ---
 
 ### Step 2: Create Checklist File
