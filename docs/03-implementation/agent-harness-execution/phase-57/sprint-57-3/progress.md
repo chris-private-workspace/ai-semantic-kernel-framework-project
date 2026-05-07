@@ -247,6 +247,95 @@ Day 2 ratio: ~0.27(way under estimate;US-2 PATCH endpoint signaling pattern much
 
 ---
 
-## Day 3 — pending
+## Day 3 — 2026-05-07 — US-3 Frontend Infra + US-4 Page Display + Edit Form ✅
 
-(US-3 Frontend Infra + US-4 Page Display + Edit Form)
+### 3.1 + 3.2 Skeleton folders + types.ts ✅
+
+- `frontend/src/features/tenant-settings/` skeleton(components/ services/ store/ + types.ts)
+- `types.ts`(~50 lines):TenantState enum(REQUESTED / PROVISIONING / ACTIVE / SUSPENDED / ARCHIVED — 5 values per identity.py 73)+ TenantPlan enum(STANDARD / ENTERPRISE)+ TenantSettingsResponse interface(10 fields mirror US-1)+ TenantUpdateRequest interface
+
+### 3.3 tenantSettingsService.ts ✅
+
+- Mirror cost-dashboard `_handleResponse<T>` plain fetch pattern(per 57.1 v2 D6)
+- `fetchTenantSettings(tenantId)` — GET request
+- `updateTenantSettings(tenantId, payload)` — PATCH with JSON body + Content-Type header
+- `API_BASE = "/api/v1/admin"` + `credentials: "include"` for auth
+
+### 3.4 tenantSettingsStore.ts ✅
+
+- Zustand store mirror cost-dashboard pattern(per 57.1 v2 D4)
+- State:`tenantId / data / loading / error / saving / saveError`(+saving/saveError for PATCH lifecycle)
+- Actions:`setTenantId / loadData / save / reset`
+- Optimistic update on save:server response replaces local data;invalidate-on-error pattern(error → keep editing UI)
+
+### 3.5 3 Vitest unit tests US-3 ✅
+
+`frontend/tests/unit/tenant-settings/`:
+- `tenantSettingsService.test.ts`(3 tests):fetch happy + fetch 500 error + update PATCH happy with body assertion
+- `tenantSettingsStore.test.ts`(2 tests):loadData success state transitions + save success optimistic update
+- 5 tests total US-3
+
+### 3.6 + 3.7 Page wrapper + TenantSettingsView ✅
+
+- `pages/tenant-settings/index.tsx` — Routes wrapper per 57.1 v2 cost-dashboard pattern
+- `TenantSettingsView.tsx`:
+  - URL `useSearchParams` reads `?tenant_id=...`(admin-driven per 57.1 v2 D8)
+  - Read sections:Tenant ID + Code(monospace)+ Display Name + State badge(green ACTIVE / amber PROVISIONING+REQUESTED / gray SUSPENDED+ARCHIVED)+ Plan badge(blue ENTERPRISE / gray STANDARD)+ created_at + updated_at
+  - `<details>` collapsed JSON `<pre>` for provisioning_progress + onboarding_progress + meta_data
+  - Edit button → switches to TenantSettingsEditForm via `useState` editing flag
+  - Loading skeleton + error retry button mirror governance pattern
+
+### 3.8 TenantSettingsEditForm ✅
+
+- `TenantSettingsEditForm.tsx`:
+  - `display_name` text input(maxLength 256;empty / >256 → red error message)
+  - `meta_data` JSON textarea(rows=8 monospace;parse + validate on blur)
+  - `validateJson` rejects non-object / array / invalid JSON → red error + disable save
+  - Submit handler:builds delta payload(only changed fields)+ calls `store.save()`+ on success calls `onDone()`
+  - Cancel button reverts to View mode(disabled while saving)
+  - saveError red message displayed if PATCH fails
+
+### 3.9 3 Vitest unit tests US-4 ✅
+
+`TenantSettingsEditForm.test.tsx`(3 tests):
+- Submit valid display_name change → store.updateTenantSettings called with `{ display_name: "Renamed" }` payload
+- Invalid JSON in meta_data textarea → red error message + Save button disabled
+- View render via initialData → display_name input + meta_data textarea populated correctly
+
+**Total Day 3 tests**: US-3 5 + US-4 3 = **8 tests**(plan target ≥6 hit 133%)
+
+### 3.10 Day 3 sanity checks ✅
+
+| Baseline | Day 0 | Day 3 | Delta |
+|----------|-------|-------|-------|
+| Frontend ESLint | clean | **clean** | ✅ |
+| Frontend Vite build | 63 modules / 196.55 kB | **63 modules / 196.55 kB / 926ms** | unchanged(Day 4 wire-up 才會 import → tree-shaken)|
+| Frontend Vitest test files | 5 | **8** | +3 ✅ |
+| Frontend Vitest tests | 15 | **23** | +8 ✅(plan target +6 hit 133%)|
+
+### Day 3 actual vs estimate
+
+| Task | Est | Actual |
+|------|-----|--------|
+| 3.1+3.2 (skeleton + types) | ~30 min | ~10 min |
+| 3.3 (service) | ~30 min | ~10 min |
+| 3.4 (store) | ~30 min | ~10 min |
+| 3.5 (3 US-3 Vitest) | ~60 min | ~15 min |
+| 3.6+3.7 (page wrapper + View) | ~80 min | ~20 min |
+| 3.8 (EditForm) | ~80 min | ~20 min |
+| 3.9 (3 US-4 Vitest) | ~60 min | ~15 min |
+| 3.10 (sanity:ESLint + build + Vitest) | ~10 min | ~5 min |
+| 3.11 (commit + push + progress.md) | ~10 min | in progress |
+| **Day 3 total** | **~480 min(8 hr est)** | **~105 min** |
+
+Day 3 ratio: ~0.22(massively under estimate;US-3 + US-4 frontend pattern reuse from 57.1 v2 cost-dashboard 加快實作);Sprint cumulative through Day 0+1+2+3 = ~310 min / 600 min commit ≈ **52% complete after 75% of days**(remaining Day 4 ~3 hr est for routing + e2e + closeout)。
+
+### Day 3 D-findings
+
+- **D12** 🟢 GREEN — Build module count unchanged(63)即使加 6 新 source files;原因是 tenant-settings 還沒被 App.tsx import → Day 4 routing wire-up 後 modules 預期增至 69+;non-blocking informational
+
+---
+
+## Day 4 — pending
+
+(US-5 Routing + Playwright E2E + Closeout Ceremony)

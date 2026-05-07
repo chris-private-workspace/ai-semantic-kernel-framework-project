@@ -166,13 +166,13 @@
 ## Day 3 — US-3 Frontend Infra + US-4 Page Display + Edit Form
 
 ### 3.1 features/tenant-settings/ skeleton
-- [ ] **Create folder structure**
+- [x] **Create folder structure**
   - `frontend/src/features/tenant-settings/{components,services,store}/`
   - Empty `index.ts` if needed for re-export pattern
   - Verify:`ls frontend/src/features/tenant-settings/` shows 3 subdirs
 
 ### 3.2 types.ts mirror US-1 TenantResponse
-- [ ] **Create `frontend/src/features/tenant-settings/types.ts`**
+- [x] **Create `frontend/src/features/tenant-settings/types.ts`**
   - `enum TenantState { PROVISIONING, ACTIVE, SUSPENDED, ARCHIVED }` mirror backend
   - `enum TenantPlan { STANDARD, ENTERPRISE }` mirror backend
   - `interface TenantSettingsResponse { id / code / display_name / state / plan / provisioning_progress / onboarding_progress / meta_data / created_at / updated_at }`
@@ -181,7 +181,7 @@
   - Verify:`cat frontend/src/features/tenant-settings/types.ts` ≥ 30 lines
 
 ### 3.3 tenantSettingsService.ts plain fetch
-- [ ] **Create `services/tenantSettingsService.ts`**
+- [x] **Create `services/tenantSettingsService.ts`**
   - Mirror cost-dashboard `_handleResponse<T>` helper(per 57.1 v2 D6)
   - `fetchTenantSettings(tenantId)` → GET request
   - `updateTenantSettings(tenantId, payload)` → PATCH request with JSON body
@@ -190,7 +190,7 @@
   - Verify:`npm run lint frontend/src/features/tenant-settings/services/tenantSettingsService.ts` clean
 
 ### 3.4 tenantSettingsStore.ts Zustand
-- [ ] **Create `store/tenantSettingsStore.ts`**
+- [x] **Create `store/tenantSettingsStore.ts`**
   - State:`tenantId` / `data` / `loading` / `error` / `saving` / `saveError`
   - Actions:`setTenantId` / `loadData` / `save` / `reset`
   - Optimistic update on save success;error rollback by re-fetching
@@ -198,20 +198,20 @@
   - Verify:`npm run build frontend/` clean(no TS errors)
 
 ### 3.5 3 Vitest unit tests US-3
-- [ ] **Create unit tests**
+- [x] **Create unit tests**
   - `tenantSettingsService.test.ts`:fetchTenantSettings happy path + 401 error rejection
   - `tenantSettingsService.test.ts`:updateTenantSettings happy path with payload assertion
   - `tenantSettingsStore.test.ts`:loadData action + save action with optimistic update
   - Verify:`npm run test -- tenantSettings` → 3+ pass
 
 ### 3.6 pages/tenant-settings/index.tsx page wrapper
-- [ ] **Create `frontend/src/pages/tenant-settings/index.tsx`**
+- [x] **Create `frontend/src/pages/tenant-settings/index.tsx`**
   - `<Routes><Route index element={<TenantSettingsView />} /></Routes>` pattern per 57.1 v2 cost-dashboard wrapper
   - File header docstring
   - Verify:File created;import paths resolved
 
 ### 3.7 TenantSettingsView.tsx (read view)
-- [ ] **Create `components/TenantSettingsView.tsx`**
+- [x] **Create `components/TenantSettingsView.tsx`**
   - URL param parsing:`useParams<{ tenantId: string }>()` 
   - Read sections per plan §US-4:
     - Tenant ID badge + Code (immutable label)
@@ -224,7 +224,7 @@
   - Verify:render with mocked useTenantSettingsStore data passes Vitest test
 
 ### 3.8 TenantSettingsEditForm.tsx (edit form)
-- [ ] **Create `components/TenantSettingsEditForm.tsx`**
+- [x] **Create `components/TenantSettingsEditForm.tsx`**
   - display_name `<input>` with maxLength=256 + min 1 char validation
   - meta_data `<textarea>` with JSON parse on blur:invalid → red error message + disable save button
   - Save button(disabled while saving / invalid)
@@ -233,21 +233,21 @@
   - Verify:Form submit valid passes Vitest;JSON invalid case shows error message
 
 ### 3.9 3 Vitest unit tests US-4
-- [ ] **Create unit tests**
+- [x] **Create unit tests**
   - `TenantSettingsView.test.tsx`:render with mock data + assert all read fields visible
   - `TenantSettingsEditForm.test.tsx`:submit valid form → store.save called with correct payload
   - `TenantSettingsEditForm.test.tsx`:invalid JSON in textarea → save button disabled + error message shown
   - Verify:`npm run test -- TenantSettings` → 3+ pass
 
 ### 3.10 Day 3 sanity checks
-- [ ] **Frontend baselines verify**
+- [x] **Frontend baselines verify**
   - `cd frontend && npm run lint` → clean
   - `cd frontend && npm run build` → success
   - `cd frontend && npm run test` → 15 + 6 = 21 unit tests pass
   - Verify:All 3 sanity checks pass
 
 ### 3.11 Day 3 commit + push + progress.md
-- [ ] **Commit US-3 + US-4 + push**
+- [x] **Commit US-3 + US-4 + push**
   - Commit message:`feat(frontend, sprint-57-3): add tenant-settings feature folder + page + edit form (US-3 + US-4)`
   - progress.md Day 3 section + actual_hr ratio note
   - Verify:`git log main..HEAD --oneline` shows commit
