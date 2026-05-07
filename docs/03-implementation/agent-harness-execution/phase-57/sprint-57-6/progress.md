@@ -130,4 +130,48 @@ Per CLAUDE.md sacred rule:🚧 deferred items above marked + reason given。
 
 ---
 
-(Day 1+ entries TBD)
+## Day 1 — 2026-05-08 — US-1 Entry-Point Drift + US-2 dotenv Lifespan
+
+### 1.1 US-1 Entry-Point + Port Config Drift Unification (R1) ✅
+
+| File | Change | Closes |
+|------|--------|--------|
+| `scripts/dev.py` L421+L435 | `main_py` path `BACKEND_DIR/main.py` → `BACKEND_DIR/src/api/main.py`;uvicorn arg `'main:app'` → `'api.main:app'` + add `--app-dir src` so module resolution works from cwd=backend/ | 57.5 D-12 (entry path drift) |
+| `scripts/dev_server.py` L246 (NEW Day 1 finding) | Same fix:`main:app` → `api.main:app` + `--app-dir src` | 57.5 D-12 (parallel script with same drift,caught via grep) |
+| `frontend/vite.config.ts` L7 + L22 | Comment `8001` → `8000`;proxy target `http://localhost:8001` → `http://localhost:8000` | 57.5 D-21 (port drift) |
+| `backend/src/main.py` (49.1 stub) | **Removed** via `git rm`。Pre-removal grep confirmed no external imports — only self-references in own docstring。Closes 57.5 D-27 | 57.5 D-27 (stub still live) + AD-Reality-1 |
+
+### 1.2 US-2 uvicorn Lifespan dotenv Autoload (R2) ✅
+
+| File | Change | Closes |
+|------|--------|--------|
+| `backend/src/api/main.py` | Added `from dotenv import load_dotenv` import + `load_dotenv()` call as **first line of existing `_lifespan()`** (NOT new lifespan;Day 0 D-1.9 adjusted plan) + MHist line | 57.5 D-20 (no .env autoload) + AD-Reality-2 |
+| `backend/requirements.txt` | Added `python-dotenv>=1.0,<2.0` with header comment referencing Sprint 57.6 US-2 + AD-Reality-2 | dependency declaration |
+| `backend/tests/unit/api/test_main_lifespan.py` (NEW) | 1 unit test `test_lifespan_calls_load_dotenv_on_startup` — patches `api.main.load_dotenv` + uses `TestClient` context-manager to drive lifespan startup + asserts `mock_load.call_count == 1`。File header per file-header-convention.md。 | regression pin |
+
+### 1.3 Day 1 verification ✅
+
+- ✅ pytest collect:1598 → **1599** (+1 = test_main_lifespan.py)
+- ✅ pytest run:`tests/unit/api/test_main_lifespan.py` PASSED in 0.87s
+- ✅ mypy --strict on `backend/src/api/main.py`:Success no issues
+- ✅ V2 lints:**8/8 green** in 0.83s (no regression on dev.py / api.main.py / vite.config.ts edits)
+- 🚧 **Manual verify `python scripts/dev.py start` boots services**:**deferred** per CLAUDE.md global rule "Do not stop any node.js process as it is also running the claude code process" — running uvicorn/vite forks long-running processes that conflict with claude code session。User to run from separate terminal session to validate boot + `curl http://localhost:8000/health` + `curl http://localhost:3007/api/health` (vite proxy → backend 8000) end-to-end。Documented as Day 1 manual-verify-deferred item — to revisit Day 2/3 when user opens separate terminal,or marked closed via Sprint 57.6 acceptance during PR review。
+- 🚧 **Manual verify real_llm POST /api/v1/chat 不再 503**:同上 deferred (依賴 manual server boot)。Real `.env` with `AZURE_OPENAI_API_KEY` 須先 set,再透過 Day 1 改造的 lifespan 從 .env 載入。Day 0+1 code path 已經 verified 在 unit test level (mock_load.call_count == 1 confirms _lifespan() 真會 call load_dotenv);production end-to-end 須 user 透過 real LLM verify。
+
+### 1.4 Day 1 D-findings (1 NEW)
+
+- **D-Reality-1.11 (NEW Day 1)**:`scripts/dev_server.py:246` 還用 `main:app` (與 dev.py 同 drift) — V1 殘留 entry script。**Day 1 fix included** (1-line edit + comment) 同 dev.py。Catalogue + close in same commit。
+- Other UAT scripts (`scripts/uat/...`) reference `main:app` only in error message strings — V1 leftover,not active V2 entry path,**Phase 57.6 OUT-OF-SCOPE** (per AD-Reality-1 narrow scope to V2 entry only)。
+
+### 1.5 Day 1 commit + push
+
+- Commit message:`feat(platform, sprint-57-6): Day 1 US-1 entry-point drift fix + US-2 dotenv lifespan autoload (closes AD-Reality-1 + AD-Reality-2)`
+- Files staged:scripts/dev.py / scripts/dev_server.py / frontend/vite.config.ts / backend/src/api/main.py / backend/requirements.txt / backend/tests/unit/api/test_main_lifespan.py / backend/src/main.py (deleted) / progress.md (this entry)
+
+### Day 1 attempt time
+
+- ~75 min cumulative:三-prong verify recall ~5 min + 5 file edits ~25 min + test write+run ~15 min + lint+mypy+regression ~10 min + dev_server.py NEW finding fix ~5 min + Day 1 progress.md ~10 min + commit+push ~5 min
+- Day 0+1 cumulative: ~50+75 = ~125 min ≈ 2.1 hr
+- Calibrated commit budget Sprint 57.6 = ~13-15 hr;Day 0+1 burn ~14-16% of budget,on track
+
+

@@ -243,11 +243,14 @@ def cmd_start(port: int, foreground: bool = False) -> Optional[int]:
     print(f"  Starting uvicorn on port {actual_port}...")
 
     uvicorn_args = [
-        sys.executable, '-m', 'uvicorn', 'main:app',
+        # Sprint 57.6 US-1 — same fix as dev.py: target real V2 `api.main:app`
+        # entry (NOT removed `main:app` 49.1 stub). Closes 57.5 D-12.
+        sys.executable, '-m', 'uvicorn', 'api.main:app',
         '--reload',
         '--host', '0.0.0.0',
         '--port', str(actual_port),
         '--timeout-graceful-shutdown', '10',
+        '--app-dir', 'src',
     ]
 
     if sys.platform == 'win32' and not foreground:

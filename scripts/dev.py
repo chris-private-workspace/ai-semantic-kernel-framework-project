@@ -418,9 +418,12 @@ def backend_start(port: int = DEFAULT_BACKEND_PORT, foreground: bool = False,
         print(f"  ❌ Backend directory not found: {BACKEND_DIR}")
         return None
 
-    main_py = BACKEND_DIR / "main.py"
+    # Sprint 57.6 US-1 (R1 / 57.5 D-12+27): real V2 entry is `backend/src/api/main.py`
+    # (has _lifespan + create_app + 7 routers). The legacy `backend/main.py`
+    # stub from Sprint 49.1 has been removed per AD-Reality-1.
+    main_py = BACKEND_DIR / "src" / "api" / "main.py"
     if not main_py.exists():
-        print(f"  ❌ main.py not found in {BACKEND_DIR}")
+        print(f"  ❌ api/main.py not found in {BACKEND_DIR}/src")
         return None
 
     # Start uvicorn
@@ -432,11 +435,15 @@ def backend_start(port: int = DEFAULT_BACKEND_PORT, foreground: bool = False,
         print(f"  Using Python command: {' '.join(python_cmd)}")
 
     uvicorn_args = [
-        *python_cmd, '-m', 'uvicorn', 'main:app',
+        # Sprint 57.6 US-1: target real V2 entry `api.main:app` (NOT `main:app`
+        # which loaded the now-removed Sprint 49.1 stub). Closes 57.5 D-12.
+        # Requires PYTHONPATH=backend/src so uvicorn can resolve `api.main`.
+        *python_cmd, '-m', 'uvicorn', 'api.main:app',
         '--reload',
         '--host', '0.0.0.0',
         '--port', str(actual_port),
         '--timeout-graceful-shutdown', '10',
+        '--app-dir', 'src',
     ]
 
     if sys.platform == 'win32' and not foreground:

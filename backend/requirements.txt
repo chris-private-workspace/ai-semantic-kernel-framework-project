@@ -68,3 +68,8 @@ tiktoken>=0.7,<1.0          # context_mgmt/token_counter/tiktoken_counter.py + a
 requests>=2.31,<3.0         # agent_harness/tools/sandbox.py
 openai>=1.40,<2.0           # adapters/azure_openai/error_mapper.py (LLM-neutral allowlist: only adapters/<provider>/)
 jsonschema>=4.20,<5.0       # agent_harness/tools/{registry,executor}.py — input_schema validation (51.1)
+
+# ---- Sprint 57.6 US-2: .env autoload (closes AD-Reality-2 + 57.5 D-20) -
+# Loaded by api/main.py _lifespan() so AZURE_OPENAI_API_KEY etc. populate
+# os.environ before settings / adapter initialization on uvicorn startup.
+python-dotenv>=1.0,<2.0

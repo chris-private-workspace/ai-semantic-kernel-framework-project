@@ -4,7 +4,8 @@ import path from "path";
 
 // V2 frontend dev server config.
 // Port 3007 chosen to avoid collision with archived V1 frontend (3005).
-// Backend dev server runs on 8001 (per backend/README.md).
+// Backend dev server runs on 8000 (Sprint 57.6 US-1 R1 closeout — fixed from
+// stale 8001 stub-port reference; closes 57.5 D-21 port drift).
 // Vitest config added Sprint 57.1 (per Day 0 D11 — frontend had no Vitest before).
 export default defineConfig({
   plugins: [react()],
@@ -19,7 +20,7 @@ export default defineConfig({
     host: "0.0.0.0",
     proxy: {
       "/api": {
-        target: "http://localhost:8001",
+        target: "http://localhost:8000",
         changeOrigin: true,
       },
     },

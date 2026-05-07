@@ -27,6 +27,7 @@ Created: 2026-04-29 (Sprint 49.4 Day 5)
 Last Modified: 2026-04-29
 
 Modification History (newest-first):
+    - 2026-05-08: Sprint 57.6 US-2 — _lifespan() autoload .env via python-dotenv (closes AD-Reality-2 + 57.5 D-20)
     - 2026-05-06: Sprint 56.1 — mount admin_tenants router (POST /api/v1/admin/tenants)
     - 2026-05-04: Mount governance router (Sprint 53.5 US-1) — GET /governance/approvals
         + POST /governance/approvals/{id}/decide (approver RBAC + tenant isolation).
@@ -49,6 +50,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 
 from api.v1.admin.cost_summary import router as admin_cost_summary_router
@@ -71,7 +73,11 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Startup: structured logging + OTel SDK. Shutdown: flush + dispose engine."""
+    """Startup: load .env + structured logging + OTel SDK. Shutdown: flush + dispose engine."""
+    # Sprint 57.6 US-2 (R2 / 57.5 D-20): autoload .env so AZURE_OPENAI_API_KEY etc.
+    # populate process env before settings / adapter initialization. No-op if .env
+    # already loaded by external process manager (e.g. docker-compose env_file).
+    load_dotenv()
     configure_json_logging()
     setup_opentelemetry(app)
     logger.info("api.main: startup complete")
