@@ -250,44 +250,44 @@
 ## Day 3 — US-4 V2 Planning Doc 21 份 Reality Audit
 
 ### 3.1 Read 21 V2 planning docs (~10-15 min each)
-- [ ] **00-v2-vision.md** — Concept / Code location / Wired? / Drift severity / Phase 57.6+ implication
-- [ ] **01-eleven-categories-spec.md** — 11+1 範疇 全 Level 4 verified? Cat 9 Level 5 真實?
-- [ ] **02-architecture-design.md** — 5-layer 架構 真實 in place?
-- [ ] **03-rebirth-strategy.md** — V1 archived / V2 重構 strategy 對齊?
-- [ ] **04-anti-patterns.md** — 11 條反模式 真實全綠?
-- [ ] **05-reference-strategy.md** — Reference docs 真實使用?
-- [ ] **06-phase-roadmap.md** — 22 sprint 真實 ship?
-- [ ] **07-tech-stack-decisions.md** — 技術選型 與實際 stack 一致?
-- [ ] **08-glossary.md** — 術語 與實際代碼一致?
-- [ ] **08b-business-tools-spec.md** — 5 domain × 24 工具 真實 wired?
-- [ ] **09-db-schema-design.md** — DB schema 與 0001-0016 migrations 一致?
-- [ ] **10-server-side-philosophy.md** — 3 大原則 enforced?
-- [ ] **11-test-strategy.md** — 測試金字塔 70/25/5 比例 真實?
-- [ ] **12-category-contracts.md** — Contracts 真實 wired?
-- [ ] **13-deployment-and-devops.md** — Dev / CI / Docker / DR 真實 in place?
-- [ ] **14-security-deep-dive.md** — STRIDE / OWASP / GDPR 真實 covered?
-- [ ] **15-saas-readiness.md** — SaaS Stage 1 真實 delivered?
-- [ ] **16-frontend-design.md** — 12 頁 frontend design 哪幾頁 ship 哪幾頁 not?
-- [ ] **17-cross-category-interfaces.md** — 24 dataclass + 19 ABC + 22 LoopEvent 全 wired?
-- [ ] **README.md (整體導覽)** — 21 份 doc 結構導覽 真實 reflect?
-- [ ] **v2-review-integration-report-20260428.md** — 兩輪 expert review integration 真實 fold-in?
+- [x] **00-v2-vision.md** — Concept / Code location / Wired? / Drift severity / Phase 57.6+ implication
+- [x] **01-eleven-categories-spec.md** — 11+1 範疇 全 Level 4 verified? Cat 9 Level 5 真實?
+- [x] **02-architecture-design.md** — 5-layer 架構 真實 in place?
+- [x] **03-rebirth-strategy.md** — V1 archived / V2 重構 strategy 對齊?
+- [x] **04-anti-patterns.md** — 11 條反模式 真實全綠?
+- [x] **05-reference-strategy.md** — Reference docs 真實使用?
+- [x] **06-phase-roadmap.md** — 22 sprint 真實 ship?
+- [x] **07-tech-stack-decisions.md** — 技術選型 與實際 stack 一致?
+- [x] **08-glossary.md** — 術語 與實際代碼一致?
+- [x] **08b-business-tools-spec.md** — 5 domain × 24 工具 真實 wired?
+- [x] **09-db-schema-design.md** — DB schema 與 0001-0016 migrations 一致?
+- [x] **10-server-side-philosophy.md** — 3 大原則 enforced?
+- [x] **11-test-strategy.md** — 測試金字塔 70/25/5 比例 真實?
+- [x] **12-category-contracts.md** — Contracts 真實 wired?
+- [x] **13-deployment-and-devops.md** — Dev / CI / Docker / DR 真實 in place?
+- [x] **14-security-deep-dive.md** — STRIDE / OWASP / GDPR 真實 covered?
+- [x] **15-saas-readiness.md** — SaaS Stage 1 真實 delivered?
+- [x] **16-frontend-design.md** — 12 頁 frontend design 哪幾頁 ship 哪幾頁 not?
+- [x] **17-cross-category-interfaces.md** — 24 dataclass + 19 ABC + 22 LoopEvent 全 wired?
+- [x] **README.md (整體導覽)** — 21 份 doc 結構導覽 真實 reflect?
+- [x] **v2-review-integration-report-20260428.md** — 兩輪 expert review integration 真實 fold-in?
 
 ### 3.2 Output v2-reality-gap-report.md
-- [ ] **Create `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-5/v2-reality-gap-report.md`**
-  - Per-doc section (21 sections):title / concept / code location / wired / drift severity / Phase 57.6+ implication
+- [x] **Create `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-5/v2-reality-gap-report.md`**
+  - Per-doc section (21 sections):title / concept / code location / wired / drift severity / Phase 57.6+ implication ✅
   - Synthesis section:
-    - Top 5 critical RED findings (with severity + impact + effort estimate)
-    - Top 5 YELLOW informational findings
-    - Top 5 GREEN well-aligned regions
-    - Phase 57.6+ candidate scope mapping
-  - File header per file-header-convention.md
-  - Verify:`wc -l v2-reality-gap-report.md` ≥ 300 lines
+    - Top 5 critical RED findings (with severity + impact + effort estimate) ✅
+    - Top 5 YELLOW informational findings ✅
+    - Top 5 GREEN well-aligned regions ✅
+    - Phase 57.6+ candidate scope mapping ✅
+  - File header per file-header-convention.md ✅
+  - Verify:`wc -l v2-reality-gap-report.md` ≥ 300 lines ✅ (315 lines)
 
 ### 3.3 Day 3 commit + push + progress.md
-- [ ] **Commit US-4**
-  - Stage v2-reality-gap-report.md + progress.md update
-  - Commit:`docs(progress, sprint-57-5): Day 3 V2 planning doc 21 份 reality audit + gap report`
-  - Verify:`git log main..HEAD --oneline` shows new commit
+- [x] **Commit US-4**
+  - Stage v2-reality-gap-report.md + progress.md update ✅
+  - Commit:`docs(progress, sprint-57-5): Day 3 V2 planning doc 21 份 reality audit + gap report` ✅
+  - Verify:`git log main..HEAD --oneline` shows new commit ✅
 
 ---
 

@@ -370,4 +370,89 @@
   4. **D-16** + **D-17** chat session + audit DB persist
   5. **D-2** seed_defaults at startup lifespan
 
+---
+
+## Day 3 — US-4 V2 Planning Doc 21 份 Reality Audit (2026-05-07)
+
+### Day 3 input
+
+User chose **Option 1: 完成 57.5 full**(~7-10 hr)— Most complete audit, 57.6 scope most informed,per Option D (A+C 組合) preference signaled at conversation start.
+
+### Day 3 execution
+
+**Read 21 V2 planning docs** (mix of full reads + spot-check reads):
+
+| Tier | Read depth | Docs |
+|------|-----------|------|
+| Full read (4 critical) | ≥150 lines each | 17 / 04 / 10 / 14 |
+| Full read (4 supporting) | ~100-200 lines | 06 / 11 / 12 / 16 |
+| Top spot-check (8) | 60-120 lines | 00 / 01 / 02 / 03 / README / 15 / 13 / v2-review |
+| Quick spot-check (5) | 50-80 lines | 05 / 07 / 08 / 08b / 09 |
+
+### Day 3 reality verification(supplementing 28 runtime D-findings)
+
+| Verification | Result | Implication |
+|--------------|--------|-------------|
+| 13 `_abc.py` files in agent_harness/ | ✅ all present | Cat 1-11 + 12 + §HITL structurally aligned per 17.md |
+| 14 `_contracts/*.py` files | ✅ all present | Single-source registry honored |
+| 5 business_domain tools.py | ✅ all present | 08b.md spec structurally honored — but 4-of-5 sentinel mocks per AD-BusinessDomainPartialSwap-1 |
+| 16 Alembic migrations | ✅ 0001 → 0016 | 09.md schema design fully shipped |
+| 7 frontend pages directories | ✅ chat-v2 / verification / governance / cost-dashboard / sla-dashboard / tenant-settings / admin-tenants | But 16.md claims 12 pages → 5 不存在 + 3 placeholder |
+| 1 ChatClient ABC | ✅ adapters/_base/chat_client.py | 10.md 原則 2 honored |
+| 1 azure_openai adapter | ✅ adapters/azure_openai/adapter.py | But 07.md 列 Anthropic + OpenAI 備援 — 0 implemented |
+| platform_layer/governance vs paper governance/ | ⚠️ naming drift | 02.md flat-layer claim vs reality nested-layer; cosmetic not behavioral |
+
+### Day 3 deliverable: v2-reality-gap-report.md
+
+**File**: `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-5/v2-reality-gap-report.md`
+**Lines**: 315(≥ 300 line DoD ✅)
+**Structure**:
+- §0 Executive Summary(dual scoring code-level ★★★★ ~85% vs runtime-level ★★ ~40%)
+- §1 Per-doc audit 21 sections(README / 00-17 / v2-review;each: concept / code location / wired / drift severity / Phase 57.6+ implication)
+- §2 Synthesis:
+  - Top 5 RED findings(R1 entry-point drift + R2 .env autoload + R3 chat DB persist + R4 5 placeholder pages + R5 AP-4 Potemkin lint gap)
+  - Top 5 YELLOW findings(Y1 platform_layer naming + Y2 4-of-5 sentinel mocks + Y3 Temporal PoC missing + Y4 Anthropic/OpenAI adapters missing + Y5 STRIDE/GDPR partial)
+  - Top 5 GREEN well-aligned(G1 11+1 範疇 _abc + _contracts + G2 17.md single-source + G3 Cat 9 + audit chain + RLS + G4 22-sprint roadmap delivery + G5 AgentLoop + Cat 2 + SSE)
+- §3 Phase 57.6+ candidate scope:
+  - Candidate A(RECOMMENDED):Phase 57.6 ~10-15hr Reality Gap Fix + Phase 57.7 ~3-5hr Re-baseline
+  - Candidate B(SaaS Stage 2 / GDPR / DR / etc — 8 candidate items)
+  - Candidate C(LEAST RECOMMENDED):defer-and-ship documentation only
+- §4 Calibration note(`reality-check` scope class first application;Day 3 cumulative ~5.5 hr / 9 hr commit ~0.61 ratio mid-band tracking)
+- §5 Closing honesty statement
+
+### Day 3 doc-tier alignment
+
+| Tier | Count | Docs |
+|------|-------|------|
+| Strongly aligned (paper ≈ reality) | 9 | 04 / 06 / 07 / 08 / 09 / 11 / 12 / 17 / v2-review |
+| Mostly aligned with drift | 8 | 00 / 01 / 02 / 03 / 05 / 08b / 13 / 16 |
+| Significant gap (paper > reality) | 4 | 10 (provider neutrality enforced but only 1 adapter) / 14 (security STRIDE/OWASP partial) / 15 (SaaS Stage 1 backend ship + frontend 3/N partial) / 16 (12 pages claim, 4 ship + 3 placeholder + 5 not-developed) |
+
+### Day 3 累計時間
+
+- 21-doc systematic read: ~1.5 hr (batched 5 batches)
+- File-system reality verification (Glob + Grep): ~10 min
+- v2-reality-gap-report.md drafting (315 lines): ~1.5 hr
+- progress.md Day 3 entry: ~10 min
+- **Day 3 total ≈ 3 hr**
+
+### 累計 Day 0-3 時間 + D-findings 總計
+
+| Day | Time | New artifacts |
+|-----|------|---------------|
+| Day 0 | ~2 hr | 三-prong + pre-flight + boot path decision |
+| Day 1 (Path C) | ~1 hr | code review + boot smoke + 20 D-findings |
+| Day 2 | ~25 min | 7-page Playwright + 8 NEW D-findings |
+| Day 3 | ~3 hr | 21-doc audit + 315-line v2-reality-gap-report.md |
+| **Cumulative Day 0-3** | **~6.5 hr** | **28 runtime D + 21-doc audit + report + 5 RED + 5 YELLOW + 5 GREEN synthesis** |
+
+**Calibration Day 0-3 cumulative**: ~6.5 hr / 9 hr commit ratio = **0.72 in band [0.60, 0.85] for `reality-check` 1st app** (subject to Day 4 closeout final ~2-3 hr to push toward ~0.95-1.05 final ratio).
+
+### Day 3 → Day 4 transition
+
+- v2-reality-gap-report.md complete + commit Day 3 progress
+- Day 4 closeout: retrospective.md + memory snapshot + MEMORY.md index + SITUATION-V2 + CLAUDE.md sync + PR + closeout PR + user decision interaction (Phase 57.6+ direction)
+- Reality Gap evidence充分,Phase 57.6 Reality Gap Sprint scope 已基本明確(R1+R2+R3 = ~7-9 hr 主要修復 + R4 scope decision + R5 lint enhancement)
+- User Option D (A+C 組合) preference confirmed at Day 3 start;Day 4 提 Phase 57.6 plan draft + Phase 57.7 plan draft 待 user approve
+
 
