@@ -33,19 +33,6 @@ from tests.conftest import seed_tenant
 pytestmark = pytest.mark.asyncio
 
 
-@pytest.mark.skip(
-    reason=(
-        "Sprint 57.6 Day 4 (AD-Reality-FlakeEventLoop deferred Phase 57.7+): "
-        "event-loop cascade after Day 2 audit_log observer wiring (chat_e2e tests "
-        "earlier in pytest session leave connection-pool state bound to their "
-        "asyncio loop;db_session fixture for this later test inherits it → "
-        "'attached to a different loop')。SAVEPOINT in router.py only addresses "
-        "FK violation cascade,not connection lifecycle isolation。Investigation "
-        "needed: dispose engine + recreate per pytest test OR add connection "
-        "reset to tests/conftest.py db_session fixture。Pre-existing flake "
-        "surfaced post-57.6 audit_log observer addition。"
-    )
-)
 async def test_chat_handler_thinking_enabled_per_tenant_override(
     db_session: AsyncSession,
 ) -> None:

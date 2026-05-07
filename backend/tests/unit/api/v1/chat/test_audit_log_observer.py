@@ -31,6 +31,7 @@ Related:
 from __future__ import annotations
 
 import importlib
+import os
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
@@ -38,6 +39,12 @@ from uuid import UUID, uuid4
 import pytest
 
 from agent_harness._contracts import LoopCompleted, TraceContext
+
+# Sprint 57.6 Day 4 — the integration tests/conftest.py disables the audit
+# observer via AUDIT_LOG_CHAT_OBSERVER=false. This unit test file MUST override
+# back to "true" so the observer code path actually exercises in test env;tests
+# patch append_audit directly to capture call args without hitting DB。
+os.environ["AUDIT_LOG_CHAT_OBSERVER"] = "true"
 
 # `api.v1.chat.__init__` does `from .router import router` which shadows the
 # submodule reference at the package namespace。Use importlib to grab the actual

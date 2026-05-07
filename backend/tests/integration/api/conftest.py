@@ -25,14 +25,23 @@ Modification History:
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterator
 
 import pytest
 
-from platform_layer.billing.cost_ledger import reset_cost_ledger
-from platform_layer.billing.pricing import reset_pricing_loader
-from platform_layer.governance.service_factory import reset_service_factory
-from platform_layer.observability import reset_sla_recorder
+# Sprint 57.6 Day 4 (AD-Reality-FlakeEventLoop deferred Phase 57.7+):
+# Disable Day 2 audit_log chat observer in integration tests until proper
+# connection-pool isolation is added to tests/conftest.py db_session fixture
+# (estimated ~1-2 hr). Without this, db.begin_nested()+append_audit()+session
+# flush leaves connection-pool state bound to chat_e2e tests' asyncio loop
+# → cascades into "attached to a different loop" cross-test failure pattern.
+os.environ.setdefault("AUDIT_LOG_CHAT_OBSERVER", "false")
+
+from platform_layer.billing.cost_ledger import reset_cost_ledger  # noqa: E402
+from platform_layer.billing.pricing import reset_pricing_loader  # noqa: E402
+from platform_layer.governance.service_factory import reset_service_factory  # noqa: E402
+from platform_layer.observability import reset_sla_recorder  # noqa: E402
 
 
 @pytest.fixture(autouse=True)

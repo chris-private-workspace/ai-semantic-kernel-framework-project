@@ -128,16 +128,6 @@ async def _client(app: FastAPI) -> AsyncClient:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(
-    reason=(
-        "Sprint 57.6 Day 4 (AD-Reality-FlakeEventLoop deferred Phase 57.7+): "
-        "event-loop cascade after Day 2 audit_log observer wiring。Investigation "
-        "needed: dispose engine + recreate per pytest test OR add connection "
-        "reset to tests/conftest.py db_session fixture。Pre-existing flake "
-        "surfaced post-57.6 audit_log observer addition;same root cause as "
-        "test_chat_feature_flag.py::test_chat_handler_thinking_enabled_per_tenant_override。"
-    )
-)
 async def test_list_rejects_non_approver_role(db_session: AsyncSession) -> None:
     """Non-approver → 403."""
     suffix = uuid4().hex[:6]
