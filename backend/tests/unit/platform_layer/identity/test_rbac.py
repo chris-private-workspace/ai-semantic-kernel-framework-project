@@ -141,9 +141,7 @@ class TestRequireRoleHybridPath:
         """
         user_id = uuid4()
         tenant_id = uuid4()
-        request = _make_request(
-            user_id=user_id, roles=["tenant_admin"], tenant_id=tenant_id
-        )
+        request = _make_request(user_id=user_id, roles=["tenant_admin"], tenant_id=tenant_id)
         with patch(
             "platform_layer.identity.rbac.RBACManager.has_role_code",
             new_callable=AsyncMock,
@@ -162,9 +160,7 @@ class TestRequireRoleHybridPath:
         """Path 2 ON + JWT claim doesn't grant + DB also lacks role → 403."""
         user_id = uuid4()
         tenant_id = uuid4()
-        request = _make_request(
-            user_id=user_id, roles=["tenant_admin"], tenant_id=tenant_id
-        )
+        request = _make_request(user_id=user_id, roles=["tenant_admin"], tenant_id=tenant_id)
         with patch(
             "platform_layer.identity.rbac.RBACManager.has_role_code",
             new_callable=AsyncMock,
