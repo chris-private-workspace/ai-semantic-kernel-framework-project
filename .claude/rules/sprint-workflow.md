@@ -83,8 +83,10 @@ Per AD-Sprint-Plan-4 (logged Sprint 55.3) + 4-sprint window evidence,one-multipl
 | `large multi-domain` | 0.55 | 56.1=1.00 / 56.3=1.04 / 57.2=0.77 (3) | mean **0.94** ✅ in band | KEEP 0.55 |
 | **`reality-check` (NEW Sprint 57.5)** | **0.85** | **57.5=1.04 (1)** | **n/a 1-data-point** | **NEW class baseline opens (closes AD-Sprint-Plan-7);pending 2-3 sprint window evidence** |
 | **`reality-gap-fix` (NEW Sprint 57.6)** | **0.50** | **57.6=0.54 (1)** | **n/a 1-data-point** | **NEW class baseline opens;ratio below [0.85, 1.20] band by 0.31 → AD-Sprint-Plan-8 propose pending 2-3 sprint validation;potentially adjust to 0.35** |
+| **`iam-frontend-spike` (NEW Sprint 57.7)** | **0.60** (HYBRID weighted blend: IAM × 0.60 + Frontend × 0.65 + Reality × 0.50 + closeout × 0.80) | **57.7=~0.92 (1)** | **n/a 1-data-point** | **NEW class baseline opens (closes AD-Sprint-Plan-9);1st app projected ~0.92 in [0.85, 1.20] band at lower edge;KEEP 0.60 baseline per `When to adjust` 3-sprint window rule;pending 2-3 sprint validation** |
 
 **Modification History**:
+- 2026-05-10: Sprint 57.7 Day 4 — +1 NEW row `iam-frontend-spike` 0.60 HYBRID weighted blend 1-data-point baseline (closes AD-Sprint-Plan-9)
 - 2026-05-08: Sprint 57.6 Day 4 — add scope-class multiplier matrix (closes AD-Reality-10);+2 NEW rows `reality-check` 0.85 1-data-point baseline (closes AD-Sprint-Plan-7) + `reality-gap-fix` 0.50 1-data-point baseline (NEW AD-Sprint-Plan-8 pending 2-3 sprint validation)
 
 ---

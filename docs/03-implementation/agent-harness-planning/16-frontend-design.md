@@ -804,7 +804,7 @@ V2 重構完成（Phase 49-55,22/22 sprint）+ Phase 56-58 SaaS Stage 1 backend 
 
 | Page | Sprint | Backend | Status |
 |------|--------|---------|--------|
-| cost-dashboard | 57.1 | 56.3 cost_ledger backend | ✅ Production ship; 7 Vitest + 2 Playwright e2e |
+| cost-dashboard | 57.1 + **57.7 AppShell migrate** | 56.3 cost_ledger backend | ✅ Production ship + Sprint 57.7 US-B3 AppShell + Tailwind migration (9 inline style → utility classes; Zustand preserve per surgical D23); 9 Vitest (+2 migrate) + 2 Playwright e2e |
 | sla-dashboard | 57.1 | 56.3 SLA monitor backend | ✅ Production ship; 7 Vitest + 2 Playwright e2e |
 | tenant-settings | 57.3 | 56.1 + 57.3 admin tenants.py R+U | ✅ Production ship; 8 Vitest + 4 Playwright e2e |
 | admin-tenants list | 57.4 | 57.4 admin tenants.py list endpoint | ✅ Production ship; 12 Vitest + 4 Playwright e2e |
