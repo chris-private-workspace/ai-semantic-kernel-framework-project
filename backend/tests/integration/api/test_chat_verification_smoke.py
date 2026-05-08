@@ -42,9 +42,10 @@ from fastapi.testclient import TestClient
 from api.v1.chat import router as chat_router
 from api.v1.chat.session_registry import get_default_registry
 from core.config import get_settings
-from platform_layer.identity import get_current_tenant
+from platform_layer.identity import get_current_tenant, get_current_user_id
 
 DEFAULT_TENANT = UUID("22222222-2222-2222-2222-222222222222")
+DEFAULT_USER_ID = UUID("33333333-3333-3333-3333-333333333333")
 
 
 @pytest.fixture
@@ -53,6 +54,7 @@ def app() -> FastAPI:
     inst = FastAPI()
     inst.include_router(chat_router, prefix="/api/v1")
     inst.dependency_overrides[get_current_tenant] = lambda: DEFAULT_TENANT
+    inst.dependency_overrides[get_current_user_id] = lambda: DEFAULT_USER_ID
     return inst
 
 
