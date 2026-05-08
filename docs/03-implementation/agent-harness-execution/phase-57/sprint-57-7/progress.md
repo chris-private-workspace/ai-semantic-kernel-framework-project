@@ -1,3 +1,108 @@
+# Sprint 57.7 Progress — Day 3 (2026-05-10)
+
+> **Sprint Type**: Phase 57+ sixth sprint — IAM Foundation + Frontend Foundation 1/N spike
+> **Branch**: `feature/sprint-57-7-iam-frontend-foundation`
+> **Day 3 Status**: ✅ Day 2 carryover (Tier 1 closed in same session) ⏳ Day 3 official 3.1-3.5 deferred to follow-up session
+
+---
+
+## Day 3 — Day 2 Carryover Closure (Tier 1)
+
+### 3.0 WorkOS SDK install + API exploration ✅ COMPLETE
+
+- ✅ `pip install workos` succeeded (no requirements.txt diff — already pinned `workos>=4.0,<6.0` Day 1)
+- ✅ Modern API confirmed: `workos.AsyncWorkOSClient.user_management.{get_authorization_url, authenticate_with_code, get_logout_url}` — UserManagement supersedes legacy `sso` module for hosted login
+- ✅ Sync/async split discovered:
+  - `get_authorization_url`: **sync** (URL string-builder, no network)
+  - `authenticate_with_code`: **async** on AsyncWorkOSClient (network call to WorkOS API)
+  - `get_logout_url`: **sync** (URL builder, requires `session_id`)
+- ✅ Decision: Use modern `user_management` API + `provider="authkit"` for hosted AuthKit UX (vs. legacy `sso` requiring per-org connection_id pre-config)
+
+### 3.1 oidc.py — Replace 3 placeholders with real WorkOS SDK ✅ COMPLETE
+
+- ✅ `_make_async_client()` + `_make_sync_client()` lazy import helpers (test injection seam)
+- ✅ `initiate_login` → `client.user_management.get_authorization_url(redirect_uri, state, provider="authkit")`
+- ✅ `exchange_callback` → **async** `await client.user_management.authenticate_with_code(code=code)`; maps `AuthenticateResponse.user.{id, email, first_name, last_name}` + `access_token` → OIDCProfile
+- ✅ `signout_url` → `client.user_management.get_logout_url(session_id, return_to)` with fallback to static AuthKit logout URL when `session_id=None`
+- ✅ NEW `OIDCExchangeError` class — wraps vendor exception with consistent V2 error class
+- ✅ `secrets.compare_digest(state, expected_state)` — constant-time-ish CSRF check (replaces naive `==`)
+
+### 3.2 auth.py callback — DB user upsert ✅ COMPLETE
+
+- ✅ Made `callback` consume `Depends(get_db_session)` — real `AsyncSession` injection
+- ✅ NEW `_upsert_user_from_oidc(profile, tenant_id, db) -> User` helper:
+  - Lookup by composite key `(User.tenant_id, User.external_id)` — preserves Multi-tenant 鐵律 #2
+  - INSERT new User on miss; UPDATE display_name on subsequent login if vendor profile changed
+  - `await db.flush()` to materialize server-side UUID before JWT encode (no commit; lifecycle owned by `get_db_session`)
+- ✅ NEW Multi-tenant resolution path: `tenant_code` Query param at `/login` → `oidc_tenant_code` cookie → `/callback` resolves to `tenants.id` via `Tenant.code` lookup; missing tenant → 400 (NO "default" magic per 鐵律 #1)
+- ✅ JWT now carries **real** `users.id` (sub) + **real** `tenants.id` (tenant_id) + roles + email + external_id
+- ✅ NEW `_format_display_name` helper — `"first last"` join, fallback to email local-part
+
+### 3.3 Test suite — 7 unit tests for oidc.py + auth.py ✅ COMPLETE
+
+`backend/tests/unit/platform_layer/identity/test_oidc.py` (NEW; +212 LOC, +7 tests over plan target +6):
+
+| # | Class.test | Coverage |
+|---|------------|----------|
+| 1 | `TestWorkOSOIDCFlow.test_initiate_login_returns_url_and_state` | Mock sync client → URL + 32-byte state + correct kwargs |
+| 2 | `TestWorkOSOIDCFlow.test_exchange_callback_state_mismatch_raises` | OIDCStateError raised on CSRF mismatch (no SDK call) |
+| 3 | `TestWorkOSOIDCFlow.test_exchange_callback_returns_profile_on_success` | Mock async client + AuthenticateResponse stub → OIDCProfile |
+| 4 | `TestAuthCallbackEndpoint.test_callback_missing_tenant_cookie_returns_400` | Cookie guard fail-fast |
+| 5 | `TestAuthCallbackEndpoint.test_callback_unknown_tenant_returns_400` | DB Tenant.code lookup miss (mocked AsyncSession) |
+| 6 | `TestUserUpsert.test_upsert_inserts_on_first_login` | INSERT path with mocked db.add + db.flush; verify display_name = "Bob Doe" |
+| 7 | `TestExchangeErrorMapping.test_exchange_callback_wraps_vendor_exception` | **BONUS** — vendor exception → OIDCExchangeError mapping sanity |
+
+### 3.4 Validation Summary
+
+| Check | Pre-Day-3 (Day 2 end) | Day 3 (Tier 1 closure) | Δ |
+|-------|----------------------|------------------------|---|
+| pytest collected | 1609 | **1616** | ✅ +7 oidc/auth |
+| pytest passed (oidc.py + auth.py + identity + api unit) | 219 | **219+7 = identity 30 / api 219 cumulative** | ✅ no regression |
+| mypy --strict (oidc + auth) | clean | **clean (0 errors / 2 source files)** | ✅ |
+| black + isort (3 files) | n/a | **clean** | ✅ |
+| flake8 (3 files) | clean | **clean** | ✅ |
+| 9 V2 lints | 9/9 | **9/9 (0.99s)** | ✅ no regression |
+| LLM SDK leak (agent_harness) | 0 | **0** | ✅ |
+
+### 3.5 D-Findings (Day 3 cumulative)
+
+- **D16** 🟢 GREEN — WorkOS modern API `user_management` is preferred over legacy `sso` for new hosted-login integrations (no pre-config connection_id required)
+- **D17** 🟡 YELLOW — `get_logout_url` requires vendor `session_id`; V2 doesn't yet track this in cookie/JWT → fallback to static AuthKit logout URL (Phase 58+ revisit when refresh-token rotation lands)
+- **D18** 🟡 YELLOW — `tenant_code` Query param at /login: chose explicit per-tenant routing over "first available tenant" magic (鐵律 #1 honest); UX implication is that users need a tenant-aware URL (e.g. `/login?tenant_code=acme`); deferred Phase 58+ tenant-discovery UX
+
+### 3.6 Tier 2 + Tier 3 (Day 3 official 3.1-3.5) — DEFERRED
+
+⏳ Per V2 紀律 (誠實 over completeness; quality over volume), deferred to follow-up session:
+
+| Item | Why deferred | Estimated next-session scope |
+|------|--------------|------------------------------|
+| US-R1 sessions/tool_calls observer | Independent — needs separate session/tool_call repository design + chat router observer wiring | ~3-4 hr (5+ unit tests + repos + chat handler observer) |
+| US-B2 AppShell + Theme + ErrorBoundary | Frontend independent | ~2-3 hr (3+ Vitest) |
+| US-B3 cost-dashboard migrate | Frontend independent + dependent on US-B2 | ~2-3 hr (2+ Vitest + e2e regression) |
+
+**Justification**: Day 2 carryover (Tier 1) was the **prerequisite blocker** for honest US-R1 (real user_id from JWT). Now unblocked. Tier 2 + 3 are independent vertical slices; better executed with full attention next session vs. partial in this one.
+
+### 3.7 Time tracking — Day 3 Tier 1 actual
+
+| Task | Estimated | Actual |
+|------|-----------|--------|
+| WorkOS install + API exploration | 30 min | ~15 min |
+| oidc.py rewrite (real SDK) | 1 hr | ~25 min |
+| auth.py rewrite (DB upsert + tenant resolve) | 1 hr | ~30 min |
+| 7 unit tests | 1 hr | ~25 min |
+| mypy + black + flake8 + V2 lints + identity smoke | 30 min | ~15 min |
+| progress.md write + commit | 30 min | ~20 min |
+| **Day 3 Tier 1 total** | **~4.5 hr** | **~2 hr** ✅ **55% under est** |
+
+### 3.8 Sprint cumulative (Day 0+1+2+3 Tier 1)
+
+- **Cumulative actual**: ~9.25 hr (Day 0 ~2 + Day 1 ~3 + Day 2 ~2.25 + Day 3 ~2)
+- **Calibrated commit**: ~18 hr
+- **Cumulative ratio**: **~0.51** (still well below [0.85, 1.20] band lower edge)
+- **Trend**: Tier 2 + Tier 3 (~7-10 hr remaining for full 7 USs) likely lands ratio **~0.85-0.95** (in-band)
+
+---
+
 # Sprint 57.7 Progress — Day 0 (2026-05-09)
 
 > **Sprint Type**: Phase 57+ sixth sprint — **IAM Foundation + Frontend Foundation 1/N spike** (Tier 0 Block A + B 第一波 per gap-analysis §6 adjusted roadmap)

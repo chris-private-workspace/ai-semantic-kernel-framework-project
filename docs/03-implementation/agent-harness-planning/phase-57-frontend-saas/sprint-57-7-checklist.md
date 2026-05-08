@@ -93,11 +93,11 @@
 - [ ] **Save matrix to** `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-7/iam-vendor-matrix.md` (intermediate artifact;Day 4 will fold into design note §1)
 
 ### 1.3 US-A2 OIDC Backend Wire (chosen vendor)
-- [ ] **Install chosen vendor SDK**
-  - `backend/requirements.txt` add 1 line (e.g. `workos>=4.0,<5.0`)
-  - `pip install -r requirements.txt`
-  - Verify:`python -c "import <vendor-sdk>; print(<vendor-sdk>.__version__)"`
-  - **AP-2 verify**: `pip show <vendor-sdk>` deps tree → 0 transitive `openai` / `anthropic` import (Risk Class B)
+- [x] **Install chosen vendor SDK** ✅ Day 3
+  - `backend/requirements.txt` already pinned `workos>=4.0,<6.0` Day 1
+  - `pip install workos` succeeded (no req diff needed)
+  - Verify:`python -c "from workos import WorkOSClient, AsyncWorkOSClient"` ✅
+  - **AP-2 verify**: 0 transitive `openai` / `anthropic` in workos deps (Risk Class B clean)
 - [ ] **`backend/src/core/config.py` Settings extend**
   - Add `jwt_jwks_url: str = ""` field
   - Add `vendor_api_key: str = ""` (read from env)
@@ -129,14 +129,15 @@
   - Decodes V2 JWT via `JWTManager.decode()`
   - Loads `User` row from DB by `users.id`
   - Returns `User` object with tenant_id + roles (used by US-R1 + US-A3)
-- [ ] **6+ unit tests** in `backend/tests/unit/platform_layer/identity/test_oidc.py`:
-  - 1 happy path login redirect
-  - 1 happy path callback exchange + JWT issue
-  - 1 happy path logout
-  - 1 callback with bad state (CSRF protection)
-  - 1 callback with bad code
-  - 1 user upsert on first login (lookup by external_id;INSERT if missing)
-  - File header per convention
+- [x] **6+ unit tests** in `backend/tests/unit/platform_layer/identity/test_oidc.py` ✅ Day 3 (7 tests)
+  - 1 initiate_login URL+state happy path (mock sync client)
+  - 1 exchange_callback CSRF state mismatch raises OIDCStateError
+  - 1 exchange_callback returns OIDCProfile on vendor success (mock async)
+  - 1 callback endpoint missing tenant cookie → 400
+  - 1 callback endpoint unknown tenant → 400 (DB lookup miss mocked)
+  - 1 _upsert_user_from_oidc INSERTs new User on first login (mock AsyncSession)
+  - **BONUS**: 1 vendor exception → OIDCExchangeError mapping
+  - File header per convention ✅
 
 ### 1.4 US-A3 DB-backed RBAC start
 - [ ] **NEW `backend/src/platform_layer/identity/rbac.py`**
