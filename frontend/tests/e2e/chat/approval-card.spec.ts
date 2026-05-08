@@ -34,6 +34,7 @@ import {
   mockChatSSE,
   mockGovernanceDecide,
 } from "../fixtures/approval-fixtures";
+import { seedAuthJwt } from "../fixtures/auth-fixtures";
 
 const APPROVAL_ID = "11111111-1111-4111-8111-111111111111";
 
@@ -45,6 +46,12 @@ async function sendChatMessage(page: import("@playwright/test").Page, message: s
 }
 
 test.describe("Sprint 53.6 US-3 — ChatV2 inline ApprovalCard", () => {
+  // Sprint 57.8 Day 3: chat-v2 now has auth gate; seed JWT in every test
+  // so isAuthenticated() returns true before navigation.
+  test.beforeEach(async ({ page }) => {
+    await seedAuthJwt(page);
+  });
+
   test("approve flow: card appears via SSE, decide POST fires, card flips to Decision state", async ({
     page,
   }) => {

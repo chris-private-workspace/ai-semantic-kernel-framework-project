@@ -2,7 +2,7 @@
  * File: frontend/src/features/chat_v2/services/chatService.ts
  * Purpose: Browser SSE consumer — fetch + ReadableStream parser.
  * Category: Frontend / chat_v2 / services
- * Scope: Phase 50 / Sprint 50.2 (Day 3.4)
+ * Scope: Phase 50 / Sprint 50.2 (Day 3.4) → Sprint 57.8 Day 3 D3 fetchWithAuth swap
  *
  * Description:
  *   Sends POST /api/v1/chat/ and parses the `text/event-stream` response
@@ -19,17 +19,25 @@
  *   the reader rejects with AbortError and the function exits cleanly
  *   without calling onEvent again.
  *
- * Created: 2026-04-30 (Sprint 50.2 Day 3.4)
- * Last Modified: 2026-04-30
+ *   Sprint 57.8 D3: raw fetch swapped to fetchWithAuth so requests carry
+ *   the Sprint 57.7 IAM JWT (Authorization: Bearer <token>) when the user
+ *   is authenticated. Anonymous requests still work for backward compat
+ *   while other pages lack auth gates (per AD-Frontend-AuthUX Phase 58.x).
  *
- * Modification History:
+ * Created: 2026-04-30 (Sprint 50.2 Day 3.4)
+ * Last Modified: 2026-05-09
+ *
+ * Modification History (newest-first):
+ *   - 2026-05-09: Sprint 57.8 D3 — swap raw fetch to fetchWithAuth (JWT injection)
  *   - 2026-04-30: Initial creation (Sprint 50.2 Day 3.4)
  *
  * Related:
  *   - backend POST /api/v1/chat/ (router.py)
  *   - ../hooks/useLoopEventStream.ts (consumer)
+ *   - ../../auth/services/authService.ts (fetchWithAuth helper)
  */
 
+import { fetchWithAuth } from "../../auth/services/authService";
 import { KNOWN_LOOP_EVENT_TYPES, type ChatMode, type LoopEvent } from "../types";
 
 export type ChatRequestBody = {
@@ -50,7 +58,7 @@ export async function streamChat(
 ): Promise<void> {
   let response: Response;
   try {
-    response = await fetch("/api/v1/chat/", {
+    response = await fetchWithAuth("/api/v1/chat/", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

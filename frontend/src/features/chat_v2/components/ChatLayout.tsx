@@ -1,8 +1,8 @@
 /**
  * File: frontend/src/features/chat_v2/components/ChatLayout.tsx
- * Purpose: 3-column shell — sessions sidebar / conversation / inspector sidebar.
+ * Purpose: 3-column body — sessions sidebar / conversation / inspector sidebar.
  * Category: Frontend / chat_v2 / components
- * Scope: Phase 50 / Sprint 50.2 (Day 3.6)
+ * Scope: Phase 50 / Sprint 50.2 (Day 3.6) → Sprint 57.8 D11 surgical fix
  *
  * Description:
  *   Minimal version of the layout sketched in 16-frontend-design.md Chat 頁面設計.
@@ -10,17 +10,27 @@
  *   placeholders until 51.x (sessions list) and 52.x (inspector with token /
  *   memory layers / verifier state).
  *
- *   Layout uses CSS Grid 3-column. Inline styles only (no CSS framework
- *   committed to the V2 frontend yet — Tailwind / shadcn arrives in 53.4).
+ *   Sprint 57.8 D11 surgical fix:
+ *     - Dropped internal <header> (now redundant with AppShellV2 sticky header
+ *       at page level — pageTitle="Chat (V2)" provides the page title h1)
+ *     - height: 100vh → calc(100vh - 6.5rem) to fit inside AppShellV2 main
+ *       column (subtracts AppShellV2 header 3.5rem + main p-6 vertical 3rem)
+ *     - Dropped own background color (AppShellV2 provides bg-background)
+ *     - Dropped own fontFamily (inherits from AppShellV2 body)
+ *
+ *   Inline styles only kept (Sprint 50.2 baseline; Phase 58+ Tailwind migration
+ *   when sessions sidebar + inspector get real content from 51.x / 52.x).
  *
  * Created: 2026-04-30 (Sprint 50.2 Day 3.6)
- * Last Modified: 2026-04-30
+ * Last Modified: 2026-05-09
  *
- * Modification History:
+ * Modification History (newest-first):
+ *   - 2026-05-09: Sprint 57.8 D11 — drop internal header + 100vh adjustment for AppShellV2 wrap
  *   - 2026-04-30: Initial creation (Sprint 50.2 Day 3.6)
  *
  * Related:
  *   - 16-frontend-design.md §Chat 頁面設計
+ *   - frontend/src/components/AppShellV2.tsx (page-level shell consumer)
  *   - MessageList / InputBar (Day 4)
  */
 
@@ -34,20 +44,10 @@ const styles: Record<string, CSSProperties> = {
   page: {
     display: "grid",
     gridTemplateColumns: "240px 1fr 280px",
-    gridTemplateRows: "56px 1fr",
-    gridTemplateAreas: '"header header header" "sidebar main inspector"',
-    height: "100vh",
-    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
-    background: "#f7f8fa",
-  },
-  header: {
-    gridArea: "header",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "0 1.25rem",
-    borderBottom: "1px solid #e2e6ee",
-    background: "#fff",
+    gridTemplateRows: "1fr",
+    gridTemplateAreas: '"sidebar main inspector"',
+    // Sprint 57.8 D11: subtract AppShellV2 header (3.5rem) + main p-6 vertical (3rem)
+    height: "calc(100vh - 6.5rem)",
   },
   sidebar: {
     gridArea: "sidebar",
@@ -83,13 +83,6 @@ const styles: Record<string, CSSProperties> = {
 export default function ChatLayout({ children }: Props): JSX.Element {
   return (
     <div style={styles.page}>
-      <header style={styles.header}>
-        <strong>Chat V2 — Phase 50.2</strong>
-        <span style={{ fontSize: 12, color: "#7c8696" }}>
-          Sprint 50.2 Day 3 skeleton
-        </span>
-      </header>
-
       <aside style={styles.sidebar}>
         <h3 style={{ marginTop: 0, fontSize: 13, color: "#5a6377" }}>Sessions</h3>
         <p style={styles.placeholder}>
