@@ -794,28 +794,29 @@ E2E:
 ## V2 Ship Timeline (NEW Sprint 57.6 US-4 — closes AD-Reality-4-partial / R4)
 
 **Modification History (newest-first)**
+- 2026-05-09: Sprint 57.8 Day 4 — chat-v2 promoted to **shipped** (5/N counter); 4 ship → **5 ship**; AppShell V2 architecture migration noted (architecture-first Day 0 Decision Z); Phase 57.9 priority remaining = governance + verification (2 priority instead of 3 since chat-v2 closed)
 - 2026-05-08: Sprint 57.6 Day 3 US-4 — add V2 Ship Timeline section per Decision 3 (a) (closes AD-Reality-4-partial + AD-Reality-7). Honest reality framing: Phase 57+ frontend SaaS 推進 N/12 真實 ship status, NOT V3 defer.
 
 ### Reality framing
 
-V2 重構完成（Phase 49-55,22/22 sprint）+ Phase 56-58 SaaS Stage 1 backend 3/3 已 ship。Frontend 部分按 Phase 57+ 逐個 ship。Sprint 57.5 reality check 確認 12-page claim vs 真實 4 ship + 3 placeholder + 5 not-yet-developed。**此 timeline 非 V3 defer**:Phase 57.x sprint 將逐個 ship 真實 page 至 Phase 58 production launch 前完成關鍵 3 priority。
+V2 重構完成（Phase 49-55,22/22 sprint）+ Phase 56-58 SaaS Stage 1 backend 3/3 已 ship。Frontend 部分按 Phase 57+ 逐個 ship。Sprint 57.5 reality check 確認 12-page claim vs 真實 ship status。Sprint 57.8 完成架構遷移 (AppShell V2 + Sidebar + UserMenu + routes.config single-source) → 後續 Phase 58.x frontend page ship 享 zero per-page architecture cost。**此 timeline 非 V3 defer**:Phase 57.x sprint 將逐個 ship 真實 page 至 Phase 58 production launch 前完成關鍵 priority。
 
-### 4 已 ship pages
+### 5 已 ship pages
 
 | Page | Sprint | Backend | Status |
 |------|--------|---------|--------|
-| cost-dashboard | 57.1 + **57.7 AppShell migrate** | 56.3 cost_ledger backend | ✅ Production ship + Sprint 57.7 US-B3 AppShell + Tailwind migration (9 inline style → utility classes; Zustand preserve per surgical D23); 9 Vitest (+2 migrate) + 2 Playwright e2e |
-| sla-dashboard | 57.1 | 56.3 SLA monitor backend | ✅ Production ship; 7 Vitest + 2 Playwright e2e |
-| tenant-settings | 57.3 | 56.1 + 57.3 admin tenants.py R+U | ✅ Production ship; 8 Vitest + 4 Playwright e2e |
-| admin-tenants list | 57.4 | 57.4 admin tenants.py list endpoint | ✅ Production ship; 12 Vitest + 4 Playwright e2e |
+| cost-dashboard | 57.1 + **57.7 AppShell migrate** + **57.8 page-level wrap A1** | 56.3 cost_ledger backend | ✅ Production ship + Sprint 57.7 US-B3 AppShell + Tailwind + Sprint 57.8 US-4 page-level AppShellV2 wrap (CostOverview unwound to pure body per Day 0 A1 architecture); 9 Vitest + 2 Playwright e2e |
+| sla-dashboard | 57.1 + **57.8 page-level wrap A1** | 56.3 SLA monitor backend | ✅ Production ship + Sprint 57.8 US-4 page-level AppShellV2 wrap (D9 surgical h1 removal in SLAOverview); 7 Vitest + 2 Playwright e2e |
+| tenant-settings | 57.3 + **57.8 page-level wrap A1** | 56.1 + 57.3 admin tenants.py R+U | ✅ Production ship + Sprint 57.8 US-4 page-level AppShellV2 wrap (D9 surgical h1 removal in TenantSettingsView); 8 Vitest + 4 Playwright e2e |
+| admin-tenants list | 57.4 + **57.8 page-level wrap A1** | 57.4 admin tenants.py list endpoint | ✅ Production ship + Sprint 57.8 US-4 page-level AppShellV2 wrap; 12 Vitest + 4 Playwright e2e |
+| **chat-v2** | **57.8 US-5** | 50.2 + Cat 1+2+9+10+12 | ✅ **NEW Sprint 57.8 ship**: auth gate via Navigate (first auth-gated page consuming Sprint 57.7 IAM JWT) + AppShellV2 wrap (pageTitle="Chat (V2)") + ChatLayout body reuse + chatService swap raw fetch → fetchWithAuth + 4 Playwright e2e (auth gate / happy render / happy SSE / network error); D11 D12 surgical fixes (drop ChatLayout duplicate header + 100vh adjust) |
 
-### 3 priority Phase 57.7-57.9 ship (~10-12 hr each)
+### 2 priority Phase 57.9+ ship (~10-12 hr each — chat-v2 closed Sprint 57.8)
 
 | Page | Backend ready since | Sprint candidate | Notes |
 |------|---------------------|------------------|-------|
-| chat-v2 | 50.2 + Cat 1+2+9+10+12 | Phase 57.7 (TBD per user) | Replace 50.2 skeleton with real chat UX wired to chat router SSE; ApprovalCard + verification panel inline |
-| governance approvals | 53.5 | Phase 57.8 (TBD) | Replace placeholder with real approver queue + audit log frontend view |
-| verification panel | 54.1 + 54.2 | Phase 57.9 (TBD) | Replace placeholder with verifier output + correction loop visibility |
+| governance approvals | 53.5 | Phase 57.9 (TBD per user) | Replace placeholder with real approver queue + audit log frontend view; AppShellV2 wrap free benefit per Sprint 57.8 architecture |
+| verification panel | 54.1 + 54.2 | Phase 57.10 (TBD) | Replace placeholder with verifier output + correction loop visibility; AD-Cat10-Frontend-Panel scope; AppShellV2 wrap free benefit |
 
 ### 5 deferred (Phase 57.10-57.13+ ~5-7 sprints)
 
@@ -831,9 +832,10 @@ V2 重構完成（Phase 49-55,22/22 sprint）+ Phase 56-58 SaaS Stage 1 backend 
 
 | Sprint | Page | Effort | Notes |
 |--------|------|--------|-------|
-| Phase 57.7 | chat-v2 OR alternate per user instruct | ~10-12 hr | First Phase 57.x feature work after Sprint 57.6 reality gap fix sprint |
-| Phase 57.8-9 | governance / verification | ~10-12 hr each | TBD ordering per user |
-| Phase 57.10+ | deferred 5 OR Onboarding self-serve / Audit log / Compliance / DR / Stage 2 SaaS | various | Per rolling planning 紀律 — user instruct each sprint scope |
+| Phase 57.7 | IAM Foundation + Frontend Foundation 1/N spike | actual ~16.5 hr | ✅ DONE — Sprint 57.7 PR #117 merged main `51162fd5`;NOT chat-v2 (architecture pivot per Day 0 Decision Z carry-forward to 57.8) |
+| Phase 57.8 | **AppShell V2 + chat-v2 real ship** | actual ~12 hr | ✅ DONE — Sprint 57.8 closeout; 5 USs (US-1+2+3+4 architecture + US-5 chat-v2 ship) |
+| Phase 57.9 | governance OR verification real ship per user instruct | ~10-12 hr | First post-architecture feature ship — AppShellV2 wrap free benefit |
+| Phase 57.10+ | governance / verification 餘下 / deferred 5 OR SOC 2 + SBOM / Status Page + APAC / Tier 1 IaC / Stage 2 SaaS | various | Per rolling planning 紀律 — user instruct each sprint scope |
 
 **NOT V3 defer statement** (per Sprint 57.5 Day 4.5 Decision 3 (a)):此 frontend 推進是 Phase 57.x V2 closure scope,NOT push to V3。V3 production launch (Phase 58+) 預期 2026 Q3-Q4 已具備所有 priority 3 page + 部分 deferred 5。逐個 ship 而非 big-bang launch — 與 V2 22/22 漸進式紀律一致。
 
