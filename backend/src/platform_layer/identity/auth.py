@@ -31,7 +31,7 @@ Created: 2026-05-01 (Sprint 52.5 Day 1.2)
 Last Modified: 2026-05-01
 
 Modification History:
-    - 2026-05-09: Sprint 57.7 US-A3 — _require_role hybrid path (JWT claim + DB-backed fallback via RBACManager); closes Tier 0 #5
+    - 2026-05-09: Sprint 57.7 US-A3 — DB-backed RBAC hybrid path (closes Tier 0 #5)
     - 2026-05-04: Add require_approver_role RBAC dep + extract _require_role helper
         (Sprint 53.5 US-1 — approver / admin / manager)
     - 2026-05-04: Add require_audit_role RBAC dep (Sprint 53.5 US-5 — auditor / admin / compliance)
