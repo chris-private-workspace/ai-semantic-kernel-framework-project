@@ -38,6 +38,12 @@ import pytest
 # → cascades into "attached to a different loop" cross-test failure pattern.
 os.environ.setdefault("AUDIT_LOG_CHAT_OBSERVER", "false")
 
+# Sprint 57.7 US-R1 D19: same pattern for sessions+tool_calls observers
+# (closed AD-Reality-3a + 3b backend wiring; same loop-isolation concern as
+# audit_log above; defer real test fixture refactor to AD-Reality-FlakeEventLoop).
+os.environ.setdefault("SESSIONS_CHAT_OBSERVER", "false")
+os.environ.setdefault("TOOL_CALLS_CHAT_OBSERVER", "false")
+
 from platform_layer.billing.cost_ledger import reset_cost_ledger  # noqa: E402
 from platform_layer.billing.pricing import reset_pricing_loader  # noqa: E402
 from platform_layer.governance.service_factory import reset_service_factory  # noqa: E402
