@@ -38,6 +38,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.5)
 Last Modified: 2026-05-01
 
 Modification History (newest-first):
+    - 2026-05-10: Sprint 57.7 US-R1 — sessions + tool_calls observer (AD-Reality-3a/3b)
     - 2026-05-08: Sprint 57.6 US-3 — audit_log observer at LoopCompleted (AD-Reality-3-audit_log)
     - 2026-05-06: Sprint 56.3 Day 3 — wire Cost Ledger LLM + tool hooks (US-4)
     - 2026-05-06: Sprint 56.3 Day 1 — wire SLA span observer (US-1 — Cat 12 SLA recording)
@@ -80,6 +81,7 @@ from agent_harness.verification import run_with_verification
 from business_domain._service_factory import BusinessServiceFactory
 from core.config import get_settings
 from infrastructure.db.audit_helper import append_audit
+from infrastructure.db.repositories import SessionRepository, ToolCallRepository
 from infrastructure.db.session import get_db_session
 from platform_layer.billing import (
     CostLedgerService,
@@ -91,6 +93,7 @@ from platform_layer.governance.service_factory import (
     get_service_factory,
 )
 from platform_layer.identity import get_current_tenant
+from platform_layer.identity.auth import get_current_user_id
 from platform_layer.observability import (
     SLAMetricRecorder,
     classify_loop_complexity,
@@ -117,6 +120,7 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 async def chat(
     req: ChatRequest,
     current_tenant: UUID = Depends(get_current_tenant),
+    current_user: UUID = Depends(get_current_user_id),
     factory: ServiceFactory = Depends(get_service_factory),
     db: AsyncSession = Depends(get_db_session),
     quota_enforcer: QuotaEnforcer | None = Depends(maybe_get_quota_enforcer),
@@ -203,6 +207,29 @@ async def chat(
     session_id = req.session_id or uuid4()
     registry = get_default_registry()
     await registry.register(current_tenant, session_id)
+
+    # Sprint 57.7 US-R1 (closes AD-Reality-3a): persist sessions row at chat
+    # start with real user_id from JWT claim.sub. Best-effort failure: DB
+    # flake must NOT break SSE stream — chat session is already registered
+    # in-memory via SessionRegistry; DB row is for audit / analytics.
+    # SAVEPOINT pattern matches Sprint 57.6 audit_log observer.
+    # Default ON in production; tests/conftest.py sets to "false" via
+    # SESSIONS_CHAT_OBSERVER=false for test isolation parity with audit_log.
+    _sessions_observer_enabled = os.environ.get("SESSIONS_CHAT_OBSERVER", "true").lower() == "true"
+    if _sessions_observer_enabled:
+        try:
+            async with db.begin_nested():
+                await SessionRepository(db).create_session(
+                    session_id=session_id,
+                    user_id=current_user,
+                    tenant_id=current_tenant,
+                )
+        except Exception:  # noqa: BLE001
+            logger.exception(
+                "chat session %s/%s: sessions row INSERT failed (best-effort)",
+                current_tenant,
+                session_id,
+            )
 
     # P0 #12 — root TraceContext established at API boundary. The loop
     # already accepts trace_context; sse.py will copy trace_id into every
@@ -438,6 +465,32 @@ async def _stream_loop_events(
                 except Exception:  # noqa: BLE001
                     logger.exception(
                         "chat session %s/%s: cost ledger tool record failed (tool=%s)",
+                        tenant_id,
+                        session_id,
+                        event.tool_name,
+                    )
+            # Sprint 57.7 US-R1 (closes AD-Reality-3b): persist tool_calls
+            # row per ToolCallExecuted event. Best-effort SAVEPOINT — FK
+            # violation (sessions row missing) MUST NOT cascade into SSE
+            # stream. Env flag TOOL_CALLS_CHAT_OBSERVER=false for tests.
+            _tc_observer_enabled = (
+                os.environ.get("TOOL_CALLS_CHAT_OBSERVER", "true").lower() == "true"
+            )
+            if isinstance(event, ToolCallExecuted) and db is not None and _tc_observer_enabled:
+                try:
+                    async with db.begin_nested():
+                        # event.arguments is a dict at events.py:131 (D4 — Sprint 56.3)
+                        await ToolCallRepository(db).create(
+                            session_id=session_id,
+                            tenant_id=tenant_id,
+                            tool_name=event.tool_name,
+                            arguments=getattr(event, "arguments", {}) or {},
+                            status="completed",
+                            duration_ms=getattr(event, "duration_ms", None),
+                        )
+                except Exception:  # noqa: BLE001
+                    logger.exception(
+                        "chat session %s/%s: tool_calls row INSERT failed (tool=%s)",
                         tenant_id,
                         session_id,
                         event.tool_name,

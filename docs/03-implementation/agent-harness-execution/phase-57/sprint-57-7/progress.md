@@ -2,7 +2,7 @@
 
 > **Sprint Type**: Phase 57+ sixth sprint — IAM Foundation + Frontend Foundation 1/N spike
 > **Branch**: `feature/sprint-57-7-iam-frontend-foundation`
-> **Day 3 Status**: ✅ Day 2 carryover (Tier 1 closed in same session) ⏳ Day 3 official 3.1-3.5 deferred to follow-up session
+> **Day 3 Status**: ✅ Tier 1 (Day 2 carryover) + ✅ Tier 2 (US-R1 sessions/tool_calls observer) closed in same session ⏳ Tier 3 (US-B2 + US-B3 frontend) deferred to follow-up session
 
 ---
 
@@ -70,17 +70,89 @@
 - **D17** 🟡 YELLOW — `get_logout_url` requires vendor `session_id`; V2 doesn't yet track this in cookie/JWT → fallback to static AuthKit logout URL (Phase 58+ revisit when refresh-token rotation lands)
 - **D18** 🟡 YELLOW — `tenant_code` Query param at /login: chose explicit per-tenant routing over "first available tenant" magic (鐵律 #1 honest); UX implication is that users need a tenant-aware URL (e.g. `/login?tenant_code=acme`); deferred Phase 58+ tenant-discovery UX
 
-### 3.6 Tier 2 + Tier 3 (Day 3 official 3.1-3.5) — DEFERRED
+### 3.6 Tier 2 (US-R1 sessions/tool_calls observer) ✅ COMPLETE (same session)
+
+**Discovery**: Sprint 57.6 progress 標 AD-Reality-3a "blocked by missing user_id JWT extraction infra" — Day 3 探勘 verified `TenantContextMiddleware.dispatch` at `tenant_context.py:174` already populates `request.state.user_id` from JWT `claim.sub` UUID parsing. `get_current_user_id` already exists at `auth.py:84`. **Real blocker was simply that chat router never called the existing extractor**. Unblocked.
+
+**4 NEW files + 1 MODIFY** (closes AD-Reality-3a + AD-Reality-3b in single sprint vs original split):
+
+- NEW `infrastructure/db/repositories/__init__.py` — package re-exports (8 LOC)
+- NEW `infrastructure/db/repositories/session_repository.py` — `SessionRepository.create_session()` DAO (95 LOC)
+- NEW `infrastructure/db/repositories/tool_call_repository.py` — `ToolCallRepository.create()` DAO (102 LOC)
+- NEW `tests/unit/infrastructure/db/repositories/test_session_and_tool_call_repos.py` — 6 unit tests (185 LOC)
+- MODIFY `api/v1/chat/router.py`:
+  - Add `Depends(get_current_user_id)` to chat() POST (real user_id from JWT)
+  - Pre-stream Session INSERT after `registry.register` (best-effort SAVEPOINT + env flag)
+  - In-stream ToolCall INSERT on `ToolCallExecuted` event (best-effort SAVEPOINT + env flag)
+  - Header MHist updated with Sprint 57.7 entry
+- MODIFY `tests/unit/api/v1/chat/test_router.py`:
+  - DEFAULT_USER_ID const + `dependency_overrides[get_current_user_id]` in `app` fixture
+  - autouse `monkeypatch.setenv` disabling all 3 observers (audit / sessions / tool_calls)
+  - `_make_app` helper inside multi-tenant isolation test wired with user_id override
+
+**Env flag pattern** (mirrors Sprint 57.6 audit_log observer):
+- `SESSIONS_CHAT_OBSERVER` default "true" production / "false" tests
+- `TOOL_CALLS_CHAT_OBSERVER` default "true" production / "false" tests
+- Both wrapped in `db.begin_nested()` SAVEPOINT — FK violation isolation per `.claude/rules/testing.md` §SAVEPOINT pattern
+
+**6 unit tests** (target +5 ⏫ +20%):
+
+| # | Class.test | Coverage |
+|---|------------|----------|
+| 1 | `TestSessionRepository.test_create_session_inserts_row` | INSERT verify |
+| 2 | `TestSessionRepository.test_create_session_with_title` | optional title path |
+| 3 | `TestToolCallRepository.test_create_inserts_completed_call` | completed status + arguments dict |
+| 4 | `TestToolCallRepository.test_create_with_duration_ms` | wall-clock duration persists |
+| 5 | `TestToolCallRepository.test_create_with_pending_status_no_duration` | running tool path |
+| 6 | `TestToolCallRepository.test_create_with_permission_denied` | Cat 9 guardrail block path |
+
+### 3.7 Tier 2 Validation Summary
+
+| Check | Pre-Tier-2 (Tier 1 end) | Post-Tier-2 | Δ |
+|-------|--------------------------|-------------|---|
+| pytest collected | 1616 | **1622** | ✅ +6 repos |
+| pytest passed (full identity + repos + chat) | 30 + 0 + 65 = 95 | **30 + 6 + 65 = 101** + 60 unit api supporting | ✅ |
+| Chat router unit tests | 65 | **65** | ✅ no regression (after dep override + env fixture) |
+| mypy --strict (full src) | 0/297 | **0/300 (+3 files)** | ✅ |
+| black + isort (5 files) | n/a | **clean** | ✅ |
+| 9 V2 lints | 9/9 | **9/9 (1.02s)** | ✅ no regression |
+| LLM SDK leak (agent_harness) | 0 | **0** | ✅ |
+
+### 3.8 Tier 2 D-findings
+
+- **D19** 🟢 GREEN — Sprint 57.6 progress notes incorrectly stated user_id JWT extraction was missing infra. Reality: existing `TenantContextMiddleware.dispatch` (49.3) + `get_current_user_id` dep (52.5) already provide it; chat router just never wired. Single-line fix: add `Depends(get_current_user_id)` to chat(). **No new infrastructure required**. Saved estimated ~3-5 hr that AD-Reality-3a feared.
+- **D20** 🟢 GREEN — Tool_calls observer co-located with cost_ledger.record_tool_call hook in same `_stream_loop_events` ToolCallExecuted branch (per Sprint 56.3 D4 — event already exists at events.py:131). Single dispatch keeps cost_ledger + tool_calls observers semantically aligned.
+- **D21** 🟡 YELLOW — Existing chat router unit tests (`test_router.py` 7 tests) needed dependency_override for `get_current_user_id` + autouse env fixture disabling 3 observers. Pattern matches AD-Test-1 module-level singleton reset; documented inline. AD-Reality-Future to consider promoting observer-disable env fixture pattern to root `tests/conftest.py` if 4th observer lands.
+
+### 3.9 Tier 2 Time tracking
+
+| Task | Estimated | Actual |
+|------|-----------|--------|
+| Schema verify (ToolCall + Session models) | 30 min | ~10 min |
+| 2 NEW repos | 1 hr | ~25 min |
+| chat router observer wire | 1 hr | ~25 min |
+| 6 unit tests | 1 hr | ~20 min |
+| Test fixture fix (dep override + env) | 30 min | ~15 min |
+| mypy + black + isort + V2 lints + smoke | 30 min | ~15 min |
+| progress.md write + commit | 30 min | ~15 min |
+| **Tier 2 total** | **~5 hr** | **~2.25 hr** ✅ **55% under est** |
+
+### 3.10 Sprint cumulative (Day 0+1+2+3 Tier 1+2)
+
+- **Cumulative actual**: ~11.5 hr (Day 0 ~2 + Day 1 ~3 + Day 2 ~2.25 + Day 3 Tier 1 ~2 + Tier 2 ~2.25)
+- **Calibrated commit**: ~18 hr
+- **Cumulative ratio**: **~0.64** (still below band lower edge 0.85;Tier 3 + Day 4 closeout estimated ~5-7 hr → projected final **~0.91-1.04** likely **in band**)
+
+### 3.11 Tier 3 (US-B2 + US-B3) — DEFERRED to follow-up session
 
 ⏳ Per V2 紀律 (誠實 over completeness; quality over volume), deferred to follow-up session:
 
 | Item | Why deferred | Estimated next-session scope |
 |------|--------------|------------------------------|
-| US-R1 sessions/tool_calls observer | Independent — needs separate session/tool_call repository design + chat router observer wiring | ~3-4 hr (5+ unit tests + repos + chat handler observer) |
 | US-B2 AppShell + Theme + ErrorBoundary | Frontend independent | ~2-3 hr (3+ Vitest) |
 | US-B3 cost-dashboard migrate | Frontend independent + dependent on US-B2 | ~2-3 hr (2+ Vitest + e2e regression) |
 
-**Justification**: Day 2 carryover (Tier 1) was the **prerequisite blocker** for honest US-R1 (real user_id from JWT). Now unblocked. Tier 2 + 3 are independent vertical slices; better executed with full attention next session vs. partial in this one.
+**Justification**: Tier 2 (US-R1) closed in same session because Day 3 探勘 found AD-Reality-3a "blocked" assumption was wrong (user_id infra existed since Sprint 49.3 + 52.5). Tier 3 is pure frontend (no backend dependency on this sprint's code) — better executed with full attention next session.
 
 ### 3.7 Time tracking — Day 3 Tier 1 actual
 

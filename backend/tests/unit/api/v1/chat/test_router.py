@@ -25,10 +25,14 @@ from fastapi.testclient import TestClient
 from api.v1.chat import router as chat_router
 from api.v1.chat.session_registry import get_default_registry
 from platform_layer.identity import get_current_tenant
+from platform_layer.identity.auth import get_current_user_id
 
 # Fixed UUID per test module — most single-tenant tests share it. Multi-tenant
 # tests build their own pair via uuid4() inside the test body.
 DEFAULT_TENANT = UUID("11111111-1111-1111-1111-111111111111")
+# Sprint 57.7 US-R1: get_current_user_id added to chat() Depends — provide
+# a deterministic override matching DEFAULT_TENANT's namespace.
+DEFAULT_USER_ID = UUID("22222222-2222-2222-2222-222222222222")
 
 
 @pytest.fixture
@@ -42,6 +46,9 @@ def app() -> FastAPI:
     inst = FastAPI()
     inst.include_router(chat_router, prefix="/api/v1")
     inst.dependency_overrides[get_current_tenant] = lambda: DEFAULT_TENANT
+    # Sprint 57.7 US-R1: chat() now Depends(get_current_user_id);
+    # mirror the tenant override so unit tests don't need real JWT.
+    inst.dependency_overrides[get_current_user_id] = lambda: DEFAULT_USER_ID
     return inst
 
 
@@ -58,6 +65,16 @@ def _reset_default_registry() -> Iterator[None]:
     reg._tenants.clear()  # type: ignore[attr-defined]  # noqa: SLF001
     yield
     reg._tenants.clear()  # type: ignore[attr-defined]  # noqa: SLF001
+
+
+@pytest.fixture(autouse=True)
+def _disable_db_observers(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sprint 57.7 US-R1: disable sessions/tool_calls/audit observers in unit
+    tests since the test FastAPI app has no real DB session factory wired.
+    Production default is "true"; integration tests override per-suite."""
+    monkeypatch.setenv("SESSIONS_CHAT_OBSERVER", "false")
+    monkeypatch.setenv("TOOL_CALLS_CHAT_OBSERVER", "false")
+    monkeypatch.setenv("AUDIT_LOG_CHAT_OBSERVER", "false")
 
 
 def _parse_sse(body: bytes) -> list[dict]:
@@ -231,6 +248,8 @@ class TestMultiTenantIsolation:
             inst = FastAPI()
             inst.include_router(chat_router, prefix="/api/v1")
             inst.dependency_overrides[get_current_tenant] = lambda t=tenant: t
+            # Sprint 57.7 US-R1: chat() Depends(get_current_user_id) too.
+            inst.dependency_overrides[get_current_user_id] = lambda: DEFAULT_USER_ID
             return inst
 
         for tenant, app_inst in (
