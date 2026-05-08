@@ -12,6 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 2. **`docs/03-implementation/agent-harness-planning/README.md`** — V2 規劃權威入口
 3. **`docs/03-implementation/agent-harness-planning/10-server-side-philosophy.md`** — 3 大最高指導原則（必讀）
 4. **`docs/03-implementation/agent-harness-planning/17-cross-category-interfaces.md`** — Single-source 介面權威表
+5. 🆕 **`claudedocs/1-planning/enterprise-saas-gap-analysis-20260508.md`** — Phase 57.7-57.9 active reference（識別 Top 10 critical gaps + Adjusted Roadmap + Buy-vs-Build 9 條決策；Phase 58.0+ 進入 Tier 1 後可降為條件性 reference）
 
 > **權威排序**：`agent-harness-planning/` 21 份 V2 文件（20 規劃 + 1 review）> 本 CLAUDE.md > 任何 V1 文件 / 既有代碼。
 > 衝突時以 V2 規劃為準。
@@ -84,6 +85,7 @@ Build enterprise AI agent teams that work like **human professional teams** — 
 
 - ❌ **不是修補 V1**：V1 真實對齊度 27%，11 範疇 8 個處於 Level 0-2
 - ❌ **不是全部砍掉**：保留 V9 分析 / CC 30-wave 研究 / V1 教訓 / 部分 infrastructure 設計
+- ❌ **也不是「再寫一批新規劃文件」**（2026-05-08 加入）：V2 22/22 完成後，新領域（IAM / SaaS Stage 2 / Public API / SOC 2 / EU CRA / EU AI Act / APAC PDPA）的 doc 必須**先 thin spike → retrospective → extract design note**，禁止因 gap analysis 結果預寫多份新文件（doc-level 同 sprint-level rolling 紀律；前車：21 docs : 22 sprints 1:1 比例下 dual scoring code 85% / runtime 40%）
 - ✅ **是 11+1 範疇導向重新出發**
 
 ### V2 完成 ≠ SaaS-ready ⚠️
@@ -156,6 +158,7 @@ V2 嚴格按以下範疇組織代碼，**禁止跨範疇雜湊**：
 - ❌ 「MAF 已經有 X」— MAF 已封存於 `archived/v1-phase1-48/`，V2 不再以 MAF 為核心
 - ❌ 翻 `reference/agent-framework/` 找實作 — 該目錄為 MAF upstream 鏡像，僅作歷史參考，禁止用於 V2 設計
 - ❌ 擴充 `backend/src/integrations/agent_framework/` — 該目錄已不存在（隨 V1 一併封存到 archived/）
+- ❌ **「先寫一批新規劃文件再實作」**（2026-05-08 加入）— Sprint 57.5 reality check 已揭示 V2 21 docs : 22 sprints 1:1 比例下 paper-vs-runtime drift 普遍存在（code 85% / runtime 40%）。新規劃文件**必須**從 1 個 thin vertical spike 的 retrospective extract，禁止因 gap analysis 結果預寫多份新文件（doc-level 同 sprint-level rolling 紀律）。詳見 `claudedocs/1-planning/enterprise-saas-gap-analysis-20260508.md` §3 + SITUATION-V2-SESSION-START.md §6.5
 
 ---
 

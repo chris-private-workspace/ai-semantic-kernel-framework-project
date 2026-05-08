@@ -86,7 +86,7 @@ docs/03-implementation/agent-harness-planning/ (19 份 V2 規劃) > 根目錄 CL
 
 ---
 
-## 第五部分：必讀文件（每次新 session 至少讀這 5 份）
+## 第五部分：必讀文件（每次新 session 至少讀這 5 份 + 1 份 active reference）
 
 依序讀完才能對齊上下文：
 
@@ -96,14 +96,25 @@ docs/03-implementation/agent-harness-planning/ (19 份 V2 規劃) > 根目錄 CL
 4. **`docs/03-implementation/agent-harness-planning/10-server-side-philosophy.md`** — 3 大最高指導原則完整論述
 5. **`docs/03-implementation/agent-harness-planning/17-cross-category-interfaces.md`** — Single-source 介面權威表（24 dataclass + 19 ABC + 22 LoopEvent + 9 跨範疇工具）
 
+### 🆕 第 6 份（active during Phase 57.7-57.9，2026-05-08+）
+
+6. **`claudedocs/1-planning/enterprise-saas-gap-analysis-20260508.md`** — 8-sub-agent enterprise SaaS gap audit
+   - §0 Executive Summary — V2 對 industry baseline 整體 ~30-40% 結論
+   - §1.2 Identity / Auth / Access — 6 Tier 0 blockers（Phase 57.7 Block A scope）
+   - §6 Adjusted Roadmap — Phase 57.7 / 57.8 / 57.9 spike 順序與 Day 4 design note extract 對應
+   - §5 Buy-vs-Build 9 條決策矩陣（IAM 偏向 Buy，其他 8 條未決）
+
+**何時降級**：Phase 58.0 開始 Tier 1（IaC + DR drill）後，本文件已大部分被 spike-extract design notes（20-iam / 21-compliance / 22-sre）取代，可降為「需要時再讀」（從必讀降為條件性 reference）。降級時記得編輯本 §5 移除此項。
+
 按需要再讀：
 - `04-anti-patterns.md`（V1 教訓 11 條反模式 — PR 必通檢查清單）
 - `06-phase-roadmap.md`（22 sprint 路線圖）
 - `.claude/rules/README.md`（13 份 V2 開發規則索引）
+- `claudedocs/templates/spike-design-note-template.md`（spike sprint Day 4 closeout extract 用 template + 8-Point Quality Gate）
 
 ---
 
-## 第六部分：Rolling Sprint Planning 規則（V2 紀律核心）⭐
+## 第六部分：Rolling Planning Discipline（V2 紀律核心，sprint + doc 雙層）⭐
 
 > **這是 V2 最重要的工作節奏紀律，每次 session 都要記住**
 
@@ -123,6 +134,7 @@ V2 採用「**滾動式 sprint 規劃**」（per `.claude/rules/sprint-workflow.
 - **不**「為了完整」而把 49.2 / 49.3 / 49.4 plan 一次寫齊（違反 rolling）
 - **不**跳過 plan 直接 code（Phase 35-38 + 42 違規前車之鑑）
 - **不**刪除未勾選的 checklist 項（只能 `[ ]→[x]`，延後項加 🚧 + reason）
+- 🆕 **不**因 gap analysis 結果就一次預寫多份新規劃文件（doc-level 同 sprint-level 反模式；前車：2026-05-08 enterprise SaaS gap analysis §3 一度提議 18-25 共 8 docs，被用戶當場糾正——同 V2 21 docs : 22 sprints 模式）
 
 ### 為什麼是 rolling，不是預寫
 
@@ -132,6 +144,45 @@ V2 採用「**滾動式 sprint 規劃**」（per `.claude/rules/sprint-workflow.
 4. 標準業界做法
 
 → **每個新 session 開始時，AI 助手必須先確認 rolling planning 紀律仍在執行，沒有突然出現 5 個未來 sprint plan 文件。**
+
+### 🆕 第六-五節：Doc-Level Rolling 紀律（2026-05-08 加入）
+
+V2 §6 sprint-level rolling 已運作 22 sprint。**新領域 doc 也必須 rolling，不預寫**：
+
+#### ✅ 正確順序
+識別 gap → 1 個 thin vertical spike sprint（如 IAM Block A：OIDC + RS256 + 1 login endpoint + frontend stub）→ retrospective → 從實作學習 extract 寫 1 份輕量 design note → 之後 sprint 擴充為完整 doc
+
+#### ❌ 禁止順序
+識別 gap → 一次寫 8 份新規劃文件（如 18/19/20/21/22/23/24/25）→ 22 個 implementation sprint 跟著跑 → Sprint 57.5 paper-vs-runtime drift 模式重演
+
+#### 為什麼
+- V2 dual scoring 已證明 paper 詳細不等於 runtime 落實（code 85% / runtime 40%）
+- 預寫 doc 在 1st spike 跑完通常要改 → ROI 偏低 + 維護成本高
+- gap analysis（如 `claudedocs/1-planning/enterprise-saas-gap-analysis-20260508.md`）作用是**識別** Top 10 gap 與 Buy-vs-Build 決策，**不是**直接觸發 doc 預寫
+
+#### 實踐範例
+2026-05-08 enterprise SaaS gap analysis §3 一度提議「新增 18-25 共 8 docs（拆 14 / 拆 15 / 新增 18-19-22-23-24-25）」，被用戶當場識別為「+50% 規模重演 V2 21 docs : 22 sprints 模式」。正確做法：保留 §3 作 reference index（識別哪些 gap 需要 doc），但 doc 撰寫**順延**至 Tier 0 thin spike 跑完。例如：
+- IAM Block A spike（1 sprint）→ retrospective → Day 4 closeout extract IAM design note → 之後 sprint 視真實需要擴充
+
+#### Quality 不是頁數，是 verified ratio
+**「輕量」不等於「低品質」**。14.md 800 行 verified ratio 僅 10.6%（91 行 verified / 862 行總）= 高頁數低品質。Spike-extract design note 行數通常 200-500（outcome 非 cap），但 verified ratio ≥ 95%（每行對應實際 file:line / verification command / test fixture）= 中頁數高品質。
+
+每個 spike-extract design note **必須通過 8-Point Quality Gate**（per `claudedocs/templates/spike-design-note-template.md`）：
+
+1. **Section header 對應 spike user story**（不是 generic「OIDC overview」）
+2. **每個技術 claim 有 file:line**（不是「we use RS256」而是 `JWTManager.encode()` at `jwt.py:42-58`）
+3. **Decision rationale 含比較矩陣**（vendor / approach 三-四欄表 + 否決原因）
+4. **Verification command（reproducible）**（`pytest tests/integration/auth/test_oidc_flow.py::test_real_entra_callback`）
+5. **Test fixture reference**（link 到實際 test data / mock setup）
+6. **Open invariant 明確分界**（「verified in this spike: A,B,C」/「deferred to Phase XX.Y: D,E,F」）
+7. **Rollback / fallback 路徑**（若設計後續證明錯，怎麼撤回 + 估時）
+8. **Cross-reference 17.md single-source**（任何新 contract 必須在 17.md 對應 §section 登記）
+
+**禁止**：用「regulated 200-300 行」當品質替代品。重點是禁止 speculation 充頁數，不是壓縮 verified content。
+
+→ **每個新 session 開始時，AI 助手必須先確認 doc-level rolling 紀律仍在執行，沒有「為了完整」一次規劃多份新 doc，且每份 design note 通過 8-Point Quality Gate。**
+
+→ **Sprint Day 4 closeout 時，AI 助手必須對 design note 自查 8 條，並在 retrospective.md 記錄通過/未通過項。**
 
 ---
 
