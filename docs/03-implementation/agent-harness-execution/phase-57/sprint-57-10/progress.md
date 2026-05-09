@@ -277,3 +277,71 @@ Sprint 57.10 is pure docs (no .ts/.tsx/.py changes); all sentinels match Sprint 
 Day 3 cumulative: ~30 min (self-review + cross-ref verification + early validation)
 Sprint 57.10 cumulative (convention codify): ~4.5 hr (Day 0.5 ~30 min + Day 1 ~2 hr + Day 2 ~1.5 hr + Day 3 ~30 min); pace tracking ~12% over `audit-cycle` 0.40 budget (~4 hr commit). Day 4 remaining ~1.5 hr (retro + memory + 4 doc syncs + PR + closeout). Final projected ~6 hr → ratio ~1.50 over band by 0.30 → AD-Sprint-Plan-12 candidate at Day 4 retro Q2 (propose `audit-cycle` 0.40 → 0.50 lift after 2-3 sprint validation per `When to adjust` rule).
 
+---
+
+## Day 4 — 2026-05-09 — Closeout (Full Validation + Retro + Memory + 3 Doc Syncs + PR)
+
+### Full validation sweep ALL GREEN
+
+| Check | Baseline | Day 4 | Status |
+|-------|----------|-------|--------|
+| pytest | 1622 (1618+4) | **1622 (1618 passed + 4 skipped in 36.39s)** | ✅ |
+| mypy strict | 0 | **0 / 300 source files** ("Success: no issues found") | ✅ |
+| black | clean | **300 files would be left unchanged** | ✅ |
+| isort | silent | **silent** | ✅ |
+| flake8 | silent | **silent** | ✅ |
+| Vitest | 93 / 28 | **93 / 28 in 3.75s** | ✅ |
+| tsc strict | 0 | **0 errors** | ✅ |
+| ESLint | silent | **silent** | ✅ |
+| Vite build main | 240.86 kB | **240.89 kB** (+0.03 — chat_v2/types.ts unchanged) | ✅ |
+| Playwright | 27 | **27 passed in 7.8s** | ✅ |
+| V2 lints | 9/9 | **9/9 in 0.90s** | ✅ |
+| LLM SDK leak | 0 | **0** | ✅ |
+
+### D-PRE-DAY4-1 dev DB pollution caught + remediated
+
+Recurring pattern Sprint 57.8 D13 + 57.9 D-PRE-1 + 57.10 D-PRE-DAY4-1 (3 consecutive sprints):
+- Initial pytest run: **3 fail / 1615 pass / 4 skip** (`test_admin_tenant_patch.py::test_patch_display_name_only|meta_data_only|both_fields`)
+- Root cause: leftover `tenants.code IN ('DN_ONLY', 'META_ONLY', 'BOTH_FIELDS')` rows from prior failed runs → UniqueViolationError
+- Cleanup: `docker exec ipa_v2_postgres psql -U ipa_v2 -d ipa_v2 -c "ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_update_delete; DELETE FROM tenants WHERE code IN (...); ALTER TABLE audit_log ENABLE TRIGGER ...;"` (WORM trigger toggle pattern)
+- Post-cleanup: **1618 pass / 4 skip / 0 fail** baseline restored
+- AD-Test-Tenant-Code-Pollution still OPEN (logged Sprint 57.8 retro) — operational fix (uuid suffix per run / savepoint+rollback fixture) deferred yet again
+- ~15 min unplanned overhead added to Sprint 57.10 actual
+
+### Retrospective.md Q1-Q7 complete
+
+`docs/03-implementation/agent-harness-execution/phase-57/sprint-57-10/retrospective.md` — Q1-Q7 mandatory format:
+- Q1 What went well: pivot speed / Day 0 commit preservation / docs over-deliver / 三-prong discipline / pivot precedent established
+- Q2 Calibration: `audit-cycle / docs / template` 0.40 **1st application** (folds AD-Sprint-Plan-4 Sprint 55.3 retro proposal that was never matrixed); ratio ~1.63 over band by 0.43; 1-data-point insufficient for adjustment per matrix discipline
+- Q3 What didn't: dev DB pollution recurring 3-sprint pattern / calibration over band / pivot could have been earlier
+- Q4 Carryover ADs: 4 NEW (AD-Verification-RealShip-Deferred / AD-Frontend-SSE-Silent-Drop-Fix / AD-Convention-Drift-Audit-Cycle / AD-Sprint-Plan-12)
+- Q4.1 16.md V2 Ship Timeline: 6/N unchanged (verification deferred); ADD cross-ref to NEW operational docs
+- Q5 Phase 57.11+: 5 candidates listed (a-e); recommend (a) verification real ship as MOST LIKELY first
+- Q6 V2 紀律 9 項: ✅ all checked
+- Q7 Spike sprint design note: N/A SKIP (pure docs sprint NOT spike; CONVENTION+STYLE serve as design note)
+
+### Memory snapshot
+
+- `C:\Users\Chris\.claude\projects\C--Users-Chris-Downloads-ai-semantic-kernel-framework-project\memory\project_phase57_10_convention_codify.md` NEW
+- `MEMORY.md` index +1 line entry under ~150 chars
+
+### 3 doc syncs (CLAUDE.md deferred to post-merge closeout PR per Sprint 57.7+57.8+57.9 pattern)
+
+1. ✅ `.claude/rules/sprint-workflow.md` — Calibration matrix +1 NEW row `audit-cycle / docs / template` 0.40 1-data-point baseline (folds AD-Sprint-Plan-4 proposal from Sprint 55.3 retro that was never matrixed); MHist line +1
+2. ✅ `claudedocs/6-ai-assistant/prompts/SITUATION-V2-SESSION-START.md` — §9 milestones table +1 row Sprint 57.10 (before Sprint 57.9 newest-first); footer "Last Updated" updated to Sprint 57.10; Sprint 57.9 demoted to "Previous"
+3. ✅ `docs/03-implementation/agent-harness-planning/16-frontend-design.md` — §Design System NEW cross-ref blockquote pointing to NEW operational docs (CONVENTION.md + STYLE.md)
+4. CLAUDE.md sync DEFERRED to post-merge closeout PR per Sprint 57.7+57.8+57.9 pattern
+
+### PR open + closeout sync
+
+- Day 4 commit + push branch
+- Open PR via gh pr create with title "Sprint 57.10 (PIVOTED) — Frontend Convention Codification"
+- After main merge, capture HEAD SHA
+- Open closeout PR with CLAUDE.md sync
+- Update memory snapshot with merged main HEAD SHA
+
+Day 4 cumulative: ~2 hr (full validation ~30 min + D-PRE-DAY4-1 cleanup ~15 min + retro ~30 min + memory + 3 doc syncs ~30 min + PR open ~15 min)
+**Sprint 57.10 (PIVOTED) total**: ~6.5 hr (Day 0.5 ~30 min + Day 1 ~2 hr + Day 2 ~1.5 hr + Day 3 ~30 min + Day 4 ~2 hr)
+**Calibration ratio**: 6.5 / 4 = **~1.63 ⚠️ OVER [0.85, 1.20] band by 0.43**
+**1-data-point baseline opens**: AD-Sprint-Plan-12 propose 0.40 → 0.50 lift after 2-3 sprint validation per `When to adjust` rule
+
