@@ -153,3 +153,45 @@ Files staged:
 Day 0.5 cumulative: ~30 min (orientation + carryover catalog + replace plan/checklist + this entry)
 Sprint 57.10 cumulative so far: ~2 hr (Day 0 ~1.5 + Day 0.5 ~30 min); remaining budget ~2 hr per `audit-cycle` 0.40 calibration baseline ~4 hr commit
 
+---
+
+## Day 1 — 2026-05-09 — CONVENTION.md NEW (667 lines / 9 sections)
+
+### Deliverable
+
+- ✅ `frontend/CONVENTION.md` created (667 lines; well above ≥400 acceptance threshold)
+- ✅ All 9 sections codified per plan §US-1:
+  1. Page Architecture Pattern (Navigate auth gate + AppShellV2 wrap pageTitle + nested Routes for tabs; Sprint 57.8 D9 page-level h1 lesson explicitly codified)
+  2. features/&lt;X&gt;/ Folder Convention (types/services/hooks/components/store + 11 範疇 mapping reference + snake_case vs kebab-case naming split)
+  3. Routing Convention (routes.config.ts single-source registry + 11 entries + lazy import + Sidebar auto-generation)
+  4. State Management Convention (Zustand UI-only post-57.9 migration + sentinel test pattern with explicit "do NOT have" assertions)
+  5. Server State Convention (`*_QUERY_KEY_BASE` single-source export + `as const` tuple + keepPreviousData paginated + enabled gate + useMutation onSuccess invalidateQueries + QueryClient global config retry:false)
+  6. API Service Convention (fetchWithAuth from authService.ts + URLSearchParams omit-undefined helper + Error throw with detail message + objectContaining test pattern)
+  7. SSE Event Convention CRITICAL (chatStore.mergeEvent reducer single-point + KNOWN_LOOP_EVENT_TYPES set + parseSSEFrame filter; **D-PRE-13 lesson codified — adding new SSE event = 3 coordinated edits with audit checklist**)
+  8. Test Convention (Vitest unit wrapper + Playwright e2e + seedAuthJwt beforeEach D-PRE-16 lesson + retryClicked flag pattern D-PRE-15 codified + sentinel tests)
+  9. File Header MHist Convention (1-line max E501 budget; cross-ref file-header-convention.md)
+
+### Key codified lessons (highlights)
+
+- **D-PRE-13 SSE Silent Drop** (§7) — Adding new SSE event variant requires **3 coordinated edits** (types.ts LoopEvent union + KNOWN_LOOP_EVENT_TYPES set + chatStore.mergeEvent case branch). Without this codification, chat-v2 silently dropped verification_passed/failed events for 3+ sprints (54.1 → 57.9). Now explicitly documented with audit checklist.
+- **D-PRE-15 StrictMode mock pattern** (§8) — `retryClicked` flag gates mock behavior on user-action (button click) NOT call count. Survives any number of StrictMode double-renders. Replaces brittle `firstCall` flag pattern.
+- **D-PRE-16 Auth gate cascade lesson** (§8) — Playwright e2e tests for any auth-gated page MUST `seedAuthJwt(page)` in beforeEach. Sprint 57.9 governance auth gate broke 5 prior e2e silently because beforeEach JWT seed was missing.
+- **Sprint 57.8 D9 page-level h1 lesson** (§1) — AppShellV2 renders pageTitle as h1; inner components MUST use h2/h3 to avoid cascade conflict (SLAOverview + TenantSettingsView pre-fix examples).
+- **Codification threshold** (Change Process section) — Pattern must appear in ≥ 2 sprint examples before codification (avoids premature 1-data-point per AD-Plan-3).
+
+### Cross-references in CONVENTION.md
+
+- → STYLE.md (pending Day 2 deliverable)
+- → `.claude/rules/frontend-react.md` (basic React rules; CONVENTION.md = detailed operational extension)
+- → `.claude/rules/file-header-convention.md` (MHist 1-line rule cross-ref)
+- → `.claude/rules/sprint-workflow.md` (Day 0 三-prong + calibration matrix cross-ref)
+- → `docs/03-implementation/agent-harness-planning/16-frontend-design.md` (design philosophy reference; CONVENTION.md = operational rules)
+- → `docs/03-implementation/agent-harness-planning/17-cross-category-interfaces.md` (single-source contracts)
+
+### Day 1 commit
+
+`aa245083` docs(sprint-57-10, US-1): NEW frontend/CONVENTION.md (9 sections codifying 57.7+57.8+57.9 emergent patterns)
+
+Day 1 cumulative: ~2 hr (CONVENTION.md draft + commit)
+Sprint 57.10 cumulative: ~4 hr (Day 0 ~1.5 + Day 0.5 ~30 min + Day 1 ~2 hr); pace tracking ON budget per `audit-cycle` 0.40 baseline ~4 hr commit (Day 2 STYLE.md ~1.5 hr + Day 3 polish ~30 min + Day 4 retro ~1 hr would put total ~7 hr → ratio ~1.75 OVER band → AD-Sprint-Plan-12 candidate at Day 4 retro)
+
