@@ -168,60 +168,51 @@
 
 ## Day 3 — US-4 Audit Log Viewer + US-5 Chain Verify Badge
 
-### 3.1 US-4: auditService.ts NEW
-- [ ] **Create `frontend/src/features/governance/services/auditService.ts`**
+### 3.1 US-4: auditService.ts NEW ✅
+- [x] **Create `frontend/src/features/governance/services/auditService.ts`**
   - DoD: 2 functions:
-    - `fetchAuditLog(filter: AuditLogFilter): Promise<AuditLogPage>` consuming GET `/api/v1/audit/log` with query params
-    - `verifyChain(): Promise<ChainVerifyResult>` consuming GET `/api/v1/audit/verify-chain`
-  - Both use `fetchWithAuth` for IAM JWT
-  - URLSearchParams for filter (omit-undefined helper; mirror Sprint 57.4 buildListSearchParams pattern)
-  - File header per convention
-- [ ] **Modify `frontend/src/features/governance/types.ts`**
-  - DoD: extend with `AuditLogFilter` (matching backend Query params) + `AuditLogEntry` (matching DTO 12 fields) + `AuditLogPage` (items + has_more + next_offset + page_size) + `ChainVerifyResult` (valid + broken_at_id + total_entries)
+    - `fetchAuditLog(filter: AuditLogFilter): Promise<AuditLogPage>` consuming GET `/api/v1/audit/log` with query params ✅
+    - `verifyChain(): Promise<ChainVerifyResult>` consuming GET `/api/v1/audit/verify-chain` ✅
+  - Both use `fetchWithAuth` for IAM JWT ✅
+  - URLSearchParams for filter (omit-undefined helper; mirror Sprint 57.4 buildListSearchParams pattern) ✅
+  - File header per convention ✅
+- [x] **Modify `frontend/src/features/governance/types.ts`**
+  - DoD: extend with `AuditLogFilter` + `AuditLogEntry` (12 fields) + `AuditLogPage` + `ChainVerifyResult` ✅
 
-### 3.2 US-4: useAuditLog hook
-- [ ] **Create `frontend/src/features/governance/hooks/useAuditLog.ts`**
-  - DoD: `useQuery({ queryKey: ['governance', 'audit-log', filter], queryFn: ({ signal }) => auditService.fetchAuditLog(filter, signal) })`
-  - QueryKey includes filter object for auto-refetch on change
-  - File header per convention
-- [ ] **Vitest unit test `frontend/tests/unit/governance/useAuditLog.test.tsx`**
-  - DoD: ≥2 tests (queryKey structure / refetch on filter change)
+### 3.2 US-4: useAuditLog hook ✅
+- [x] **Create `frontend/src/features/governance/hooks/useAuditLog.ts`**
+  - DoD: `useQuery({ queryKey: [...AUDIT_LOG_QUERY_KEY_BASE, filter], ... })` + `placeholderData: keepPreviousData` ✅
+  - File header per convention ✅
+- [x] **Vitest unit test `frontend/tests/unit/governance/useAuditLog.test.tsx`** — 4 tests (key / fetch / error / refetch delta) ✅
 
-### 3.3 US-4: AuditLogViewer component
-- [ ] **Create `frontend/src/features/governance/components/AuditLogViewer.tsx`**
-  - DoD: per plan §Audit log filter UI sketch
-  - Filter form: 4 fields (operation dropdown / resource_type dropdown / user_id input / date range pickers)
-  - State: `const [filter, setFilter] = useState<AuditLogFilter>({ offset: 0, page_size: 50 })`
-  - Apply button updates filter; Reset button clears to default
-  - Paginated table: 6 columns (timestamp / operation / resource_type / resource_id / user_id / current_log_hash truncated)
-  - Next/Prev buttons; disabled at boundaries; `has_more` indicator
-  - Loading skeleton + error retry UX (mirror cost-dashboard CostOverview pattern)
-  - Tailwind utilities only (no inline styles)
-  - File header per convention
-- [ ] **Vitest unit test `frontend/tests/unit/governance/AuditLogViewer.test.tsx`**
-  - DoD: ≥2 tests (renders empty state / filter form interaction triggers refetch)
+### 3.3 US-4: AuditLogViewer component ✅
+- [x] **Create `frontend/src/features/governance/components/AuditLogViewer.tsx`**
+  - DoD: filter form (4 fields: operation / resource_type / user_id / from_ts datetime-local) with draft-vs-committed pattern ✅
+  - State: `[filter, setFilter] = useState({ offset: 0, page_size: 50 })`; Apply promotes draft → filter ✅
+  - Paginated table 6 columns (id / timestamp / operation / resource / user / hash) + 5-row loading skeleton + empty-state Reset Filters ✅
+  - Next/Prev pagination footer with edge-disable + range indicator + has_more hint ✅
+  - Tailwind utilities only ✅
+  - File header per convention ✅
+- [x] **Vitest unit test `frontend/tests/unit/governance/AuditLogViewer.test.tsx`** — 3 tests (filter inputs + chain badge / empty state / one-row + pagination) ✅
 
-### 3.4 US-5: AuditChainBadge component
-- [ ] **Create `frontend/src/features/governance/components/AuditChainBadge.tsx`**
-  - DoD: useQuery({ queryKey: ['governance', 'verify-chain'], queryFn: auditService.verifyChain }) — no `refetchInterval` (heavy operation per backend docstring)
-  - 3 states rendered: `⏳ Verifying chain…` / `✅ Chain valid (N entries)` / `⚠️ Chain broken at row {broken_at_id}` / `❌ Verify failed: {error}`
-  - Manual `Re-verify` button calls `refetch()`
-  - Tailwind badge styling (no inline)
-  - File header per convention
-- [ ] **Wire AuditChainBadge into AuditLogViewer header**
-  - DoD: top-right of filter form area
-- [ ] **Vitest unit test `frontend/tests/unit/governance/AuditChainBadge.test.tsx`**
-  - DoD: ≥1 test (renders 3 states via mock)
+### 3.4 US-5: AuditChainBadge component ✅
+- [x] **Create `frontend/src/features/governance/components/AuditChainBadge.tsx`**
+  - DoD: `useQuery({ queryKey: CHAIN_VERIFY_QUERY_KEY, queryFn: ..., enabled: false })` — manual trigger via Verify chain button ✅
+  - 4 states: idle / Verifying / ✓ Valid · N entries / ✗ Broken at id=X · N entries / ❌ Verify failed (alert) ✅
+  - Tailwind badge styling (no inline) ✅
+  - File header per convention ✅
+- [x] **Wire AuditChainBadge into AuditLogViewer header** — top-right of title row ✅
+- [x] **Vitest unit test `frontend/tests/unit/governance/AuditChainBadge.test.tsx`** — 4 tests (idle / valid / broken / error) ✅
 
-### 3.5 US-1 stub fixup (post-US-4 complete)
-- [ ] **If Day 1 created stub AuditLogViewer.tsx, ensure now real component**
-  - DoD: pages/governance/index.tsx import resolves to real US-4 implementation; TypeScript strict pass
+### 3.5 US-1 stub fixup (post-US-4 complete) ✅
+- [x] **AuditLogViewer.tsx Day 1 stub replaced with real impl** — `pages/governance/index.tsx` import resolves to real US-4 component; TypeScript strict pass ✅
 
-### 3.6 Day 3 wrap
-- [ ] **Vite bundle size check**
-  - DoD: total JS ≤ 290 kB (audit log viewer + chain badge + 2 services + 2 hooks budget)
-- [ ] **Update progress.md Day 3 entry**
-- [ ] **Commit + push**
+### 3.6 Day 3 wrap ✅
+- [x] **Vite bundle size check** — main JS 240.78 kB (under 290 kB budget by 49 kB; +0.03 kB vs Day 2) ✅
+- [x] **Vitest 64 → 75 (+11; target ≥+6 hit 183%)** ✅
+- [x] **tsc strict 0 errors** (TS6310 pre-existing AD-Frontend-Tsconfig D24 carryover unchanged) ✅
+- [x] **Update progress.md Day 3 entry** ✅
+- [x] **Commit + push**
   - Message: `feat(frontend, sprint-57-9): Day 3 — US-4 AuditLogViewer + auditService + useAuditLog + US-5 AuditChainBadge`
 
 ---

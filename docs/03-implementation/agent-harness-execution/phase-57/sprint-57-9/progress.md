@@ -278,3 +278,84 @@
 - **Lines changed**: +335 / -157 net
 - **Go/no-go for Day 3**: ✅ GO Day 3 (Vitest 64/64; bundle in budget; 0 regression; AD-Cost-Dashboard-UseQuery partially closed via governance migration; Day 4 4-page migration completes closure)
 - **Remaining for Day 3**: US-4 (NEW AuditLogViewer real impl + auditService + useAuditLog + filter form + paginated table) + US-5 (AuditChainBadge + verifyChain extension)
+
+---
+
+## Day 3 — 2026-05-09 — US-4 AuditLogViewer real impl + US-5 AuditChainBadge
+
+### What was built
+
+**3.1 US-4 auditService.ts NEW** (`frontend/src/features/governance/services/auditService.ts`)
+- `fetchAuditLog(filter, signal)` → GET `/api/v1/audit/log?...` (URLSearchParams omit-undefined helper `_buildAuditLogSearchParams`)
+- `verifyChain(signal)` → GET `/api/v1/audit/verify-chain`
+- Both via `fetchWithAuth` (Sprint 57.7 IAM JWT injection); `_handleResponse<T>` mirror governanceService error pattern; `_testing` export of `_buildAuditLogSearchParams` for direct test coverage
+
+**3.1 US-4 types.ts extension** — 4 NEW types matching backend `audit.py` DTOs:
+- `AuditLogEntry` (12 fields: id / tenant_id / user_id / session_id / operation / resource_type / resource_id / operation_data / operation_result / previous_log_hash / current_log_hash / timestamp_ms)
+- `AuditLogPage` (items + has_more + next_offset + page_size)
+- `AuditLogFilter` (Query params: operation / resource_type / user_id / from_ts_ms / to_ts_ms / offset / page_size)
+- `ChainVerifyResult` (valid + broken_at_id + total_entries)
+
+**3.2 US-4 useAuditLog hook** (`frontend/src/features/governance/hooks/useAuditLog.ts`)
+- `AUDIT_LOG_QUERY_KEY_BASE = ['governance', 'audit-log']` single-source export
+- `useQuery({ queryKey: [...AUDIT_LOG_QUERY_KEY_BASE, filter], queryFn: ({ signal }) => auditService.fetchAuditLog(filter, signal), placeholderData: keepPreviousData })`
+- `keepPreviousData` so paginating offset doesn't flash empty state
+- No refetchInterval (audit log is heavy + chain verify heavier; load on demand)
+
+**3.3 US-4 AuditLogViewer.tsx full impl** (`frontend/src/features/governance/components/AuditLogViewer.tsx`)
+- Replaces Day 1 stub. Layout: title row + AuditChainBadge top-right / filter form (4 fields) / table / pagination footer
+- **Draft-vs-committed pattern**: form state lives in `draft` + `draftFromLocal`; only Apply promotes draft → `filter` (avoids fetch-per-keystroke per AP-6 mirror Sprint 57.4 admin-tenants; 4-page hook tests in Day 4 will adopt same pattern)
+- 4 filter fields: operation (text) / resource_type (text) / user_id (UUID text) / from_ts_ms (`<input type="datetime-local">` browser-native picker per YAGNI; to_ts deferred AD-AuditLog-Range Phase 58+)
+- Table 6 columns: id (mono) / timestamp (locale string) / operation / resource (type + optional id) / user (mono UUID or —) / hash (truncated `_shortHash` first8…last4)
+- Loading: 5-row animated skeleton; Empty: Reset Filters button surface; Error: destructive variant alert
+- Pagination footer: Showing N–M + has_more hint + Prev/Next with edge-disable + Refresh manual trigger
+
+**3.4 US-5 AuditChainBadge.tsx NEW** (`frontend/src/features/governance/components/AuditChainBadge.tsx`)
+- `CHAIN_VERIFY_QUERY_KEY = ['governance', 'audit-chain-verify']` single-source export
+- `useQuery({ ..., enabled: false })` — manual trigger via Verify chain button (avoids accidental walk on every AuditLogViewer mount per backend `audit.py` "heavy operation" warning)
+- 4 states: idle (no badge) / Verifying… / ✓ Valid · N entries (success palette `#2e7d32`) / ✗ Broken at id=X · N entries (destructive) / Verify failed alert
+- Tailwind only; no shadcn `<Badge>` per Day 0 D-PRE-2 + Sprint 57.8 UserMenu YAGNI precedent
+
+**3.5 US-1 stub fixup** — Day 1 stub replaced with real US-4 component; `pages/governance/index.tsx` import resolves correctly; tsc strict pass
+
+**3.6 Vitest unit tests NEW** — 11 tests across 3 files (target ≥+6 hit **183%**):
+- `tests/unit/governance/useAuditLog.test.tsx` (4 tests):
+  1. AUDIT_LOG_QUERY_KEY_BASE single-source
+  2. Initial fetch returns audit page on success
+  3. Error state surfaces (HTTP 403 auditor RBAC simulation)
+  4. refetch() delta assertion (D-PRE-10 lesson applied)
+- `tests/unit/governance/AuditLogViewer.test.tsx` (3 tests):
+  1. Renders 4 filter inputs + AuditChainBadge button mounted
+  2. Empty state shows Reset filters button
+  3. One-row render + pagination footer (Prev disabled at offset=0 / Next enabled when has_more=true)
+- `tests/unit/governance/AuditChainBadge.test.tsx` (4 tests):
+  1. Idle render (button + no result badge)
+  2. Click → valid state with ✓ + N entries
+  3. Broken chain → ✗ + broken_at_id rendering
+  4. Service error surfaces in alert role with HTTP detail
+
+### Verification ✅
+
+| Check | Day 2 baseline | Day 3 measured | Delta |
+|-------|----------------|----------------|-------|
+| Vitest | 64/64 | **75/75** in 3.12s | **+11** ✅ (target ≥+6 hit **183%**) |
+| Vite build (main JS) | 240.75 kB | **240.78 kB** | +0.03 kB ✅ (under 290 kB Day 3 budget by 49 kB) |
+| Vite build modules | (Day 2 ~previous) | **1861 modules** | +12 (4 NEW source files) |
+| AppShellV2 lazy | 34.88 kB | 34.88 kB | unchanged ✅ |
+| TypeScript strict | 0 errors | **0 errors** | ✅ (TS6310 pre-existing AD-Frontend-Tsconfig D24 carryover unchanged) |
+
+### Drift findings (Day 3)
+
+| ID | Severity | Finding |
+|----|----------|---------|
+| **D-PRE-13** | 🟢 GREEN | Day 2 D-PRE-10 lesson applied successfully — useAuditLog refetch test used `mockResolvedValue` (not Once) + `callsBefore < callsAfter` delta assertion from the start; 0 brittle-test fix iteration needed. Pattern now codified in test file MHist comment for Day 4 4-page hook tests. |
+| **D-PRE-14** | 🟢 GREEN | Vitest +11 (target ≥+6 → **183%**); each NEW component / hook averaged ~3.7 tests vs. plan minimum ≥1-2. |
+| **D-PRE-15** | 🟡 YELLOW | `to_ts_ms` filter field omitted from AuditLogViewer per minimal-form scope (4-field budget; `from` covers most "since X" queries; bidirectional range can be added Phase 58+ via NEW AD-AuditLog-Range). Backend endpoint already accepts `to_ts_ms`; deferred only at UI level. Documented in component file header. |
+
+### Day 3 wrap
+
+- **Actual hr**: ~2 hr (target ~3 hr Day 3 budget; ~33% under — pattern reuse from Day 2 useApprovals/useApprovalDecide hooks paid off)
+- **Files changed**: 8 (4 NEW source + 3 NEW test + 1 modify types.ts) + 2 doc (this progress + checklist Day 3 marks)
+- **Lines added**: ~830 (4 source NEW + 3 test NEW + types extension)
+- **Go/no-go for Day 4**: ✅ GO Day 4 (Vitest 75/75; bundle in budget; 0 regression; US-4 + US-5 governance ship complete; chain badge + audit log viewer ready for end-to-end real ship)
+- **Remaining for Day 4**: US-6 4-page TanStack migration (cost-dashboard / sla-dashboard / admin-tenants / tenant-settings) + Zustand store reductions (UI-only state) + closeout sweep + retrospective.md Q1-Q7 + memory snapshot + 3 doc syncs (sprint-workflow.md calibration matrix +1 row + SITUATION-V2 + 16-frontend-design.md) + PR open
