@@ -251,7 +251,7 @@ python scripts/dev.py logs docker -f
 | `.claude/rules/multi-tenant-data.md` | tenant_id 鐵律 + RLS + GDPR / PII |
 | `.claude/rules/anti-patterns-checklist.md` | 11 條 PR 自檢 |
 
-**📋 On-demand（10 條，需要時主動 Read `.claude/rules/on-demand/X.md`）**
+**📋 On-demand（10 條，需要時主動 Read `docs/rules-on-demand/X.md`）**
 
 | Rule | Trigger |
 |------|---------|
