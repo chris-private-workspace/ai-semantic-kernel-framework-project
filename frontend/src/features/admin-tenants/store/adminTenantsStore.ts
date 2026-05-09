@@ -1,36 +1,33 @@
 /**
  * File: frontend/src/features/admin-tenants/store/adminTenantsStore.ts
- * Purpose: Zustand store for Admin Tenants Console list state (filters + pagination + items).
+ * Purpose: Zustand store for Admin Tenants Console UI-only state (filter + pagination query).
  * Category: Frontend / admin-tenants / store
- * Scope: Phase 57 / Sprint 57.4 US-2
+ * Scope: Phase 57 / Sprint 57.4 US-2 → Sprint 57.9 US-6 Day 4 (UI-only reduction)
  *
  * Description:
- *   Mirrors 57.3 tenantSettingsStore Zustand pattern. State holds:
- *     - query  TenantListQuery with state/plan/search filters + limit+offset
- *     - items  current page TenantListItem[] from server
- *     - total  total count for pagination indicator
- *     - loading/error  fetch lifecycle flags
+ *   Sprint 57.9 US-6 Day 4: reduced from full data orchestration (loadData /
+ *   items / total / loading / error) to UI-only filter+pagination query.
+ *   Server cache moved to `useAdminTenants` TanStack Query hook (mirror
+ *   cost-dashboard / sla-dashboard reduction).
  *
- *   Action setFilter resets offset to 0 (filter change should restart
+ *   Action setFilter still resets offset to 0 (filter change should restart
  *   pagination); setPagination changes limit/offset only.
  *
  * Created: 2026-05-07 (Sprint 57.4 Day 2)
+ * Last Modified: 2026-05-09
+ *
+ * Modification History (newest-first):
+ *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — reduce to UI-only (drop loadData/items/total/loading/error)
+ *   - 2026-05-07: Initial creation (Sprint 57.4 Day 2)
  *
  * Related:
- *   - ../services/adminTenantsService.ts (listTenants)
- *   - ../types.ts (TenantListQuery + TenantListItem)
- *   - ../../tenant-settings/store/tenantSettingsStore.ts (pattern reference)
+ *   - ../hooks/useAdminTenants.ts (server cache post-migration)
+ *   - ../types.ts (TenantListQuery)
  */
 
 import { create } from "zustand";
 
-import { listTenants } from "../services/adminTenantsService";
-import type {
-  TenantListItem,
-  TenantListQuery,
-  TenantPlan,
-  TenantState,
-} from "../types";
+import type { TenantListQuery, TenantPlan, TenantState } from "../types";
 
 const DEFAULT_QUERY: TenantListQuery = {
   state: undefined,
@@ -53,22 +50,13 @@ interface PaginationPartial {
 
 interface AdminTenantsState {
   query: TenantListQuery;
-  items: TenantListItem[];
-  total: number;
-  loading: boolean;
-  error: string | null;
   setFilter: (partial: FilterPartial) => void;
   setPagination: (partial: PaginationPartial) => void;
-  loadData: () => Promise<void>;
   reset: () => void;
 }
 
-export const useAdminTenantsStore = create<AdminTenantsState>((set, get) => ({
+export const useAdminTenantsStore = create<AdminTenantsState>((set) => ({
   query: { ...DEFAULT_QUERY },
-  items: [],
-  total: 0,
-  loading: false,
-  error: null,
   setFilter: (partial) =>
     set((s) => ({
       query: {
@@ -81,21 +69,8 @@ export const useAdminTenantsStore = create<AdminTenantsState>((set, get) => ({
     set((s) => ({
       query: { ...s.query, ...partial },
     })),
-  loadData: async () => {
-    set({ loading: true, error: null });
-    try {
-      const data = await listTenants(get().query);
-      set({ items: data.items, total: data.total, loading: false });
-    } catch (err) {
-      set({ error: (err as Error).message, loading: false, items: [], total: 0 });
-    }
-  },
   reset: () =>
     set({
       query: { ...DEFAULT_QUERY },
-      items: [],
-      total: 0,
-      loading: false,
-      error: null,
     }),
 }));

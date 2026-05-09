@@ -5,15 +5,21 @@
  * Scope: Phase 57 / Sprint 57.4 US-3
  *
  * Description:
- *   Local form state for filter inputs; on Apply -> call store.setFilter +
- *   loadData. On Reset -> store.reset + loadData. Search input has
- *   maxLength=128 (matches backend Query validation).
+ *   Local form state for filter inputs; on Apply -> call store.setFilter
+ *   (TanStack auto-refetches on queryKey change). On Reset -> store.reset
+ *   (same auto-refetch). Search input has maxLength=128 (matches backend
+ *   Query validation).
  *
  *   Note: 57.4 ships with explicit Apply button (no debounce) per
  *   AP-6 — debounce can be added later when search frequency tuning
  *   becomes a real need.
  *
  * Created: 2026-05-07 (Sprint 57.4 Day 3)
+ * Last Modified: 2026-05-09
+ *
+ * Modification History (newest-first):
+ *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — drop loadData calls (TanStack auto-refetch on query change)
+ *   - 2026-05-07: Initial creation (Sprint 57.4 Day 3)
  */
 
 import { useState } from "react";
@@ -41,7 +47,8 @@ const LABEL_STYLE: React.CSSProperties = {
 };
 
 export function TenantListFilters(): JSX.Element {
-  const { setFilter, reset, loadData } = useAdminTenantsStore();
+  const setFilter = useAdminTenantsStore((s) => s.setFilter);
+  const reset = useAdminTenantsStore((s) => s.reset);
 
   const [stateInput, setStateInput] = useState<TenantState | "">("");
   const [planInput, setPlanInput] = useState<TenantPlan | "">("");
@@ -53,7 +60,7 @@ export function TenantListFilters(): JSX.Element {
       plan: planInput === "" ? undefined : planInput,
       search: searchInput === "" ? undefined : searchInput,
     });
-    void loadData();
+    // TanStack auto-refetches when queryKey (which includes store.query) changes
   };
 
   const handleReset = (): void => {
@@ -61,7 +68,7 @@ export function TenantListFilters(): JSX.Element {
     setPlanInput("");
     setSearchInput("");
     reset();
-    void loadData();
+    // TanStack auto-refetches via queryKey change after store.reset
   };
 
   return (

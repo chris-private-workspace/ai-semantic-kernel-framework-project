@@ -1,10 +1,15 @@
 /**
  * File: frontend/tests/unit/cost-dashboard/costService.test.ts
- * Purpose: Unit test for costService — fetch URL building + 5xx error throw.
+ * Purpose: Unit test for costService — fetch URL building + 5xx error throw + fetchWithAuth integration.
  * Category: Frontend / tests / unit / cost-dashboard
- * Scope: Phase 57 / Sprint 57.1 US-2
+ * Scope: Phase 57 / Sprint 57.1 US-2 → Sprint 57.9 US-6 Day 4 (fetchWithAuth swap)
  *
  * Created: 2026-05-06 (Sprint 57.1 Day 1)
+ * Last Modified: 2026-05-09
+ *
+ * Modification History:
+ *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — assertion shape adjusted for fetchWithAuth wrapper (always credentials:include + Headers)
+ *   - 2026-05-06: Initial creation (Sprint 57.1 Day 1)
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -34,9 +39,12 @@ describe("costService.fetchCostSummary", () => {
     );
 
     const result = await fetchCostSummary("tenant-uuid", "2026-04");
+    // Post-57.9 US-6: fetchWithAuth always sets credentials:"include" + Headers;
+    // the URL contract is unchanged. Use objectContaining to tolerate
+    // fetchWithAuth wrapper additions (Authorization header iff JWT present).
     expect(fetchSpy).toHaveBeenCalledWith(
       "/api/v1/admin/tenants/tenant-uuid/cost-summary?month=2026-04",
-      { credentials: "include" },
+      expect.objectContaining({ credentials: "include" }),
     );
     expect(result).toEqual(mockBody);
   });
@@ -46,6 +54,8 @@ describe("costService.fetchCostSummary", () => {
       new Response(JSON.stringify({ detail: "internal server error" }), { status: 500 }),
     );
 
-    await expect(fetchCostSummary("tenant-uuid", "2026-04")).rejects.toThrow("internal server error");
+    await expect(fetchCostSummary("tenant-uuid", "2026-04")).rejects.toThrow(
+      "internal server error",
+    );
   });
 });

@@ -21,12 +21,20 @@ import { ThemeProvider } from "./components/ThemeProvider";
 import "./index.css";
 
 // Single QueryClient instance per app — staleTime 30s is a sensible default
-// for SaaS dashboards that prefer freshness over over-fetching.
+// for SaaS dashboards that prefer freshness over over-fetching. retry:false
+// aligns with the SaaS UX where 4xx/5xx surfaces immediately + a manual
+// "Retry" button is provided per-page (cost / sla / tenant-settings); avoids
+// auto-retry storms against admin endpoints + matches the e2e contract that
+// the first failure renders the error UX (Sprint 57.9 US-6 Day 4).
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 30_000,
       refetchOnWindowFocus: false,
+      retry: false,
+    },
+    mutations: {
+      retry: false,
     },
   },
 });

@@ -2,16 +2,23 @@
  * File: frontend/src/features/admin-tenants/components/TenantListPagination.tsx
  * Purpose: Prev/Next + page indicator for admin tenants list.
  * Category: Frontend / admin-tenants / components
- * Scope: Phase 57 / Sprint 57.4 US-4
+ * Scope: Phase 57 / Sprint 57.4 US-4 → Sprint 57.9 US-6 Day 4 (TanStack hook)
  *
  * Description:
- *   Reads { query (limit/offset), total } from store. Prev disabled at
- *   offset=0; Next disabled when offset + limit >= total. Indicator shows
- *   "{from}-{to} of {total}" range.
+ *   Reads { query (limit/offset) } from store + total from useAdminTenants
+ *   hook. Prev disabled at offset=0; Next disabled when offset + limit >=
+ *   total. Indicator shows "{from}-{to} of {total}" range. setPagination
+ *   triggers TanStack auto-refetch via queryKey change.
  *
  * Created: 2026-05-07 (Sprint 57.4 Day 3)
+ * Last Modified: 2026-05-09
+ *
+ * Modification History (newest-first):
+ *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — read total from useAdminTenants hook (drop store.total + loadData)
+ *   - 2026-05-07: Initial creation (Sprint 57.4 Day 3)
  */
 
+import { useAdminTenants } from "../hooks/useAdminTenants";
 import { useAdminTenantsStore } from "../store/adminTenantsStore";
 
 const ROW_STYLE: React.CSSProperties = {
@@ -23,7 +30,10 @@ const ROW_STYLE: React.CSSProperties = {
 };
 
 export function TenantListPagination(): JSX.Element {
-  const { query, total, setPagination, loadData } = useAdminTenantsStore();
+  const query = useAdminTenantsStore((s) => s.query);
+  const setPagination = useAdminTenantsStore((s) => s.setPagination);
+  const { data } = useAdminTenants();
+  const total = data?.total ?? 0;
 
   const { limit, offset } = query;
   const from = total === 0 ? 0 : offset + 1;
@@ -34,13 +44,11 @@ export function TenantListPagination(): JSX.Element {
   const handlePrev = (): void => {
     if (prevDisabled) return;
     setPagination({ offset: Math.max(0, offset - limit) });
-    void loadData();
   };
 
   const handleNext = (): void => {
     if (nextDisabled) return;
     setPagination({ offset: offset + limit });
-    void loadData();
   };
 
   return (

@@ -2,22 +2,29 @@
  * File: frontend/src/features/admin-tenants/services/adminTenantsService.ts
  * Purpose: REST client for 57.4 admin tenant list endpoint.
  * Category: Frontend / admin-tenants / services
- * Scope: Phase 57 / Sprint 57.4 US-2
+ * Scope: Phase 57 / Sprint 57.4 US-2 → Sprint 57.9 US-6 Day 4 (fetchWithAuth swap)
  *
  * Description:
  *   Wraps GET /api/v1/admin/tenants list endpoint. Builds URLSearchParams
  *   from TenantListQuery (only setting params that are non-undefined).
- *   Mirrors plain-fetch + _handleResponse<T> pattern from 57.3
- *   tenantSettingsService.ts.
+ *
+ *   Sprint 57.9 US-6 Day 4: raw `fetch` swapped to `fetchWithAuth` (Sprint 57.7
+ *   IAM JWT) + signal forwarded for TanStack auto-cancellation.
  *
  * Created: 2026-05-07 (Sprint 57.4 Day 2)
+ * Last Modified: 2026-05-09
+ *
+ * Modification History (newest-first):
+ *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — swap raw fetch to fetchWithAuth + signal param
+ *   - 2026-05-07: Initial creation (Sprint 57.4 Day 2)
  *
  * Related:
  *   - backend/src/api/v1/admin/tenants.py (GET "" list endpoint)
  *   - ../types.ts (TenantListQuery + TenantListResponse)
- *   - ../../tenant-settings/services/tenantSettingsService.ts (pattern reference)
+ *   - ../hooks/useAdminTenants.ts (TanStack consumer)
  */
 
+import { fetchWithAuth } from "../../auth/services/authService";
 import type { TenantListQuery, TenantListResponse } from "../types";
 
 const API_BASE = "/api/v1/admin";
@@ -54,11 +61,12 @@ export function buildListSearchParams(query: TenantListQuery): URLSearchParams {
 
 export async function listTenants(
   query: TenantListQuery,
+  signal?: AbortSignal,
 ): Promise<TenantListResponse> {
   const params = buildListSearchParams(query);
-  const response = await fetch(
-    `${API_BASE}/tenants?${params.toString()}`,
-    { credentials: "include" },
-  );
+  const response = await fetchWithAuth(`${API_BASE}/tenants?${params.toString()}`, {
+    method: "GET",
+    signal,
+  });
   return _handleResponse<TenantListResponse>(response);
 }

@@ -60,10 +60,11 @@ test.describe("Sprint 57.3 US-5 — Tenant Settings View e2e", () => {
   });
 
   test("error path: backend 500 shows retry; mock 200 on retry recovers", async ({ page }) => {
-    let firstCall = true;
+    // Sprint 57.9 US-6 Day 4: TanStack StrictMode double-render fix — gate
+    // success on retryClicked instead of firstCall flag.
+    let retryClicked = false;
     await page.route(TENANT_ENDPOINT, async (route) => {
-      if (firstCall) {
-        firstCall = false;
+      if (!retryClicked) {
         await route.fulfill({
           status: 500,
           contentType: "application/json",
@@ -86,6 +87,7 @@ test.describe("Sprint 57.3 US-5 — Tenant Settings View e2e", () => {
     await expect(retryButton).toBeVisible();
 
     // Click retry → second call succeeds → tenant data appears
+    retryClicked = true;
     await retryButton.click();
     await expect(page.getByText("Acme E2E Corp")).toBeVisible();
   });

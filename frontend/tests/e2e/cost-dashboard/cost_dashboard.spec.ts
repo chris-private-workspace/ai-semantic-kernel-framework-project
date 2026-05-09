@@ -65,10 +65,13 @@ test.describe("Sprint 57.1 US-5 — Cost Dashboard e2e", () => {
   });
 
   test("error path: backend 500 shows retry; mock 200 on retry recovers", async ({ page }) => {
-    let firstCall = true;
+    // Sprint 57.9 US-6 Day 4: TanStack Query under React 18 StrictMode may
+    // fire the initial query twice (mount-unmount-mount dev double-render);
+    // gate the success branch on an explicit retryClicked flag so the mock
+    // returns 500 for ALL pre-click requests + 200 for any post-click request.
+    let retryClicked = false;
     await page.route(COST_ENDPOINT, async (route) => {
-      if (firstCall) {
-        firstCall = false;
+      if (!retryClicked) {
         await route.fulfill({
           status: 500,
           contentType: "application/json",
@@ -91,6 +94,7 @@ test.describe("Sprint 57.1 US-5 — Cost Dashboard e2e", () => {
     await expect(retryButton).toBeVisible();
 
     // Click retry → second call succeeds → table appears
+    retryClicked = true;
     await retryButton.click();
     await expect(page.getByText("$12.3456")).toBeVisible();
   });

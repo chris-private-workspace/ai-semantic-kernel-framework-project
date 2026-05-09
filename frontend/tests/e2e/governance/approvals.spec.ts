@@ -20,11 +20,18 @@
  *   tests/integration/api/test_governance_endpoints.py).
  *
  * Created: 2026-05-04 (Sprint 53.6 Day 2)
+ * Last Modified: 2026-05-09
+ *
+ * Modification History (newest-first):
+ *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — add seedAuthJwt beforeEach (Sprint 57.9 US-1
+ *     auth gate added to /governance route; tests must seed JWT to bypass redirect)
+ *   - 2026-05-04: Initial creation (Sprint 53.6 Day 2)
  *
  * Related:
  *   - frontend/src/features/governance/components/{ApprovalsPage,ApprovalList,DecisionModal}.tsx
  *   - frontend/src/features/governance/services/governanceService.ts
  *   - tests/e2e/fixtures/approval-fixtures.ts
+ *   - tests/e2e/fixtures/auth-fixtures.ts (seedAuthJwt for auth gate bypass)
  */
 
 import { expect, test } from "@playwright/test";
@@ -34,8 +41,16 @@ import {
   mockGovernanceList,
   sampleApprovals,
 } from "../fixtures/approval-fixtures";
+import { seedAuthJwt } from "../fixtures/auth-fixtures";
 
 test.describe("Sprint 53.6 US-2 — Governance approvals reviewer flow", () => {
+  // Sprint 57.9 US-1 added auth gate to /governance route; seed JWT before
+  // each test so isAuthenticated() returns true and the page renders instead
+  // of redirecting to /auth/login.
+  test.beforeEach(async ({ page }) => {
+    await seedAuthJwt(page);
+  });
+
   test("main flow: approve removes the item from the list", async ({ page }) => {
     const items = sampleApprovals();
     const list = await mockGovernanceList(page, items);

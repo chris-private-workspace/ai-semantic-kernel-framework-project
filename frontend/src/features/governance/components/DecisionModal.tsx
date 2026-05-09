@@ -1,164 +1,122 @@
 /**
  * File: frontend/src/features/governance/components/DecisionModal.tsx
- * Purpose: Modal dialog with Approve / Reject / Escalate buttons + reason input.
+ * Purpose: Modal dialog with Approve / Reject / Escalate buttons + reason input — TanStack-driven mutation.
  * Category: Frontend / governance / components
- * Scope: Phase 53 / Sprint 53.5 US-1
+ * Scope: Phase 53 / Sprint 53.5 US-1 → Sprint 57.9 US-2 Day 1 (Tailwind) → Sprint 57.9 US-3 Day 2 (TanStack)
+ *
+ * Description:
+ *   Click-outside-to-close overlay + dialog with approval details, reason
+ *   textarea, and 4 action buttons (Cancel / Escalate / Reject / Approve).
+ *
+ *   Sprint 57.9 US-3 Day 2: dropped legacy `onSubmit` callback prop — modal is
+ *   now self-contained via `useApprovalDecide` mutation hook. On `mutate()`
+ *   success the hook invalidates `APPROVALS_QUERY_KEY` (refreshes the list)
+ *   and the modal calls `onClose()`. `isPending` from the mutation drives the
+ *   busy / disabled state on action buttons; `error` from the mutation is
+ *   surfaced inline.
+ *
+ *   Tailwind impl per Day 0 D-PRE-2 + Sprint 57.8 UserMenu YAGNI precedent.
  *
  * Created: 2026-05-04 (Sprint 53.5 Day 3)
+ * Last Modified: 2026-05-09
+ *
+ * Modification History (newest-first):
+ *   - 2026-05-09: Sprint 57.9 US-3 Day 2 — drop onSubmit prop + useState/setBusy/setError → useApprovalDecide mutation
+ *   - 2026-05-09: Sprint 57.9 US-2 Day 1 — Tailwind migration (drop inline styles)
+ *   - 2026-05-04: Initial creation (Sprint 53.5 Day 3)
  *
  * Related:
- *   - ./ApprovalsPage.tsx (parent)
- *   - ../services/governanceService.ts (decide call)
+ *   - ./ApprovalsPage.tsx (parent — passes approval + onClose only post-57.9-US-3)
+ *   - ../hooks/useApprovalDecide.ts (TanStack mutation hook)
  */
 
 import { useState } from "react";
+
+import { useApprovalDecide } from "../hooks/useApprovalDecide";
 import type { ApprovalSummary, DecisionLabel } from "../types";
 
 type Props = {
   approval: ApprovalSummary;
-  onSubmit: (decision: DecisionLabel, reason?: string) => Promise<void>;
   onClose: () => void;
 };
 
-const overlayStyle: React.CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(0,0,0,0.45)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  zIndex: 100,
+const BUTTON_BASE =
+  "rounded px-4 py-2 text-[0.95rem] font-semibold disabled:opacity-50 disabled:cursor-not-allowed";
+
+const BUTTON_KIND: Record<"approve" | "reject" | "escalate" | "cancel", string> = {
+  approve: "bg-[#2e7d32] text-white hover:bg-[#256a29]",
+  reject: "bg-[#c62828] text-white hover:bg-[#b22222]",
+  escalate: "bg-[#ed6c02] text-white hover:bg-[#d46002]",
+  cancel: "bg-[#e0e0e0] text-[#333] hover:bg-[#d0d0d0]",
 };
 
-const dialogStyle: React.CSSProperties = {
-  background: "white",
-  borderRadius: 8,
-  padding: "1.5rem 2rem",
-  minWidth: 480,
-  maxWidth: 720,
-  boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
-  fontFamily: "system-ui, sans-serif",
-};
-
-const headerStyle: React.CSSProperties = {
-  margin: 0,
-  marginBottom: "0.75rem",
-  fontSize: "1.25rem",
-};
-
-const fieldRow: React.CSSProperties = {
-  display: "flex",
-  gap: "0.5rem",
-  margin: "0.4rem 0",
-  fontSize: "0.95rem",
-};
-
-const labelStyle: React.CSSProperties = {
-  fontWeight: 600,
-  color: "#444",
-  minWidth: 110,
-};
-
-const reasonBox: React.CSSProperties = {
-  width: "100%",
-  marginTop: "0.5rem",
-  padding: "0.5rem",
-  fontSize: "0.95rem",
-  fontFamily: "inherit",
-  border: "1px solid #ccc",
-  borderRadius: 4,
-  resize: "vertical",
-  minHeight: 80,
-};
-
-const buttonRow: React.CSSProperties = {
-  display: "flex",
-  gap: "0.5rem",
-  justifyContent: "flex-end",
-  marginTop: "1.25rem",
-};
-
-function buttonStyle(kind: "approve" | "reject" | "escalate" | "cancel"): React.CSSProperties {
-  const base: React.CSSProperties = {
-    padding: "0.5rem 1rem",
-    border: "none",
-    borderRadius: 4,
-    fontSize: "0.95rem",
-    fontWeight: 600,
-    cursor: "pointer",
-  };
-  switch (kind) {
-    case "approve":
-      return { ...base, background: "#2e7d32", color: "white" };
-    case "reject":
-      return { ...base, background: "#c62828", color: "white" };
-    case "escalate":
-      return { ...base, background: "#ed6c02", color: "white" };
-    case "cancel":
-      return { ...base, background: "#e0e0e0", color: "#333" };
-  }
-}
-
-export function DecisionModal({ approval, onSubmit, onClose }: Props) {
+export function DecisionModal({ approval, onClose }: Props) {
   const [reason, setReason] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const decideM = useApprovalDecide();
 
-  const submit = async (decision: DecisionLabel) => {
-    setBusy(true);
-    setError(null);
-    try {
-      await onSubmit(decision, reason.trim() || undefined);
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
+  const submit = (decision: DecisionLabel) => {
+    decideM.mutate(
+      {
+        requestId: approval.request_id,
+        decision,
+        reason: reason.trim() || undefined,
+      },
+      { onSuccess: onClose },
+    );
   };
 
   const toolName = approval.payload.tool_name ?? "(unknown tool)";
   const summary = approval.payload.summary ?? approval.payload.reason ?? "";
+  const busy = decideM.isPending;
 
   return (
-    <div style={overlayStyle} onClick={onClose} role="presentation">
-      <div style={dialogStyle} onClick={(e) => e.stopPropagation()} role="dialog">
-        <h3 style={headerStyle}>Review approval — {toolName}</h3>
-        <div style={fieldRow}>
-          <span style={labelStyle}>Request ID:</span>
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="min-w-[480px] max-w-[720px] rounded-lg bg-card p-6 font-sans shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+      >
+        <h3 className="m-0 mb-3 text-xl font-semibold">Review approval — {toolName}</h3>
+
+        <div className="my-1.5 flex gap-2 text-[0.95rem]">
+          <span className="min-w-[110px] font-semibold text-foreground/70">Request ID:</span>
           <code>{approval.request_id}</code>
         </div>
-        <div style={fieldRow}>
-          <span style={labelStyle}>Risk:</span>
+        <div className="my-1.5 flex gap-2 text-[0.95rem]">
+          <span className="min-w-[110px] font-semibold text-foreground/70">Risk:</span>
           <span>{approval.risk_level}</span>
         </div>
-        <div style={fieldRow}>
-          <span style={labelStyle}>Requester:</span>
+        <div className="my-1.5 flex gap-2 text-[0.95rem]">
+          <span className="min-w-[110px] font-semibold text-foreground/70">Requester:</span>
           <span>{approval.requester}</span>
         </div>
-        <div style={fieldRow}>
-          <span style={labelStyle}>SLA deadline:</span>
+        <div className="my-1.5 flex gap-2 text-[0.95rem]">
+          <span className="min-w-[110px] font-semibold text-foreground/70">SLA deadline:</span>
           <span>{new Date(approval.sla_deadline).toLocaleString()}</span>
         </div>
         {summary && (
-          <div style={fieldRow}>
-            <span style={labelStyle}>Reason:</span>
+          <div className="my-1.5 flex gap-2 text-[0.95rem]">
+            <span className="min-w-[110px] font-semibold text-foreground/70">Reason:</span>
             <span>{summary}</span>
           </div>
         )}
         {approval.payload.tool_arguments && (
-          <div style={fieldRow}>
-            <span style={labelStyle}>Arguments:</span>
-            <pre style={{ margin: 0, fontSize: "0.85rem", background: "#f5f5f5", padding: "0.4rem", borderRadius: 4 }}>
+          <div className="my-1.5 flex gap-2 text-[0.95rem]">
+            <span className="min-w-[110px] font-semibold text-foreground/70">Arguments:</span>
+            <pre className="m-0 rounded bg-muted p-1.5 text-[0.85rem]">
               {JSON.stringify(approval.payload.tool_arguments, null, 2)}
             </pre>
           </div>
         )}
 
-        <label style={{ display: "block", marginTop: "1rem", fontSize: "0.95rem", fontWeight: 600 }}>
+        <label className="mt-4 block text-[0.95rem] font-semibold">
           Reviewer reason (optional):
           <textarea
-            style={reasonBox}
+            className="mt-2 min-h-[80px] w-full resize-y rounded border border-border p-2 font-inherit text-[0.95rem]"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Optional context for the audit log"
@@ -166,23 +124,43 @@ export function DecisionModal({ approval, onSubmit, onClose }: Props) {
           />
         </label>
 
-        {error && (
-          <div role="alert" style={{ color: "#c62828", marginTop: "0.5rem", fontSize: "0.9rem" }}>
-            {error}
+        {decideM.error && (
+          <div role="alert" className="mt-2 text-[0.9rem] text-[#c62828]">
+            {decideM.error.message}
           </div>
         )}
 
-        <div style={buttonRow}>
-          <button type="button" style={buttonStyle("cancel")} onClick={onClose} disabled={busy}>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            className={`${BUTTON_BASE} ${BUTTON_KIND.cancel}`}
+            onClick={onClose}
+            disabled={busy}
+          >
             Cancel
           </button>
-          <button type="button" style={buttonStyle("escalate")} onClick={() => submit("escalated")} disabled={busy}>
+          <button
+            type="button"
+            className={`${BUTTON_BASE} ${BUTTON_KIND.escalate}`}
+            onClick={() => submit("escalated")}
+            disabled={busy}
+          >
             Escalate
           </button>
-          <button type="button" style={buttonStyle("reject")} onClick={() => submit("rejected")} disabled={busy}>
+          <button
+            type="button"
+            className={`${BUTTON_BASE} ${BUTTON_KIND.reject}`}
+            onClick={() => submit("rejected")}
+            disabled={busy}
+          >
             Reject
           </button>
-          <button type="button" style={buttonStyle("approve")} onClick={() => submit("approved")} disabled={busy}>
+          <button
+            type="button"
+            className={`${BUTTON_BASE} ${BUTTON_KIND.approve}`}
+            onClick={() => submit("approved")}
+            disabled={busy}
+          >
             Approve
           </button>
         </div>

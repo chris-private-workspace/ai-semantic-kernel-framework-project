@@ -1,39 +1,41 @@
 /**
  * File: frontend/tests/unit/admin-tenants/TenantListFilters.test.tsx
- * Purpose: Unit test for TenantListFilters — Apply triggers setFilter+loadData.
+ * Purpose: Unit test for TenantListFilters — Apply triggers setFilter (TanStack auto-refetches via key change).
  * Category: Frontend / tests / unit / admin-tenants
- * Scope: Phase 57 / Sprint 57.4 US-3
+ * Scope: Phase 57 / Sprint 57.4 US-3 → Sprint 57.9 US-6 Day 4 (drop loadData spy)
  *
  * Created: 2026-05-07 (Sprint 57.4 Day 3)
+ * Last Modified: 2026-05-09
+ *
+ * Modification History:
+ *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — drop listTenants spy (filter no longer calls service directly; TanStack auto-refetches)
+ *   - 2026-05-07: Initial creation (Sprint 57.4 Day 3)
  */
 
 import { fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { TenantListFilters } from "../../../src/features/admin-tenants/components/TenantListFilters";
-import * as svc from "../../../src/features/admin-tenants/services/adminTenantsService";
 import { useAdminTenantsStore } from "../../../src/features/admin-tenants/store/adminTenantsStore";
 import { TenantState } from "../../../src/features/admin-tenants/types";
 
-describe("TenantListFilters", () => {
+describe("TenantListFilters (post-57.9 US-6 — TanStack-driven)", () => {
   afterEach(() => {
     useAdminTenantsStore.getState().reset();
-    vi.restoreAllMocks();
   });
 
-  it("Apply with state=ACTIVE selected triggers setFilter + loadData", async () => {
-    const listSpy = vi
-      .spyOn(svc, "listTenants")
-      .mockResolvedValue({ items: [], total: 0, limit: 50, offset: 0 });
+  it("Apply with state=ACTIVE selected updates store query (no QueryClient needed — component reads store + UI events only)", () => {
     render(<TenantListFilters />);
 
-    // First select is State dropdown.
     const stateSelect = screen.getAllByRole("combobox")[0];
     fireEvent.change(stateSelect, { target: { value: TenantState.ACTIVE } });
 
     fireEvent.click(screen.getByText("Apply"));
 
-    await vi.waitFor(() => expect(listSpy).toHaveBeenCalled());
+    // Post-57.9 US-6: TenantListFilters no longer calls listTenants directly;
+    // the assertion is on store state, which the TanStack hook will read in
+    // production wiring (queryKey includes store.query → auto-refetch).
     expect(useAdminTenantsStore.getState().query.state).toBe(TenantState.ACTIVE);
+    expect(useAdminTenantsStore.getState().query.offset).toBe(0); // setFilter resets offset
   });
 });

@@ -1,18 +1,24 @@
 /**
  * File: frontend/tests/unit/tenant-settings/TenantSettingsEditForm.test.tsx
- * Purpose: Unit tests for TenantSettingsEditForm — submit valid + JSON validate invalid.
+ * Purpose: Unit tests for TenantSettingsEditForm — submit valid + JSON validate invalid (TanStack mutation).
  * Category: Frontend / tests / unit / tenant-settings
- * Scope: Phase 57 / Sprint 57.3 US-4
+ * Scope: Phase 57 / Sprint 57.3 US-4 → Sprint 57.9 US-6 Day 4 (TanStack mutation + tenantId prop)
  *
  * Created: 2026-05-07 (Sprint 57.3 Day 3)
+ * Last Modified: 2026-05-09
+ *
+ * Modification History:
+ *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — wrap with QueryClientProvider; tenantId now NEW prop (was store-driven); store.setState removed (store is UI-only)
+ *   - 2026-05-07: Initial creation (Sprint 57.3 Day 3)
  */
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { TenantSettingsEditForm } from "../../../src/features/tenant-settings/components/TenantSettingsEditForm";
 import * as svc from "../../../src/features/tenant-settings/services/tenantSettingsService";
-import { useTenantSettingsStore } from "../../../src/features/tenant-settings/store/tenantSettingsStore";
 import {
   TenantPlan,
   TenantState,
@@ -32,19 +38,33 @@ const INITIAL_DATA: TenantSettingsResponse = {
   updated_at: "2026-05-07T00:00:00Z",
 };
 
-describe("TenantSettingsEditForm", () => {
+function renderForm(props: { onDone?: () => void } = {}) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  const Wrap = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+  );
+  return render(
+    <Wrap>
+      <TenantSettingsEditForm
+        tenantId="tenant-uuid"
+        initialData={INITIAL_DATA}
+        onDone={props.onDone ?? vi.fn()}
+      />
+    </Wrap>,
+  );
+}
+
+describe("TenantSettingsEditForm (post-57.9 US-6 — TanStack mutation)", () => {
   afterEach(() => {
-    useTenantSettingsStore.getState().reset();
     vi.restoreAllMocks();
   });
 
-  it("submits valid display_name change → calls store.save with correct payload", async () => {
-    useTenantSettingsStore.setState({ tenantId: "tenant-uuid", data: INITIAL_DATA });
+  it("submits valid display_name change → calls updateTenantSettings with correct payload", async () => {
     const updated = { ...INITIAL_DATA, display_name: "Renamed" };
     const updateSpy = vi.spyOn(svc, "updateTenantSettings").mockResolvedValueOnce(updated);
     const onDone = vi.fn();
 
-    render(<TenantSettingsEditForm initialData={INITIAL_DATA} onDone={onDone} />);
+    renderForm({ onDone });
 
     const input = screen.getByDisplayValue("Acme Corp");
     fireEvent.change(input, { target: { value: "Renamed" } });
@@ -52,30 +72,26 @@ describe("TenantSettingsEditForm", () => {
     const saveBtn = screen.getByText("Save");
     fireEvent.click(saveBtn);
 
-    // Wait for async save to complete.
-    await vi.waitFor(() => expect(updateSpy).toHaveBeenCalled());
+    await waitFor(() => expect(updateSpy).toHaveBeenCalled());
     expect(updateSpy).toHaveBeenCalledWith("tenant-uuid", { display_name: "Renamed" });
+    await waitFor(() => expect(onDone).toHaveBeenCalled());
   });
 
   it("shows JSON validation error when meta_data textarea contains invalid JSON", () => {
-    render(<TenantSettingsEditForm initialData={INITIAL_DATA} onDone={vi.fn()} />);
+    renderForm();
 
     const textarea = screen.getByDisplayValue(/region/);
     fireEvent.change(textarea, { target: { value: "{not valid json" } });
     fireEvent.blur(textarea);
 
     expect(screen.getByText(/Invalid JSON/)).toBeInTheDocument();
-    // Save button should be disabled when JSON is invalid.
     const saveBtn = screen.getByText("Save") as HTMLButtonElement;
     expect(saveBtn.disabled).toBe(true);
   });
 
-  it("View render via TenantSettingsEditForm initialData renders display_name + meta_data", () => {
-    render(<TenantSettingsEditForm initialData={INITIAL_DATA} onDone={vi.fn()} />);
-
-    // Display name input has the initial value populated.
+  it("renders display_name input + meta_data textarea with initial values", () => {
+    renderForm();
     expect(screen.getByDisplayValue("Acme Corp")).toBeInTheDocument();
-    // Meta data textarea contains the JSON-stringified meta_data.
     expect(screen.getByDisplayValue(/"region"/)).toBeInTheDocument();
   });
 });

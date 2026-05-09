@@ -2,38 +2,32 @@
  * File: frontend/src/pages/admin-tenants/index.tsx
  * Purpose: Admin Tenants Console page (filters + table + pagination).
  * Category: Frontend / pages / admin-tenants
- * Scope: Phase 57 / Sprint 57.4 US-4 → 57.8 US-4 (page-level AppShellV2 migration)
+ * Scope: Phase 57 / Sprint 57.4 US-4 → 57.8 US-4 → Sprint 57.9 US-6 Day 4 (TanStack hook)
  *
  * Description:
- *   Loads on mount + on store query change. URL query string sync deferred
- *   per AP-6 (will land alongside multi-page filter shareability when a
- *   real need surfaces; this sprint ships in-memory filter state only).
+ *   Sprint 57.9 US-6 Day 4: error sourced from useAdminTenants TanStack hook;
+ *   removed manual `useEffect → loadData()` (TanStack auto-fetches on mount
+ *   via queryKey). Children (TenantListFilters / TenantListPagination /
+ *   TenantListTable) all consume the hook + store independently.
  *
  *   Backend enforces require_admin_platform_role; frontend lets 401/403
  *   surface as Error UX.
  *
- * Modification History:
- *   - 2026-05-10: Sprint 57.8 US-4 — page-level AppShellV2 wrap; remove inline
- *     padding (AppShellV2 main provides p-6); error block inline styles
- *     deferred to AD-Cost-Dashboard-ChildrenTailwind batch (Phase 58.2+)
+ * Modification History (newest-first):
+ *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — error+refetch from useAdminTenants hook (drop store loadData)
+ *   - 2026-05-10: Sprint 57.8 US-4 — page-level AppShellV2 wrap; remove inline padding
  *
  * Created: 2026-05-07 (Sprint 57.4 Day 3)
  */
-
-import { useEffect } from "react";
 
 import { AppShellV2 } from "../../components/AppShellV2";
 import { TenantListFilters } from "../../features/admin-tenants/components/TenantListFilters";
 import { TenantListPagination } from "../../features/admin-tenants/components/TenantListPagination";
 import { TenantListTable } from "../../features/admin-tenants/components/TenantListTable";
-import { useAdminTenantsStore } from "../../features/admin-tenants/store/adminTenantsStore";
+import { useAdminTenants } from "../../features/admin-tenants/hooks/useAdminTenants";
 
 export function AdminTenantsPage(): JSX.Element {
-  const { error, loadData } = useAdminTenantsStore();
-
-  useEffect(() => {
-    void loadData();
-  }, [loadData]);
+  const { error, refetch } = useAdminTenants();
 
   return (
     <AppShellV2 pageTitle="Admin Tenants Console">
@@ -53,8 +47,8 @@ export function AdminTenantsPage(): JSX.Element {
             color: "#a00",
           }}
         >
-          <p>Error: {error}</p>
-          <button onClick={() => void loadData()}>Retry</button>
+          <p>Error: {error.message}</p>
+          <button onClick={() => void refetch()}>Retry</button>
         </div>
       )}
 

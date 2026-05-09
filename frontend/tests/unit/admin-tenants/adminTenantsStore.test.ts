@@ -1,56 +1,25 @@
 /**
  * File: frontend/tests/unit/admin-tenants/adminTenantsStore.test.ts
- * Purpose: Unit test for adminTenantsStore — loadData populates items + total + setFilter resets offset.
+ * Purpose: Unit test for adminTenantsStore (UI-only post-Sprint 57.9 US-6 migration).
  * Category: Frontend / tests / unit / admin-tenants
- * Scope: Phase 57 / Sprint 57.4 US-2
+ * Scope: Phase 57 / Sprint 57.4 US-2 → Sprint 57.9 US-6 Day 4 (rewrite for UI-only API)
  *
  * Created: 2026-05-07 (Sprint 57.4 Day 2)
+ * Last Modified: 2026-05-09
+ *
+ * Modification History:
+ *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — rewrite for UI-only store API (drop loadData/items/total)
+ *   - 2026-05-07: Initial creation (Sprint 57.4 Day 2)
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
-import * as svc from "../../../src/features/admin-tenants/services/adminTenantsService";
 import { useAdminTenantsStore } from "../../../src/features/admin-tenants/store/adminTenantsStore";
-import {
-  TenantPlan,
-  TenantState,
-  type TenantListResponse,
-} from "../../../src/features/admin-tenants/types";
+import { TenantState } from "../../../src/features/admin-tenants/types";
 
-const MOCK: TenantListResponse = {
-  items: [
-    {
-      id: "00000000-0000-0000-0000-000000000001",
-      code: "ACME",
-      display_name: "Acme Corp",
-      state: TenantState.ACTIVE,
-      plan: TenantPlan.ENTERPRISE,
-      created_at: "2026-01-01T00:00:00Z",
-      updated_at: "2026-05-07T00:00:00Z",
-    },
-  ],
-  total: 1,
-  limit: 50,
-  offset: 0,
-};
-
-describe("adminTenantsStore", () => {
+describe("adminTenantsStore (UI-only post-57.9 US-6)", () => {
   beforeEach(() => {
     useAdminTenantsStore.getState().reset();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("loadData success populates items + total + clears loading", async () => {
-    vi.spyOn(svc, "listTenants").mockResolvedValueOnce(MOCK);
-    await useAdminTenantsStore.getState().loadData();
-    const state = useAdminTenantsStore.getState();
-    expect(state.loading).toBe(false);
-    expect(state.error).toBeNull();
-    expect(state.items).toHaveLength(1);
-    expect(state.total).toBe(1);
   });
 
   it("setFilter resets offset to 0 even when offset was advanced", () => {
@@ -62,13 +31,33 @@ describe("adminTenantsStore", () => {
     expect(state.query.offset).toBe(0);
   });
 
-  it("loadData failure sets error + clears items", async () => {
-    vi.spyOn(svc, "listTenants").mockRejectedValueOnce(new Error("HTTP 500"));
-    await useAdminTenantsStore.getState().loadData();
+  it("setPagination updates limit/offset without touching filters", () => {
+    useAdminTenantsStore.getState().setFilter({ state: TenantState.ACTIVE });
+    useAdminTenantsStore.getState().setPagination({ offset: 100, limit: 25 });
+    const { query } = useAdminTenantsStore.getState();
+    expect(query.state).toBe(TenantState.ACTIVE);
+    expect(query.offset).toBe(100);
+    expect(query.limit).toBe(25);
+  });
+
+  it("reset returns query to default", () => {
+    useAdminTenantsStore.getState().setFilter({ state: TenantState.SUSPENDED });
+    useAdminTenantsStore.getState().setPagination({ offset: 100 });
+    useAdminTenantsStore.getState().reset();
+    const { query } = useAdminTenantsStore.getState();
+    expect(query.state).toBeUndefined();
+    expect(query.plan).toBeUndefined();
+    expect(query.search).toBeUndefined();
+    expect(query.offset).toBe(0);
+    expect(query.limit).toBe(50);
+  });
+
+  it("store API surface is UI-only (no items/total/loading/error/loadData)", () => {
     const state = useAdminTenantsStore.getState();
-    expect(state.loading).toBe(false);
-    expect(state.error).toBe("HTTP 500");
-    expect(state.items).toEqual([]);
-    expect(state.total).toBe(0);
+    expect(state).not.toHaveProperty("items");
+    expect(state).not.toHaveProperty("total");
+    expect(state).not.toHaveProperty("loading");
+    expect(state).not.toHaveProperty("error");
+    expect(state).not.toHaveProperty("loadData");
   });
 });

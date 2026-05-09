@@ -2,27 +2,34 @@
  * File: frontend/src/features/cost-dashboard/services/costService.ts
  * Purpose: REST client for 56.3 admin cost-summary endpoint.
  * Category: Frontend / cost-dashboard / services
- * Scope: Phase 57 / Sprint 57.1 US-2
+ * Scope: Phase 57 / Sprint 57.1 US-2 → Sprint 57.9 US-6 Day 4 (fetchWithAuth swap)
  *
  * Description:
  *   Wraps GET /api/v1/admin/tenants/{tenant_id}/cost-summary?month=YYYY-MM.
- *   Mirrors plain-fetch + _handleResponse<T> pattern from 53.5
- *   governanceService.ts (per Day 0 D6 — no axios / no React Query in V2 frontend).
- *   Auth: backend enforces require_admin_platform_role; frontend lets 401/403
- *   surface as Error and UI shows retry / permission message (per D10 Option C).
+ *
+ *   Sprint 57.9 US-6 Day 4: raw `fetch` swapped to `fetchWithAuth` so requests
+ *   carry Sprint 57.7 IAM JWT (mirror chat-v2 D3 pattern from Sprint 57.8 +
+ *   governanceService swap from Sprint 57.9 US-3). `credentials: "include"`
+ *   is set by fetchWithAuth itself (no longer passed explicitly).
+ *
+ *   Errors are surfaced as `Error` with HTTP status / detail; useCostSummary
+ *   hook (Sprint 57.9 US-6) forwards via TanStack Query `error` field.
  *
  * Created: 2026-05-06 (Sprint 57.1 Day 1)
- * Last Modified: 2026-05-06
+ * Last Modified: 2026-05-09
  *
- * Modification History:
- *   - 2026-05-06: Initial creation (Sprint 57.1 Day 1 / US-2 — Cost Dashboard service)
+ * Modification History (newest-first):
+ *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — swap raw fetch to fetchWithAuth (JWT injection)
+ *   - 2026-05-06: Initial creation (Sprint 57.1 Day 1 / US-2)
  *
  * Related:
  *   - backend/src/api/v1/admin/cost_summary.py (endpoint)
  *   - ../types.ts (CostSummaryResponse)
- *   - frontend/src/features/governance/services/governanceService.ts (pattern reference)
+ *   - ../hooks/useCostSummary.ts (TanStack consumer)
+ *   - ../../auth/services/authService.ts (fetchWithAuth helper)
  */
 
+import { fetchWithAuth } from "../../auth/services/authService";
 import type { CostSummaryResponse } from "../types";
 
 const API_BASE = "/api/v1/admin";
@@ -44,10 +51,11 @@ async function _handleResponse<T>(response: Response): Promise<T> {
 export async function fetchCostSummary(
   tenantId: string,
   month: string,
+  signal?: AbortSignal,
 ): Promise<CostSummaryResponse> {
-  const response = await fetch(
+  const response = await fetchWithAuth(
     `${API_BASE}/tenants/${tenantId}/cost-summary?month=${encodeURIComponent(month)}`,
-    { credentials: "include" },
+    { method: "GET", signal },
   );
   return _handleResponse<CostSummaryResponse>(response);
 }

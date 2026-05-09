@@ -1,26 +1,31 @@
 /**
  * File: frontend/src/features/tenant-settings/components/TenantSettingsView.tsx
- * Purpose: Read-only view of tenant settings — top-level container for /tenant-settings/{id}.
+ * Purpose: Read-only view of tenant settings — TanStack-driven container for /tenant-settings/{id}.
  * Category: Frontend / tenant-settings / components
- * Scope: Phase 57 / Sprint 57.3 US-4
+ * Scope: Phase 57 / Sprint 57.3 US-4 → Sprint 57.9 US-6 Day 4 (TanStack hook)
  *
  * Description:
- *   Reads tenant_id from URL query string `?tenant_id=...` for now (admin-driven
- *   per 57.1 v2 D8 — backend enforces require_admin_platform_role). Auto-loads
- *   on mount. Edit toggle button switches to TenantSettingsEditForm. Loading
- *   skeleton + error retry UX. State + Plan rendered as colored badges.
+ *   Sprint 57.9 US-6 Day 4: replaced manual useEffect + loadData orchestration
+ *   with `useTenantSettings` TanStack Query hook (closes AD-Cost-Dashboard-UseQuery
+ *   for tenant-settings batch). Reads tenant_id from URL query string
+ *   `?tenant_id=...` (admin-driven per 57.1 v2 D8 — backend enforces
+ *   require_admin_platform_role).
+ *
+ *   Edit toggle button switches to TenantSettingsEditForm. Loading skeleton +
+ *   error retry UX. State + Plan rendered as colored badges.
  *
  * Created: 2026-05-07 (Sprint 57.3 Day 3)
- * Last Modified: 2026-05-07
+ * Last Modified: 2026-05-09
  *
- * Modification History:
- *   - 2026-05-07: Initial creation (Sprint 57.3 Day 3 / US-4 — Tenant Settings View)
+ * Modification History (newest-first):
+ *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — migrate to useTenantSettings TanStack hook (drop store loadData)
+ *   - 2026-05-07: Initial creation (Sprint 57.3 Day 3)
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { useTenantSettingsStore } from "../store/tenantSettingsStore";
+import { useTenantSettings } from "../hooks/useTenantSettings";
 import { TenantPlan, TenantState } from "../types";
 import { TenantSettingsEditForm } from "./TenantSettingsEditForm";
 
@@ -45,48 +50,34 @@ function planBadgeColor(plan: TenantPlan): string {
 
 export function TenantSettingsView() {
   const [searchParams] = useSearchParams();
-  const urlTenantId = searchParams.get("tenant_id") ?? "";
-
-  const { tenantId, data, loading, error, setTenantId, loadData } = useTenantSettingsStore();
+  const tenantId = searchParams.get("tenant_id") ?? "";
   const [editing, setEditing] = useState(false);
 
-  useEffect(() => {
-    if (urlTenantId && urlTenantId !== tenantId) {
-      setTenantId(urlTenantId);
-    }
-  }, [urlTenantId, tenantId, setTenantId]);
-
-  useEffect(() => {
-    if (tenantId) {
-      void loadData();
-    }
-  }, [tenantId, loadData]);
+  const { data, isLoading, error, refetch } = useTenantSettings(tenantId);
 
   return (
     <div style={{ padding: "2rem", fontFamily: "system-ui, sans-serif" }}>
-      {/* Sprint 57.8 US-4 D9: h1 removed — AppShellV2 pageTitle="Tenant Settings"
-          provides page-level h1 (per A1 architecture; inner = body only) */}
       <p style={{ color: "#666", fontSize: "0.9rem" }}>
         Per-tenant configuration. Backend enforces admin-platform role
         (Sprint 57.3 endpoints). 401/403 surfaces as error below.
       </p>
 
-      {!urlTenantId && (
+      {!tenantId && (
         <p style={{ color: "#a00" }}>
           Missing <code>?tenant_id=...</code> query parameter.
         </p>
       )}
 
-      {loading && <p style={{ fontStyle: "italic" }}>Loading tenant settings…</p>}
+      {isLoading && tenantId && <p style={{ fontStyle: "italic" }}>Loading tenant settings…</p>}
 
       {error && (
         <div style={{ marginTop: "1rem", padding: "1rem", border: "1px solid #a00", color: "#a00" }}>
-          <p>Error: {error}</p>
-          <button onClick={() => void loadData()}>Retry</button>
+          <p>Error: {error.message}</p>
+          <button onClick={() => void refetch()}>Retry</button>
         </div>
       )}
 
-      {data && !loading && !error && !editing && (
+      {data && !isLoading && !error && !editing && (
         <div style={{ marginTop: "1.5rem" }}>
           <dl style={{ display: "grid", gridTemplateColumns: "max-content 1fr", gap: "0.5rem 1rem" }}>
             <dt style={{ fontWeight: 600 }}>Tenant ID</dt>
@@ -160,7 +151,11 @@ export function TenantSettingsView() {
       )}
 
       {data && editing && (
-        <TenantSettingsEditForm initialData={data} onDone={() => setEditing(false)} />
+        <TenantSettingsEditForm
+          tenantId={tenantId}
+          initialData={data}
+          onDone={() => setEditing(false)}
+        />
       )}
     </div>
   );

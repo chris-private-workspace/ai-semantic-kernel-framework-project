@@ -2,26 +2,28 @@
  * File: frontend/src/features/sla-dashboard/services/slaService.ts
  * Purpose: REST client for 56.3 admin sla-report endpoint.
  * Category: Frontend / sla-dashboard / services
- * Scope: Phase 57 / Sprint 57.1 US-3
+ * Scope: Phase 57 / Sprint 57.1 US-3 → Sprint 57.9 US-6 Day 4 (fetchWithAuth swap)
  *
  * Description:
  *   Wraps GET /api/v1/admin/tenants/{tenant_id}/sla-report?month=YYYY-MM.
- *   Mirrors plain-fetch + _handleResponse<T> pattern from cost-dashboard /
- *   53.5 governanceService (per Day 0 D6). Backend enforces
- *   require_admin_platform_role per D8.
+ *
+ *   Sprint 57.9 US-6 Day 4: raw `fetch` swapped to `fetchWithAuth` (Sprint 57.7
+ *   IAM JWT injection) and signal forwarded for TanStack auto-cancellation.
  *
  * Created: 2026-05-06 (Sprint 57.1 Day 2)
- * Last Modified: 2026-05-06
+ * Last Modified: 2026-05-09
  *
- * Modification History:
- *   - 2026-05-06: Initial creation (Sprint 57.1 Day 2 / US-3 — SLA Dashboard service)
+ * Modification History (newest-first):
+ *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — swap raw fetch to fetchWithAuth (JWT injection) + signal param
+ *   - 2026-05-06: Initial creation (Sprint 57.1 Day 2 / US-3)
  *
  * Related:
  *   - backend/src/api/v1/admin/sla_reports.py (endpoint)
  *   - ../types.ts (SLAReportResponse)
- *   - frontend/src/features/cost-dashboard/services/costService.ts (pattern reference)
+ *   - ../hooks/useSLAReport.ts (TanStack consumer)
  */
 
+import { fetchWithAuth } from "../../auth/services/authService";
 import type { SLAReportResponse } from "../types";
 
 const API_BASE = "/api/v1/admin";
@@ -43,10 +45,11 @@ async function _handleResponse<T>(response: Response): Promise<T> {
 export async function fetchSLAReport(
   tenantId: string,
   month: string,
+  signal?: AbortSignal,
 ): Promise<SLAReportResponse> {
-  const response = await fetch(
+  const response = await fetchWithAuth(
     `${API_BASE}/tenants/${tenantId}/sla-report?month=${encodeURIComponent(month)}`,
-    { credentials: "include" },
+    { method: "GET", signal },
   );
   return _handleResponse<SLAReportResponse>(response);
 }

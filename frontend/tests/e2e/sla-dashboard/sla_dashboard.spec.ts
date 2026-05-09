@@ -62,10 +62,11 @@ test.describe("Sprint 57.1 US-5 — SLA Dashboard e2e", () => {
   });
 
   test("error path: backend 500 shows retry; mock 200 on retry recovers", async ({ page }) => {
-    let firstCall = true;
+    // Sprint 57.9 US-6 Day 4: TanStack StrictMode double-render fix — gate
+    // success on retryClicked instead of firstCall flag (mirror cost-dashboard).
+    let retryClicked = false;
     await page.route(SLA_ENDPOINT, async (route) => {
-      if (firstCall) {
-        firstCall = false;
+      if (!retryClicked) {
         await route.fulfill({
           status: 500,
           contentType: "application/json",
@@ -86,6 +87,7 @@ test.describe("Sprint 57.1 US-5 — SLA Dashboard e2e", () => {
     const retryButton = page.getByRole("button", { name: "Retry" });
     await expect(retryButton).toBeVisible();
 
+    retryClicked = true;
     await retryButton.click();
     await expect(page.getByTestId("violations-badge")).toContainText("Violations: 0");
   });

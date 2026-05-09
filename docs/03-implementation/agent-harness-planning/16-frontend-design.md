@@ -794,29 +794,30 @@ E2E:
 ## V2 Ship Timeline (NEW Sprint 57.6 US-4 — closes AD-Reality-4-partial / R4)
 
 **Modification History (newest-first)**
+- 2026-05-09: Sprint 57.9 Day 4 — governance promoted to **shipped** (6/N counter); 5 ship → **6 ship**; TanStack Query 4-page migration noted (closes AD-Cost-Dashboard-UseQuery via Day 4 batch); Phase 57.10 priority remaining = verification (1 priority instead of 2 since governance closed); + audit log frontend now part of governance ship (sub-tab `/governance/audit-log`)
 - 2026-05-09: Sprint 57.8 Day 4 — chat-v2 promoted to **shipped** (5/N counter); 4 ship → **5 ship**; AppShell V2 architecture migration noted (architecture-first Day 0 Decision Z); Phase 57.9 priority remaining = governance + verification (2 priority instead of 3 since chat-v2 closed)
 - 2026-05-08: Sprint 57.6 Day 3 US-4 — add V2 Ship Timeline section per Decision 3 (a) (closes AD-Reality-4-partial + AD-Reality-7). Honest reality framing: Phase 57+ frontend SaaS 推進 N/12 真實 ship status, NOT V3 defer.
 
 ### Reality framing
 
-V2 重構完成（Phase 49-55,22/22 sprint）+ Phase 56-58 SaaS Stage 1 backend 3/3 已 ship。Frontend 部分按 Phase 57+ 逐個 ship。Sprint 57.5 reality check 確認 12-page claim vs 真實 ship status。Sprint 57.8 完成架構遷移 (AppShell V2 + Sidebar + UserMenu + routes.config single-source) → 後續 Phase 58.x frontend page ship 享 zero per-page architecture cost。**此 timeline 非 V3 defer**:Phase 57.x sprint 將逐個 ship 真實 page 至 Phase 58 production launch 前完成關鍵 priority。
+V2 重構完成（Phase 49-55,22/22 sprint）+ Phase 56-58 SaaS Stage 1 backend 3/3 已 ship。Frontend 部分按 Phase 57+ 逐個 ship。Sprint 57.5 reality check 確認 12-page claim vs 真實 ship status。Sprint 57.8 完成架構遷移 (AppShell V2 + Sidebar + UserMenu + routes.config single-source) → 後續 Phase 58.x frontend page ship 享 zero per-page architecture cost。Sprint 57.9 完成 TanStack Query 4-page batch migration → server cache 與 UI state 分離 (Zustand UI-only),pattern reuse 加速後續 page ship。**此 timeline 非 V3 defer**:Phase 57.x sprint 將逐個 ship 真實 page 至 Phase 58 production launch 前完成關鍵 priority。
 
-### 5 已 ship pages
+### 6 已 ship pages
 
 | Page | Sprint | Backend | Status |
 |------|--------|---------|--------|
-| cost-dashboard | 57.1 + **57.7 AppShell migrate** + **57.8 page-level wrap A1** | 56.3 cost_ledger backend | ✅ Production ship + Sprint 57.7 US-B3 AppShell + Tailwind + Sprint 57.8 US-4 page-level AppShellV2 wrap (CostOverview unwound to pure body per Day 0 A1 architecture); 9 Vitest + 2 Playwright e2e |
-| sla-dashboard | 57.1 + **57.8 page-level wrap A1** | 56.3 SLA monitor backend | ✅ Production ship + Sprint 57.8 US-4 page-level AppShellV2 wrap (D9 surgical h1 removal in SLAOverview); 7 Vitest + 2 Playwright e2e |
-| tenant-settings | 57.3 + **57.8 page-level wrap A1** | 56.1 + 57.3 admin tenants.py R+U | ✅ Production ship + Sprint 57.8 US-4 page-level AppShellV2 wrap (D9 surgical h1 removal in TenantSettingsView); 8 Vitest + 4 Playwright e2e |
-| admin-tenants list | 57.4 + **57.8 page-level wrap A1** | 57.4 admin tenants.py list endpoint | ✅ Production ship + Sprint 57.8 US-4 page-level AppShellV2 wrap; 12 Vitest + 4 Playwright e2e |
-| **chat-v2** | **57.8 US-5** | 50.2 + Cat 1+2+9+10+12 | ✅ **NEW Sprint 57.8 ship**: auth gate via Navigate (first auth-gated page consuming Sprint 57.7 IAM JWT) + AppShellV2 wrap (pageTitle="Chat (V2)") + ChatLayout body reuse + chatService swap raw fetch → fetchWithAuth + 4 Playwright e2e (auth gate / happy render / happy SSE / network error); D11 D12 surgical fixes (drop ChatLayout duplicate header + 100vh adjust) |
+| cost-dashboard | 57.1 + 57.7 AppShell + 57.8 A1 + **57.9 TanStack** | 56.3 cost_ledger backend | ✅ Production ship + Sprint 57.9 US-6 TanStack migration (useCostSummary hook + costStore reduced UI-only); 10 Vitest + 2 Playwright e2e |
+| sla-dashboard | 57.1 + 57.8 A1 + **57.9 TanStack** | 56.3 SLA monitor backend | ✅ Production ship + Sprint 57.9 US-6 TanStack migration (useSLAReport hook + slaStore reduced UI-only + Tailwind drop ALL inline styles); 8 Vitest + 2 Playwright e2e |
+| tenant-settings | 57.3 + 57.8 A1 + **57.9 TanStack mutation** | 56.1 + 57.3 admin tenants.py R+U | ✅ Production ship + Sprint 57.9 US-6 TanStack query+mutation hook (useTenantSettings + useTenantSettingsSave + tenantSettingsStore reduced UI-only + EditForm NEW tenantId prop); 10 Vitest + 4 Playwright e2e |
+| admin-tenants list | 57.4 + 57.8 A1 + **57.9 TanStack** | 57.4 admin tenants.py list endpoint | ✅ Production ship + Sprint 57.9 US-6 TanStack migration (useAdminTenants hook + adminTenantsStore reduced UI-only query state + 3 children consume hook); 13 Vitest + 4 Playwright e2e |
+| chat-v2 | 57.8 US-5 | 50.2 + Cat 1+2+9+10+12 | ✅ Sprint 57.8 ship (auth gate via Navigate first auth-gated page + AppShellV2 wrap + ChatLayout reuse + chatService fetchWithAuth + 4 Playwright e2e) |
+| **governance** | **57.9 US-1+2+3+4+5** | 53.5 (HITL backend) + 53.5 US-5+6 (audit + chain verify) | ✅ **NEW Sprint 57.9 ship**: auth gate via Navigate + AppShellV2 wrap + 2-tab nested Routes (`/governance/approvals` + `/governance/audit-log`) + Tailwind migration 3 components + TanStack hooks (useApprovals + useApprovalDecide single-source APPROVALS_QUERY_KEY) + AuditLogViewer real impl with auditService + useAuditLog + 4-field filter form draft-vs-committed + 6-col paginated table + AuditChainBadge enabled:false manual trigger 4 states; closes AD-Cost-Dashboard-UseQuery via Day 4 4-page batch; 18 Vitest (governance + audit) + 5 Playwright e2e (post-Day 4 fix authenticated via seedAuthJwt beforeEach) |
 
-### 2 priority Phase 57.9+ ship (~10-12 hr each — chat-v2 closed Sprint 57.8)
+### 1 priority Phase 57.10+ ship (~10-12 hr — governance closed Sprint 57.9)
 
 | Page | Backend ready since | Sprint candidate | Notes |
 |------|---------------------|------------------|-------|
-| governance approvals | 53.5 | Phase 57.9 (TBD per user) | Replace placeholder with real approver queue + audit log frontend view; AppShellV2 wrap free benefit per Sprint 57.8 architecture |
-| verification panel | 54.1 + 54.2 | Phase 57.10 (TBD) | Replace placeholder with verifier output + correction loop visibility; AD-Cat10-Frontend-Panel scope; AppShellV2 wrap free benefit |
+| verification panel | 54.1 + 54.2 | Phase 57.10 (TBD per user) | Replace placeholder with verifier output + correction loop visibility; AD-Cat10-Frontend-Panel scope; AppShellV2 wrap + TanStack pattern free benefit per Sprint 57.8+57.9 architecture (highest pattern-reuse ROI same as governance ship) |
 
 ### 5 deferred (Phase 57.10-57.13+ ~5-7 sprints)
 
@@ -834,8 +835,8 @@ V2 重構完成（Phase 49-55,22/22 sprint）+ Phase 56-58 SaaS Stage 1 backend 
 |--------|------|--------|-------|
 | Phase 57.7 | IAM Foundation + Frontend Foundation 1/N spike | actual ~16.5 hr | ✅ DONE — Sprint 57.7 PR #117 merged main `51162fd5`;NOT chat-v2 (architecture pivot per Day 0 Decision Z carry-forward to 57.8) |
 | Phase 57.8 | **AppShell V2 + chat-v2 real ship** | actual ~12 hr | ✅ DONE — Sprint 57.8 closeout; 5 USs (US-1+2+3+4 architecture + US-5 chat-v2 ship) |
-| Phase 57.9 | governance OR verification real ship per user instruct | ~10-12 hr | First post-architecture feature ship — AppShellV2 wrap free benefit |
-| Phase 57.10+ | governance / verification 餘下 / deferred 5 OR SOC 2 + SBOM / Status Page + APAC / Tier 1 IaC / Stage 2 SaaS | various | Per rolling planning 紀律 — user instruct each sprint scope |
+| Phase 57.9 | **governance real ship + TanStack Query 4-page batch migration** | actual ~10.5 hr | ✅ DONE — Sprint 57.9 closeout; 6 USs (US-1+2+3 governance auth gate+Tailwind+TanStack hooks + US-4+5 AuditLogViewer+AuditChainBadge real impl + US-6 4-page TanStack migration closes AD-Cost-Dashboard-UseQuery); calibration `frontend-feature-with-migration` 0.50 1st app ratio 1.00 ✅ bullseye |
+| Phase 57.10+ | verification real ship OR deferred 5 OR SOC 2 + SBOM / Status Page + APAC / Tier 1 IaC / Stage 2 SaaS | various | Per rolling planning 紀律 — user instruct each sprint scope; verification = highest pattern-reuse ROI same as governance ship |
 
 **NOT V3 defer statement** (per Sprint 57.5 Day 4.5 Decision 3 (a)):此 frontend 推進是 Phase 57.x V2 closure scope,NOT push to V3。V3 production launch (Phase 58+) 預期 2026 Q3-Q4 已具備所有 priority 3 page + 部分 deferred 5。逐個 ship 而非 big-bang launch — 與 V2 22/22 漸進式紀律一致。
 

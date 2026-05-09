@@ -50,9 +50,11 @@ describe("tenantSettingsService", () => {
       );
 
       const result = await fetchTenantSettings("tenant-uuid");
+      // Post-57.9 US-6: fetchWithAuth always sets credentials:"include" + Headers;
+      // URL contract unchanged.
       expect(fetchSpy).toHaveBeenCalledWith(
         "/api/v1/admin/tenants/tenant-uuid",
-        { credentials: "include" },
+        expect.objectContaining({ credentials: "include" }),
       );
       expect(result).toEqual(MOCK_RESPONSE);
     });
@@ -74,14 +76,16 @@ describe("tenantSettingsService", () => {
       );
 
       const result = await updateTenantSettings("tenant-uuid", { display_name: "Renamed Corp" });
+      // Post-57.9 US-6: fetchWithAuth wraps method+body+headers; assert key
+      // contract fields with objectContaining (Headers normalized to Headers
+      // object internally → tests can't compare instance equality cleanly).
       expect(fetchSpy).toHaveBeenCalledWith(
         "/api/v1/admin/tenants/tenant-uuid",
-        {
+        expect.objectContaining({
           method: "PATCH",
           credentials: "include",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ display_name: "Renamed Corp" }),
-        },
+        }),
       );
       expect(result.display_name).toBe("Renamed Corp");
     });

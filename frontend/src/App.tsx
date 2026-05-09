@@ -19,6 +19,7 @@
  *   here = single-source restored.
  *
  * Modification History:
+ *   - 2026-05-09: Sprint 57.9 US-1 — drop legacy /governance/* route + import (single-source restored)
  *   - 2026-05-10: Sprint 57.8 US-3 — refactor to consume routes.config + lazy-load
  *   - 2026-05-09: Sprint 57.7 Day 2 — add /auth/login + /auth/callback routes (US-A2)
  *   - 2026-05-07: Sprint 57.4 Day 4 — add /admin-tenants route + Home Link (US-5)
@@ -32,7 +33,6 @@ import { Link, Navigate, Route, Routes } from "react-router-dom";
 
 import CallbackPage from "./pages/auth/callback";
 import LoginPage from "./pages/auth/login";
-import GovernancePage from "./pages/governance";
 import VerificationPage from "./pages/verification";
 import { ROUTES } from "./routes.config";
 
@@ -88,9 +88,9 @@ export default function App() {
           return <Route key={r.path} path={`${r.path}/*`} element={<Component />} />;
         })}
 
-        {/* Legacy placeholder routes — preserved until Phase 57.9 + 57.10 real ship sprints
-            promote these to registry active=true (then delete from here). */}
-        <Route path="/governance/*" element={<GovernancePage />} />
+        {/* Legacy placeholder routes — preserved until Phase 57.10 real ship sprint
+            promotes verification to registry active=true (then delete from here).
+            governance promoted Sprint 57.9 (single-source restored). */}
         <Route path="/verification/*" element={<VerificationPage />} />
 
         {/* Catch-all → Home (vs explicit 404 page; revisit Phase 58.x with NotFoundPage) */}

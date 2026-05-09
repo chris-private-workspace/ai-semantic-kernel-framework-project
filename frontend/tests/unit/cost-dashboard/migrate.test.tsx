@@ -21,9 +21,11 @@
  *   - 2026-05-10: Sprint 57.8 US-4 — rewrite for A1 architecture (CostOverview
  *     no longer wraps in AppShell + no longer renders h1; pages/index.tsx owns
  *     layout via AppShellV2 pageTitle slot)
+ *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — wrap render in QueryClientProvider (CostOverview now consumes useCostSummary TanStack hook post-migration)
  *   - 2026-05-10: Initial creation (Sprint 57.7 Day 3 Tier 3)
  */
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
@@ -31,10 +33,13 @@ import { describe, expect, it } from "vitest";
 import { CostOverview } from "../../../src/features/cost-dashboard/components/CostOverview";
 
 function renderInRouter(initialPath = "/cost-dashboard") {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter initialEntries={[initialPath]}>
-      <CostOverview />
-    </MemoryRouter>,
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={[initialPath]}>
+        <CostOverview />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 

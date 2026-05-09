@@ -14,15 +14,26 @@
  *
  *   Mirrors inline-style pattern from 57.3 TenantSettingsView (no Tailwind).
  *
+ *   Sprint 57.9 US-6 Day 4: items + loading now sourced from useAdminTenants
+ *   TanStack hook (was store.items + store.loading); reset still calls
+ *   store.reset (TanStack auto-refetches via queryKey change).
+ *
  * Created: 2026-05-07 (Sprint 57.4 Day 3)
+ * Last Modified: 2026-05-09
+ *
+ * Modification History (newest-first):
+ *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — items+loading from useAdminTenants hook
+ *   - 2026-05-07: Initial creation (Sprint 57.4 Day 3)
  *
  * Related:
- *   - ../store/adminTenantsStore.ts (consumes items + loading)
+ *   - ../hooks/useAdminTenants.ts (server cache post-migration)
+ *   - ../store/adminTenantsStore.ts (UI-only query state post-migration)
  *   - ../types.ts (TenantState + TenantPlan badge color helpers)
  */
 
 import { useNavigate } from "react-router-dom";
 
+import { useAdminTenants } from "../hooks/useAdminTenants";
 import { useAdminTenantsStore } from "../store/adminTenantsStore";
 import { TenantPlan, TenantState, type TenantListItem } from "../types";
 
@@ -97,7 +108,9 @@ function TenantRow({ tenant, onView }: RowProps): JSX.Element {
 
 export function TenantListTable(): JSX.Element {
   const navigate = useNavigate();
-  const { items, loading, reset, loadData } = useAdminTenantsStore();
+  const reset = useAdminTenantsStore((s) => s.reset);
+  const { data, isLoading } = useAdminTenants();
+  const items = data?.items ?? [];
 
   const handleView = (id: string): void => {
     navigate(`/tenant-settings/?tenant_id=${encodeURIComponent(id)}`);
@@ -105,10 +118,10 @@ export function TenantListTable(): JSX.Element {
 
   const handleReset = (): void => {
     reset();
-    void loadData();
+    // TanStack auto-refetches via queryKey change after store.reset
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div role="status" aria-label="Loading tenants" style={{ padding: "1rem" }}>
         {[0, 1, 2, 3, 4].map((i) => (

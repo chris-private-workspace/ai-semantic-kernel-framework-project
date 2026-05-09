@@ -42,12 +42,18 @@ const renamedTenant = {
 
 test.describe("Sprint 57.3 US-5 — Tenant Settings Edit Form e2e", () => {
   test("happy path: edit display_name, save, see new value in View", async ({ page }) => {
-    // Simple mock: GET returns initialTenant; PATCH returns renamedTenant.
-    // Store updates data from PATCH response → View re-renders with new value
-    // without needing a second GET (per tenantSettingsStore.save() behavior).
+    // Sprint 57.9 US-6 Day 4: post-mutation invalidation triggers a refetch
+    // (useTenantSettingsSave.onSuccess invalidates TENANT_SETTINGS_QUERY_KEY_BASE),
+    // so subsequent GETs after the PATCH must return the renamed tenant for
+    // the View to reflect the change. Track patchSeen so:
+    //   GET pre-PATCH → initialTenant
+    //   PATCH → renamedTenant
+    //   GET post-PATCH (invalidate refetch) → renamedTenant
+    let patchSeen = false;
     await page.route(TENANT_ENDPOINT, async (route) => {
       const method = route.request().method();
       if (method === "PATCH") {
+        patchSeen = true;
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -57,7 +63,7 @@ test.describe("Sprint 57.3 US-5 — Tenant Settings Edit Form e2e", () => {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
-          body: JSON.stringify(initialTenant),
+          body: JSON.stringify(patchSeen ? renamedTenant : initialTenant),
         });
       }
     });

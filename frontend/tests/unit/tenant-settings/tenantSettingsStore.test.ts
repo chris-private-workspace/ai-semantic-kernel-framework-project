@@ -1,67 +1,45 @@
 /**
  * File: frontend/tests/unit/tenant-settings/tenantSettingsStore.test.ts
- * Purpose: Unit test for tenantSettingsStore — loadData + save action transitions.
+ * Purpose: Unit test for tenantSettingsStore (UI-only post-Sprint 57.9 US-6 migration).
  * Category: Frontend / tests / unit / tenant-settings
- * Scope: Phase 57 / Sprint 57.3 US-3
+ * Scope: Phase 57 / Sprint 57.3 US-3 → Sprint 57.9 US-6 Day 4 (rewrite for UI-only API)
  *
  * Created: 2026-05-07 (Sprint 57.3 Day 3)
+ * Last Modified: 2026-05-09
+ *
+ * Modification History:
+ *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — rewrite for UI-only store API (drop loadData/save)
+ *   - 2026-05-07: Initial creation (Sprint 57.3 Day 3)
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
-import * as svc from "../../../src/features/tenant-settings/services/tenantSettingsService";
 import { useTenantSettingsStore } from "../../../src/features/tenant-settings/store/tenantSettingsStore";
-import {
-  TenantPlan,
-  TenantState,
-  type TenantSettingsResponse,
-} from "../../../src/features/tenant-settings/types";
 
-const MOCK_DATA: TenantSettingsResponse = {
-  id: "00000000-0000-0000-0000-000000000001",
-  code: "ACME",
-  display_name: "Acme Corp",
-  state: TenantState.ACTIVE,
-  plan: TenantPlan.ENTERPRISE,
-  provisioning_progress: {},
-  onboarding_progress: {},
-  meta_data: {},
-  created_at: "2026-01-01T00:00:00Z",
-  updated_at: "2026-05-07T00:00:00Z",
-};
-
-describe("tenantSettingsStore", () => {
+describe("tenantSettingsStore (UI-only post-57.9 US-6)", () => {
   beforeEach(() => {
     useTenantSettingsStore.getState().reset();
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("loadData success transitions: setTenantId → loadData → data populated", async () => {
-    vi.spyOn(svc, "fetchTenantSettings").mockResolvedValueOnce(MOCK_DATA);
-
+  it("setTenantId updates tenantId field", () => {
     useTenantSettingsStore.getState().setTenantId("tenant-uuid");
     expect(useTenantSettingsStore.getState().tenantId).toBe("tenant-uuid");
-
-    await useTenantSettingsStore.getState().loadData();
-    const state = useTenantSettingsStore.getState();
-    expect(state.loading).toBe(false);
-    expect(state.data).toEqual(MOCK_DATA);
-    expect(state.error).toBeNull();
   });
 
-  it("save success: optimistic update → data replaced from server response", async () => {
-    const updated = { ...MOCK_DATA, display_name: "Renamed" };
-    vi.spyOn(svc, "updateTenantSettings").mockResolvedValueOnce(updated);
+  it("reset clears tenantId back to null", () => {
+    useTenantSettingsStore.getState().setTenantId("tenant-uuid");
+    useTenantSettingsStore.getState().reset();
+    expect(useTenantSettingsStore.getState().tenantId).toBeNull();
+  });
 
-    useTenantSettingsStore.setState({ tenantId: "tenant-uuid", data: MOCK_DATA });
-    await useTenantSettingsStore.getState().save({ display_name: "Renamed" });
-
+  it("store API surface is UI-only (no data/loading/error/save/saving/saveError/loadData)", () => {
     const state = useTenantSettingsStore.getState();
-    expect(state.saving).toBe(false);
-    expect(state.saveError).toBeNull();
-    expect(state.data?.display_name).toBe("Renamed");
+    expect(state).not.toHaveProperty("data");
+    expect(state).not.toHaveProperty("loading");
+    expect(state).not.toHaveProperty("error");
+    expect(state).not.toHaveProperty("save");
+    expect(state).not.toHaveProperty("saving");
+    expect(state).not.toHaveProperty("saveError");
+    expect(state).not.toHaveProperty("loadData");
   });
 });
