@@ -266,69 +266,46 @@ Related: sprint-57-11-plan.md
 
 ## Day 3 — US-4 Complete + US-5 Inline Panel
 
-### 3.1 US-4: VerificationList full implementation
+### 3.1 US-4: VerificationList full implementation ✅
 
-- [ ] Replace stub with full implementation:
-  - useVerificationRecent hook consumption
-  - Filter form: 3 fields (session_id input / verifier_type dropdown / passed dropdown {Any / Passed / Failed})
-  - Apply / Reset buttons (no debounce per AP-6)
-  - Paginated table: 50 rows default; 6 columns (timestamp / session_id truncated / verifier_name / VerifierTypeBadge / passed badge / score / reason snippet 80 chars)
-  - Click row → navigate to `/verification/timeline?session_id={id}`
-  - Empty state with Reset Filters button
-  - Loading skeleton (5-row mirror Sprint 57.9 ApprovalList)
-  - Error retry UX with `retryClicked` flag pattern (Sprint 57.9 D-PRE-15)
-  - Prev / Next pagination footer
-- [ ] Create `frontend/tests/unit/verification/VerificationList.test.tsx` (3 tests: renders + filter form + click row navigates)
-- [ ] DoD: 3 NEW Vitest pass; Vitest 100 → 103+
+- [x] Replace stub with full implementation: useVerificationRecent + 3-field filter form (session_id input / verifier_type dropdown / passed dropdown) + Apply/Reset buttons (no debounce per AP-6) + 6-col paginated table (50 rows; click row → navigate /verification/timeline?session_id=...) + empty state + 5-row loading skeleton + error retry UX (retryClicked per Sprint 57.9 D-PRE-15) + Prev/Next pagination footer ✅
+- [x] VerificationList.test.tsx — 3 tests (renders + empty state + click navigates) ✅
+- [x] DoD: 3 NEW Vitest pass; Vitest 102 → 105 ✅
 
-### 3.2 US-4: CorrectionTraceView full implementation
+### 3.2 US-4: CorrectionTraceView full implementation ✅
 
-- [ ] Replace stub with full implementation:
-  - useCorrectionTrace hook consumption (session_id from useSearchParams)
-  - Vertical timeline UI: entries grouped by turn_index then sorted by correction_attempt
-  - Each entry card: verifier_name + VerifierTypeBadge + passed/failed icon (✅/❌) + reason (if failed) + suggested_correction (if failed) + score (if present) + correction_attempt indicator
-  - Visual distinction: passed entries = green left border; failed = red left border
-  - Empty state: "No correction trace for session {id}" if 404 / null sessionId
-- [ ] Create `frontend/tests/unit/verification/CorrectionTraceView.test.tsx` (3 tests: renders timeline + grouped by turn / 404 empty / null sessionId)
-- [ ] DoD: 3 NEW Vitest pass; Vitest 103 → 106+
+- [x] Replace stub with full implementation: useCorrectionTrace + useSearchParams session_id + entries grouped by turn_index (Map chunked) + per-entry card (icon + name + VerifierTypeBadge + reason + suggested_correction + score + correction_attempt indicator) + visual distinction (passed green / failed red left border) + 3 empty/missing states ✅
+- [x] CorrectionTraceView.test.tsx — 3 tests (renders timeline grouped by turn / 404 empty / no-session) ✅
+- [x] DoD: 3 NEW Vitest pass; Vitest 105 → 108 ✅
 
-### 3.3 US-5: chatStore.ts verifications slice + reducers
+### 3.3 US-5: chatStore.ts verifications slice + reducers ✅
 
-- [ ] Modify `frontend/src/features/chat-v2/store/chatStore.ts`:
-  - Add `verifications: VerificationEvent[]` to ChatStore interface
-  - Add `appendVerification(event: VerificationEvent)` reducer
-  - Add `clearVerifications()` reducer (called on session reset / new chat)
-- [ ] Update `frontend/tests/unit/chat-v2/chatStore.test.ts` with 2 NEW tests (appendVerification + clearVerifications)
-- [ ] DoD: 2 NEW Vitest pass; Vitest 106 → 108+
+- [x] Modify `frontend/src/features/chat_v2/store/chatStore.ts` (D-PRE-1 corrected path: chat_v2 underscore): add `verifications: VerificationEvent[]` + appendVerification reducer + clearVerifications reducer + 2 NEW mergeEvent cases for verification_passed / verification_failed ✅
+- [x] chatStore.verifications.test.ts — 3 tests (appendVerification + clearVerifications + mergeEvent SSE branch) ✅
+- [x] DoD: 3 NEW Vitest pass; Vitest 108 → 111 ✅
 
-### 3.4 US-5: useChatStream.ts SSE event branches
+### 3.4 US-5 + AD-Frontend-SSE-Silent-Drop-Fix bundle: types.ts + KNOWN events Set ✅
 
-- [ ] Modify `frontend/src/features/chat-v2/hooks/useChatStream.ts`:
-  - Add 2 SSE event type branches: `verification_passed` + `verification_failed`
-  - Map SSE payload → VerificationEvent → call `chatStore.appendVerification()`
-  - Verify Day 0 探勘 confirmed iteration pattern (if/switch based on event.type)
-- [ ] Add 1 Vitest test in `frontend/tests/unit/chat-v2/useChatStream.test.ts` (or new file): SSE verification_passed routes to store
-- [ ] DoD: +1 Vitest pass; Vitest 108 → 109+
+- [x] D-PRE-2 + D-PRE-8 resolved: SSE event-type dispatch in chatStore.mergeEvent (not useLoopEventStream hook). CONVENTION.md §7 codified 3-edit checklist applied:
+  - chat_v2/types.ts: add VerificationPassedEvent + VerificationFailedEvent types to LoopEvent discriminated union ✅
+  - chat_v2/types.ts: add "verification_passed" + "verification_failed" to KNOWN_LOOP_EVENT_TYPES Set ✅
+  - chat_v2/store/chatStore.ts: 2 NEW mergeEvent cases (above §3.3) ✅
+- [x] DoD: SSE silent-drop fixed; chatStore mergeEvent test verifies routing ✅ (covered in §3.3 test 3)
 
-### 3.5 US-5: VerificationPanel component + chat-v2 mount
+### 3.5 US-5: VerificationPanel component + chat-v2 mount ✅
 
-- [ ] Create `frontend/src/features/verification/components/VerificationPanel.tsx`:
-  - Subscribes to chatStore selector for verifications array
-  - Compact card per entry: verifier_name + VerifierTypeBadge + passed/failed icon + reason snippet if failed + correction_attempt counter
-  - Hidden when verifications.length === 0 (no empty card; conditional render at top)
-  - Tailwind utility classes
-- [ ] Modify `frontend/src/pages/chat-v2/index.tsx`:
-  - Mount `<VerificationPanel />` inside ChatLayout below event stream (exact slot per Day 0 探勘 D-PRE-N finding)
-- [ ] Create `frontend/tests/unit/verification/VerificationPanel.test.tsx` (3 tests: renders 2 events / hidden when empty / VerifierTypeBadge integration)
-- [ ] DoD: 3 NEW Vitest pass; Vitest 109 → 112+
+- [x] Create VerificationPanel.tsx — subscribes to chatStore.verifications + compact per-entry card (verifier_name + VerifierTypeBadge + pass/fail icon + reason snippet if failed + suggested_correction + score) + hidden when empty (returns null) ✅
+- [x] Modify pages/chat-v2/index.tsx — mount <VerificationPanel /> inside ChatLayout between MessageList and InputBar ✅
+- [x] VerificationPanel.test.tsx — 3 tests (hidden empty / renders 2 entries with badge integration / score display) ✅
+- [x] DoD: 3 NEW Vitest pass; Vitest 111 → 114 ✅
 
 ### 3.6 Day 3 wrap
 
-- [ ] Run frontend Vitest: `cd frontend && npm run test -- --run` → 112+ pass
-- [ ] Run tsc strict: 0 errors
-- [ ] Run ESLint: silent
-- [ ] Run Vite build: `cd frontend && npm run build` → check main chunk ≤ 285 kB
-- [ ] Commit Day 3: `git add frontend/ && git commit -m "feat(sprint-57-11, US-4 complete + US-5): VerificationList + CorrectionTraceView + VerificationPanel + chatStore + useChatStream"`
+- [x] Run frontend Vitest: 36 files / **119 passed** (Day 3 baseline 107 → 119; +12 surpasses 112+ §3.6 target by 7) ✅
+- [x] Run tsc --noEmit: 0 errors ✅
+- [x] Run ESLint: silent ✅
+- [⚠️] Run Vite build: main chunk **294.96 kB** > 285 kB §3.6 ceiling by ~10 kB → AD-Bundle-Size-285kB-Carryover: Day 4 §4.1 lazy-load via routes.config.ts (mirror governance/audit-log pattern) expected to split verification chunk + drop main back under ceiling
+- [x] Commit Day 3: ✅ commit `77e5a333` (10 files / ~1100 ins) — `feat(sprint-57-11, US-4 complete + US-5): VerificationList + CorrectionTraceView + VerificationPanel + chatStore + AD-Frontend-SSE-Silent-Drop-Fix bundle`
 
 ---
 

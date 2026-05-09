@@ -8,6 +8,7 @@ Created: 2026-05-09 (Day 0 stub awaiting Day 0 三-prong execution + commit)
 Last Modified: 2026-05-10
 
 Modification History (newest-first):
+    - 2026-05-10: Day 3 complete — US-4 full + US-5 + AD-Frontend-SSE-Silent-Drop-Fix; 12 Vitest; commit `77e5a333`
     - 2026-05-10: Day 2 complete — US-3+US-4 frontend infra + page wrap + 14 Vitest; commit `9ea3f29b`
     - 2026-05-10: Day 1 complete — US-1+US-2 backend bundle; 13 new tests; commit `8a0ecaf3`
     - 2026-05-10: Day 0 三-prong executed — 9 drift findings (0🔴/3🟠/6🟢); proceed Day 1
@@ -254,7 +255,49 @@ Related:
 
 ## Day 3 — US-4 Complete + US-5 Inline Panel (含 D-PRE-13 SSE Silent Drop Fix bundle)
 
-**Status**: ⏳ Not started
+**Status**: ✅ Complete (2026-05-10)
+
+### Day 3 Execution Summary
+
+**Commits**: `77e5a333` (Day 3 frontend bundle, 10 files / ~1100 insertions)
+
+**US-4 deliverables**:
+- `frontend/src/features/verification/components/VerificationList.tsx` — full impl (filter form + paginated table + click-row navigate + retryClicked + Prev/Next)
+- `frontend/src/features/verification/components/CorrectionTraceView.tsx` — full impl (useSearchParams + grouped-by-turn timeline + 3 empty/missing states)
+
+**US-5 deliverables (含 AD-Frontend-SSE-Silent-Drop-Fix bundle)**:
+- `frontend/src/features/chat_v2/types.ts` — add VerificationPassedEvent + VerificationFailedEvent types to LoopEvent discriminated union + add to KNOWN_LOOP_EVENT_TYPES Set per CONVENTION.md §7 3-edit checklist
+- `frontend/src/features/chat_v2/store/chatStore.ts` — verifications slice + appendVerification + clearVerifications + 2 NEW mergeEvent cases (verification_passed / verification_failed)
+- `frontend/src/features/verification/components/VerificationPanel.tsx` — NEW inline panel component
+- `frontend/src/pages/chat-v2/index.tsx` — mount VerificationPanel between MessageList and InputBar
+
+**Tests added** (12 new Vitest):
+- chatStore.verifications.test.ts (3 tests: appendVerification + clearVerifications + mergeEvent SSE branch)
+- VerificationPanel.test.tsx (3 tests: hidden empty + renders 2 entries with badge / score display)
+- VerificationList.test.tsx (3 tests: filter+table render + empty state + click-row navigate)
+- CorrectionTraceView.test.tsx (3 tests: timeline grouped by turn + 404 empty + no-session state)
+
+**Day 3 acceptance**:
+- 12/12 new Vitest tests pass ✅
+- Vitest baseline: 107 → **119** (+12; surpassed §3.6 target 112+ by 7) ✅
+- tsc --noEmit 0 errors ✅
+- ESLint silent ✅
+- Vite build: main chunk **294.96 kB** ⚠️ (over 285 kB §3.6 ceiling by ~10 kB; carryover to Day 4 §4.1 lazy-load fix)
+
+**D-PRE-2 + D-PRE-8 closures**:
+- SSE event-type dispatch via chatStore.mergeEvent + KNOWN_LOOP_EVENT_TYPES Set per CONVENTION.md §7 (not in useLoopEventStream hook; hook stays thin pass-through)
+
+**AD-Bundle-Size-285kB-Carryover (Day 4)**:
+- Main chunk 294.96 kB (+10 kB over Day 3 ceiling)
+- Day 4 §4.1 routes.config.ts wire-up: switch `active: false` → `active: true` AND use `component: lazy(() => import("./pages/verification"))` pattern (mirror Sprint 57.9 governance/audit-log lazy split)
+- Expected drop to ~270 kB main + ~25 kB verification chunk after lazy-load
+
+**Time spent**: ~2-2.5 hr (committed ~5-6 hr per plan §3 estimate; ~50% under budget — sustained velocity from Day 1+2)
+
+**Day 4 next**:
+- §4.1 routes.config.ts wire-up + lazy-load (resolves AD-Bundle-Size-285kB-Carryover)
+- §4.2 verification e2e Playwright spec
+- §4.3 Sprint closeout retrospective + AD register
 
 ---
 
