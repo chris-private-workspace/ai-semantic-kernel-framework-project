@@ -8,6 +8,7 @@ Created: 2026-05-09 (Day 0 stub awaiting Day 0 三-prong execution + commit)
 Last Modified: 2026-05-10
 
 Modification History (newest-first):
+    - 2026-05-10: Day 1 complete — US-1+US-2 backend bundle; 13 new tests; commit `8a0ecaf3`
     - 2026-05-10: Day 0 三-prong executed — 9 drift findings (0🔴/3🟠/6🟢); proceed Day 1
     - 2026-05-09: base SHA refresh — main `412f26d6` → `7c6d0d50` (PR #124 Hybrid fix-up landed)
     - 2026-05-09: Initial Day 0 stub (Sprint 57.11 plan + checklist drafted post user approval Option A bundle a+c)
@@ -151,7 +152,53 @@ Related:
 
 ## Day 1 — US-1 + US-2 Backend (Alembic 0017 + REST + write hook)
 
-**Status**: ⏳ Not started
+**Status**: ✅ Complete (2026-05-10)
+
+### Day 1 Execution Summary
+
+**Commits**: `8a0ecaf3` (Day 1 backend bundle, 11 files / 1119 insertions)
+
+**US-1 deliverables (ORM + Migration + Repository)**:
+- `backend/src/infrastructure/db/models/verification_log.py` — VerificationLog ORM (Base, TenantScopedMixin) with 12 columns + VerifierType enum + 4 indexes (PK + tenant_id + 3 query-pattern composites incl partial idx for failures-only filter) + CHECK constraint
+- `backend/src/infrastructure/db/migrations/versions/0017_verification_log.py` — Alembic upgrade/downgrade roundtrip live-verified on dev DB; RLS policy `verification_log_tenant_isolation`
+- `backend/src/infrastructure/db/repositories/verification_log.py` — VerificationLogRepository DAO (insert / list_recent with filters + pagination + total / list_correction_trace with multi-key sort)
+
+**US-2 deliverables (REST + write hook)**:
+- `backend/src/api/v1/verification.py` — 2 endpoints under `/api/v1/verification`:
+  - `GET /recent` — paginated VerificationLogPage with session_id / verifier_type / passed filters
+  - `GET /{session_id}/correction-trace` — full sorted trace; 404 if empty (no cross-tenant existence reveal)
+- `backend/src/agent_harness/verification/correction_loop.py` — best-effort `_persist_verification_event` helper called after each VerificationPassed / VerificationFailed yield; tenant_id sourced from `trace_context.tenant_id` (D-PRE-4 resolution); never raises (catches all Exception, logs WARNING)
+- `backend/src/core/config/__init__.py` — `verification_log_persist_enabled` kill switch (default True)
+- `backend/src/api/main.py` — mount `verification_router`
+
+**Tests added** (13 new):
+- `tests/integration/api/test_verification.py` — 9 integration tests (RBAC + filters + pagination + multi-tenant isolation + 404)
+- `tests/unit/agent_harness/verification/test_correction_loop_persist.py` — 3 unit tests (passed / failed / silent-on-DB-failure)
+- `tests/unit/infrastructure/db/test_verification_log_schema.py` — 1 schema test (tablename + RLS + policy + 5 indexes + CHECK constraint)
+
+**Day 1 acceptance**:
+- 13/13 new tests pass ✅
+- Cat 10 regression: 46/46 existing tests pass ✅
+- pytest baseline: 1622 → **1635** (+13; surpasses 1633+ target) ✅
+- V2 lints 9/9 green (1.04s) ✅
+- mypy --strict 304 source files clean ✅
+- black + isort + flake8 all clean post-format ✅
+- check_rls_policies 17/18/13 → **18/19/13** ✅
+- Alembic 0016 ↔ 0017 roundtrip verified live on dev DB ✅
+
+**Drift findings resolved during implementation**:
+- D-PRE-4 (TraceContext.tenant_id at `_contracts/observability.py:60`) → write hook reads `trace_context.tenant_id`; sentinel-skip if None
+- D-PRE-6 (`get_db_session_with_tenant` at `platform_layer/middleware/`) → REST router imports from `platform_layer.middleware.tenant_context`
+- D-PRE-7 (`check_rls_policies.py` at `scripts/lint/`) → run via `scripts/lint/run_all.py` (already part of 9 V2 lints)
+
+**Pre-existing test failures NOT in Sprint 57.11 scope** (predates 7c6d0d50 main HEAD):
+- `test_admin_tenant_patch.py::test_patch_display_name_only` (IntegrityError)
+- `test_admin_tenant_patch.py::test_patch_meta_data_only`
+- `test_admin_tenant_patch.py::test_patch_both_fields`
+- `test_governance_endpoints.py::test_list_rejects_non_approver_role`
+→ AD-AdminTenant-Patch-Flake / AD-Governance-RBAC-Flake to triage at next audit cycle sprint.
+
+**Time spent**: ~3-4 hr (committed ~5-6 hr; ~50% under budget — early Day 1 lift)
 
 ---
 

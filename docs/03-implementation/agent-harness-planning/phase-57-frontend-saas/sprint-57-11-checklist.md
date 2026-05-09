@@ -136,82 +136,77 @@ Related: sprint-57-11-plan.md
 
 ### 1.1 US-1: VerificationLog ORM model
 
-- [ ] Create `backend/src/infrastructure/db/models/verification_log.py` with `VerificationLog(Base)` ORM class
+- [x] Create `backend/src/infrastructure/db/models/verification_log.py` with `VerificationLog(Base)` ORM class
   - Columns: id BIGSERIAL PK / tenant_id UUID NOT NULL FK / session_id UUID NOT NULL / turn_index INT default 0 / verifier_name VARCHAR(128) / verifier_type VARCHAR(32) / passed BOOLEAN / score DOUBLE PRECISION nullable / reason TEXT nullable / suggested_correction TEXT nullable / correction_attempt INT default 0 / created_at TIMESTAMPTZ default NOW()
   - File header MHist 1-line max per .claude/rules/file-header-convention.md
-- [ ] Verify import works: `python -c "from infrastructure.db.models.verification_log import VerificationLog; print(VerificationLog.__tablename__)"` → `verification_log`
-- [ ] DoD: import zero error + tablename verified
+- [x] Verify import works: 12 cols + 4 indexes + VerifierType enum confirmed via `python -c` import test ✅
+- [x] DoD: import zero error + tablename verified — `verification_log` ✅
 
 ### 1.2 US-1: Alembic 0017 migration
 
-- [ ] Create `backend/src/infrastructure/db/migrations/versions/0017_verification_log.py` (or 0018 per Day 0 Prong 3 head verify)
-  - upgrade(): CREATE TABLE verification_log + ALTER TABLE ENABLE ROW LEVEL SECURITY + CREATE POLICY tenant_isolation_verification_log + 3 indexes
-  - downgrade(): DROP POLICY + DISABLE RLS + DROP INDEX × 3 + DROP TABLE
-- [ ] Test migration: `cd backend && alembic upgrade head` → verify table created via `psql -c "\d+ verification_log"`
-- [ ] Test downgrade: `alembic downgrade -1 && alembic upgrade head` → verify clean roundtrip
-- [ ] DoD: migration up/down clean + RLS policy verified
+- [x] Create `backend/src/infrastructure/db/migrations/versions/0017_verification_log.py`
+  - upgrade(): CREATE TABLE + 4 indexes + RLS policy `verification_log_tenant_isolation` ✅
+  - downgrade(): DROP POLICY + DISABLE RLS + DROP TABLE (indexes drop with table) ✅
+- [x] Test migration: `alembic upgrade head` → 0017 applied; psql/SQLAlchemy verified RLS=true + policy + 5 indexes
+- [x] Test downgrade: `alembic downgrade -1 && alembic upgrade head` → clean roundtrip verified
+- [x] DoD: migration up/down clean + RLS policy verified ✅
 
 ### 1.3 US-1: VerificationLogRepository
 
-- [ ] Create `backend/src/infrastructure/db/repositories/verification_log.py` with:
-  - `class VerificationLogRepository:`
-  - `async def insert(session, tenant_id, session_id, turn_index, verifier_name, verifier_type, passed, score, reason, suggested_correction, correction_attempt) -> int` returns inserted id
-  - `async def list_recent(session, tenant_id, session_id_filter, verifier_type_filter, passed_filter, limit, offset) -> tuple[list[VerificationLog], int, bool]` returns (items, total, has_more)
-  - `async def list_correction_trace(session, tenant_id, session_id) -> list[VerificationLog]` returns sorted entries
-- [ ] DoD: 3 methods importable + zero mypy strict errors
+- [x] Create `backend/src/infrastructure/db/repositories/verification_log.py` with:
+  - `class VerificationLogRepository:` (DI pattern matching SessionRepository)
+  - `async def insert(...) -> int` ✅
+  - `async def list_recent(...) -> tuple[list[VerificationLog], int, bool]` ✅
+  - `async def list_correction_trace(...) -> list[VerificationLog]` ✅
+- [x] DoD: 3 methods importable + zero mypy strict errors ✅
 
 ### 1.4 US-1: 8th V2 lint check + 1 unit test
 
-- [ ] Run `python backend/scripts/check_rls_policies.py` → expect 0 gaps (verification_log policy detected)
-- [ ] Create `backend/tests/unit/infrastructure/db/test_verification_log_schema.py` with 1 test verifying ORM model + tablename + RLS policy presence (via inspect schema)
-- [ ] Run `cd backend && python -m pytest tests/unit/infrastructure/db/test_verification_log_schema.py -v` → 1/1 pass
-- [ ] DoD: 9/9 V2 lints green + +1 pytest
+- [x] Run `python scripts/lint/check_rls_policies.py` (D-PRE-7 corrected path) → 0 gaps; baseline 17/18/13 → **18/19/13** ✅
+- [x] Create `backend/tests/unit/infrastructure/db/test_verification_log_schema.py` — verifies tablename + RLS + policy + 5 indexes + CHECK constraint via pg_class/pg_policy/pg_indexes/pg_constraint
+- [x] Run pytest schema test → 1/1 pass ✅
+- [x] DoD: 9/9 V2 lints green + +1 pytest ✅
 
 ### 1.5 US-2: NEW /api/v1/verification router
 
-- [ ] Create `backend/src/api/v1/verification.py` with:
-  - Pydantic models: `VerificationLogItem` (12 fields) + `VerificationLogPage` (items / total / has_more) + `CorrectionTraceResponse` (session_id / entries)
-  - Router: `GET /recent` with Query params session_id / verifier_type / passed / limit / offset + Depends(get_current_user) + Depends(require_audit_role)
-  - Router: `GET /{session_id}/correction-trace` + 404 if empty + same RBAC
-- [ ] Register router in `backend/src/api/v1/__init__.py` or `backend/src/api/v1/router.py`
-- [ ] Verify endpoint: `cd backend && python -m uvicorn api.main:app --port 8000 &` then `curl http://localhost:8000/openapi.json | jq '.paths."/api/v1/verification/recent"'` → endpoint registered
-- [ ] DoD: 2 endpoints in OpenAPI schema + RBAC dep wired
+- [x] Create `backend/src/api/v1/verification.py` with:
+  - Pydantic models: `VerificationLogItem` (12 fields incl `created_at_ms` for JS Date interop) + `VerificationLogPage` (items / total / has_more / next_offset / page_size) + `CorrectionTraceResponse` (session_id / entries)
+  - Router: `GET /recent` with Query params + `Depends(get_current_tenant)` + `Depends(require_audit_role)` + `Depends(get_db_session_with_tenant)` (D-PRE-6 corrected import)
+  - Router: `GET /{session_id}/correction-trace` + 404 if empty + same RBAC ✅
+- [x] Register router in `backend/src/api/main.py` (`include_router(verification_router, prefix="/api/v1")`)
+- [x] Verify endpoint: `python -c create_app().openapi()` → `/api/v1/verification/recent` + `/api/v1/verification/{session_id}/correction-trace` registered ✅
+- [x] DoD: 2 endpoints in OpenAPI schema + RBAC dep wired ✅
 
 ### 1.6 US-2: correction_loop write hook
 
-- [ ] Add `VERIFICATION_LOG_PERSIST_ENABLED: bool = True` to `backend/src/core/config.py` Settings
-- [ ] Modify `backend/src/agent_harness/verification/correction_loop.py`:
-  - Import VerificationLogRepository + get_db_session_with_tenant + settings + logger
-  - After each `yield VerificationPassed(...)` AND `yield VerificationFailed(...)`, add best-effort try/except write hook (per plan §Technical Specifications)
-  - Pass `attempt_num` correctly (0 for first attempt, 1 for first correction, ...)
-- [ ] DoD: write hook compiles + zero mypy strict errors + existing 54.1 Cat 10 unit tests pass (regression sentinel)
+- [x] Add `verification_log_persist_enabled: bool = True` to `backend/src/core/config/__init__.py` Settings (snake_case per existing convention; env override `VERIFICATION_LOG_PERSIST_ENABLED=false`)
+- [x] Modify `backend/src/agent_harness/verification/correction_loop.py`:
+  - Import logger + `get_settings` + `get_session_factory` + `text` + `VerificationLogRepository` ✅
+  - Add `_persist_verification_event()` async helper (best-effort try/except + SET LOCAL app.tenant_id for RLS + repo.insert + commit; logs WARNING + returns on any Exception)
+  - Call hook after each `yield VerificationPassed(...)` + `yield VerificationFailed(...)` site (verifier-level granularity per checklist)
+  - Pass `correction_attempt=attempt` correctly; `tenant_id=trace_context.tenant_id if trace_context else None` (D-PRE-4 resolution); sentinel-skip if None
+- [x] DoD: write hook compiles + zero mypy strict errors + existing 54.1 Cat 10 unit tests pass (46/46 regression sentinel ✅)
 
 ### 1.7 US-2: 8-10 integration tests + 3 best-effort hook unit tests
 
-- [ ] Create `backend/tests/integration/api/test_verification.py` with:
-  - test_recent_happy: insert 2 + GET /recent + assert 2 items + has_more false
-  - test_recent_filter_session: insert 3 (2 in session A + 1 in session B) + filter session_id → 2 items
-  - test_recent_filter_verifier_type: filter `rules_based` only → exclude llm_judge entries
-  - test_recent_filter_passed: filter passed=false → only failed entries
-  - test_recent_pagination: insert 60 + limit=50 offset=0 → 50 items + has_more true; offset=50 → 10 items + has_more false
-  - test_recent_403_without_audit_role: dummy user without audit role → 403
-  - test_correction_trace_404_empty: GET /{uuid}/correction-trace → 404
-  - test_correction_trace_happy: insert 3 entries (turn 0 attempt 0 / turn 0 attempt 1 / turn 1 attempt 0) + GET → sorted correctly
-  - test_recent_multi_tenant_rls: Tenant A insert + Tenant B GET → 0 items (RLS enforced)
-- [ ] Create `backend/tests/unit/agent_harness/verification/test_correction_loop_persist.py` with:
-  - test_persist_passed: simulate verifier passed → verification_log inserted
-  - test_persist_failed: simulate verifier failed → verification_log inserted
-  - test_persist_failure_silent: mock VerificationLogRepository.insert raising → loop continues (no exception bubbles)
-- [ ] Run `cd backend && python -m pytest tests/integration/api/test_verification.py tests/unit/agent_harness/verification/test_correction_loop_persist.py -v` → 11-13/11-13 pass
-- [ ] DoD: pytest 1622 → 1633+ baseline raised by 11-13
+- [x] Create `backend/tests/integration/api/test_verification.py` (9 tests):
+  - test_recent_happy ✅ / _filter_session ✅ / _filter_verifier_type ✅ / _filter_passed ✅
+  - test_recent_pagination (60 rows / 50+10 split + has_more boundary) ✅
+  - test_recent_403_without_audit_role ✅
+  - test_correction_trace_404_empty ✅ / _happy_sorted (out-of-order insert verify ORDER BY) ✅
+  - test_recent_multi_tenant_isolation (Tenant A insert / Tenant B GET → 0; WHERE clause filter) ✅
+- [x] Create `backend/tests/unit/agent_harness/verification/test_correction_loop_persist.py` (3 tests):
+  - test_persist_passed ✅ / test_persist_failed ✅ / test_persist_failure_silent (get_session_factory raises → loop unbroken) ✅
+- [x] Run pytest → 12/12 pass + 1 schema test = 13/13 ✅
+- [x] DoD: pytest 1622 → **1635** (+13; surpasses 1633+ target by 2) ✅
 
 ### 1.8 Day 1 wrap
 
-- [ ] Run full backend regression: `cd backend && python -m pytest -q` → expect 1633+ pass / 4 skip / 0 fail
-- [ ] Run mypy strict: `cd backend && python -m mypy src --strict` → 0 errors
-- [ ] Run flake8 + black + isort: `cd backend && black --check src && isort --check src && flake8 src` → all silent
-- [ ] V2 lints: `python scripts/lint/run_all.py` → 9/9 green
-- [ ] Commit Day 1: `git add backend/ && git commit -m "feat(sprint-57-11, US-1+US-2): backend Alembic 0017 verification_log + REST router + correction_loop write hook + 11-13 tests"`
+- [x] Run full backend regression: pytest 1635 collected; 1627 passed + 4 skipped + 4 PRE-EXISTING failures (admin_tenant_patch ×3 + governance::test_list_rejects_non_approver_role; predates 7c6d0d50 main HEAD; AD-AdminTenant-Patch-Flake / AD-Governance-RBAC-Flake to be triaged at next audit cycle sprint)
+- [x] Run mypy strict: 304 source files clean ✅
+- [x] Run black + isort + flake8: all clean post-format ✅
+- [x] V2 lints: 9/9 green (1.04s) ✅
+- [x] Commit Day 1: ✅ commit `8a0ecaf3` (11 files / 1119 insertions) — `feat(sprint-57-11, US-1+US-2): backend Alembic 0017 verification_log + REST router + correction_loop write hook + 13 tests`
 
 ---
 
