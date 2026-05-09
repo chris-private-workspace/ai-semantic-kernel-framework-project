@@ -1,94 +1,80 @@
 # `.claude/rules/` 索引
 
-**Purpose**: V2 開發規則總覽。所有規則對齐 `docs/03-implementation/agent-harness-planning/` 19 份權威文件。
+**Purpose**: V2 開發規則總覽 + on-demand 載入指南。所有規則對齐 `docs/03-implementation/agent-harness-planning/` 21 份權威文件。
 
-**Last Updated**: 2026-04-28（V2 Phase 49+ 重寫）
+**Last Updated**: 2026-05-09（Hybrid context-load 重構：4 critical always-loaded + 10 on-demand）
 **Status**: Active
 
 ---
 
-## 規則分類
+## 載入策略（Hybrid，2026-05-09 起）
 
-### 🔴 基石（必讀；定義範疇與紀律）
+為控制 session context 用量，本目錄分兩層：
 
-| 檔案 | 用途 |
-|------|------|
-| [`category-boundaries.md`](./category-boundaries.md) | 11+1 範疇歸屬與跨範疇 import 三層規則 |
-| [`llm-provider-neutrality.md`](./llm-provider-neutrality.md) | `agent_harness/**` 禁 import openai/anthropic；ChatClient ABC；CI lint |
-| [`anti-patterns-checklist.md`](./anti-patterns-checklist.md) | 11 條反模式 PR 自檢清單（V1 教訓） |
-| [`file-header-convention.md`](./file-header-convention.md) | File header + Modification History 強制格式 |
+| 位置 | 行為 | 用途 |
+|------|------|------|
+| **`.claude/rules/*.md`**（頂層 4 條 + 本 README）| ✅ Claude Code 自動載入每個 session | 高頻 critical 規則 |
+| **`.claude/rules/on-demand/*.md`**（10 條）| ⏸️ 預設不載入，需 AI 主動 `Read` | 情境式規則 |
 
-### 🟡 流程（每日工作必依）
-
-| 檔案 | 用途 |
-|------|------|
-| [`sprint-workflow.md`](./sprint-workflow.md) | Plan → Checklist → Code → Update → Progress 強制流程 |
-| [`git-workflow.md`](./git-workflow.md) | Commit / Branch 規範；scope 對應 11+1 範疇 |
-
-### 🟢 技術層（範疇 / 平台 / Adapter）
-
-| 檔案 | 用途 |
-|------|------|
-| [`adapters-layer.md`](./adapters-layer.md) | adapters/_base ABC 設計 + 新 provider 上架 5 步 SOP + Azure OpenAI 細節 |
-| [`multi-tenant-data.md`](./multi-tenant-data.md) | DB tenant_id 強制隔離 + RLS + GDPR / PII 處理 |
-| [`observability-instrumentation.md`](./observability-instrumentation.md) | 範疇 12 cross-cutting 5 處必埋點 + TraceContext + Metric 集合 |
-
-### 📐 質量
-
-| 檔案 | 用途 |
-|------|------|
-| [`backend-python.md`](./backend-python.md) | Python backend 通用規則（保留自 V1） |
-| [`frontend-react.md`](./frontend-react.md) | React/TypeScript 通用規則（保留自 V1） |
-| [`code-quality.md`](./code-quality.md) | Black / isort / mypy / flake8 + V2 範疇層級 coverage 目標 |
-| [`testing.md`](./testing.md) | Pytest / 範疇測試分工 / Contract Test / Multi-tenant Test |
-
-### 📖 AI 助手指引
-
-| 檔案 | 用途 |
-|------|------|
-| [`graphify-usage.md`](./graphify-usage.md) | Claude Code 本地閱讀加速器使用提示（非工程治理） |
+**Why Hybrid**: 全載入成本 ~50KB context；全 on-demand 風險 AI 漏掉 sprint workflow / MHist / tenant 鐵律。Hybrid 保留 4 條最高 ROI critical 規則永遠載入（~15KB），其餘 ~35KB 改 on-demand。
 
 ---
 
-## 開發者快速指引
+## 🔴 Always-Loaded（4 條 critical，永遠在 context）
 
-### 第一次接觸專案
+| 檔案 | 用途 | 為何 always |
+|------|------|------------|
+| [`sprint-workflow.md`](./sprint-workflow.md) | Plan → Checklist → Code → Update → Progress 5 步流程 + Day 0 三-prong + calibration matrix | 每個 sprint 起始必依；流程不能 lint |
+| [`file-header-convention.md`](./file-header-convention.md) | File header + Modification History（1-line max + char budget）| 53.x 連續 3 sprint MHist 超 E501 反例驗證重要性 |
+| [`multi-tenant-data.md`](./multi-tenant-data.md) | DB tenant_id 三鐵律 + RLS + GDPR / PII | 每個業務 endpoint 都要對；CI lint 部分覆蓋 |
+| [`anti-patterns-checklist.md`](./anti-patterns-checklist.md) | 11 條 PR 自檢清單（V1 教訓）| 每個 PR merge 前必通；CI lint 只覆蓋 AP-1+2+4 |
 
-依序讀：
-1. `CLAUDE.md`（根目錄）— 專案高層
-2. `category-boundaries.md` — 知道代碼放哪
-3. `llm-provider-neutrality.md` — 知道不能寫什麼
-4. `anti-patterns-checklist.md` — 知道審查標準
-5. `sprint-workflow.md` — 知道每天工作節奏
+---
 
-### 開始一個 Sprint
+## 📋 On-Demand（10 條，需要時主動 Read）
 
-依序：
-1. `sprint-workflow.md` Step 1-2（建 plan + checklist）
-2. `category-boundaries.md` 確認代碼歸屬
-3. `file-header-convention.md` 寫新檔案 header
-4. 開發中對照 `code-quality.md` / `testing.md`
+> **AI 規則**：碰到下列「Trigger」時，**先 Read 對應規則檔再開始 code**。
 
-### 建新 LLM Adapter
+### 路徑：`.claude/rules/on-demand/`
 
-讀：
-1. `llm-provider-neutrality.md` — ABC 接口要求
-2. `adapters-layer.md` — 5 步 SOP + Contract Test
-3. `testing.md` §Contract Test for Adapters
+| 檔案 | Trigger（什麼時候 Read）|
+|------|------------------------|
+| [`category-boundaries.md`](./on-demand/category-boundaries.md) | 新建檔案 / 跨範疇 import / 不確定代碼歸哪個 11+1 範疇 |
+| [`llm-provider-neutrality.md`](./on-demand/llm-provider-neutrality.md) | 碰 `agent_harness/` 任何 LLM 呼叫 / 新增 adapter / 換 model |
+| [`adapters-layer.md`](./on-demand/adapters-layer.md) | 修改 `adapters/` / 新增 LLM provider（5 步 SOP） |
+| [`observability-instrumentation.md`](./on-demand/observability-instrumentation.md) | 新增埋點 / 動 Cat 12 cross-cutting / TraceContext |
+| [`code-quality.md`](./on-demand/code-quality.md) | 修 mypy strict 報錯 / 跨平台 mypy `unused-ignore` 問題 |
+| [`testing.md`](./on-demand/testing.md) | 寫 contract test / multi-tenant test / 範疇測試規劃 |
+| [`git-workflow.md`](./on-demand/git-workflow.md) | 寫 commit message / 開新 branch（scope 對應 11+1 範疇）|
+| [`backend-python.md`](./on-demand/backend-python.md) | 純 Python backend 通用約定（少用，多被 code-quality 取代）|
+| [`frontend-react.md`](./on-demand/frontend-react.md) | 純 React/TypeScript 通用約定 |
+| [`graphify-usage.md`](./on-demand/graphify-usage.md) | 用 graphify-out/ 加速理解 codebase |
+
+---
+
+## 任務情境快查（哪些 rule 該配對）
+
+### 開始一個 sprint
+- ✅ Always: `sprint-workflow.md`（Day 0 三-prong + calibration）
+- 📋 Read: `on-demand/category-boundaries.md`（確認代碼歸屬）
+
+### 寫新檔案
+- ✅ Always: `file-header-convention.md`（header + MHist）
+- 📋 Read: `on-demand/category-boundaries.md`
 
 ### 寫新業務 endpoint
+- ✅ Always: `multi-tenant-data.md`（tenant_id 鐵律）
+- 📋 Read: `on-demand/observability-instrumentation.md`（埋點）+ `on-demand/testing.md`（multi-tenant test）
 
-讀：
-1. `multi-tenant-data.md` — tenant_id 強制
-2. `observability-instrumentation.md` — 埋點
-3. `testing.md` §Multi-tenant Tests
+### 動 LLM 呼叫 / Adapter
+- 📋 Read: `on-demand/llm-provider-neutrality.md` + `on-demand/adapters-layer.md`
 
-### Code Review / PR 自檢
+### Code review / PR 自檢
+- ✅ Always: `anti-patterns-checklist.md`（11 條）
+- 📋 Read: `on-demand/git-workflow.md`（commit format）
 
-對照：
-1. `anti-patterns-checklist.md`（11 條）
-2. `git-workflow.md` §Before You Commit
-3. `category-boundaries.md` Lint 規則
+### 修 CI lint / 跨平台 mypy
+- 📋 Read: `on-demand/code-quality.md`
 
 ---
 
@@ -98,20 +84,20 @@
 
 | Rule | 對應 V2 文件 |
 |------|-------------|
-| category-boundaries.md | 01-eleven-categories-spec.md / 02-architecture-design.md / 17-cross-category-interfaces.md |
-| llm-provider-neutrality.md | 10-server-side-philosophy.md §原則 2 / 17.md §Contract 2 |
-| anti-patterns-checklist.md | 04-anti-patterns.md |
-| file-header-convention.md | CLAUDE.md §File Header & Modification Convention |
 | sprint-workflow.md | CLAUDE.md §Sprint Execution Workflow / 06-phase-roadmap.md |
-| git-workflow.md | CLAUDE.md §Code Standards |
-| adapters-layer.md | 07-tech-stack-decisions.md / 17.md §Contract 2 |
+| file-header-convention.md | CLAUDE.md §File Header & Modification Convention |
 | multi-tenant-data.md | 09-db-schema-design.md / 14-security-deep-dive.md / 10.md §原則 1 |
-| observability-instrumentation.md | 01-eleven-categories-spec.md §範疇 12 / 17.md §Contract 12 |
-| code-quality.md | 11-test-strategy.md |
-| testing.md | 11-test-strategy.md / 04-anti-patterns.md |
-| graphify-usage.md | CLAUDE.md §graphify（純本地工具，不對應 V2 規劃文件） |
+| anti-patterns-checklist.md | 04-anti-patterns.md |
+| on-demand/category-boundaries.md | 01-eleven-categories-spec.md / 02-architecture-design.md / 17-cross-category-interfaces.md |
+| on-demand/llm-provider-neutrality.md | 10-server-side-philosophy.md §原則 2 / 17.md §Contract 2 |
+| on-demand/adapters-layer.md | 07-tech-stack-decisions.md / 17.md §Contract 2 |
+| on-demand/observability-instrumentation.md | 01-eleven-categories-spec.md §範疇 12 / 17.md §Contract 12 |
+| on-demand/code-quality.md | 11-test-strategy.md |
+| on-demand/testing.md | 11-test-strategy.md / 04-anti-patterns.md |
+| on-demand/git-workflow.md | CLAUDE.md §Code Standards |
+| on-demand/graphify-usage.md | CLAUDE.md §graphify（純本地工具）|
 
-> **權威排序**：V2 規劃文件（19 份）> 本目錄規則 > 既有代碼。衝突以上位者為準。
+> **權威排序**：V2 規劃文件（21 份）> 本目錄規則 > 既有代碼。衝突以上位者為準。
 
 ---
 
@@ -121,6 +107,7 @@
 - Rule 改動 = 開發習慣改動 → PR 標題加 `chore(rules)` 並通知所有開發者
 - 新 rule 必須走 `sprint-workflow.md` 標準流程（plan + checklist）
 - 舊 rule 淘汰時走 `archive` scope，不直接刪除（保留 git history）
+- **Always-loaded vs on-demand 分流調整**：若發現某 on-demand rule 在 3 個連續 sprint 都被 Read，應提案 promote 到 always-loaded（反之亦然）
 
 ---
 
@@ -128,5 +115,12 @@
 
 | 舊 Rule | 淘汰原因 | 替代 |
 |--------|--------|------|
-| `agent-framework.md` | V1 MAF 即將封存（Sprint 49.1） | `adapters-layer.md` |
-| `azure-openai-api.md` | 內容拆分到 ABC 設計 + Azure 細節 | `adapters-layer.md` §Azure OpenAI 特定細節 |
+| `agent-framework.md` | V1 MAF 已封存（Sprint 49.1） | `on-demand/adapters-layer.md` |
+| `azure-openai-api.md` | 內容拆分到 ABC 設計 + Azure 細節 | `on-demand/adapters-layer.md` §Azure OpenAI 特定細節 |
+
+---
+
+## Modification History
+
+- 2026-05-09: Hybrid 重構（4 critical always-loaded + 10 on-demand 移至 `on-demand/`）。Context 節省 ~35KB／session。
+- 2026-04-28: V2 Phase 49+ 重寫
