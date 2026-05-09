@@ -800,6 +800,7 @@ E2E:
 ## V2 Ship Timeline (NEW Sprint 57.6 US-4 — closes AD-Reality-4-partial / R4)
 
 **Modification History (newest-first)**
+- 2026-05-10: Sprint 57.11 Day 4 — verification promoted to **shipped** (7/N counter); 6 ship → **7 ship**; standalone /verification admin page (auth gate + AppShellV2 + 2-tab Recent/Correction Trace) + chat-v2 inline VerificationPanel + AD-Frontend-SSE-Silent-Drop-Fix bundle (CONVENTION.md §7 codified); 14 Vitest + 4 Playwright e2e; closes AD-Cat10-Frontend-Panel + AD-Verification-RealShip-Deferred; Phase 57.12+ priority = harness UI suite (LoopVisualizer + MemoryViewer + SubagentTree)
 - 2026-05-09: Sprint 57.9 Day 4 — governance promoted to **shipped** (6/N counter); 5 ship → **6 ship**; TanStack Query 4-page migration noted (closes AD-Cost-Dashboard-UseQuery via Day 4 batch); Phase 57.10 priority remaining = verification (1 priority instead of 2 since governance closed); + audit log frontend now part of governance ship (sub-tab `/governance/audit-log`)
 - 2026-05-09: Sprint 57.8 Day 4 — chat-v2 promoted to **shipped** (5/N counter); 4 ship → **5 ship**; AppShell V2 architecture migration noted (architecture-first Day 0 Decision Z); Phase 57.9 priority remaining = governance + verification (2 priority instead of 3 since chat-v2 closed)
 - 2026-05-08: Sprint 57.6 Day 3 US-4 — add V2 Ship Timeline section per Decision 3 (a) (closes AD-Reality-4-partial + AD-Reality-7). Honest reality framing: Phase 57+ frontend SaaS 推進 N/12 真實 ship status, NOT V3 defer.
@@ -808,7 +809,7 @@ E2E:
 
 V2 重構完成（Phase 49-55,22/22 sprint）+ Phase 56-58 SaaS Stage 1 backend 3/3 已 ship。Frontend 部分按 Phase 57+ 逐個 ship。Sprint 57.5 reality check 確認 12-page claim vs 真實 ship status。Sprint 57.8 完成架構遷移 (AppShell V2 + Sidebar + UserMenu + routes.config single-source) → 後續 Phase 58.x frontend page ship 享 zero per-page architecture cost。Sprint 57.9 完成 TanStack Query 4-page batch migration → server cache 與 UI state 分離 (Zustand UI-only),pattern reuse 加速後續 page ship。**此 timeline 非 V3 defer**:Phase 57.x sprint 將逐個 ship 真實 page 至 Phase 58 production launch 前完成關鍵 priority。
 
-### 6 已 ship pages
+### 7 已 ship pages
 
 | Page | Sprint | Backend | Status |
 |------|--------|---------|--------|
@@ -817,13 +818,12 @@ V2 重構完成（Phase 49-55,22/22 sprint）+ Phase 56-58 SaaS Stage 1 backend 
 | tenant-settings | 57.3 + 57.8 A1 + **57.9 TanStack mutation** | 56.1 + 57.3 admin tenants.py R+U | ✅ Production ship + Sprint 57.9 US-6 TanStack query+mutation hook (useTenantSettings + useTenantSettingsSave + tenantSettingsStore reduced UI-only + EditForm NEW tenantId prop); 10 Vitest + 4 Playwright e2e |
 | admin-tenants list | 57.4 + 57.8 A1 + **57.9 TanStack** | 57.4 admin tenants.py list endpoint | ✅ Production ship + Sprint 57.9 US-6 TanStack migration (useAdminTenants hook + adminTenantsStore reduced UI-only query state + 3 children consume hook); 13 Vitest + 4 Playwright e2e |
 | chat-v2 | 57.8 US-5 | 50.2 + Cat 1+2+9+10+12 | ✅ Sprint 57.8 ship (auth gate via Navigate first auth-gated page + AppShellV2 wrap + ChatLayout reuse + chatService fetchWithAuth + 4 Playwright e2e) |
-| **governance** | **57.9 US-1+2+3+4+5** | 53.5 (HITL backend) + 53.5 US-5+6 (audit + chain verify) | ✅ **NEW Sprint 57.9 ship**: auth gate via Navigate + AppShellV2 wrap + 2-tab nested Routes (`/governance/approvals` + `/governance/audit-log`) + Tailwind migration 3 components + TanStack hooks (useApprovals + useApprovalDecide single-source APPROVALS_QUERY_KEY) + AuditLogViewer real impl with auditService + useAuditLog + 4-field filter form draft-vs-committed + 6-col paginated table + AuditChainBadge enabled:false manual trigger 4 states; closes AD-Cost-Dashboard-UseQuery via Day 4 4-page batch; 18 Vitest (governance + audit) + 5 Playwright e2e (post-Day 4 fix authenticated via seedAuthJwt beforeEach) |
+| **governance** | **57.9 US-1+2+3+4+5** | 53.5 (HITL backend) + 53.5 US-5+6 (audit + chain verify) | ✅ **Sprint 57.9 ship**: auth gate via Navigate + AppShellV2 wrap + 2-tab nested Routes (`/governance/approvals` + `/governance/audit-log`) + Tailwind migration 3 components + TanStack hooks (useApprovals + useApprovalDecide single-source APPROVALS_QUERY_KEY) + AuditLogViewer real impl with auditService + useAuditLog + 4-field filter form draft-vs-committed + 6-col paginated table + AuditChainBadge enabled:false manual trigger 4 states; closes AD-Cost-Dashboard-UseQuery via Day 4 4-page batch; 18 Vitest (governance + audit) + 5 Playwright e2e (post-Day 4 fix authenticated via seedAuthJwt beforeEach) |
+| **verification** | **57.11 US-1+2+3+4+5+6** | 54.1 + 54.2 (Cat 10 verifier + correction loop) + Sprint 57.11 NEW Alembic 0017 verification_log + REST `/api/v1/verification/{recent,correction-trace}` | ✅ **NEW Sprint 57.11 ship**: standalone admin `/verification` page (auth gate + AppShellV2 wrap + 2-tab nested Routes Recent/Correction Trace + VerificationList full impl filter form + 6-col paginated table + click-row navigate + retryClicked retry + CorrectionTraceView full impl grouped-by-turn timeline) + chat-v2 inline VerificationPanel (subscribed to chatStore.verifications + 3-color VerifierTypeBadge + pass/fail icon + reason+suggested_correction+score) + AD-Frontend-SSE-Silent-Drop-Fix bundle (CONVENTION.md §7 codified 3-edit checklist: types.ts type union + KNOWN_LOOP_EVENT_TYPES Set + chatStore.mergeEvent cases) + correction_loop best-effort write hook (tenant_id from trace_context.tenant_id; never raises; logs WARNING on DB failure); closes AD-Cat10-Frontend-Panel + AD-Verification-RealShip-Deferred; pytest +13 / Vitest +14 (102→119 across Day 2+3) / Playwright +4 |
 
-### 1 priority Phase 57.10+ ship (~10-12 hr — governance closed Sprint 57.9)
+### 0 priority Phase 57.12+ ship (verification closed Sprint 57.11)
 
-| Page | Backend ready since | Sprint candidate | Notes |
-|------|---------------------|------------------|-------|
-| verification panel | 54.1 + 54.2 | Phase 57.10 (TBD per user) | Replace placeholder with verifier output + correction loop visibility; AD-Cat10-Frontend-Panel scope; AppShellV2 wrap + TanStack pattern free benefit per Sprint 57.8+57.9 architecture (highest pattern-reuse ROI same as governance ship) |
+(Phase 57.12+ priority shifts to harness UI suite — LoopVisualizer + MemoryViewer + SubagentTree per User Option A bundle (a)+(c) plan; transparency UI surface for Cat 1 / Cat 3 / Cat 11.)
 
 ### 5 deferred (Phase 57.10-57.13+ ~5-7 sprints)
 

@@ -18,8 +18,8 @@
  *     - Admin (6): Tenants / Tenant Settings / Audit Log / Feature Flags / Governance / Verification
  *     - Settings (2): User Profile / MFA Settings
  *
- *   active=true (6): Chat V2 / Cost / SLA / Tenants / Tenant Settings / Governance (57.9)
- *   active=false (5): placeholders for future Phase 57.10+ ships
+ *   active=true (7): Chat V2 / Cost / SLA / Tenants / Tenant Settings / Governance (57.9) / Verification (57.11)
+ *   active=false (4): placeholders for future Phase 57.12+ ships
  *
  *   Auth routes (/auth/login, /auth/callback) are NOT in this registry —
  *   they use AuthShell (no sidebar) and are wired directly in App.tsx.
@@ -28,6 +28,7 @@
  * Last Modified: 2026-05-09
  *
  * Modification History:
+ *   - 2026-05-10: Sprint 57.11 US-6 Day 4 — Verification active=true + lazy component import
  *   - 2026-05-09: Sprint 57.9 US-1 Day 1 — Governance active=true + lazy component import
  *   - 2026-05-10: Initial creation (Sprint 57.8 US-3 — page registry)
  *
@@ -141,7 +142,8 @@ export const ROUTES: RouteEntry[] = [
     path: "/verification",
     icon: CheckCheck,
     category: "admin",
-    active: false,
+    active: true,
+    component: lazy(() => import("./pages/verification")),
   },
   // === Settings ===
   {

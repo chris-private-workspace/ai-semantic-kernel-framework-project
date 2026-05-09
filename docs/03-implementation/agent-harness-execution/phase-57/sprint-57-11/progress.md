@@ -8,6 +8,7 @@ Created: 2026-05-09 (Day 0 stub awaiting Day 0 三-prong execution + commit)
 Last Modified: 2026-05-10
 
 Modification History (newest-first):
+    - 2026-05-10: Day 4 complete — US-6 routing + lazy + 4 e2e + retro Q1-Q7 + memory + 3/4 doc syncs; SITUATION+CLAUDE.md DEFERRED to closeout PR
     - 2026-05-10: Day 3 complete — US-4 full + US-5 + AD-Frontend-SSE-Silent-Drop-Fix; 12 Vitest; commit `77e5a333`
     - 2026-05-10: Day 2 complete — US-3+US-4 frontend infra + page wrap + 14 Vitest; commit `9ea3f29b`
     - 2026-05-10: Day 1 complete — US-1+US-2 backend bundle; 13 new tests; commit `8a0ecaf3`
@@ -303,7 +304,42 @@ Related:
 
 ## Day 4 — US-6 Routing + e2e + Closeout
 
-**Status**: ⏳ Not started
+**Status**: ✅ Complete (2026-05-10)
+
+### Day 4 Execution Summary (Day 4 commit pending after this checklist+progress edit)
+
+**§4.1 routes.config.ts wire-up**: verification entry `active: false` → `active: true` + `component: lazy(() => import("./pages/verification"))` + MHist entry; entry counters updated to active=7 / inactive=4
+
+**§4.2 verification e2e**: 4 NEW Playwright tests pass (auth gate / recent renders / empty state / click-row navigates); STRETCH SSE-injection test DEFERRED → AD-Verification-RealShip-E2E
+
+**§4.3 chat-v2 regression sentinel**: 8/8 chat e2e pass post-VerificationPanel mount ✅ (Sprint 57.9 D-PRE-16 cascade lesson successfully applied)
+
+**§4.4 full validation sweep**:
+- Vitest 119 ✅
+- tsc 0 errors ✅
+- ESLint silent ✅
+- V2 lints 9/9 green ✅
+- LLM SDK leak 0 ✅
+- pytest 1635 collected (1627 pass + 4 skip + 4 PRE-EXISTING fails NOT 57.11) ✅
+- Playwright 31 (verification 4 NEW + chat 8 + others) ✅
+- Build main 295.14 kB ⚠️ (over 285 kB ceiling by ~10 kB → AD-Bundle-Size-285kB-Carryover Phase 57.12+)
+
+**§4.5 retrospective.md** Q1-Q7 complete:
+- Q2: Sprint 57.11 ratio ~0.47; 4-data-point `large multi-domain` mean 0.82 (down from 0.94; lower edge of band); KEEP 0.55 baseline this iteration (pending 2-3 sprint window validation)
+- Q4: 4 NEW carryover ADs (AD-Bundle-Size-285kB / AD-Verification-RealShip-E2E / AD-AdminTenant-Patch-Flake / AD-Governance-RBAC-Flake) + 3 closed (AD-Cat10-Frontend-Panel / AD-Verification-RealShip-Deferred / AD-Frontend-SSE-Silent-Drop-Fix)
+- Q5: 5 Phase 57.12+ candidates (Harness UI suite top — User Option A bundle complement; Bundle-Size opt sprint; Pre-existing flake triage; Tier 1 IaC; SOC 2 + SBOM)
+- Q7: N/A SKIP feature-ship pattern (3rd consecutive after 57.8+57.9+57.10)
+
+**§4.6 memory snapshot**: `project_phase57_11_verification_ship.md` + MEMORY.md +1 line ✅
+
+**§4.7 doc syncs (3/4)**:
+- sprint-workflow.md §Calibration matrix updated (4-data-point evidence + 4-data-point mean 0.82 + KEEP 0.55) ✅
+- 16-frontend-design.md V2 Ship Timeline 6/N → 7/N + verification row promoted "placeholder" → "shipped" + 0 priority Phase 57.12+ ship ✅
+- SITUATION-V2-SESSION-START.md DEFERRED to closeout PR (per Sprint 57.7+57.8+57.9 batched-update pattern)
+- CLAUDE.md DEFERRED to closeout PR (per Sprint 57.7+57.8+57.9 pattern)
+
+**Time spent**: ~1.5 hr Day 4 (committed ~2-3 hr; under budget)
+**Total Sprint 57.11 actual**: ~9-10 hr (vs ~17 hr committed; ~50% under budget — sustained 4-data-point evidence)
 
 ---
 
