@@ -229,6 +229,12 @@ frontend/src/features/
 
 ## Design System
 
+> **Operational rules for frontend dev (Sprint 57.10 codified)**:
+> - **`frontend/CONVENTION.md`** — Page architecture pattern (auth gate + AppShellV2 + nested Routes), `features/<X>/` folder convention, routes.config.ts single-source, Zustand UI-only post-TanStack-migration, TanStack Query `*_QUERY_KEY_BASE` single-source export, fetchWithAuth API service, **SSE event 3-edit audit checklist** (D-PRE-13 lesson), test convention with seedAuthJwt + retryClicked StrictMode-safe pattern.
+> - **`frontend/STYLE.md`** — Tailwind utility-first rule, canonical color tokens table + risk badge palette + typography + spacing + loading skeleton + empty state + error retry UX patterns.
+>
+> 16.md remains design philosophy + page roadmap; CONVENTION.md + STYLE.md are operational rules for new frontend code.
+
 ### 設計工具棧
 
 | 用途 | 工具 |
