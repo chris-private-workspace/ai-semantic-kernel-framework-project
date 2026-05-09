@@ -38,6 +38,7 @@ import { isAuthenticated, setPostLoginRedirect } from "@/features/auth/services/
 import ChatLayout from "@/features/chat_v2/components/ChatLayout";
 import InputBar from "@/features/chat_v2/components/InputBar";
 import MessageList from "@/features/chat_v2/components/MessageList";
+import { VerificationPanel } from "@/features/verification/components/VerificationPanel";
 
 export default function ChatV2Page(): JSX.Element {
   if (!isAuthenticated()) {
@@ -48,6 +49,9 @@ export default function ChatV2Page(): JSX.Element {
     <AppShellV2 pageTitle="Chat (V2)">
       <ChatLayout>
         <MessageList />
+        {/* Sprint 57.11 US-5: inline verification events panel
+            (renders null when no events; mounted between message stream and input). */}
+        <VerificationPanel />
         <InputBar />
       </ChatLayout>
     </AppShellV2>

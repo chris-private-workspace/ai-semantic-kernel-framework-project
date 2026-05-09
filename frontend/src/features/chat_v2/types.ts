@@ -125,9 +125,35 @@ export type GuardrailTriggeredEvent = {
   };
 };
 
+// Sprint 57.11 US-5: Cat 10 Verification SSE events.
+// Backend yields these from correction_loop.run_with_verification per verifier;
+// SSE schema sourced from api/v1/chat/sse.py:243-265. AD-Frontend-SSE-Silent-
+// Drop-Fix bundle (Sprint 57.10 D-PRE-13 codified): both type union AND
+// KNOWN_LOOP_EVENT_TYPES set must list these so parseSSEFrame doesn't silently
+// drop them per CONVENTION.md §7 3-edit checklist.
+
+export type VerificationPassedEvent = {
+  type: "verification_passed";
+  data: {
+    verifier: string;
+    verifier_type: "rules_based" | "llm_judge" | "external";
+    score: number | null;
+  };
+};
+
+export type VerificationFailedEvent = {
+  type: "verification_failed";
+  data: {
+    verifier: string;
+    verifier_type: "rules_based" | "llm_judge" | "external";
+    reason: string | null;
+    suggested_correction: string | null;
+  };
+};
+
 /**
  * Sprint 50.2 wired 7 known event types; Sprint 53.5 adds 2 (approval_*);
- * Sprint 53.6 adds 1 (guardrail_triggered).
+ * Sprint 53.6 adds 1 (guardrail_triggered); Sprint 57.11 adds 2 (verification_*).
  * Unknown event types from later phases are filtered at the SSE parser
  * (chatService.parseSSEFrame returns null) so the store never sees them —
  * preserving discriminated-union narrowing inside mergeEvent's switch.
@@ -142,9 +168,11 @@ export type LoopEvent =
   | LoopEndEvent
   | ApprovalRequestedEvent
   | ApprovalReceivedEvent
-  | GuardrailTriggeredEvent;
+  | GuardrailTriggeredEvent
+  | VerificationPassedEvent
+  | VerificationFailedEvent;
 
-/** Set of SSE event type names recognized by Sprint 50.2 + 53.5 + 53.6 frontend. */
+/** Set of SSE event type names recognized by Sprint 50.2 + 53.5 + 53.6 + 57.11 frontend. */
 export const KNOWN_LOOP_EVENT_TYPES = new Set<string>([
   "loop_start",
   "turn_start",
@@ -156,6 +184,9 @@ export const KNOWN_LOOP_EVENT_TYPES = new Set<string>([
   "approval_requested",
   "approval_received",
   "guardrail_triggered",
+  // Sprint 57.11 US-5: Cat 10 verification SSE events (AD-Frontend-SSE-Silent-Drop-Fix)
+  "verification_passed",
+  "verification_failed",
 ]);
 
 // === UI aggregate types =====================================================

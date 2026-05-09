@@ -33,6 +33,8 @@
  */
 
 import { create } from "zustand";
+
+import type { VerificationEvent } from "../../verification/types";
 import type {
   ApprovalEntry,
   ChatMode,
@@ -53,12 +55,17 @@ type ChatStoreState = {
   rawEvents: LoopEvent[];
   // Sprint 53.5 US-2: HITL approval cards keyed by request_id (dedup-safe).
   approvals: Record<string, ApprovalEntry>;
+  // Sprint 57.11 US-5: Cat 10 verification events for inline VerificationPanel
+  // (chronological append; cleared on reset / new session).
+  verifications: VerificationEvent[];
   // actions
   setMode: (m: ChatMode) => void;
   setStatus: (s: ChatStatus) => void;
   setError: (msg: string | null) => void;
   pushUserMessage: (content: string) => void;
   mergeEvent: (ev: LoopEvent) => void;
+  appendVerification: (event: VerificationEvent) => void;
+  clearVerifications: () => void;
   reset: () => void;
 };
 
@@ -72,6 +79,7 @@ const _initial = (): Pick<
   | "messages"
   | "rawEvents"
   | "approvals"
+  | "verifications"
 > => ({
   sessionId: null,
   status: "idle",
@@ -81,6 +89,7 @@ const _initial = (): Pick<
   messages: [],
   rawEvents: [],
   approvals: {},
+  verifications: [],
 });
 
 let _msgCounter = 0;
@@ -251,6 +260,19 @@ export const useChatStore = create<ChatStoreState>((set) => ({
           return { ...s, rawEvents };
         }
 
+        // Sprint 57.11 US-5: Cat 10 verification events. Append to verifications
+        // array for inline VerificationPanel + raw event audit trail (rawEvents).
+        // AD-Frontend-SSE-Silent-Drop-Fix bundle: type+set listed in types.ts
+        // per CONVENTION.md §7 3-edit checklist.
+        case "verification_passed":
+        case "verification_failed": {
+          return {
+            ...s,
+            rawEvents,
+            verifications: [...s.verifications, ev as VerificationEvent],
+          };
+        }
+
         default: {
           // Unreachable: parser filters unknown event types upstream.
           // Defensive return to keep TypeScript exhaustive-check happy.
@@ -259,6 +281,11 @@ export const useChatStore = create<ChatStoreState>((set) => ({
         }
       }
     }),
+
+  appendVerification: (event) =>
+    set((s) => ({ verifications: [...s.verifications, event] })),
+
+  clearVerifications: () => set({ verifications: [] }),
 
   reset: () => set({ ..._initial() }),
 }));
