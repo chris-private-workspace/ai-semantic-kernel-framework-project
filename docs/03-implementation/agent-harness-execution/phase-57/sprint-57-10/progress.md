@@ -237,3 +237,43 @@ Sprint 57.10 cumulative: ~4 hr (Day 0 ~1.5 + Day 0.5 ~30 min + Day 1 ~2 hr); pac
 Day 2 cumulative: ~1.5 hr (STYLE.md draft + frontend-react.md cross-ref + commit)
 Sprint 57.10 cumulative (excluding sunk Day 0 verification ship): ~4 hr (Day 0.5 ~30 min + Day 1 ~2 hr + Day 2 ~1.5 hr); on budget per `audit-cycle` 0.40 baseline ~4 hr commit. Day 3+4 remaining ~2 hr (~30 min self-review + early validation + ~1.5 hr retro/memory/4 doc syncs/PR). Final projected ~6 hr → ratio 1.50 over band by 0.30 → AD-Sprint-Plan-12 candidate at Day 4 retro Q2 (propose `audit-cycle` 0.40 → 0.50 lift; 2-data-point window: 55.2=1.10 + 57.10=~1.50 mean ~1.30 over band; pending 2-3 sprint validation per `When to adjust` rule).
 
+---
+
+## Day 3 — 2026-05-09 — Self-Review + Cross-Ref Verification + Early Validation Sweep
+
+### Self-review verified (per checklist §3.1)
+
+All critical lessons explicitly codified in correct sections:
+
+- ✅ **CONVENTION.md §1** — Sprint 57.8 D9 page-level h1 cascade lesson (L84)
+- ✅ **CONVENTION.md §7** — D-PRE-13 SSE silent drop lesson (L455 full §7 + L20 intro context)
+- ✅ **CONVENTION.md §8** — D-PRE-15 retryClicked StrictMode mock pattern (L560 full code example) + D-PRE-16 seedAuthJwt beforeEach (L538) + objectContaining test pattern (L442) + Zustand sentinel test (L274)
+- ✅ **STYLE.md §8** — D-PRE-15 retryClicked pattern fully codified (L345+363+385-397 with full ❌/✅ code comparison)
+
+### Cross-ref polish verified (per checklist §3.2)
+
+- ✅ CONVENTION.md → STYLE.md cross-ref (L5 header + L648 explicit list)
+- ✅ STYLE.md → CONVENTION.md cross-ref (L4 header + cross-references section)
+- ✅ Both docs cross-ref `.claude/rules/frontend-react.md` (basic React rules)
+- ✅ Both docs cross-ref `16-frontend-design.md` (design philosophy reference)
+- ✅ frontend-react.md NEW Detailed Conventions section cross-ref both docs
+
+### Early validation sweep PASS (per checklist §3.3) — sentinel since 0 code change
+
+| Check | Baseline | Day 3 | Status |
+|-------|----------|-------|--------|
+| pytest collected | 1622 | **1622** | ✅ maintained |
+| Vitest passed | 93 / 28 files | **93 / 28** | ✅ maintained |
+| V2 lints | 9/9 green | **9/9** in 2.84s | ✅ maintained |
+| tsc strict errors | 0 | **0** | ✅ maintained |
+| LLM SDK leak | 0 | (deferred Day 4 full sweep) | — |
+| Playwright | 27 specs | (deferred Day 4 full sweep) | — |
+| Vite build | 240.86 kB main | (deferred Day 4 full sweep) | — |
+
+### No code regression confirmed
+
+Sprint 57.10 is pure docs (no .ts/.tsx/.py changes); all sentinels match Sprint 57.9 closeout baseline. Day 4 full validation sweep (per checklist §4.1) will additionally verify Playwright + Vite build + LLM SDK + backend lint suite + ESLint silent.
+
+Day 3 cumulative: ~30 min (self-review + cross-ref verification + early validation)
+Sprint 57.10 cumulative (convention codify): ~4.5 hr (Day 0.5 ~30 min + Day 1 ~2 hr + Day 2 ~1.5 hr + Day 3 ~30 min); pace tracking ~12% over `audit-cycle` 0.40 budget (~4 hr commit). Day 4 remaining ~1.5 hr (retro + memory + 4 doc syncs + PR + closeout). Final projected ~6 hr → ratio ~1.50 over band by 0.30 → AD-Sprint-Plan-12 candidate at Day 4 retro Q2 (propose `audit-cycle` 0.40 → 0.50 lift after 2-3 sprint validation per `When to adjust` rule).
+
