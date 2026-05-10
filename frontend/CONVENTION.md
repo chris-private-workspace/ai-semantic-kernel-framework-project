@@ -5,10 +5,12 @@
 > For visual + UX style rules, see [`STYLE.md`](./STYLE.md).
 
 **Created**: 2026-05-09 (Sprint 57.10 codified from Sprint 57.7+57.8+57.9 emergent patterns)
-**Last Modified**: 2026-05-09
+**Last Modified**: 2026-05-10
 **Status**: Active
 
 > **Modification History (newest-first)**
+> - 2026-05-10: Sprint 57.14 — §8 add "hermetic API mocking" + "visual regression baselines" sub-sections (AD-Frontend-E2E-Sweep / AD-Visual-Baseline-Generation)
+> - 2026-05-10: Sprint 57.13 — add §10 design-system / §11 i18n / §12 a11y / §13 performance
 > - 2026-05-09: Initial creation (Sprint 57.10 — closes convention drift identified by user 2026-05-09 reality check)
 
 ---
@@ -605,6 +607,48 @@ retryClicked = true;
 
 Pattern: gate mock behavior on a **user-action flag** (button click / explicit
 trigger), not on call count. Survives any number of StrictMode double-renders.
+
+### Hermetic API mocking (mock the catch-all, not just one route)
+
+E2e specs run against the Vite dev server, which proxies `/api/**` to a backend
+on `:8000` that may or may not be running locally. If a spec mocks only *some*
+endpoints (e.g. `/api/v1/auth/me`) the rest fall through to the proxy → the real
+backend (if up) sees no JWT → **401** → `fetchWithAuth`'s `handleAuthExpired()`
+does `window.location='/auth/login'` → the page under test navigates away. So a
+spec that walks several routes must mock **everything** under `/api/v1/**`, not
+just the auth endpoint (Sprint 57.14 — `a11y-scan.spec.ts` was red locally for
+exactly this reason). Pattern: register the catch-all first, the specific routes
+after (the most-recently-registered matching handler wins):
+
+```ts
+await page.route("**/api/v1/**", (r) => r.fulfill({ status: 503, json: { detail: "e2e mock" } }));
+await page.route("**/api/v1/auth/me", (r) => r.fulfill({ status: 200, json: mockAuthMe }));
+// /auth/me → 200 (specific, last-registered wins); everything else → 503 (catch-all)
+```
+
+After `page.goto(route)` for a page that may client-redirect (e.g. `/verification`
+→ `/verification/recent`), `await page.waitForLoadState("networkidle")` before any
+`AxeBuilder().analyze()` or screenshot — otherwise "Execution context was destroyed,
+most likely because of a navigation" if the SPA route changes mid-call.
+
+### Visual regression baselines (Sprint 57.14 — `visual-regression.spec.ts`)
+
+`tests/e2e/visual/visual-regression.spec.ts` does `expect(page).toHaveScreenshot(...)`
+against fixed-data renders. Its baselines (`visual-regression.spec.ts-snapshots/*.png`)
+**MUST be generated on the Linux CI runner, never a dev machine** — font hinting / DPI
+differ across OSes, so Windows/macOS-generated PNGs would all mismatch in CI.
+
+- The spec **auto-skips** until the `-snapshots/` dir is committed (its guard does
+  `existsSync(...)`), so push/PR e2e is never red on a missing baseline. Once the dir
+  lands, the spec runs as part of the regular `e2e` job on every push/PR.
+- To **bootstrap or regenerate** baselines: run the **`visual-baseline` job** in
+  `.github/workflows/playwright-e2e.yml` (GitHub → Actions → "Playwright E2E" → Run
+  workflow). It runs `RUN_VISUAL=1 playwright test visual --update-snapshots` on
+  `ubuntu-latest` and commits the `-snapshots/` dir back to the branch (`[skip ci]`).
+  Re-run it whenever a UI change legitimately moves the screenshots.
+- Locally on **Linux/WSL only** you can preview with `npm run e2e:visual:update` (the
+  output PNGs match CI). **Do NOT commit Windows/macOS-generated baselines.**
+- `.gitattributes` marks `*.png binary` so diffs aren't line-mangled.
 
 ### Sentinel tests (regression preservation)
 

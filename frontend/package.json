@@ -16,7 +16,8 @@
     "i18n:extract": "i18next-parser --config i18next-parser.config.cjs",
     "lhci": "lhci autorun",
     "e2e": "playwright test",
-    "e2e:ui": "playwright test --ui"
+    "e2e:ui": "playwright test --ui",
+    "e2e:visual:update": "RUN_VISUAL=1 playwright test visual --update-snapshots"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

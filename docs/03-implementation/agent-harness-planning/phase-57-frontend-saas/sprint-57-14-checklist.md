@@ -91,15 +91,15 @@ Related:
 
 ## Day 2 — US-B1 visual CI mechanism + US-C1 closeout
 
-### 2.2 US-B1: visual-regression CI mechanism + skip-guard rewrite
-- [ ] **`.github/workflows/playwright-e2e.yml`** — add `workflow_dispatch` to `on:` (keep existing triggers) + NEW `visual-baseline` job (`if: github.event_name == 'workflow_dispatch'`; `runs-on: ubuntu-latest`; `permissions: contents: write`; checkout `ref: github.ref` + `token: GITHUB_TOKEN`; setup-node + `npm ci` in frontend; `npx playwright install --with-deps chromium`; `RUN_VISUAL=1 npm run e2e -- visual --update-snapshots`; `git add tests/e2e/visual/**/*-snapshots/` + commit `chore(e2e): regenerate visual-regression baselines [skip ci]` + push if changed)
-- [ ] **`frontend/package.json`** — NEW script `"e2e:visual:update": "RUN_VISUAL=1 playwright test visual --update-snapshots"`
-- [ ] **`tests/e2e/visual/visual-regression.spec.ts`** — skip-guard rewrite: `existsSync(<spec>-snapshots/)` (baseline committed) OR `process.env.RUN_VISUAL` → run; else skip + `console.warn("[visual] no baselines committed yet — run the `visual-baseline` workflow_dispatch job to generate them on Linux")`
-- [ ] **`frontend/CONVENTION.md`** — §e2e (or relevant §): "Visual regression baselines: generated only on Linux (CI `visual-baseline` workflow_dispatch job, or WSL `npm run e2e:visual:update`); never commit Windows-generated PNGs; re-run the job when UI changes affect screenshots"
-  - Verify: `npm run e2e -- visual --list` lists 6 visual tests (spec parses); `actionlint .github/workflows/playwright-e2e.yml` (or `gh workflow view`) — YAML valid; `visual-regression.spec.ts` with no baseline dir → spec skips + warns (`npm run e2e -- visual` observe)
-  - Note: actual baseline PNG commit = retrospective Q4 carryover (`AD-Visual-Baseline-Generation` converges to "run the workflow once post-merge"); progress.md records the one-shot trigger command
-- [ ] **Day 2 progress entry** + drift catalog
-- [ ] **Day 2 commits** (one per US/group): `fix(sprint-57-14, Day 2): US-A2 remaining e2e spec sync + full-suite green` + `feat(sprint-57-14, Day 2): US-B1 visual-regression CI baseline mechanism + skip-guard`
+### 2.2 US-B1: visual-regression CI mechanism + skip-guard rewrite — DONE 2026-05-10 (commit pending)
+- [x] **`.github/workflows/playwright-e2e.yml`** — `on:` += `workflow_dispatch`; `e2e` job += `if: github.event_name != 'workflow_dispatch'`; NEW `visual-baseline` job (`if: workflow_dispatch`; ubuntu-latest; `permissions: contents: write`; checkout `ref: github.ref` + `token: GITHUB_TOKEN`; setup-node 20 + `npm ci`; cache + `npx playwright install --with-deps chromium`; `npm run build`; `RUN_VISUAL=1 npx playwright test visual --update-snapshots`; `git add tests/e2e/visual/**/*-snapshots/` + commit `chore(e2e): regenerate visual-regression baselines [skip ci]` + `git push origin HEAD:${{ github.ref_name }}` if changed; upload `visual-baselines` artifact always)
+- [x] **`frontend/package.json`** — NEW script `"e2e:visual:update": "RUN_VISUAL=1 playwright test visual --update-snapshots"` (Linux/WSL only)
+- [x] **`tests/e2e/visual/visual-regression.spec.ts`** — skip-guard rewrite: `import {existsSync}'node:fs'` + `dirname/join`'node:path' + `fileURLToPath`'node:url'; `SNAPSHOTS_DIR = join(dirname(fileURLToPath(import.meta.url)), "visual-regression.spec.ts-snapshots")`; `RUN_VISUAL = existsSync(SNAPSHOTS_DIR) || Boolean(process.env.RUN_VISUAL)` → auto-un-skips once the `-snapshots/` dir is committed; skip message points to the `visual-baseline` workflow + CONVENTION.md §e2e. File-header Description + MHist updated.
+- [x] **`frontend/CONVENTION.md`** — §8: NEW "### Hermetic API mocking (mock the catch-all, not just one route)" + NEW "### Visual regression baselines (Sprint 57.14)" sub-sections; MHist += 57.14 entry (+ backfill 57.13 §10-13 entry); `Last Modified` → 2026-05-10
+  - Verify: ✅ YAML valid (`yaml.safe_load` → jobs `[e2e, visual-baseline]`, on `[push, pull_request, workflow_dispatch]`); `npx playwright test visual --list` → 6 tests listed; `npx playwright test visual` → 6 skipped (guard works — no `-snapshots/` dir); `npx playwright test` (full) → 40 passed / 7 skipped / 0 failed (visual changes safe)
+  - Note: actual baseline PNG commit NOT done in this dev session (Windows → cross-OS mismatch). The `visual-baseline` workflow produces them; one-shot trigger documented in progress.md Day 2 → `AD-Visual-Baseline-Generation` converges from "carryover" to "run the workflow once post-merge".
+- [x] **Day 2 progress entry** + verify notes
+- [ ] **Day 2 commit**: `feat(sprint-57-14, Day 2): US-B1 visual-regression CI baseline mechanism + auto-un-skip guard`
 
 ---
 

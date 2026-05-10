@@ -90,6 +90,38 @@
 - D-DAY1-2: a real backend running on :8000 (process 3552) — this is *why* the test was red locally but would be green in CI. The fix makes the test hermetic regardless. (Not stopping the backend per CLAUDE.md "Do not stop any node.js process" — though this is a python process; left running anyway, not relevant.)
 
 ### Day 1 commit
-- (pending) `fix(sprint-57-14, Day 1): US-A1 e2e triage + US-A2 a11y-scan hermeticity (mock all /api/v1/**)`
+- `4d50dd2f` `fix(sprint-57-14, Day 1): US-A1 e2e triage + US-A2 a11y-scan hermeticity` ✅
+
+---
+
+## Day 2 — 2026-05-10 — US-B1: visual-regression CI mechanism + skip-guard rewrite
+
+### US-B1 changes
+- **`.github/workflows/playwright-e2e.yml`** —
+  - `on:` += `workflow_dispatch` (manual trigger to regenerate visual baselines)
+  - `e2e` job += `if: github.event_name != 'workflow_dispatch'` (so the manual trigger only runs the visual job, not the regular suite against the pre-commit checkout)
+  - NEW `visual-baseline` job: `if: github.event_name == 'workflow_dispatch'`; `runs-on: ubuntu-latest`; `permissions: contents: write`; checkout (`ref: github.ref`, `token: GITHUB_TOKEN`) → setup-node 20 + `npm ci` → cache + `npx playwright install --with-deps chromium` → `npm run build` → `RUN_VISUAL=1 npx playwright test visual --update-snapshots` → `git add tests/e2e/visual/**/*-snapshots/` + (if changed) commit `chore(e2e): regenerate visual-regression baselines [skip ci]` + `git push origin HEAD:${{ github.ref_name }}` → upload `visual-baselines` artifact (always).
+- **`frontend/package.json`** — NEW script `"e2e:visual:update": "RUN_VISUAL=1 playwright test visual --update-snapshots"` (Linux/WSL only — Windows `npm run` uses cmd.exe where the inline env-var syntax fails; CI uses `env:` not the script).
+- **`frontend/tests/e2e/visual/visual-regression.spec.ts`** — skip-guard rewrite: `import {existsSync} 'node:fs'` + `dirname/join` `node:path` + `fileURLToPath` `node:url`; `SNAPSHOTS_DIR = join(dirname(fileURLToPath(import.meta.url)), "visual-regression.spec.ts-snapshots")`; `HAS_BASELINES = existsSync(SNAPSHOTS_DIR)`; `RUN_VISUAL = HAS_BASELINES || Boolean(process.env.RUN_VISUAL)` → spec **auto-un-skips once the `-snapshots/` dir is committed** (so push/PR e2e isn't red on a missing baseline; once it lands the spec runs on every push/PR). Skip message points to the `visual-baseline` workflow. File-header Description + MHist updated.
+- **`frontend/CONVENTION.md`** — §8: NEW "### Hermetic API mocking" sub-section (mock catch-all `**/api/v1/**` first + specific routes after; the a11y-scan-was-red-locally lesson; `waitForLoadState("networkidle")` before axe/screenshot) + NEW "### Visual regression baselines (Sprint 57.14)" sub-section (Linux-only generation / auto-skip-until-committed guard / `visual-baseline` workflow trigger / `npm run e2e:visual:update` for WSL / `.gitattributes *.png binary` / never commit Windows-generated). MHist += 57.14 entry + a backfill 57.13 §10-13 entry; `Last Modified` → 2026-05-10.
+
+### Verify
+- `python -c "yaml.safe_load(open(...,encoding='utf-8'))"` → YAML OK; jobs `[e2e, visual-baseline]`; on `[push, pull_request, workflow_dispatch]` ✅
+- `npx playwright test visual --list` → 6 tests listed (spec parses with the new imports) ✅
+- `npx playwright test visual --reporter=line` → **6 skipped** (skip guard works — no `-snapshots/` dir + no `RUN_VISUAL` → skip; message points to the workflow) ✅
+- `npx playwright test --reporter=line` (full suite) → **40 passed / 7 skipped / 0 failed** (visual changes didn't break the rest) ✅
+- Actual baseline PNG commit: **NOT done in this dev session** (Windows-generated would cross-OS-mismatch in CI). The `visual-baseline` workflow produces them; trigger it once post-merge → `AD-Visual-Baseline-Generation` then converges from "carryover" to "done" (or to "run the workflow once" if the user prefers to defer the trigger).
+
+### One-shot trigger note (post-merge)
+```
+# After this sprint's PR merges, generate the Linux baselines once:
+gh workflow run "Playwright E2E" --ref main
+# (or GitHub UI → Actions → "Playwright E2E" → Run workflow → branch: main)
+# → runs the visual-baseline job → commits tests/e2e/visual/visual-regression.spec.ts-snapshots/*.png back to main
+# From then on visual-regression.spec.ts runs as part of every push/PR e2e job.
+```
+
+### Day 2 commit
+- (pending) `feat(sprint-57-14, Day 2): US-B1 visual-regression CI baseline mechanism + auto-un-skip guard`
 
 ---
