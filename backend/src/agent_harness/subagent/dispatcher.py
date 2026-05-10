@@ -33,6 +33,7 @@ US-2 deliverable (this file): wires FORK via ForkExecutor + as_tool_factory
 Created: 2026-05-04 (Sprint 54.2)
 
 Modification History:
+    - 2026-05-10: Sprint 57.12 US-1 — emit SubagentSpawned/Completed (closes AD-Cat11-SSEEvents)
     - 2026-05-04: Wire HANDOFF via HandoffExecutor (US-4)
     - 2026-05-04: Wire TEAMMATE via TeammateExecutor + MailboxStore injection (US-3)
     - 2026-05-04: Wire FORK via ForkExecutor + as_tool_factory via AsToolWrapper (US-2)
@@ -49,17 +50,26 @@ Related:
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING
+import logging
+from typing import TYPE_CHECKING, Awaitable, Callable
 from uuid import UUID, uuid4
 
 from adapters._base.chat_client import ChatClient
 from agent_harness._contracts import (
     AgentSpec,
+    LoopEvent,
     SubagentBudget,
+    SubagentCompleted,
     SubagentMode,
     SubagentResult,
+    SubagentSpawned,
     TraceContext,
 )
+
+logger = logging.getLogger(__name__)
+
+# Sprint 57.12 US-1: best-effort event emitter; exception isolated from tool path.
+SubagentEventEmitter = Callable[[LoopEvent], Awaitable[None]]
 from agent_harness.subagent._abc import SubagentDispatcher
 from agent_harness.subagent.budget import BudgetEnforcer
 from agent_harness.subagent.exceptions import (
@@ -94,6 +104,7 @@ class DefaultSubagentDispatcher(SubagentDispatcher):
         *,
         chat_client: ChatClient,
         mailbox: MailboxStore | None = None,
+        event_emitter: SubagentEventEmitter | None = None,
     ) -> None:
         self._chat = chat_client
         self._enforcer = BudgetEnforcer()
@@ -111,6 +122,21 @@ class DefaultSubagentDispatcher(SubagentDispatcher):
         # In-flight subagent tasks for wait_for() lookup. Per-instance state;
         # NOT module-level — fresh dispatcher per request.
         self._in_flight: dict[UUID, asyncio.Task[SubagentResult]] = {}
+        # Sprint 57.12 US-1: optional best-effort SSE event emitter (closes
+        # AD-Cat11-SSEEvents 54.2 carryover). None = no-op for unit-test
+        # backwards compat. Emission errors logged but never propagate.
+        self._event_emitter = event_emitter
+
+    async def _emit_safely(self, event: LoopEvent) -> None:
+        """Best-effort emission; warns on failure but never raises (tool path stays clean)."""
+        if self._event_emitter is None:
+            return
+        try:
+            await self._event_emitter(event)
+        except Exception as exc:  # noqa: BLE001 — emission MUST NOT break tool execution
+            logger.warning(
+                "Subagent event emission failed (%s): %s", type(exc).__name__, exc
+            )
 
     async def spawn(
         self,
@@ -152,8 +178,21 @@ class DefaultSubagentDispatcher(SubagentDispatcher):
 
         subagent_id = uuid4()
 
+        # Sprint 57.12 US-1: emit SubagentSpawned BEFORE the asyncio.Task
+        # creates the subagent execution. Awaited inline so the SSE Spawned
+        # event reaches the consumer before the Completed event (ordering
+        # guarantee for SubagentTree UI parent→child rendering).
+        await self._emit_safely(
+            SubagentSpawned(
+                subagent_id=subagent_id,
+                mode=mode.value,
+                parent_session_id=parent_session_id,
+                trace_context=trace_context,
+            )
+        )
+
         if mode == SubagentMode.FORK:
-            coro = self._fork.execute(
+            inner_coro = self._fork.execute(
                 subagent_id=subagent_id,
                 task=task,
                 budget=budget,
@@ -162,7 +201,7 @@ class DefaultSubagentDispatcher(SubagentDispatcher):
         elif mode == SubagentMode.TEAMMATE:
             # Per Day 3 D15: role defaults to "teammate"; ABC has no role kwarg.
             # Phase 55+ may extend ABC or thread role via trace_context.
-            coro = self._teammate.execute(
+            inner_coro = self._teammate.execute(
                 subagent_id=subagent_id,
                 parent_session_id=parent_session_id,
                 role="teammate",
@@ -173,7 +212,40 @@ class DefaultSubagentDispatcher(SubagentDispatcher):
         else:  # pragma: no cover — Enum exhausted by branches above
             raise SubagentLaunchError(f"Unknown mode: {mode}")
 
-        self._in_flight[subagent_id] = asyncio.create_task(coro)
+        # Sprint 57.12 US-1: wrap inner coro to emit SubagentCompleted when
+        # the subagent's asyncio.Task resolves (success OR exception). This
+        # decouples the Completed event timing from when callers invoke
+        # wait_for() — the event always fires at actual termination, which
+        # is what SubagentTree UI expects for live status update.
+        async def _track_and_emit() -> SubagentResult:
+            try:
+                result = await inner_coro
+            except BaseException:
+                # On exception path, emit Completed with empty summary so
+                # the UI can transition the subagent node to terminal state
+                # (failure indicated by empty summary + 0 tokens; richer
+                # error metadata is a future contract extension — see
+                # AD-Cat11-Completed-ErrorFields carryover).
+                await self._emit_safely(
+                    SubagentCompleted(
+                        subagent_id=subagent_id,
+                        summary="",
+                        tokens_used=0,
+                        trace_context=trace_context,
+                    )
+                )
+                raise
+            await self._emit_safely(
+                SubagentCompleted(
+                    subagent_id=subagent_id,
+                    summary=result.summary,
+                    tokens_used=result.tokens_used,
+                    trace_context=trace_context,
+                )
+            )
+            return result
+
+        self._in_flight[subagent_id] = asyncio.create_task(_track_and_emit())
         return subagent_id
 
     async def wait_for(

@@ -34,9 +34,10 @@ Key Components:
     - format_sse_message(event_type, data) -> bytes
 
 Created: 2026-04-30 (Sprint 50.2 Day 1.3)
-Last Modified: 2026-04-30
+Last Modified: 2026-05-10
 
 Modification History (newest-first):
+    - 2026-05-10: Sprint 57.12 US-1 — add SubagentSpawned/Completed mappers (closes AD-Cat11-SSEEvents)
     - 2026-05-04: Add GuardrailTriggered serializer (Sprint 53.6 D2 — Day 0 探勘)
         — yielded 7× from loop.py (Cat 9 Stage 1/2/3) but missing isinstance
         branch since 53.3 introduced the event. Pre-existing gap that escaped
@@ -74,6 +75,8 @@ from agent_harness._contracts import (
     LoopCompleted,
     LoopEvent,
     LoopStarted,
+    SubagentCompleted,
+    SubagentSpawned,
     Thinking,
     ToolCallExecuted,
     ToolCallFailed,
@@ -263,6 +266,36 @@ def _serialize_inner(event: LoopEvent) -> dict[str, Any] | None:
                 "verifier_type": event.verifier_type,
                 "reason": event.reason,
                 "suggested_correction": event.suggested_correction,
+            },
+        }
+
+    # Sprint 57.12 US-1: Cat 11 subagent lifecycle events.
+    # Emitted by DefaultSubagentDispatcher.spawn (Spawned at start, Completed
+    # when the asyncio.Task resolves). Frontend SubagentTree (US-6) consumes
+    # via chatStore.mergeEvent (per CONVENTION.md §7 3-edit checklist).
+    if isinstance(event, SubagentSpawned):
+        return {
+            "type": "subagent_spawned",
+            "data": {
+                "subagent_id": (
+                    str(event.subagent_id) if event.subagent_id else None
+                ),
+                "mode": event.mode,
+                "parent_session_id": (
+                    str(event.parent_session_id) if event.parent_session_id else None
+                ),
+            },
+        }
+
+    if isinstance(event, SubagentCompleted):
+        return {
+            "type": "subagent_completed",
+            "data": {
+                "subagent_id": (
+                    str(event.subagent_id) if event.subagent_id else None
+                ),
+                "summary": event.summary,
+                "tokens_used": event.tokens_used,
             },
         }
 

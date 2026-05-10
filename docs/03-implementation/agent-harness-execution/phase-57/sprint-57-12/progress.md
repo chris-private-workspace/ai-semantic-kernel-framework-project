@@ -108,14 +108,59 @@ All MODIFIED paths confirmed 1 result (exist) ✅:
 
 ---
 
-## Remaining for Day 1
+## Day 1 Accomplishments (2026-05-10) ✅
 
-- [ ] US-1: Cat 11 ForkExecutor.event_emitter param + 4 tool handlers emit Spawned/Completed
-- [ ] US-1: Chat router serialize_loop_event update for 2 NEW event types
-- [ ] US-1: ≥ 8 unit + integration tests
-- [ ] US-2: NEW `/api/v1/memory` router + Pydantic schemas + register in `__init__.py`
-- [ ] US-2: ≥ 11 backend tests (4 integration + 1 unit schema files)
-- [ ] Day 1 commit: `feat(sprint-57-12, Day 1): US-1 Cat 11 SSE emission + US-2 Cat 3 REST read facade`
+### US-1: Cat 11 SSE Event Emission (closes AD-Cat11-SSEEvents 54.2 carryover)
+- ✅ `dispatcher.py` event_emitter param added (additive backward-compat); `_emit_safely` helper
+- ✅ `dispatcher.spawn` emits SubagentSpawned BEFORE create_task; wraps mode coro with `_track_and_emit` for Completed
+- ✅ `sse.py` serialize_loop_event extended for `subagent_spawned` + `subagent_completed` SSE frame types
+- ✅ **10 NEW unit tests** (8 dispatcher emission + 2 SSE serializer; plan target ≥8 + ≥2 → **125%**)
+- ✅ 50/50 existing subagent unit tests pass (additive change preserves backward-compat)
+
+### US-2: Cat 3 NEW `/api/v1/memory` REST Read Facade
+- ✅ NEW `backend/src/api/v1/memory.py` (3 endpoints + inline Pydantic schemas + per-layer helpers)
+- ✅ NEW endpoints: `GET /recent?layer=X` + `GET /scope/{layer}/{scope_id}` + `GET /by-time/{layer}/{time_scale}`
+- ✅ Tenant + user + system layers fully wired; role + session 501 (Phase 58+ scope per AD-Memory-Role-Session-Phase58)
+- ✅ Multi-tenant rule enforced: tenant scope_id mismatch → 404 (no cross-tenant peek)
+- ✅ Registered in `src/api/main.py` after verification_router (drift D1-012)
+- ✅ **13 NEW integration tests** (plan target ≥11 → **118%**)
+
+### Day 1 Aggregate Test Deltas
+- **pytest 1635 → 1658** (+23 NEW; plan target +17 → **135%**)
+- **mypy strict 0/300 → 0/305** source files (+5 helpers/router)
+- **9 V2 lints 9/9 green** (no NEW lint added; check_rls_policies passes — no new tables this sprint)
+- **LLM SDK leak 0** (verified)
+
+### Day 1 Drift Catalog (12 findings; all acknowledged + handled)
+
+| ID | Severity | Finding | Resolution |
+|----|----------|---------|------------|
+| **D1-001** | 🟠 YELLOW | Plan §US-1 假設 single `ForkExecutor` + `subagent/fork_executor.py`; 真實 = 4 mode classes (`subagent/modes/{handoff,teammate,fork,as_tool}.py`) + dispatcher; 0 plan-listed file actually exists | Pivot: emit at `DefaultSubagentDispatcher.spawn` (single bottleneck for all spawn paths); zero changes to mode classes |
+| **D1-002** | 🟠 YELLOW | Plan §US-1 mentioned `ForkExecutor.run_with_*` methods; reality = `ForkExecutor.execute()` (single method); same TeammateExecutor | Wrap inner coro from `_fork.execute()`/`_teammate.execute()` in `_track_and_emit` for Completed emission |
+| **D1-003** | 🟠 YELLOW | Plan §US-1 mentioned 4 tool handlers (`spawn_subagent`/`delegate`/`multi_agent_query`/`direct_query`); reality = 2 tool factories (`make_task_spawn_tool` for fork+teammate; `make_handoff_tool`) | Skip per-handler emission entirely; dispatcher-level emission covers task_spawn naturally; handoff is session pivot (not subagent spawn) — defer to future sprint |
+| **D1-004** | 🟠 YELLOW | Plan §US-1 §3 metadata fields (subagent_role / prompt_summary[:200] / tenant_id / success / elapsed_ms / error_class) — none exist on existing event contracts | **NO new contracts** per plan §Background commitment; emit with `subagent_id` / `mode` / `parent_session_id` (Spawned) and `subagent_id` / `summary` / `tokens_used` (Completed); tenant_id via inherited `trace_context` |
+| **D1-005** | 🟠 YELLOW | SubagentCompleted has only `summary` + `tokens_used` (no `success`/`error_class`); SubagentTree UI must derive status from event ordering | Spawned event = "running" state; Completed event = terminal state; UI derives success from non-empty summary (D1-005 noted in test docstring) |
+| **D1-006** | 🟢 GREEN | Plan §US-1 §3 said `chat/handler.py serialize_loop_event`; reality = `chat/sse.py serialize_loop_event` (handler delegates to sse module) | Edit sse.py instead of handler.py (corrected file location) |
+| **D1-007** | 🔴 RED (resolved) | Plan §US-2 §4 假設 MemoryStore ABC has `list_recent`/`list_by_scope`/`list_by_time` methods; reality = ABC only has `read`/`write`/`evict`/`resolve` (search-oriented, not browse-oriented) | User-decided **Option B** (2026-05-10): Direct ORM access bypassing ABC; preserves plan claim "0 NEW ABC methods + 0 NEW migrations"; logs AD-Memory-ABC-ListMethods Phase 58+ for proper ABC redesign |
+| **D1-008** | 🟠 YELLOW | 5-layer ORM tables have non-uniform schemas (MemorySystem no tenant_id; MemoryRole no TenantScopedMixin; MemorySessionSummary no expires_at; MemoryUser no `key` column) | Adopt discriminated `MemoryEntryItem` shape with nullable layer-specific fields; ship tenant + user + system fully; defer role + session to Phase 58+ AD-Memory-Role-Session-Phase58 |
+| **D1-009** | 🟢 GREEN | Plan §US-2 specified `_schemas/memory.py` separate file; reality follows `verification.py` (57.11) inline schema pattern | Inline Pydantic schemas in `memory.py`; no separate `_schemas/` directory |
+| **D1-010** | 🟢 GREEN | Plan §US-2 §2 said `require_admin_role("memory:read")`; existing platform_layer/identity/auth.py has `require_audit_role` (auditor/admin/compliance) | Use `require_audit_role` matching verification.py 57.11 pattern (semantically correct for memory audit) |
+| **D1-011** | 🟠 YELLOW | Per D1-007 + D1-008, MemoryViewer cannot easily browse all 5 layers in 1 sprint; role + session require ABC redesign | Ship 3 layers fully (tenant + user + system); 501 for role + session; document Phase 58+ AD |
+| **D1-012** | 🟢 GREEN | Plan §US-2 said `api/v1/__init__.py` for router registration; reality = `src/api/main.py` (factory `create_app()` calls `app.include_router`) | Add to main.py; mirror verification_router registration position |
+
+### NEW Carryover ADs Logged (Phase 58+)
+- **AD-Memory-ABC-ListMethods** — Cat 3 MemoryStore ABC redesign to add proper `list_*` methods (currently REST bypasses ABC); ~3-5 hr; should bundle with Cat 3 retrieval engine improvements
+- **AD-Memory-Role-Session-Phase58** — Wire role + session layers in /api/v1/memory; requires resolving role_id → role_name JOIN + session_id → tenant_id JOIN paths; ~2-3 hr
+- **AD-Cat11-Handoff-Events-Phase58+** — handoff is session pivot not subagent spawn; if future SubagentTree wants to visualize handoff, define separate event type or extend SubagentSpawned with `mode="handoff"`
+- **AD-Cat11-Completed-ErrorFields** — SubagentCompleted contract lacks success/error_class; future Cat 11 contract extension when richer Completed metadata needed by UI
+
+---
+
+## Remaining for Day 2-4
+
+- [ ] Day 2: US-3 frontend infra + US-4 LoopVisualizer + US-5 page wrap
+- [ ] Day 3: US-5 complete + US-6 SubagentTree + US-7 audit cycle
+- [ ] Day 4: US-8 routing + 4 e2e + closeout
 
 ---
 

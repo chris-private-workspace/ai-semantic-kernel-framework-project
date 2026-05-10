@@ -205,8 +205,53 @@ class TestSerializeLoopEvent:
         assert out["data"]["action"] == "block"
         assert "reviewer" in out["data"]["reason"]
 
+    def test_subagent_spawned_serializes_to_subagent_spawned_frame(self) -> None:
+        """Sprint 57.12 US-1: SubagentSpawned → 'subagent_spawned' SSE frame.
+
+        Closes AD-Cat11-SSEEvents (54.2 carryover). Frontend SubagentTree (US-6)
+        consumes via chatStore.mergeEvent (CONVENTION.md §7 3-edit checklist).
+        """
+        from agent_harness._contracts import SubagentSpawned
+
+        sid = uuid4()
+        parent = uuid4()
+        ev = SubagentSpawned(
+            subagent_id=sid,
+            mode="fork",
+            parent_session_id=parent,
+        )
+        out = serialize_loop_event(ev)
+        assert out is not None
+        assert out["type"] == "subagent_spawned"
+        assert out["data"]["subagent_id"] == str(sid)
+        assert out["data"]["mode"] == "fork"
+        assert out["data"]["parent_session_id"] == str(parent)
+
+    def test_subagent_completed_serializes_to_subagent_completed_frame(self) -> None:
+        """Sprint 57.12 US-1: SubagentCompleted → 'subagent_completed' SSE frame.
+
+        Per D1-005: uses 17.md §4 single-source fields only (subagent_id /
+        summary / tokens_used). Status (running/success/error) is implicit
+        for SubagentTree UI: Spawned event = running; Completed event = terminal.
+        """
+        from agent_harness._contracts import SubagentCompleted
+
+        sid = uuid4()
+        ev = SubagentCompleted(
+            subagent_id=sid,
+            summary="Subagent finished task X with result Y.",
+            tokens_used=147,
+        )
+        out = serialize_loop_event(ev)
+        assert out is not None
+        assert out["type"] == "subagent_completed"
+        assert out["data"]["subagent_id"] == str(sid)
+        assert out["data"]["summary"] == "Subagent finished task X with result Y."
+        assert out["data"]["tokens_used"] == 147
+
     def test_unsupported_event_raises_with_sprint_pointer(self) -> None:
         # Sprint 54.1 US-3: VerificationPassed/Failed are now wired.
+        # Sprint 57.12 US-1: SubagentSpawned/SubagentCompleted are now wired.
         # Use TripwireTriggered (Cat 9; still unwired in 50.2 scope) as a
         # canonical "deferred event type" — kept in sync as future sprints
         # add owner branches.
