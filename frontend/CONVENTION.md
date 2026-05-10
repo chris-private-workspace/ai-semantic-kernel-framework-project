@@ -30,26 +30,39 @@ sprints reference this doc instead of grep-ing 6-8 sprint commits.
 
 ## 1. Page Architecture Pattern
 
-Every authenticated page wraps in this 3-layer composition (per Sprint 57.8 US-5 chat-v2
-+ Sprint 57.9 US-1 governance):
+**Every `active: true` route in `routes.config.ts` MUST be auth-gated** (Sprint 57.13 US-A2 —
+no `active` page renders for an unauthenticated visitor). Wrap the page in `<RequireAuth>`
+then `<AppShellV2>`:
 
 ```tsx
-import { Navigate } from "react-router-dom";
 import { AppShellV2 } from "@/components/AppShellV2";
-import { isAuthenticated, setPostLoginRedirect } from "@/features/auth/services/authService";
+import { RequireAuth } from "@/features/auth/components/RequireAuth";
 
 export default function MyPage(): JSX.Element {
-  if (!isAuthenticated()) {
-    setPostLoginRedirect("/my-page");
-    return <Navigate to="/auth/login" replace />;
-  }
   return (
-    <AppShellV2 pageTitle="My Page">
-      {/* page content */}
-    </AppShellV2>
+    <RequireAuth>
+      <AppShellV2 pageTitle="My Page">
+        {/* page content */}
+      </AppShellV2>
+    </RequireAuth>
   );
 }
 ```
+
+`<RequireAuth>` reads `authStore.status` (resolved on app mount by `<AuthBootstrap>` in
+`App.tsx` via `GET /auth/me`): `unknown` → loading spinner (don't redirect before bootstrap
+finishes — flashes /auth/login); `anonymous` → `setPostLoginRedirect(path)` + `<Navigate
+to="/auth/login?redirect_to=...">`; `authenticated` → renders children. (Pre-Sprint-57.13
+pages did the 3-branch logic inline via `isAuthenticated()`; that's been centralized.)
+
+**Role-gated pages** (e.g. admin-tenants — platform-admin only): wrap in `<RequireAuth>`,
+then inside check `useAuthStore((s) => s.roles)` and render a "needs permission" notice
+instead of mounting the data hooks (so they don't fire a 403). Don't put role logic in
+`<RequireAuth>` itself.
+
+**Tenant-scoped pages** (cost-dashboard / sla-dashboard / tenant-settings): read the
+tenant id from `useAuthStore((s) => s.tenant?.id ?? "")` — NOT from a URL `?tenant_id=`.
+Inside `<RequireAuth>`, `tenant` is always set.
 
 ### Sub-routes (tabs)
 
@@ -102,9 +115,10 @@ MUST NOT render their own h1** — doing so causes accessibility / SEO cascade c
 
 ### Auth gate ordering rule
 
-Auth gate MUST be the FIRST early return inside the page component (BEFORE AppShellV2
-wrap). Wrapping unauthenticated state in AppShellV2 leaks the chrome (sidebar / user menu)
-to logged-out viewers.
+`<RequireAuth>` MUST be the OUTERMOST wrapper (outside `<AppShellV2>`). Putting the gate
+inside AppShellV2 leaks the chrome (sidebar / user menu) to logged-out / still-bootstrapping
+viewers. (Pre-57.13 the equivalent rule was "the `isAuthenticated()` early return must come
+before the AppShellV2 wrap".)
 
 ---
 

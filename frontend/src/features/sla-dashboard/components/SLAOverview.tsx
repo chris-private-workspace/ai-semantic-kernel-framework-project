@@ -6,25 +6,22 @@
  *
  * Description:
  *   Sprint 57.9 US-6 Day 4: replaced manual useEffect + loadData orchestration
- *   with `useSLAReport` TanStack Query hook + dropped inline styles for
- *   Tailwind utilities (mirror governance/cost-dashboard refactor pattern).
- *
- *   Reads tenant_id from URL query (admin-driven per D8). MonthPicker stays
- *   in body (page index doesn't hoist it for sla-dashboard, unlike
- *   cost-dashboard). Threshold fallback to Standard 99.5% (per Day 0 D10 —
- *   frontend has no tenant.plan accessible). Latency thresholds use sensible
- *   defaults.
+ *   with `useSLAReport` TanStack Query hook + Tailwind utilities.
+ *   Sprint 57.13 US-A2: tenant_id from the authenticated session
+ *   (authStore.tenant.id); page is wrapped in <RequireAuth> so tenant is set.
+ *   MonthPicker stays in body. Threshold fallback to Standard 99.5% (Day 0 D10
+ *   — frontend has no tenant.plan accessible). Latency thresholds use defaults.
  *
  * Created: 2026-05-06 (Sprint 57.1 Day 2)
- * Last Modified: 2026-05-09
+ * Last Modified: 2026-05-10
  *
  * Modification History (newest-first):
+ *   - 2026-05-10: Sprint 57.13 US-A2 — tenant_id from authStore.tenant.id (was URL ?tenant_id=)
  *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — migrate to useSLAReport TanStack hook + Tailwind utilities (drop inline styles)
  *   - 2026-05-06: Initial creation (Sprint 57.1 Day 2 / US-3 — SLA overview)
  */
 
-import { useSearchParams } from "react-router-dom";
-
+import { useAuthStore } from "../../auth/store/authStore";
 import { MonthPicker } from "../../cost-dashboard/components/MonthPicker";
 import { useSLAReport } from "../hooks/useSLAReport";
 import { useSLAStore } from "../store/slaStore";
@@ -39,8 +36,7 @@ const LOOP_COMPLEX_P99_MAX_MS = 120000;
 const HITL_QUEUE_NOTIF_P99_MAX_MS = 60000;
 
 export function SLAOverview() {
-  const [searchParams] = useSearchParams();
-  const tenantId = searchParams.get("tenant_id") ?? "";
+  const tenantId = useAuthStore((s) => s.tenant?.id ?? "");
   const currentMonth = useSLAStore((s) => s.currentMonth);
   const setMonth = useSLAStore((s) => s.setMonth);
 
@@ -49,18 +45,12 @@ export function SLAOverview() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Per-tenant SLA report. Backend enforces admin-platform role
-        (Sprint 56.3 endpoint). Threshold fallback to Standard 99.5%
-        availability — Enterprise tier display deferred (Day 0 D — frontend
-        has no tenant.plan access).
+        SLA report for your tenant. Threshold fallback to Standard 99.5%
+        availability — Enterprise tier display deferred (Day 0 D10).
       </p>
 
       {!tenantId && (
-        <p className="text-sm text-destructive">
-          Missing{" "}
-          <code className="rounded bg-muted px-1 py-0.5">?tenant_id=...</code>{" "}
-          query parameter.
-        </p>
+        <p className="text-sm text-destructive">No tenant in your session.</p>
       )}
 
       <div>

@@ -6,25 +6,26 @@
  *
  * Description:
  *   Sprint 57.9 US-6 Day 4: replaced manual useEffect + loadData orchestration
- *   with `useTenantSettings` TanStack Query hook (closes AD-Cost-Dashboard-UseQuery
- *   for tenant-settings batch). Reads tenant_id from URL query string
- *   `?tenant_id=...` (admin-driven per 57.1 v2 D8 — backend enforces
- *   require_admin_platform_role).
+ *   with `useTenantSettings` TanStack Query hook.
+ *   Sprint 57.13 US-A2: tenant_id from the authenticated session
+ *   (authStore.tenant.id) — page is wrapped in <RequireAuth>. (Tailwind-ize
+ *   the inline styles in Sprint 57.13 US-B9 inline-cleanup sweep.)
  *
  *   Edit toggle button switches to TenantSettingsEditForm. Loading skeleton +
  *   error retry UX. State + Plan rendered as colored badges.
  *
  * Created: 2026-05-07 (Sprint 57.3 Day 3)
- * Last Modified: 2026-05-09
+ * Last Modified: 2026-05-10
  *
  * Modification History (newest-first):
+ *   - 2026-05-10: Sprint 57.13 US-A2 — tenant_id from authStore.tenant.id (was URL ?tenant_id=)
  *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — migrate to useTenantSettings TanStack hook (drop store loadData)
  *   - 2026-05-07: Initial creation (Sprint 57.3 Day 3)
  */
 
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
 
+import { useAuthStore } from "../../auth/store/authStore";
 import { useTenantSettings } from "../hooks/useTenantSettings";
 import { TenantPlan, TenantState } from "../types";
 import { TenantSettingsEditForm } from "./TenantSettingsEditForm";
@@ -49,8 +50,7 @@ function planBadgeColor(plan: TenantPlan): string {
 }
 
 export function TenantSettingsView() {
-  const [searchParams] = useSearchParams();
-  const tenantId = searchParams.get("tenant_id") ?? "";
+  const tenantId = useAuthStore((s) => s.tenant?.id ?? "");
   const [editing, setEditing] = useState(false);
 
   const { data, isLoading, error, refetch } = useTenantSettings(tenantId);
@@ -58,15 +58,10 @@ export function TenantSettingsView() {
   return (
     <div style={{ padding: "2rem", fontFamily: "system-ui, sans-serif" }}>
       <p style={{ color: "#666", fontSize: "0.9rem" }}>
-        Per-tenant configuration. Backend enforces admin-platform role
-        (Sprint 57.3 endpoints). 401/403 surfaces as error below.
+        Configuration for your tenant.
       </p>
 
-      {!tenantId && (
-        <p style={{ color: "#a00" }}>
-          Missing <code>?tenant_id=...</code> query parameter.
-        </p>
-      )}
+      {!tenantId && <p style={{ color: "#a00" }}>No tenant in your session.</p>}
 
       {isLoading && tenantId && <p style={{ fontStyle: "italic" }}>Loading tenant settings…</p>}
 

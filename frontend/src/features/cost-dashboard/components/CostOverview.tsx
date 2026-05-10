@@ -7,31 +7,28 @@
  * Description:
  *   Sprint 57.9 US-6 Day 4: replaced manual useEffect + loadData orchestration
  *   with `useCostSummary` TanStack Query hook (closes AD-Cost-Dashboard-UseQuery).
- *   Reads tenant_id from URL query string `?tenant_id=...` (admin-driven per
- *   D8 — backend enforces require_admin_platform_role); reads currentMonth
- *   from useCostStore (UI-only state).
- *
- *   Drops: useEffect dependency-tracking + setMonth invalidation; TanStack
- *   queryKey [tenantId, month] auto-refetches on either change.
+ *   Sprint 57.13 US-A2: tenant_id now comes from the authenticated session
+ *   (authStore.tenant.id) — the page is wrapped in <RequireAuth> so tenant is
+ *   always set; backend (US-A3) lets a user see their own tenant's data.
+ *   currentMonth comes from useCostStore (UI-only state).
  *
  * Created: 2026-05-06 (Sprint 57.1 Day 1)
- * Last Modified: 2026-05-09
+ * Last Modified: 2026-05-10
  *
  * Modification History (newest-first):
+ *   - 2026-05-10: Sprint 57.13 US-A2 — tenant_id from authStore.tenant.id (was URL ?tenant_id=)
  *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — migrate to useCostSummary TanStack hook (drop store loadData/data/loading/error)
  *   - 2026-05-10: Sprint 57.7 US-B3 — migrate to AppShell + Tailwind utility classes
  *   - 2026-05-06: Initial creation (Sprint 57.1 Day 1 / US-2 — Cost overview)
  */
 
-import { useSearchParams } from "react-router-dom";
-
+import { useAuthStore } from "../../auth/store/authStore";
 import { useCostSummary } from "../hooks/useCostSummary";
 import { useCostStore } from "../store/costStore";
 import { CostBreakdownTable } from "./CostBreakdownTable";
 
 export function CostOverview() {
-  const [searchParams] = useSearchParams();
-  const tenantId = searchParams.get("tenant_id") ?? "";
+  const tenantId = useAuthStore((s) => s.tenant?.id ?? "");
   const currentMonth = useCostStore((s) => s.currentMonth);
 
   const { data, isLoading, error, refetch } = useCostSummary(tenantId, currentMonth);
@@ -40,17 +37,12 @@ export function CostOverview() {
     <div className="space-y-4">
       <header>
         <p className="text-sm text-muted-foreground">
-          Per-tenant cost ledger summary. Backend enforces admin-platform role
-          (Sprint 56.3 endpoint). 401/403 surfaces as error below.
+          Cost ledger summary for your tenant.
         </p>
       </header>
 
       {!tenantId && (
-        <p className="text-sm text-destructive">
-          Missing{" "}
-          <code className="rounded bg-muted px-1 py-0.5">?tenant_id=...</code>{" "}
-          query parameter.
-        </p>
+        <p className="text-sm text-destructive">No tenant in your session.</p>
       )}
 
       {isLoading && tenantId && (
