@@ -164,7 +164,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add tests/e2e/visual/**/*-snapshots/ || true
+          # Add the whole visual/ dir — Playwright writes baselines to
+          # tests/e2e/visual/<spec>-snapshots/*.png. (A `**`-glob pathspec
+          # doesn't match here: bash globstar is off so the literal `**` is
+          # passed to `git add`, which then `fatal: pathspec ... did not match`.)
+          git add tests/e2e/visual/
           if git diff --cached --quiet; then
             echo "no baseline changes"
           else
