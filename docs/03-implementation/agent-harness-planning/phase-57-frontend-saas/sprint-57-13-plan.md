@@ -67,9 +67,10 @@ Description:
 
 Created: 2026-05-10 (Sprint 57.13 drafting; user directive — full Foundation 1/N completion + frontend↔backend wiring)
 Last Modified: 2026-05-10
-Status: Draft (pending user approval before Day 0 commit)
+Status: Closed (Day 9 closeout — 13/15 USs full + 2 minimal-viable; ratio ~0.95–1.0 in band; see retrospective.md)
 
 Modification History (newest-first):
+    - 2026-05-10: Day 9 closeout — sprint done; calibration `frontend-foundation-spike` 0.50 1st app ratio ~0.95–1.0 KEEP; carryovers in retrospective.md Q4
     - 2026-05-10: Initial creation (Sprint 57.13 — Frontend Foundation 1/N Completion + Frontend↔Backend Wiring 全打通; ~15 USs / Day 0-9)
 
 Related:

@@ -88,14 +88,15 @@ sources:
 | **57.10** Frontend Convention Codify（PIVOTED）| CONVENTION.md 667 行 + STYLE.md 447 行 | §1.1 Frontend #16 Testing + 整體 convention drift 收斂；§2.2 paper-vs-runtime drift 部分緩解 |
 | **57.11** Verification Real Ship + AD-Frontend-SSE-Silent-Drop-Fix | Cat 10 verification UI + SSE 3-edit checklist codified | agent harness UI 推進（非 SaaS 外圍）|
 | **57.12** Agent Harness UI Suite + Cat 11 SSE + Cat 3 `/api/v1/memory` + AD-AdminTenant-Patch-Flake | LoopVisualizer + MemoryViewer + SubagentTree（2 NEW pages + chat-v2 inline）| §1.1「16.md 沒提的 agent-harness UI」已 ship；Cat 3 read facade ≠ §1.7 public API spec |
+| **57.13** Frontend Foundation 1/N **COMPLETE** + Frontend↔Backend wiring | auth flow 端到端（D-PRE-8 middleware fix + `/auth/me` + dev-login + `<RequireAuth>` 4-page gate + cross-tenant admin + RLS）+ design-system layer（`components/ui/`）+ Toast + Sentry/Web Vitals/Cat-12 telemetry + i18n（en/zh-TW）+ jsx-a11y + Lighthouse CI + auth-pages rewrite（lazy → main 297.89 kB ~flat）| **#3 Frontend Foundation → 真 done**（shadcn 仍 YAGNI，但 Sentry/i18next/Lighthouse 全補上）；#1 Auth + #2 Auth-UX-shell partial → 更接近 done（login/callback 不再 bare）；13/15 USs full + 2 minimal-viable（visual baselines / 廣 inline-cleanup → carryover）|
 
 ### Top 10 Critical Gaps 進度
 
 | # | Gap | 狀態 | 備註 |
 |---|-----|------|------|
-| 1 | Auth | 🟡 partial | WorkOS 定案 + OIDC login flow + RBAC hybrid；RS256/JWKS/refresh-rotation/SAML/SCIM/MFA 延 58+ |
-| 2 | Frontend Auth UX shell | 🟡 partial | `/auth/login` `/auth/callback` 頁面存在（bare）+ AuthShell；sign-up/forgot/MFA 延 58.2+ |
-| 3 | Frontend Foundation 1/N | ✅ done（大致）| Tailwind 4 + TanStack Query 5 + RHF/zod + AppErrorBoundary + AppShell V2 + CONVENTION/STYLE。跳過 shadcn（YAGNI）/Sentry（placeholder）/i18next/Lighthouse |
+| 1 | Auth | 🟡 partial | WorkOS 定案 + OIDC login flow + RBAC hybrid + Sprint 57.13: middleware allowlist fix（D-PRE-8 — users 真的能登入了）+ `GET /auth/me` + dev-login + `authStore` + `<RequireAuth>` 4-page gate + cross-tenant admin checks；RS256/JWKS/refresh-rotation/SAML/SCIM/MFA 延 58+ |
+| 2 | Frontend Auth UX shell | 🟡 partial | Sprint 57.13: `/auth/login` `/auth/callback` rewritten（`<AuthShell>`+`<Card>`+`<Button>`, Tailwind, page-level h1, lazy-loaded, error EmptyState）— 不再 bare；sign-up/forgot/MFA 延 58.2+ |
+| 3 | Frontend Foundation 1/N | ✅ **done**（Sprint 57.13 closeout — 不再「大致」）| Tailwind 4 + TanStack Query 5 + RHF/zod + AppErrorBoundary + AppShell V2 + CONVENTION/STYLE（57.10）+ **Sprint 57.13**: design-system `components/ui/` 層 + Toast + **Sentry**（opt-in DSN）+ Web Vitals + **i18next**（en/zh-TW）+ jsx-a11y + **Lighthouse CI**。仍跳過 shadcn CLI（YAGNI — 用 plain Tailwind shadcn-style components）|
 | 4 | Status Page + Incident + On-call | ❌ open | roadmap 57.9 Block E 被 pivot |
 | 5 | SOC 2 control matrix + GRC 決策 | ❌ open | roadmap 57.8 Block C 被 pivot |
 | 6 | SBOM + Cosign + Trivy in CI | ❌ open | roadmap 57.8 Block D；EU CRA 2026 Sep 強制 |

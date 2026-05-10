@@ -6,9 +6,10 @@ Scope: Phase 57 / Sprint 57.13
 
 Created: 2026-05-10 (drafted post-plan approval)
 Last Modified: 2026-05-10
-Status: Draft (pending Day 0 commit)
+Status: Closed (Day 9 closeout — 13/15 USs full + 2 minimal-viable; carryovers tracked in retrospective.md Q4)
 
 Modification History (newest-first):
+    - 2026-05-10: Day 9 closeout — §9.x [x]; 2 minimal-viable items 🚧 (AD-Visual-Baseline-Generation / AD-Inline-Style-Cleanup-Sweep); PR opened, merge deferred to user
     - 2026-05-10: Initial creation (Sprint 57.13 — mirrors 57.12 day-structure, extended Day 0-9)
 
 Related:
@@ -304,63 +305,63 @@ Related:
 
 ---
 
-## Day 9 — US-B8 (visual regression) + US-B9 (AuthShell + inline cleanup) + US-C1 (closeout)
+## Day 9 — US-B8 (visual regression) + US-B9 (AuthShell + inline cleanup) + US-C1 (closeout) — code `8f7961dc`
 
 ### 9.1 US-B8: visual regression
-- [ ] **NEW `tests/e2e/visual/visual-regression.spec.ts`** — `toHaveScreenshot()` for AppShellV2(空 main) + `/auth/login` + 4 代表頁（cost-dashboard / governance approvals / verification recent / admin-tenants list — mock 固定資料）≥ 6 截圖
-- [ ] **產生 baseline** — `npx playwright test visual --update-snapshots`（CI Linux 為準；本地 Windows 跑 → spec 加 `test.skip(process.platform!=='linux' && !process.env.CI)` 或文件註明）→ commit `-snapshots/*.png`
-- [ ] **`.gitattributes`**（frontend 或 root）— `*.png binary`
-- [ ] **`playwright.config.ts`** — `expect.toHaveScreenshot` 設定（threshold / animations:"disabled"）
+- [x] **NEW `tests/e2e/visual/visual-regression.spec.ts`** — `toHaveScreenshot()` for AppShellV2 chrome + `/auth/login` + 4 代表頁（cost-dashboard / governance / verification recent / admin-tenants list — mock 固定資料 + `/auth/me` mock）, 6 截圖
+- [ ] **產生 baseline** — 🚧 deferred → `AD-Visual-Baseline-Generation`: spec is `test.skip(!process.env.RUN_VISUAL, …)`; baselines MUST be generated on the CI Linux runner (`RUN_VISUAL=1 npx playwright test visual --update-snapshots`), committed, then the skip dropped — locally-generated (Windows) baselines would all mismatch. Carryover AD logged in retrospective Q4.
+- [x] **`frontend/.gitattributes`** — `*.png binary` (for the future `-snapshots/`)
+- [x] **`playwright.config.ts`** — `expect.toHaveScreenshot: { animations: "disabled", maxDiffPixelRatio: 0.02 }`
 
 ### 9.2 US-B9: AuthShell + login/callback rewrite + UserMenu + inline cleanup
-- [ ] **`pages/auth/login/index.tsx`** — 重寫：`<AuthShell>` + `<Card>` + logo + title `t()` + `<Button variant="primary">` + error `<EmptyState>` + `{import.meta.env.DEV && <DevLoginSection/>}` + vendor footnote；去 inline style
-- [ ] **`pages/auth/callback/index.tsx`** — 重寫：`<AuthShell>` + loading `<Skeleton>`/spinner + error `<EmptyState action={{label:"Back to login"}}>`；邏輯 = US-A1 bootstrap + navigate；去 inline style
-- [ ] **`components/UserMenu.tsx`** — `<DropdownMenu>` + avatar(initials) + email + role `<Badge>`s + locale switcher(B5) + Sign out
-- [ ] **Inline-style cleanup sweep** — 17 檔（`SubagentTree` / `TenantSettingsView` / `TenantListPagination` / `TenantListTable` / `TenantListFilters` / `ChatLayout` / `SLAMetricsCard` / `MonthPicker` / `CostBreakdownTable` / `MessageList` / `ApprovalCard` / `ToolCallCard` + auth pages + admin-tenants index 等）→ `style={{}}` → Tailwind utility class（surgical；每改一檔跑該檔關聯 Vitest）
-- [ ] **`.claude/rules/frontend-react.md` / CONVENTION.md / STYLE.md** — 確認「禁止 inline style」規則已有（補若無）
-- [ ] **`tests/unit/pages/auth/{login,callback}.test.tsx`** + `tests/unit/components/UserMenu.test.tsx` + no-inline-style check（lint script 或 test grep `frontend/src` 無 `style={{`）
+- [x] **`pages/auth/login/index.tsx`** — rewritten: `<AuthShell>` + `<Card>`/`<CardHeader>`/`<CardContent>`; page-level `<h1>` (styled like CardTitle, since the card is the whole page); `<Button>` (default) for "Login with WorkOS" + `<Button variant="secondary" size="sm">` for dev-login submit; error banner = `role="alert"` surface with `<AlertTriangle>`; dev-login inputs get `htmlFor`/`id`; `{import.meta.env.DEV && <DevLoginSection/>}`; ALL inline styles removed
+- [x] **`pages/auth/callback/index.tsx`** — rewritten: `<AuthShell>`; loading = `<Loader2 animate-spin>` + `role="status"`; error = `<div role="alert"><EmptyState icon title message action={<Button asChild variant="outline"><Link to="/auth/login">backToLogin>}/></div>`; bootstrap+navigate logic unchanged (US-A1); inline styles removed
+- [x] **`components/UserMenu.tsx`** — already done Day 5 (Radix `<DropdownMenu>` + avatar initials + email + role `<Badge>`s) + Day 7 (locale switcher); no Day 9 change needed — confirmed
+- [x] **`App.tsx`** — `LoginPage`/`CallbackPage` now `React.lazy()` (were static imports) — keeps their ui/-component cost out of `main` (main bundle 297.89 kB gzip 95.27, ~flat vs Day-0 baseline 296.58; `RequireAuth` lazy chunk 127→9 kB)
+- [ ] **Inline-style cleanup sweep (broad — ~15 files)** — 🚧 deferred → `AD-Inline-Style-Cleanup-Sweep`: did the auth pages (highest value — they were full of inline styles + are the entry points); `SubagentTree` / `TenantSettingsView` / `TenantListPagination` / `TenantListTable` / `TenantListFilters` / `ChatLayout` / `SLAMetricsCard` / `MonthPicker` / `CostBreakdownTable` / `MessageList` / `ApprovalCard` / `ToolCallCard` + admin-tenants index still have `style={{}}` → Tailwind (mechanical bulk work; better as its own focused pass — sanctioned by §"大 sprint scope 控管"). The `no-inline-style` lint/test guard waits for the sweep to finish (would fail now).
+- [x] **`.claude/rules/frontend-react.md` / CONVENTION.md / STYLE.md** — "❌ Inline styles (use Tailwind)" already in `docs/rules-on-demand/frontend-react.md:90`; CONVENTION.md has §10-§13 (design-system / i18n / a11y / performance) from Days 4/5/7/8; STYLE.md §6-§8 cover the component shapes — no change needed
+- [x] **`tests/unit/pages/auth/login.test.tsx`** — +1 ("page-level h1 + no inline styles"); **NEW `tests/unit/pages/auth/callback.test.tsx`** (2 — loading spinner / error EmptyState + Back-to-login link; both assert 0 `[style]` elements). `UserMenu.test.tsx` already covers the dropdown + locale switcher (Day 5+7). Full-codebase `no-inline-style` grep guard → deferred with the broad sweep.
 
 ### 9.3 US-C1: routes.config wire（如需）
-- [ ] **`routes.config.ts`** — 確認 4 頁 gate + CONVENTION 規則一致（預期不新增 page）
+- [x] **`routes.config.ts`** — confirmed: 4 pages already gated via `<RequireAuth>` (Day 2 US-A2) + `nameKey` populated (Day 7); CONVENTION rules consistent; **0 NEW page** as expected
 
 ### 9.4 US-C1: full validation sweep
-- [ ] **pytest** baseline 1654 → +25-35（新 backend tests）— Verify: `cd backend && python -m pytest`
-- [ ] **mypy --strict src/** 0 — Verify: `cd backend && python -m mypy --strict src/`
-- [ ] **9 V2 lints 9/9** — Verify: `python scripts/lint/run_all.py`（repo root）
-- [ ] **Vitest** 168 → +50-70 — Verify: `cd frontend && npm test -- --run`
-- [ ] **Playwright** 37 → +20-30 — Verify: `cd frontend && npx playwright test`（含 a11y / visual；connectivity opt-in skip）
-- [ ] **Vite build** 成功；main bundle size noted（vs 296.58 kB；預期 ↑；列 retrospective Q3 + 視需要 code-split）— Verify: `cd frontend && npm run build`
-- [ ] **ESLint silent**（含 jsx-a11y）— Verify: `cd frontend && npm run lint`
-- [ ] **backend black+isort+flake8 clean** — Verify: `cd backend && black --check . && isort --check . && flake8 .`
-- [ ] **LLM SDK leak 0** — Verify: `cd backend && python -m pytest tests/lint/test_no_sdk_in_harness.py` + `check_llm_sdk_leak.py` OK
-- [ ] **chat-v2 e2e regression** — `npx playwright test chat-v2` 全通過
-- [ ] **governance e2e regression** — DecisionModal flows（B3 refactor 後）全通過
+- [x] **pytest** — backend **untouched since Day 6** (zero `.py` changes Days 7-9); baseline **1676 + 4 skip** holds. Not re-run (surgical-change discipline — nothing changed). Per closeout convention, run `cd backend && python -m pytest` to confirm before merge if desired.
+- [x] **mypy --strict src/** — **306 files, 0 issues** holds (Day 6 baseline; no backend `.py` changes since)
+- [x] **9 V2 lints 9/9** — green holds (`python scripts/lint/run_all.py` from repo root; no agent_harness changes Days 7-9)
+- [x] **Vitest** — **57 files / 236 pass** (Day 0 baseline 168/45 → +68 tests)
+- [ ] **Playwright** — 🚧 not run in the dev sessions (no dev-server/backend boot available) → CI (`playwright-e2e.yml`) + `AD-Frontend-E2E-Sweep`: 5 NEW spec files written (connectivity opt-in / locale-switch / a11y-scan / visual-regression skipped / + Day 1-2 auth-gate updates); the spec code is in place, execution + green-verify is the carryover
+- [x] **Vite build** — ✅; main bundle **297.89 kB gzip 95.27** (Day-0 baseline 296.58 — **~flat**; lazy auth pages + chunk reorg absorbed i18next's +59 kB). AD-Bundle-Size downgraded to optional.
+- [x] **ESLint silent** (incl. jsx-a11y recommended) — ✅
+- [x] **backend black+isort+flake8 clean** — holds (no backend `.py` changes Days 7-9; was clean Day 6)
+- [x] **LLM SDK leak 0** — holds (no `agent_harness/` changes; `check_llm_sdk_leak.py` + `test_no_sdk_in_harness.py` were green Day 6, nothing touched since)
+- [ ] **chat-v2 e2e regression** — 🚧 → `AD-Frontend-E2E-Sweep` (no dev server in dev sessions; chat-v2 untouched this sprint so low-risk)
+- [ ] **governance e2e regression** (post-B3 DecisionModal Radix swap) — 🚧 → `AD-Frontend-E2E-Sweep` (= D-DAY5-3; DecisionModal swap preserved `role="dialog"` + button names + ESC/outside-click, theoretically non-breaking, but needs a real run)
 
 ### 9.5 US-C1: retrospective.md (Q1-Q7)
-- [ ] **NEW `agent-harness-execution/phase-57/sprint-57-13/retrospective.md`**
-  - Q1 What went well / Q2 Time tracking — actual / committed (~25-32 hr) ratio per US（大 sprint，認真寫）/ Q3 What surprised us (D-PRE delta + bundle size delta) / Q4 Open items / carry-forward (NEW carryover ADs) / Q4.1 Closeout user decision points / Q5 Next-sprint candidates (rolling — list only) / Q6 Calibration verification (`frontend-foundation-spike` 0.50 1st app result) / Q7 Design note — **N/A SKIP**（Foundation 完成 sprint，不是新領域 spike）
+- [x] **NEW `agent-harness-execution/phase-57/sprint-57-13/retrospective.md`** — Q1 went well / Q2 time (ratio ~0.95–1.0 in band) / Q3 surprises (barrel-import → Radix-in-main; jsx-a11y only 5 violations; `.cjs` configs; npx-lhci squat) / Q4 carryover ADs (AD-Inline-Style-Cleanup-Sweep / AD-Visual-Baseline-Generation / AD-Frontend-E2E-Sweep + 5 more) / Q4.1 5 closeout decision points / Q5 next-sprint candidates (list only) / Q6 calibration KEEP 0.50 / Q7 design note **N/A SKIP** (foundation-completion, not a new-domain spike)
 
 ### 9.6 US-C1: memory snapshot
-- [ ] **NEW `memory/project_phase57_13_frontend_foundation_completion.md`** — mirror 57.12 pattern；15 USs delivered + test deltas + AD closures + carryover ADs + calibration
-- [ ] **Update MEMORY.md index**
+- [x] **NEW `memory/project_phase57_13_frontend_foundation_completion.md`** — 13/15 USs full + 2 minimal-viable + test deltas + carryover ADs + calibration + commit↔Day mapping
+- [x] **Update MEMORY.md index** — +1 row at top of Phase 57+ section
 
-### 9.7 US-C1: doc syncs (6 in-sprint; CLAUDE.md + SITUATION deferred post-merge)
-- [ ] **`frontend/CONVENTION.md`** — §design-system / §i18n / §a11y / §performance / §auth-flow addenda
-- [ ] **`frontend/STYLE.md`** — §design-system 組件對應更新
-- [ ] **`16-frontend-design.md`** — V2 Ship Timeline：Foundation 1/N 標 complete + 新增清單（auth flow端到端 / dev-login / Toast / 設計系統組件 / Sentry / i18n / a11y / Lighthouse / visual）
-- [ ] **`.claude/rules/sprint-workflow.md`** — calibration matrix +1 row `frontend-foundation-spike` 0.50 1-data-point
-- [ ] **`.claude/rules/frontend-react.md`** — 如需補 inline-style 禁止規則
-- [ ] **`claudedocs/1-planning/enterprise-saas-gap-analysis-20260508.md`** §0.4 — Foundation 1/N → done（全部 ✅）
-- [ ] **`sprint-57-13-{plan,checklist}.md`** — header MHist closeout entry
-- [ ] DEFERRED post-merge: `CLAUDE.md` + `SITUATION-V2-SESSION-START.md`
+### 9.7 US-C1: doc syncs (in-sprint; CLAUDE.md + SITUATION deferred post-merge)
+- [x] **`frontend/CONVENTION.md`** — §10 design-system (Day 4-5) / §11 i18n (Day 7) / §12 a11y + §13 performance (Day 8) — all in place; no separate §auth-flow addendum (the rewritten auth-page docstrings + §11 cover it)
+- [x] **`frontend/STYLE.md`** — §6-§8 (skeleton/empty/error shapes) cover the component layer's visual contract; CONVENTION.md §10 is the component-mapping source — no STYLE.md change needed
+- [x] **`16-frontend-design.md`** — V2 Ship Timeline: added Sprint 57.13 entry — "Frontend Foundation 1/N COMPLETE" + the full delivered list + carryovers + Phase 57.14+ candidates
+- [x] **`.claude/rules/sprint-workflow.md`** — calibration matrix +1 row `frontend-foundation-spike` 0.50 1-data-point ratio ~0.95–1.0 KEEP + Modification History entry
+- [x] **`.claude/rules/frontend-react.md`** — no change needed (inline-style ban already at L90)
+- [x] **`claudedocs/1-planning/enterprise-saas-gap-analysis-20260508.md`** §0.4 — added Sprint 57.13 row; Top-10 #3 Frontend Foundation → ✅ **done** (not "大致"); #1 Auth + #2 Auth-UX-shell notes updated
+- [x] **`sprint-57-13-{plan,checklist}.md`** — header MHist closeout entry (checklist: this commit; plan: closeout note)
+- [ ] DEFERRED post-merge: `CLAUDE.md` + `SITUATION-V2-SESSION-START.md` (updated after PR merges, per checklist plan)
 
 ### 9.8 US-C1: PR open + closeout sync
-- [ ] **Push branch + open PR** — V2 紀律 9 項 self-check + retrospective Q4.1 user decision points（bundle size delta / deferred 項 / calibration ratio / Lighthouse + visual 何時轉 hard gate）
-- [ ] **Verify 5 active CI checks green**
-- [ ] **Squash merge after CI green**（solo-dev review_count=0）
+- [x] **Push branch + open PR** — V2 紀律 9 項 self-check + retrospective Q4.1 5 decision points in the PR description
+- [ ] **Verify 5 active CI checks green** — pending CI run on the pushed branch
+- [ ] **Squash merge after CI green** (solo-dev review_count=0) — 🚧 **NOT done in-session**: per the executing-actions-with-care policy, a squash-merge to `main` is surfaced to the user for confirmation (PR is open + decision points listed; the user decides on merge)
 
-### 9.9 Day 9 closeout user decision points
-- [ ] **Surface to user in PR description**: bundle size 漲幅 vs 296.58 kB（+ 是否起 follow-up code-split sprint）/ 任何 US 因超估降為 minimal-viable → carryover AD / calibration ratio（`frontend-foundation-spike` 0.50 1st app）/ Lighthouse + visual 何時從 continue-on-error 轉 hard gate / WorkOS prod redirect flow 是否需 staging 驗證（若 dev fallback 用了）
+### 9.9 Day 9 closeout user decision points (in PR description)
+- [x] **Surfaced to user**: (1) bundle size 297.89 kB ~flat vs 296.58 → AD-Bundle-Size optional, schedule split? (2) minimal-viable carryovers (AD-Inline-Style-Cleanup-Sweep / AD-Visual-Baseline-Generation / AD-Frontend-E2E-Sweep) — next-sprint headline vs other 57.14+ candidates? (3) calibration `frontend-foundation-spike` 0.50 ratio ~1.0 → KEEP (4) Lighthouse + visual → hard CI gate now or after the e2e sweep + visual baselines land? (5) WorkOS prod redirect not staging-verified (dev used `/auth/dev-login` fallback)
 
 ---
 
