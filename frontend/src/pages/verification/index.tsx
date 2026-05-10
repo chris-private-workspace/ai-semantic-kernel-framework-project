@@ -24,6 +24,7 @@
  * Last Modified: 2026-05-10
  *
  * Modification History (newest-first):
+ *   - 2026-05-10: Sprint 57.13 US-B5 — pageTitle + tab labels via i18n t()
  *   - 2026-05-10: Sprint 57.13 US-A1 — gate via <RequireAuth> (was inline isAuthenticated() check)
  *   - 2026-05-10: Sprint 57.11 US-4 Day 2 — auth gate + AppShellV2 + 2-tab routes (real ship)
  *   - 2026-04-29: Initial placeholder (Sprint 49.1; Phase 54.1 deferred)
@@ -33,8 +34,10 @@
  *   - frontend/src/components/AppShellV2.tsx (Sprint 57.8 US-1.3)
  *   - frontend/src/features/verification/components/VerificationList.tsx (Day 3 §3.1)
  *   - frontend/src/features/verification/components/CorrectionTraceView.tsx (Day 3 §3.2)
+ *   - frontend/src/i18n/locales/{en,zh-TW}/common.json (nav.verification + verification.tab.* keys)
  */
 
+import { useTranslation } from "react-i18next";
 import { Navigate, NavLink, Route, Routes } from "react-router-dom";
 
 import { AppShellV2 } from "@/components/AppShellV2";
@@ -50,15 +53,16 @@ const tabClass = ({ isActive }: { isActive: boolean }): string =>
   }`;
 
 export default function VerificationPage(): JSX.Element {
+  const { t } = useTranslation("common");
   return (
     <RequireAuth>
-      <AppShellV2 pageTitle="Verification">
-        <nav className="mb-4 flex gap-2 border-b border-border" aria-label="Verification tabs">
+      <AppShellV2 pageTitle={t("nav.verification")}>
+        <nav className="mb-4 flex gap-2 border-b border-border" aria-label={t("verification.tabsLabel")}>
           <NavLink to="recent" className={tabClass}>
-            Recent
+            {t("verification.tab.recent")}
           </NavLink>
           <NavLink to="timeline" className={tabClass}>
-            Correction Trace
+            {t("verification.tab.correctionTrace")}
           </NavLink>
         </nav>
         <Routes>

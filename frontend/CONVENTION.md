@@ -705,6 +705,51 @@ in cost / sla dashboards.
 
 ---
 
+## 11. i18n Convention (`src/i18n/`)
+
+Since Sprint 57.13 US-B5 the app is internationalized with **i18next + react-i18next**
+(English + Traditional Chinese `zh-TW`). Bootstrap: `src/i18n/index.ts` (imported once
+from `main.tsx` *before* render — synchronous since resources are bundled JSON, so no
+`<Suspense>` boundary needed; `react.useSuspense: false` is set explicitly).
+
+### Rules
+
+| Need | Do | NOT |
+|------|-----|-----|
+| User-facing string in a component | `const { t } = useTranslation("common")` (or `"auth"`) → `{t("nav.costDashboard")}` | hard-coded English literal |
+| Sidebar nav label | add `nameKey` to the `routes.config.ts` entry → `Sidebar` renders `t(entry.nameKey, entry.name)` (the `name` is the dev/debug fallback) | `entry.name` directly |
+| New string | add the key to **both** `src/i18n/locales/en/<ns>.json` and `…/zh-TW/<ns>.json` (same key set — `i18n.test.ts` enforces parity) | add to `en` only |
+| Interpolation | `t("devSection.errorFailed", { status })` ↔ JSON `"dev-login failed ({{status}})"` | string concat |
+| Change locale | the `<UserMenu>` switcher items call `localStorage.setItem("ipa-locale", id)` + `i18n.changeLanguage(id)` (detector also caches it) | a custom locale store |
+
+### Namespaces
+
+- `common` — shell / sidebar nav (`nav.*`) / user menu / generic actions / cross-page bits
+- `auth` — login + callback pages (incl. dev fake-login)
+
+Feature-page string extraction beyond `cost-dashboard` + `verification` (the 2 demo
+adopters) is a follow-up (`AD-i18n-Feature-Namespaces`) — add a `<feature>` namespace
+when a page is migrated.
+
+### Extraction tool
+
+`npm run i18n:extract` runs `i18next-parser` (config: `i18next-parser.config.cjs` —
+CommonJS on purpose since `package.json` is `"type": "module"`). It scans `src/**` for
+`t(...)` calls and adds missing keys (English file: key text as default; other locales:
+empty) without dropping existing translations (`keepRemoved: true`). Not run in CI — a
+dev convenience; the source of truth is the hand-maintained JSON.
+
+### Tests
+
+`tests/unit/setup.ts` does `import "@/i18n"` so component tests render real strings (not
+raw keys). A test that calls `i18n.changeLanguage(...)` MUST reset to `"en"` + clear the
+`ipa-locale` localStorage key in `afterEach` (the singleton + localStorage leak across a
+file's tests otherwise — see `UserMenu.test.tsx`). `i18n.test.ts` asserts en ≡ zh-TW key
+parity + non-empty values + `changeLanguage` switching + interpolation + unknown-locale
+fallback.
+
+---
+
 ## Cross-References
 
 - Visual + UX rules → [`STYLE.md`](./STYLE.md)

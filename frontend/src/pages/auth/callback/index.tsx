@@ -17,6 +17,7 @@
  * Last Modified: 2026-05-10
  *
  * Modification History:
+ *   - 2026-05-10: Sprint 57.13 US-B5 — i18n the strings (auth namespace); inline styles unchanged (US-B9)
  *   - 2026-05-10: Sprint 57.13 US-A1 — bootstrap-then-navigate via authStore; read ?next; drop dead ?token path
  *   - 2026-05-09: Initial skeleton (Sprint 57.7 US-A2 Day 2)
  *
@@ -24,15 +25,18 @@
  *   - backend/src/api/v1/auth.py:callback (302 here with v2_jwt cookie + ?next)
  *   - frontend/src/features/auth/store/authStore.ts (bootstrap)
  *   - frontend/src/features/auth/services/authService.ts (consumePostLoginRedirect)
+ *   - frontend/src/i18n/locales/{en,zh-TW}/auth.json (auth.* keys)
  */
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { consumePostLoginRedirect } from "../../../features/auth/services/authService";
 import { useAuthStore } from "../../../features/auth/store/authStore";
 
 export default function CallbackPage() {
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -67,7 +71,7 @@ export default function CallbackPage() {
           margin: "0 auto",
         }}
       >
-        <h1>Sign-in failed</h1>
+        <h1>{t("errorTitle")}</h1>
         <div
           role="alert"
           style={{
@@ -82,7 +86,7 @@ export default function CallbackPage() {
           {errorMessage}
         </div>
         <p style={{ marginTop: "2rem" }}>
-          <a href="/auth/login">← Back to login</a>
+          <a href="/auth/login">{t("backToLogin")}</a>
         </p>
       </div>
     );
@@ -96,7 +100,7 @@ export default function CallbackPage() {
         textAlign: "center",
       }}
     >
-      <p>Completing sign-in…</p>
+      <p>{t("completing")}</p>
     </div>
   );
 }

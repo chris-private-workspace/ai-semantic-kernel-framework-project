@@ -1,0 +1,50 @@
+{
+  "shell": {
+    "brand": "IPA",
+    "primaryNavigation": "主導覽",
+    "mainNav": "主選單",
+    "collapseSidebar": "收合側欄",
+    "expandSidebar": "展開側欄",
+    "comingSoon": "即將推出"
+  },
+  "nav": {
+    "category": {
+      "operations": "營運",
+      "admin": "管理",
+      "settings": "設定"
+    },
+    "chatV2": "對話 (V2)",
+    "costDashboard": "成本儀表板",
+    "slaDashboard": "SLA 儀表板",
+    "tenants": "租戶",
+    "tenantSettings": "租戶設定",
+    "auditLog": "稽核日誌",
+    "featureFlags": "功能開關",
+    "governance": "治理審批",
+    "verification": "驗證",
+    "loopDebug": "迴圈除錯",
+    "memory": "記憶",
+    "userProfile": "使用者設定檔",
+    "mfaSettings": "多因素驗證設定"
+  },
+  "userMenu": {
+    "label": "使用者選單",
+    "options": "使用者選單選項",
+    "signedInAs": "已登入身分",
+    "signOut": "登出",
+    "language": "語言"
+  },
+  "action": {
+    "retry": "重試",
+    "cancel": "取消",
+    "save": "儲存",
+    "loading": "載入中…"
+  },
+  "verification": {
+    "tabsLabel": "驗證分頁",
+    "tab": {
+      "recent": "最近",
+      "correctionTrace": "修正軌跡"
+    }
+  }
+}

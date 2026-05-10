@@ -8,6 +8,7 @@
  * Last Modified: 2026-05-10
  *
  * Modification History:
+ *   - 2026-05-10: Sprint 57.13 US-B5 — locale switcher test (both locales + persist + changeLanguage)
  *   - 2026-05-10: Sprint 57.13 US-B3 — Radix DropdownMenu (userEvent instead of fireEvent; role badge assertion)
  *   - 2026-05-10: Sprint 57.13 US-A1 — drive from authStore.user instead of a localStorage JWT; sign out → logout()
  *   - 2026-05-10: Initial creation (Sprint 57.8 US-2 — UserMenu Vitest)
@@ -21,6 +22,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { UserMenu } from "@/components/UserMenu";
 import { logout } from "@/features/auth/services/authService";
 import { useAuthStore } from "@/features/auth/store/authStore";
+import i18n, { LOCALE_STORAGE_KEY } from "@/i18n";
 
 vi.mock("@/features/auth/services/authService", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/features/auth/services/authService")>();
@@ -56,8 +58,12 @@ describe("UserMenu", () => {
     vi.mocked(logout).mockClear();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     useAuthStore.setState({ status: "unknown", user: null, tenant: null, roles: [] });
+    // The locale-switcher test mutates the i18n singleton + localStorage; reset both
+    // so test order doesn't leak (other UserMenu tests assert English aria-labels).
+    localStorage.removeItem(LOCALE_STORAGE_KEY);
+    await i18n.changeLanguage("en");
   });
 
   test("renders nothing when not authenticated", () => {
@@ -106,5 +112,22 @@ describe("UserMenu", () => {
 
     expect(vi.mocked(logout)).toHaveBeenCalledTimes(1);
     expect(button).toHaveAttribute("aria-expanded", "false");
+  });
+
+  test("locale switcher offers both locales and persists the choice", async () => {
+    const user = userEvent.setup();
+    setAuthed({ id: "u-1", email: "dana@test.com", display_name: "Dana" });
+    renderMenu();
+
+    await user.click(screen.getByRole("button", { name: "User menu" }));
+    // Both supported locales are offered as menu items (native labels).
+    expect(screen.getByRole("menuitem", { name: "English" })).toBeInTheDocument();
+    const zhItem = screen.getByRole("menuitem", { name: "繁體中文" });
+    expect(zhItem).toBeInTheDocument();
+
+    await user.click(zhItem);
+
+    expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe("zh-TW");
+    expect(i18n.resolvedLanguage).toBe("zh-TW");
   });
 });

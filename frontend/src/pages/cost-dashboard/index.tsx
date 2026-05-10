@@ -5,6 +5,7 @@
  * Scope: Phase 57 / Sprint 57.1 US-2 → 57.8 US-4 → Sprint 57.9 US-6 Day 4 (loading source migrated)
  *
  * Modification History (newest-first):
+ *   - 2026-05-10: Sprint 57.13 US-B5 — pageTitle via i18n t("nav.costDashboard")
  *   - 2026-05-10: Sprint 57.13 US-A2 — wrap in <RequireAuth> (was ungated)
  *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — MonthPickerSlot consumes useIsFetching for loading state (store no longer holds loading)
  *   - 2026-05-10: Sprint 57.8 US-4 — page-level AppShellV2 wrap + MonthPickerSlot hoist
@@ -13,6 +14,7 @@
 
 import { useIsFetching } from "@tanstack/react-query";
 import type { FC } from "react";
+import { useTranslation } from "react-i18next";
 import { Route, Routes } from "react-router-dom";
 
 import { AppShellV2 } from "../../components/AppShellV2";
@@ -30,9 +32,10 @@ const MonthPickerSlot: FC = () => {
 };
 
 export default function CostDashboardPage() {
+  const { t } = useTranslation("common");
   return (
     <RequireAuth>
-      <AppShellV2 pageTitle="Cost Dashboard" headerActions={<MonthPickerSlot />}>
+      <AppShellV2 pageTitle={t("nav.costDashboard")} headerActions={<MonthPickerSlot />}>
         <Routes>
           <Route index element={<CostOverview />} />
         </Routes>

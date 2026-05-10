@@ -28,6 +28,7 @@
  * Last Modified: 2026-05-10
  *
  * Modification History:
+ *   - 2026-05-10: Sprint 57.13 US-B5 — add nameKey (i18n key for sidebar label; common.nav.*)
  *   - 2026-05-10: Sprint 57.12 US-8 Day 4 — Loop Debug + Memory active=true + lazy imports (Agent Harness UI Suite)
  *   - 2026-05-10: Sprint 57.11 US-6 Day 4 — Verification active=true + lazy component import
  *   - 2026-05-09: Sprint 57.9 US-1 Day 1 — Governance active=true + lazy component import
@@ -61,8 +62,10 @@ import { lazy } from "react";
 export type RouteCategory = "operations" | "admin" | "settings";
 
 export interface RouteEntry {
-  /** Display name in sidebar */
+  /** English display name — dev/debug fallback when i18n is unavailable. */
   name: string;
+  /** i18n key for the sidebar label (resolved against the `common` namespace, e.g. `nav.costDashboard`). */
+  nameKey: string;
   /** React Router path */
   path: string;
   /** lucide-react icon component */
@@ -79,6 +82,7 @@ export const ROUTES: RouteEntry[] = [
   // === Operations ===
   {
     name: "Chat (V2)",
+    nameKey: "nav.chatV2",
     path: "/chat-v2",
     icon: MessageSquare,
     category: "operations",
@@ -87,6 +91,7 @@ export const ROUTES: RouteEntry[] = [
   },
   {
     name: "Cost Dashboard",
+    nameKey: "nav.costDashboard",
     path: "/cost-dashboard",
     icon: BarChart3,
     category: "operations",
@@ -95,6 +100,7 @@ export const ROUTES: RouteEntry[] = [
   },
   {
     name: "SLA Dashboard",
+    nameKey: "nav.slaDashboard",
     path: "/sla-dashboard",
     icon: Activity,
     category: "operations",
@@ -104,6 +110,7 @@ export const ROUTES: RouteEntry[] = [
   // === Admin ===
   {
     name: "Tenants",
+    nameKey: "nav.tenants",
     path: "/admin-tenants",
     icon: Building2,
     category: "admin",
@@ -112,6 +119,7 @@ export const ROUTES: RouteEntry[] = [
   },
   {
     name: "Tenant Settings",
+    nameKey: "nav.tenantSettings",
     path: "/tenant-settings",
     icon: Settings2,
     category: "admin",
@@ -120,6 +128,7 @@ export const ROUTES: RouteEntry[] = [
   },
   {
     name: "Audit Log",
+    nameKey: "nav.auditLog",
     path: "/audit-log",
     icon: ScrollText,
     category: "admin",
@@ -127,6 +136,7 @@ export const ROUTES: RouteEntry[] = [
   },
   {
     name: "Feature Flags",
+    nameKey: "nav.featureFlags",
     path: "/feature-flags",
     icon: ToggleLeft,
     category: "admin",
@@ -134,6 +144,7 @@ export const ROUTES: RouteEntry[] = [
   },
   {
     name: "Governance",
+    nameKey: "nav.governance",
     path: "/governance",
     icon: ShieldCheck,
     category: "admin",
@@ -142,6 +153,7 @@ export const ROUTES: RouteEntry[] = [
   },
   {
     name: "Verification",
+    nameKey: "nav.verification",
     path: "/verification",
     icon: CheckCheck,
     category: "admin",
@@ -150,6 +162,7 @@ export const ROUTES: RouteEntry[] = [
   },
   {
     name: "Loop Debug",
+    nameKey: "nav.loopDebug",
     path: "/loop-debug",
     icon: Workflow,
     category: "admin",
@@ -158,6 +171,7 @@ export const ROUTES: RouteEntry[] = [
   },
   {
     name: "Memory",
+    nameKey: "nav.memory",
     path: "/memory",
     icon: Brain,
     category: "admin",
@@ -167,6 +181,7 @@ export const ROUTES: RouteEntry[] = [
   // === Settings ===
   {
     name: "User Profile",
+    nameKey: "nav.userProfile",
     path: "/profile",
     icon: User,
     category: "settings",
@@ -174,6 +189,7 @@ export const ROUTES: RouteEntry[] = [
   },
   {
     name: "MFA Settings",
+    nameKey: "nav.mfaSettings",
     path: "/mfa",
     icon: Lock,
     category: "settings",

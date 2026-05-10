@@ -4,6 +4,7 @@
  * Category: Frontend / root (Sprint 57.7 US-B2 Frontend Foundation 1/N)
  *
  * Modification History:
+ *   - 2026-05-10: Sprint 57.13 US-B5 — import ./i18n (i18next bootstrap) before render
  *   - 2026-05-10: Sprint 57.13 US-B4 — initObservability() + reportWebVitals() at startup
  *   - 2026-05-10: Sprint 57.13 US-B1 — QueryClient moved to lib/queryClient.ts (mutationCache toast)
  *   - 2026-05-10: Sprint 57.7 US-B2 — wrap providers (Theme + ErrorBoundary + Query + Sonner)
@@ -20,6 +21,7 @@ import { Toaster } from "sonner";
 import App from "./App";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { ThemeProvider } from "./components/ThemeProvider";
+import "./i18n";
 import "./index.css";
 import { initObservability, reportWebVitals } from "./lib/observability";
 import { queryClient } from "./lib/queryClient";

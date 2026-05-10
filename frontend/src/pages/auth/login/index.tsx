@@ -20,6 +20,7 @@
  * Last Modified: 2026-05-10
  *
  * Modification History:
+ *   - 2026-05-10: Sprint 57.13 US-B5 — i18n the strings (auth namespace); inline styles unchanged (US-B9)
  *   - 2026-05-10: Sprint 57.13 US-A4 — add DEV-only <DevLoginSection> (POST /auth/dev-login → bootstrap → navigate)
  *   - 2026-05-09: Initial skeleton (Sprint 57.7 US-A2 Day 2)
  *
@@ -27,9 +28,11 @@
  *   - backend/src/api/v1/auth.py:login + dev_login
  *   - frontend/src/features/auth/services/authService.ts (consumePostLoginRedirect)
  *   - frontend/src/features/auth/store/authStore.ts (bootstrap)
+ *   - frontend/src/i18n/locales/{en,zh-TW}/auth.json (auth.* keys)
  */
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import {
@@ -40,6 +43,7 @@ import {
 import { useAuthStore } from "../../../features/auth/store/authStore";
 
 function ErrorBanner({ message }: { message: string }) {
+  const { t } = useTranslation("auth");
   return (
     <div
       role="alert"
@@ -52,13 +56,14 @@ function ErrorBanner({ message }: { message: string }) {
         color: "#900",
       }}
     >
-      <strong>Sign-in failed:</strong> {message}
+      <strong>{t("errorTitle")}:</strong> {message}
     </div>
   );
 }
 
 /** DEV builds only — fake login without WorkOS (calls POST /api/v1/auth/dev-login). */
 function DevLoginSection() {
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const bootstrap = useAuthStore((s) => s.bootstrap);
   const [tenantCode, setTenantCode] = useState("dev");
@@ -78,8 +83,8 @@ function DevLoginSection() {
       if (!res.ok) {
         const detail =
           res.status === 404
-            ? "dev-login is disabled in this environment"
-            : `dev-login failed (${res.status})`;
+            ? t("devSection.errorDisabled")
+            : t("devSection.errorFailed", { status: res.status });
         setDevError(detail);
         return;
       }
@@ -87,7 +92,7 @@ function DevLoginSection() {
       await bootstrap();
       navigate(consumePostLoginRedirect(), { replace: true });
     } catch {
-      setDevError("dev-login request failed (is the backend running?)");
+      setDevError(t("devSection.errorRequest"));
     } finally {
       setBusy(false);
     }
@@ -103,7 +108,7 @@ function DevLoginSection() {
       }}
     >
       <p style={{ fontSize: "0.85rem", fontWeight: 600, color: "#555", marginBottom: "0.75rem" }}>
-        Dev fake-login (no WorkOS — DEV builds only)
+        {t("devSection.heading")}
       </p>
       {devError ? <ErrorBanner message={devError} /> : null}
       <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
@@ -137,13 +142,14 @@ function DevLoginSection() {
           cursor: busy ? "default" : "pointer",
         }}
       >
-        {busy ? "Signing in…" : "Dev Login"}
+        {busy ? t("devSection.submitting") : t("devSection.submit")}
       </button>
     </form>
   );
 }
 
 export default function LoginPage() {
+  const { t } = useTranslation("auth");
   const [params] = useSearchParams();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -167,8 +173,8 @@ export default function LoginPage() {
         margin: "0 auto",
       }}
     >
-      <h1 style={{ marginBottom: "1rem" }}>IPA Platform V2 — Sign In</h1>
-      <p style={{ color: "#666", marginBottom: "2rem" }}>Sign in to continue.</p>
+      <h1 style={{ marginBottom: "1rem" }}>{t("signInTitle")}</h1>
+      <p style={{ color: "#666", marginBottom: "2rem" }}>{t("signInSubtitle")}</p>
 
       {errorMessage ? <ErrorBanner message={errorMessage} /> : null}
 
@@ -186,7 +192,7 @@ export default function LoginPage() {
           cursor: "pointer",
         }}
       >
-        Login with WorkOS
+        {t("loginWithWorkOS")}
       </button>
 
       {import.meta.env.DEV ? <DevLoginSection /> : null}

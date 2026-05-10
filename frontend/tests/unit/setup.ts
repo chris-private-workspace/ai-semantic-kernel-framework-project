@@ -8,11 +8,16 @@
  * Last Modified: 2026-05-06
  *
  * Modification History:
+ *   - 2026-05-10: Sprint 57.13 US-B5 — import "@/i18n" so useTranslation() resolves to real strings in tests
  *   - 2026-05-10: Sprint 57.13 US-B3 — jsdom polyfills for Radix (pointer capture / scrollIntoView / ResizeObserver)
  *   - 2026-05-06: Initial creation (Sprint 57.1 Day 1 / US-1 — Vitest setup)
  */
 
 import "@testing-library/jest-dom/vitest";
+
+// Initialize i18next (English by default) so components using useTranslation()
+// render real strings, not raw keys. Sprint 57.13 US-B5.
+import "@/i18n";
 
 // --- jsdom polyfills for Radix UI primitives (Dialog / DropdownMenu) ---
 // Radix uses Pointer Capture + scrollIntoView + ResizeObserver, none of which
