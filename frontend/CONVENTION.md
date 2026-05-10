@@ -657,6 +657,47 @@ NOT in MHist. Git log preserves the rich detail.
 
 ---
 
+## 10. Design System Component Layer (`components/ui/`)
+
+Since Sprint 57.13 US-B2 the loading / empty / error / button / badge / card primitives
+live in `src/components/ui/` (shadcn-style; barrel `src/components/ui/index.ts`).
+
+### Rule: feature pages MUST use `components/ui/` for loading / empty / error
+
+| Need | Use | NOT |
+|------|-----|-----|
+| Page-level table loading | `<TableSkeleton rows cols>` (or `<Skeleton className="h-N">` rows inside an existing `<tbody>`) | bespoke `<div className="h-4 animate-pulse rounded bg-muted">` |
+| Dashboard card loading | `<CardSkeleton count>` | a `<p>Loading…</p>` spinner-text |
+| 0-items state | `<EmptyState title message? icon? action?>` | bare `<p>No data</p>` |
+| Query `isError` (page-level) | `<ErrorRetry error onRetry={() => refetch()}>` | inline `Error: {message}` + hand-rolled retry button |
+| Mutation failure (non-blocking) | `toastError(...)` from `lib/toast` (wired via `lib/queryClient` `mutationCache.onError`) | inline alert div |
+| Button | `<Button variant size asChild?>` | raw `<button className="...">` for new code |
+| Status pill (incl. risk levels) | `<Badge variant>` (`risk-low`/`-medium`/`-high`/`-critical` per STYLE.md §3) | new bespoke pill markup |
+
+`<Skeleton>` is the base pulse box — compose it freely; `<TableSkeleton>` / `<CardSkeleton>`
+are the canonical compositions from STYLE.md §6.
+
+### shadcn pattern note
+
+`button.tsx` / `badge.tsx` export both the component and its `cva` `*Variants` — they carry
+a file-level `/* eslint-disable react-refresh/only-export-components */` (standard shadcn;
+the variants must be importable for `cn(buttonVariants(...), className)` composition).
+
+### Existing per-feature badges
+
+`AuditChainBadge` / `VerifierTypeBadge` / `MemoryScopeBadge` keep their own colour logic for
+now (not yet migrated to `<Badge>`). New code should reach for `<Badge>` first.
+
+### Codification basis
+
+Sprint 57.9 ApprovalList + admin-tenants TenantListTable established the inline-skeleton /
+empty / retry shapes (≥ 2 examples); STYLE.md §6-§8 documented them; Sprint 57.13 US-B2
+extracted them into reusable components and adopted `<Skeleton>` across governance / verification
+/ memory + `<TableSkeleton>`/`<EmptyState>` in admin-tenants + `<CardSkeleton>`/`<ErrorRetry>`
+in cost / sla dashboards.
+
+---
+
 ## Cross-References
 
 - Visual + UX rules → [`STYLE.md`](./STYLE.md)

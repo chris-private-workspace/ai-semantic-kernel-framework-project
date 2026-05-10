@@ -45,6 +45,7 @@
 
 import { useState } from "react";
 
+import { Skeleton } from "../../../components/ui";
 import { useAuditLog } from "../hooks/useAuditLog";
 import type { AuditLogFilter } from "../types";
 import { AuditChainBadge } from "./AuditChainBadge";
@@ -212,7 +213,7 @@ export function AuditLogViewer() {
               [0, 1, 2, 3, 4].map((i) => (
                 <tr key={`skeleton-${i}`} className="border-t border-border">
                   <td colSpan={6} className="px-3 py-3">
-                    <div className="h-4 w-full animate-pulse rounded bg-muted" />
+                    <Skeleton className="h-4 w-full" />
                   </td>
                 </tr>
               ))}

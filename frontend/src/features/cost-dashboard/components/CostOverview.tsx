@@ -16,12 +16,14 @@
  * Last Modified: 2026-05-10
  *
  * Modification History (newest-first):
+ *   - 2026-05-10: Sprint 57.13 US-B2 — loading → <CardSkeleton>; error → <ErrorRetry> (components/ui)
  *   - 2026-05-10: Sprint 57.13 US-A2 — tenant_id from authStore.tenant.id (was URL ?tenant_id=)
  *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — migrate to useCostSummary TanStack hook (drop store loadData/data/loading/error)
  *   - 2026-05-10: Sprint 57.7 US-B3 — migrate to AppShell + Tailwind utility classes
  *   - 2026-05-06: Initial creation (Sprint 57.1 Day 1 / US-2 — Cost overview)
  */
 
+import { CardSkeleton, ErrorRetry } from "../../../components/ui";
 import { useAuthStore } from "../../auth/store/authStore";
 import { useCostSummary } from "../hooks/useCostSummary";
 import { useCostStore } from "../store/costStore";
@@ -45,24 +47,11 @@ export function CostOverview() {
         <p className="text-sm text-destructive">No tenant in your session.</p>
       )}
 
-      {isLoading && tenantId && (
-        <p className="text-sm italic text-muted-foreground">
-          Loading cost summary…
-        </p>
-      )}
+      {isLoading && tenantId && <CardSkeleton count={3} />}
 
       {error && (
-        <div
-          role="alert"
-          className="rounded-lg border border-destructive/40 bg-destructive/5 p-4"
-        >
-          <p className="text-sm text-destructive">Error: {error.message}</p>
-          <button
-            onClick={() => void refetch()}
-            className="mt-3 inline-flex items-center rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted"
-          >
-            Retry
-          </button>
+        <div role="alert">
+          <ErrorRetry error={error} onRetry={() => void refetch()} />
         </div>
       )}
 

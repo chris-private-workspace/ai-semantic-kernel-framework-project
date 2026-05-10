@@ -30,6 +30,7 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { Skeleton } from "../../../components/ui";
 import { useCorrectionTrace } from "../hooks/useCorrectionTrace";
 import type { VerificationLogItem } from "../types";
 import { VerifierTypeBadge } from "./VerifierTypeBadge";
@@ -74,7 +75,7 @@ export function CorrectionTraceView(): JSX.Element {
     return (
       <div className="space-y-3" data-testid="trace-loading">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="h-16 animate-pulse rounded bg-muted" />
+          <Skeleton key={i} className="h-16" />
         ))}
       </div>
     );

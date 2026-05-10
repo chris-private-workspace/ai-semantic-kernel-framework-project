@@ -22,6 +22,7 @@
  * Last Modified: 2026-05-09
  *
  * Modification History (newest-first):
+ *   - 2026-05-10: Sprint 57.13 US-B2 — loading/empty now use components/ui (TableSkeleton/EmptyState/Button)
  *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — items+loading from useAdminTenants hook
  *   - 2026-05-07: Initial creation (Sprint 57.4 Day 3)
  *
@@ -29,10 +30,12 @@
  *   - ../hooks/useAdminTenants.ts (server cache post-migration)
  *   - ../store/adminTenantsStore.ts (UI-only query state post-migration)
  *   - ../types.ts (TenantState + TenantPlan badge color helpers)
+ *   - ../../../components/ui (TableSkeleton / EmptyState / Button)
  */
 
 import { useNavigate } from "react-router-dom";
 
+import { Button, EmptyState, TableSkeleton } from "../../../components/ui";
 import { useAdminTenants } from "../hooks/useAdminTenants";
 import { useAdminTenantsStore } from "../store/adminTenantsStore";
 import { TenantPlan, TenantState, type TenantListItem } from "../types";
@@ -123,30 +126,22 @@ export function TenantListTable(): JSX.Element {
 
   if (isLoading) {
     return (
-      <div role="status" aria-label="Loading tenants" style={{ padding: "1rem" }}>
-        {[0, 1, 2, 3, 4].map((i) => (
-          <div
-            key={i}
-            style={{
-              height: "2rem",
-              background: "#f0f0f0",
-              marginBottom: "0.5rem",
-              borderRadius: "0.25rem",
-            }}
-          />
-        ))}
+      <div role="status" aria-label="Loading tenants" className="p-4">
+        <TableSkeleton rows={5} cols={6} />
       </div>
     );
   }
 
   if (items.length === 0) {
     return (
-      <div style={{ padding: "2rem", textAlign: "center", color: "#666" }}>
-        <p>No tenants match current filter.</p>
-        <button onClick={handleReset} style={{ marginTop: "0.5rem" }}>
-          Reset Filters
-        </button>
-      </div>
+      <EmptyState
+        title="No tenants match current filter."
+        action={
+          <Button variant="outline" onClick={handleReset}>
+            Reset Filters
+          </Button>
+        }
+      />
     );
   }
 

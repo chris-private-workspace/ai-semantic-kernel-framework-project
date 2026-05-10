@@ -16,11 +16,13 @@
  * Last Modified: 2026-05-10
  *
  * Modification History (newest-first):
+ *   - 2026-05-10: Sprint 57.13 US-B2 — loading → <CardSkeleton>; error → <ErrorRetry> (components/ui)
  *   - 2026-05-10: Sprint 57.13 US-A2 — tenant_id from authStore.tenant.id (was URL ?tenant_id=)
  *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — migrate to useSLAReport TanStack hook + Tailwind utilities (drop inline styles)
  *   - 2026-05-06: Initial creation (Sprint 57.1 Day 2 / US-3 — SLA overview)
  */
 
+import { CardSkeleton, ErrorRetry } from "../../../components/ui";
 import { useAuthStore } from "../../auth/store/authStore";
 import { MonthPicker } from "../../cost-dashboard/components/MonthPicker";
 import { useSLAReport } from "../hooks/useSLAReport";
@@ -57,22 +59,11 @@ export function SLAOverview() {
         <MonthPicker value={currentMonth} onChange={setMonth} disabled={isFetching} />
       </div>
 
-      {isLoading && tenantId && (
-        <p className="text-sm italic text-muted-foreground">Loading SLA report…</p>
-      )}
+      {isLoading && tenantId && <CardSkeleton count={3} />}
 
       {error && (
-        <div
-          role="alert"
-          className="rounded-lg border border-destructive/40 bg-destructive/5 p-4"
-        >
-          <p className="text-sm text-destructive">Error: {error.message}</p>
-          <button
-            onClick={() => void refetch()}
-            className="mt-3 inline-flex items-center rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted"
-          >
-            Retry
-          </button>
+        <div role="alert">
+          <ErrorRetry error={error} onRetry={() => void refetch()} />
         </div>
       )}
 
