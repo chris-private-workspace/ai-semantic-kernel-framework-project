@@ -236,12 +236,44 @@ The `<Skeleton>` primitive swap is everywhere; `<TableSkeleton>`/`<EmptyState>` 
 
 ---
 
-## Remaining for Day 6-9
+## Day 6 — US-B4 (frontend observability: Sentry + Web Vitals + Cat 12 telemetry endpoint) — `a8b90ba4`
+
+### Frontend
+- **NEW `src/lib/observability.ts`** — three entry points:
+  - `initObservability()` — called once at startup. If `import.meta.env.VITE_SENTRY_DSN` is set → `sentry = await import("@sentry/react"); sentry.init({ dsn, environment: import.meta.env.MODE, tracesSampleRate: 0.1 })`. No DSN → no-op. The dynamic import keeps the ~100 kB `@sentry/react` v10 bundle out of the main chunk (dev/CI ship nothing).
+  - `reportError(err, ctx?)` — **always** `console.error(err, ctx)`; if Sentry is live → `captureException(err, { extra: ctx })`; **also** fire-and-forget beacon → `POST /api/v1/telemetry/frontend-error` (so the Cat 12 backend records the error regardless of Sentry). Never throws (every step is try/catch'd).
+  - `reportWebVitals()` — `import("web-vitals").then(({ onCLS, onFCP, onLCP, onINP, onTTFB }) => …)` → each metric → beacon → `POST /api/v1/telemetry/frontend` with `{ name, value, id, rating, navigationType, url }`. `beacon()` uses `navigator.sendBeacon` (survives page unload), falls back to `fetch(..., { keepalive: true })`.
+- **`main.tsx`** — `void initObservability(); reportWebVitals();` before `createRoot` (fire-and-forget; never blocks render).
+- **`components/AppErrorBoundary.tsx`** — `onError={(error, info) => reportError(error, { componentStack: info.componentStack })}` (was a "Sentry … placeholder — Phase 58.2+" note in the docstring; now wired).
+- **`features/auth/services/authService.ts` `fetchWithAuth`** — wrapped the `fetch` in try/catch: a network failure → `reportError(err, { url, kind: "network" })` then rethrow; a `res.status >= 500` → `reportError(new Error(\`HTTP \${status} from \${url}\`), { url, status })`. (5xx reporting is intentionally noisy-ish — it's the cheapest place that sees the raw status for every request.)
+- **`lib/queryClient.ts` `mutationCache.onError`** — now also `reportError(err, { source: "mutation" })` alongside the existing `toastError`. (`toastError` itself stays a pure UI helper — error-sink wiring lives in `fetchWithAuth` + the mutation cache, not in the toast fn.)
+- **`package.json`**: `+@sentry/react@^10.52.0` `+web-vitals@^5.2.0` — both **dynamic-imported**, so neither lands in the main bundle (separate chunks; loaded lazily on first error / first vital).
+
+### Backend (範疇 12)
+- **NEW `api/v1/telemetry.py`** — `POST /telemetry/frontend` (`WebVitalIn { name, value, id, rating?, navigationType?, url? }` — `navigationType` camelCase to match the web-vitals lib field name, `# noqa: N815`) → one structured JSON log line `event=frontend.web_vitals` with the metric fields as extras → **204 No Content** (the SPA / sendBeacon doesn't read the body). `POST /telemetry/frontend-error` (`FrontendErrorIn { message, stack?, url?, user_agent?, context? }`) → `event=frontend.error` (logged at `warning`) → 204. Anonymous — `/api/v1/telemetry` is already in `TenantContextMiddleware.EXEMPT_PATH_PREFIXES` (added 57.7 US-A1). Malformed bodies → 422 (Pydantic), never 500.
+- **`api/main.py`** — `app.include_router(telemetry_router, prefix="/api/v1")`.
+- **Cat 12 emit choice (D-DAY6-1)**: this app has **no app-level OpenTelemetry meter** anywhere in `src/` (only `setup_opentelemetry()` which auto-instruments FastAPI/SQLAlchemy/Redis). The established Cat-12 emit path here is the structured JSON logger (`configure_json_logging` at startup), which the OTel log pipeline picks up + `PIIRedactor` scrubs at the formatter. So the telemetry endpoints emit via `get_json_logger("frontend.telemetry").info/warning(event=…, extra={…})` — not a new `metrics.get_meter(...)` (which would be the only such usage in the codebase).
+
+### Drift findings (Day 6)
+| ID | Finding | Implication |
+|----|---------|-------------|
+| D-DAY6-1 | The backend has no app-level OTel meter pattern (`metrics.get_meter / create_counter / create_histogram`) anywhere in `src/` — only `setup_opentelemetry` auto-instrumentation | The telemetry endpoints emit Cat 12 data via the structured JSON logger (the established path here), not a bespoke new meter. A future polish could add a `frontend.web_vitals` histogram once the codebase grows an app-level meter convention. |
+| D-DAY6-2 | `reportError` per the checklist spec is "Sentry + console.error" only — but the §6.2 backend `/frontend-error` endpoint would then have no producer (Potemkin) | `reportError` also fire-and-forget beacons to `/frontend-error` — minor deviation from the literal checklist that makes the endpoint actually used (AP-2 / AP-4). Noted. |
+| D-DAY6-3 | The eslint config has no `no-console` rule, so `// eslint-disable-next-line no-console` comments are flagged as "unused disable directive" under `--report-unused-disable-directives` | Removed the two `eslint-disable no-console` comments from `observability.ts` (the `console.error` calls are intentional + not lint-flagged). |
+
+### Verification (Day 6 aggregate)
+- Frontend: `npm run lint` clean (after removing the 2 dead `eslint-disable no-console` directives); `npm run build` ✅ — main `index-*.js` **245.25 kB** gzip 77.85 (Day 5: 243.89 / 77.33 — **+1.36 kB**, the small static cost of `observability.ts` itself; `@sentry/react` + `web-vitals` are separate dynamic chunks, NOT in main). `RequireAuth` lazy chunk unchanged at 126.24 kB. **`npm run test` → 55 files / 226 passed** (Day 5: 54/221; +1 file / +5 tests from `observability.test.ts`). Pre-existing jsdom "Not implemented: navigation" + deliberate ErrorBoundary "kaboom" throw on stderr — not failures.
+- Backend: `black`/`isort`/`flake8` clean on changed files (fixed 2 E501 — the main.py MHist line + a telemetry.py docstring line, trimmed); **`mypy src/ --strict` → 306 source files, no issues** (+1 file: `telemetry.py`); **9/9 V2 lints green** (`python scripts/lint/run_all.py` — must run from repo root, not `backend/`); **full `pytest -q` → 1676 passed + 4 skipped** (Day 3 baseline 1670+4; +6 from `test_telemetry_frontend.py`).
+- Manual UI not run (no dev server boot). The Sentry path is untested end-to-end (no DSN in this env) — the unit test covers the no-DSN no-op + the beacon path; a real Sentry smoke is out of scope (would need a project DSN).
+
+---
+
+## Remaining for Day 7-9
 
 - [x] Day 3: US-A5 (connectivity smoke + .env.example) + US-B1 (Toast) — `e1c3f58e`
 - [x] Day 4: US-B2 (design-system component layer + adopt across 6 feature areas) + mid-sprint ratio check — `02910cfe`
 - [x] Day 5: US-B3 (Radix Dialog+DropdownMenu primitives + DecisionModal+UserMenu refactor) — `6bb4fdde`
-- [ ] Day 6: US-B4 (Sentry + Web Vitals + telemetry endpoint)
+- [x] Day 6: US-B4 (Sentry + Web Vitals + Cat 12 telemetry endpoint) — `a8b90ba4`
 - [ ] Day 7: US-B5 (i18n)
 - [ ] Day 8: US-B6 (a11y) + US-B7 (Lighthouse CI)
 - [ ] Day 9: US-B8 (visual regression) + US-B9 (AuthShell + login/callback + inline cleanup) + US-C1 (closeout)

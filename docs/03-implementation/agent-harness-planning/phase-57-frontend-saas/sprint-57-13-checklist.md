@@ -227,23 +227,24 @@ Related:
 ## Day 6 — US-B4: 前端可觀測性 (Sentry + Web Vitals + telemetry endpoint)
 
 ### 6.1 npm installs + observability lib
-- [ ] **`package.json`** — `+@sentry/react` `+web-vitals`
-- [ ] **NEW `lib/observability.ts`** — `initObservability()`（有 VITE_SENTRY_DSN → Sentry.init / 否則 no-op）+ `reportError(err, ctx?)`（Sentry.captureException if DSN + 永遠 console.error）+ `reportWebVitals()`（onCLS/onFCP/onLCP/onINP/onTTFB → POST /api/v1/telemetry/frontend，fire-and-forget）
-- [ ] **`main.tsx`** — `initObservability()` + `reportWebVitals()` 開機呼叫
-- [ ] **`components/AppErrorBoundary.tsx`** — `onError` → `reportError(error, {componentStack})`（取代 placeholder）
-- [ ] **`fetchWithAuth` / `toastError`** — 5xx/network error 也 `reportError`
+- [x] **`package.json`** — `+@sentry/react@^10.52.0` `+web-vitals@^5.2.0`（兩者皆 **dynamic-imported** — 不進 main bundle，per checklist bundle-size mitigation）
+- [x] **NEW `lib/observability.ts`** — `initObservability()`（有 `VITE_SENTRY_DSN` → `await import("@sentry/react")` + `Sentry.init({dsn, environment, tracesSampleRate:0.1})` / 否則 no-op）+ `reportError(err, ctx?)`（**always** `console.error`;`captureException` if Sentry live;**also** fire-and-forget beacon → `POST /api/v1/telemetry/frontend-error` 讓 Cat 12 不靠 Sentry 也收得到;never throws）+ `reportWebVitals()`（`onCLS/onFCP/onLCP/onINP/onTTFB` → beacon → `POST /api/v1/telemetry/frontend`;`navigator.sendBeacon` + `fetch keepalive` fallback;`web-vitals` dynamic-imported）。**Deviation note**: checklist 的 `reportError` spec 只說 Sentry+console;額外加 backend beacon = 讓 §6.2 endpoint 真有 producer（avoids Potemkin endpoint）
+- [x] **`main.tsx`** — `void initObservability(); reportWebVitals();` 開機呼叫（before `createRoot`;never blocks render）
+- [x] **`components/AppErrorBoundary.tsx`** — `onError={(error, info) => reportError(error, { componentStack: info.componentStack })}`（取代 placeholder note）
+- [x] **`fetchWithAuth` / `queryClient`** — `fetchWithAuth`: network failure → `reportError(err, {url, kind:"network"})` + rethrow;`res.status >= 500` → `reportError(new Error(\`HTTP \${status} from \${url}\`), {url, status})`。`lib/queryClient.ts` `mutationCache.onError` 也 `reportError(err, {source:"mutation"})` 旁 `toastError`（`toastError` 本身是純 UI fn，不適合塞 reportError — 故放在 fetchWithAuth + mutationCache 兩個 error sink）
 
 ### 6.2 Backend telemetry router
-- [ ] **NEW `api/v1/telemetry.py`** — `POST /telemetry/frontend`（no auth；body `{name,value,id,rating,navigationType,url?}` → Cat 12 metric `frontend.web_vitals`）+ `POST /telemetry/frontend-error`（body `{message,stack,url,user_agent}` → Cat 12 event `frontend.error`）
-- [ ] **`api/main.py`** — register telemetry router；確認 `/telemetry/*` 在 middleware public-path allowlist
-  - Verify: `pytest tests/integration/api/test_telemetry_frontend.py -v`
+- [x] **NEW `api/v1/telemetry.py`** — `POST /telemetry/frontend`（no auth；body `WebVitalIn {name,value,id,rating?,navigationType?,url?}` → structured JSON log `event=frontend.web_vitals` → **204**）+ `POST /telemetry/frontend-error`（body `FrontendErrorIn {message,stack?,url?,user_agent?,context?}` → `event=frontend.error` → 204）。Cat 12 emit path = structured JSON logger（本專案無 app-level OTel meter — 只有 `setup_opentelemetry` auto-instrumentation;JSON logger 經 PIIRedactor scrub → D-DAY6-1）;bad body → 422 not 500
+- [x] **`api/main.py`** — `app.include_router(telemetry_router, prefix="/api/v1")`；`/api/v1/telemetry` 早已在 `TenantContextMiddleware.EXEMPT_PATH_PREFIXES`（57.7 US-A1 加的）
+  - Verify: `pytest tests/integration/api/test_telemetry_frontend.py -v` ✅ 6 passed
 
 ### 6.3 Tests
-- [ ] **`tests/unit/lib/observability.test.ts`**（no DSN → no Sentry.init；有 DSN → init 呼；reportWebVitals → fetch 呼）
+- [x] **`tests/unit/lib/observability.test.ts`** — 5 tests（no-DSN `initObservability` no-op no beacon / `reportError` console+beacon to `/frontend-error` / `reportError` tolerates non-Error / `reportWebVitals` beacons each metric to `/telemetry/frontend` / fetch-keepalive fallback when `sendBeacon` absent）
+- [x] **`tests/integration/api/test_telemetry_frontend.py`** — 6 tests（web-vital full/minimal/422 + frontend-error full/minimal/422）
 
 ### 6.4 Day 6 wrap
-- [ ] **Day 6 progress entry** + drift catalog
-- [ ] **Day 6 commit**: `feat(sprint-57-13, Day 6): US-B4 frontend observability (Sentry + Web Vitals + Cat 12 telemetry endpoint)`
+- [x] **Day 6 progress entry** + drift catalog（D-DAY6-1）
+- [x] **Day 6 commit**: `feat(sprint-57-13, Day 6): US-B4 frontend observability (Sentry + Web Vitals + Cat 12 telemetry endpoint)` (`a8b90ba4`)
 
 ---
 
