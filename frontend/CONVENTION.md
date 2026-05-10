@@ -673,9 +673,16 @@ live in `src/components/ui/` (shadcn-style; barrel `src/components/ui/index.ts`)
 | Mutation failure (non-blocking) | `toastError(...)` from `lib/toast` (wired via `lib/queryClient` `mutationCache.onError`) | inline alert div |
 | Button | `<Button variant size asChild?>` | raw `<button className="...">` for new code |
 | Status pill (incl. risk levels) | `<Badge variant>` (`risk-low`/`-medium`/`-high`/`-critical` per STYLE.md §3) | new bespoke pill markup |
+| Modal dialog | `<Dialog open onOpenChange><DialogContent>…</DialogContent></Dialog>` (Radix — focus trap / ESC / outside-click free) | hand-rolled `fixed inset-0` overlay + `stopPropagation` panel |
+| Dropdown / popover menu | `<DropdownMenu><DropdownMenuTrigger/><DropdownMenuContent>…</DropdownMenuContent></DropdownMenu>` (Radix) | hand-rolled `useState`/`useRef`/`useEffect`-for-outside-click popover |
 
 `<Skeleton>` is the base pulse box — compose it freely; `<TableSkeleton>` / `<CardSkeleton>`
-are the canonical compositions from STYLE.md §6.
+are the canonical compositions from STYLE.md §6. `<Dialog>` / `<DropdownMenu>` wrap
+`@radix-ui/react-dialog` / `@radix-ui/react-dropdown-menu` (Sprint 57.13 US-B3 — `DecisionModal`
++ `UserMenu` are the reference consumers). The dropdown surface uses `bg-background` (no
+`popover` token in this app's tailwind.config). Vitest of Radix primitives needs the jsdom
+polyfills in `tests/unit/setup.ts` (`hasPointerCapture` / `scrollIntoView` / `ResizeObserver`)
++ `@testing-library/user-event` (not `fireEvent`) to drive open/close.
 
 ### shadcn pattern note
 
