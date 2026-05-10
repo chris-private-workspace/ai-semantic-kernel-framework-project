@@ -198,10 +198,42 @@ Day 2 actual ~2.5-3 hr / committed ~3.5-4.5 hr → ~65-75% of Day 2 budget. US-5
 
 ---
 
-## Remaining for Day 3-4
+## Day 3 Accomplishments (2026-05-10) ✅
 
-- [ ] Day 3: US-6 SubagentTree (chatStore subagents slice + 3-edit SSE + component + 5 Vitest) + chat-v2 inline mount (LoopVisualizer + SubagentTree) + US-7 audit cycle (AD-AdminTenant-Patch-Flake fix)
-- [ ] Day 4: US-8 routing wire (+/memory + /loop-debug) + 4 Playwright e2e + closeout
+### US-6: SubagentTree (chat-v2 inline) + chatStore subagents slice + SSE 3-edit
+- ✅ `chat_v2/types.ts` — Edit 1+2: `SubagentSpawnedEvent` + `SubagentCompletedEvent` added to LoopEvent union; `subagent_spawned` + `subagent_completed` added to KNOWN_LOOP_EVENT_TYPES set (per CONVENTION.md §7 3-edit checklist — closes AD-Cat11-SSEEvents frontend half)
+- ✅ `chat_v2/store/chatStore.ts` — Edit 3: `subagents: SubagentNode[]` slice + `clearSubagents` reducer + mergeEvent `subagent_spawned` (push running node, dedup on id) / `subagent_completed` (transition to completed + summary + tokens; defensive-create if no prior Spawned) cases
+- ✅ `features/subagent/components/SubagentTree.tsx` — chat-v2 inline panel; buildForest groups flat nodes into parent→child tree (cycle-guarded, depth cap 5); renders SubagentStatusBadge + id prefix + on completion tokens + summary snippet; null when empty (mirrors VerificationPanel)
+- ✅ `pages/chat-v2/index.tsx` — mounted `<SubagentTree />` + `<LoopVisualizer mode="inline" />` between VerificationPanel and InputBar (per D2-002 — chat-v2 page, not ChatLayout)
+- ✅ **11 NEW Vitest tests** (6 chatStore.subagents + 5 SubagentTree; plan target ≥5 → **220%**)
+
+### US-7: AD-AdminTenant-Patch-Flake fix (audit cycle)
+- ✅ `tests/integration/api/conftest.py` — `_clear_committed_test_tenants()` added to autouse `_reset_module_singletons` (before + after yield); deletes stale committed test-tenant rows (codes from PATCH/POST committing tests) via WORM-trigger-toggle single transaction (`ALTER TABLE audit_log DISABLE TRIGGER ... ; DELETE FROM tenants WHERE code = ANY(...) ; ALTER TABLE audit_log ENABLE TRIGGER ... ; COMMIT`)
+- ✅ Root cause confirmed: `src/api/v1/admin/tenants.py` PATCH route L488 `await db.commit()` persists test-seeded tenant past db_session rollback → `uq_tenants_code` collision on next run; FK CASCADE to audit_log hits WORM trigger → naive `DELETE FROM tenants` fails
+- ✅ `docs/rules-on-demand/testing.md` — NEW §Committed-Row Cleanup Pattern (autouse fixture + WORM-trigger toggle; anti-patterns; cross-refs to §Module-level Singleton + 53.7 §Risk Class C)
+- ✅ Verified: `pytest tests/integration/api/test_admin_tenant_patch.py` → **9/9 pass × 3 consecutive runs** (was 3/9 fail on polluted DB)
+
+### Day 3 Aggregate Test Deltas
+- **Vitest 157 → 168** (+11 NEW; Day-0-to-Day-3 cumulative +49; plan target +26 → **188%**)
+- **pytest 1658** maintained (US-7 is conftest fixture change, not new tests; AD-AdminTenant-Patch-Flake validated via existing 9 tests)
+- **mypy strict 0/305** source files
+- **9 V2 lints 9/9 green** / **LLM SDK leak 0** / **tsc strict 0** / **ESLint silent**
+- **118/118 api integration tests pass** (conftest change no-regression confirmed)
+
+### Day 3 Drift Catalog (1 finding)
+
+| ID | Severity | Finding | Resolution |
+|----|----------|---------|------------|
+| **D3-001** | 🟠 YELLOW | AD-AdminTenant-Patch-Flake root cause is deeper than "test pollution": admin PATCH route `await db.commit()` + FK CASCADE to audit_log + WORM trigger `audit_log_no_update_delete` blocking `DELETE FROM tenants` | Single-transaction WORM-trigger-toggle in conftest cleanup (same idiom 57.10 D-PRE-DAY4-1 used for manual dev-DB cleanup); explicit committing-test code list (extend per new committing test); documented in testing.md §Committed-Row Cleanup Pattern |
+
+### Pace note
+Day 3 actual ~1.5-2 hr / committed ~3-4 hr → ~50% of Day 3 budget. US-5 components were pulled forward to Day 2 → Day 3 was just SubagentTree + chat-v2 mount + audit cycle. Total sprint actual ~7.5-9 hr vs committed ~14 hr at Day 3 end (~55-65%).
+
+---
+
+## Remaining for Day 4
+
+- [ ] Day 4: US-8 routing wire (/memory + /loop-debug to routes.config.ts) + 4 Playwright e2e + chat-v2 8/8 regression + full validation sweep + retrospective Q1-Q7 + memory snapshot + 3 doc syncs + PR
 
 ---
 

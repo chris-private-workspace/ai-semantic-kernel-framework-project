@@ -20,7 +20,21 @@ Description:
       tests, subsequent tests hit "Future attached to a different loop" / "Event
       loop is closed" failures (e.g. test_list_rejects_non_approver_role on CI).
 
+    DB test-tenant cleanup (Sprint 57.12 fix AD-AdminTenant-Patch-Flake):
+      A few admin endpoints (PATCH /tenants/{id}, POST /tenants onboarding)
+      call `await db.commit()` internally. When the test injects its own
+      db_session as the route session, that commit persists the seeded
+      tenant row past the db_session fixture's teardown rollback (rollback
+      is a no-op after commit). Subsequent runs then collide on
+      `uq_tenants_code` (e.g. code='BOTH_FIELDS' already exists). Per 53.7
+      §Risk Class C SAVEPOINT pattern, the autouse fixture clears stale
+      committed test-tenant rows at setup so each run starts clean.
+      The test DB role owns the schema → RLS does not FORCE on owners, so a
+      plain DELETE without SET LOCAL app.tenant_id is permitted; CASCADE
+      handles dependent rows (memory_*, users, conversations, ...).
+
 Modification History (newest-first):
+    - 2026-05-10: Sprint 57.12 — add _clear_committed_test_tenants() (closes AD-AdminTenant-Patch-Flake)
     - 2026-05-10: Sprint 57.11 — add dispose_engine() autouse (closes AD-Governance-RBAC-Flake)
     - 2026-05-06: Sprint 56.3 Day 3 — add reset_cost_ledger (US-3)
     - 2026-05-06: Sprint 56.3 Day 2 — add reset_pricing_loader (US-3)
@@ -49,29 +63,88 @@ os.environ.setdefault("AUDIT_LOG_CHAT_OBSERVER", "false")
 os.environ.setdefault("SESSIONS_CHAT_OBSERVER", "false")
 os.environ.setdefault("TOOL_CALLS_CHAT_OBSERVER", "false")
 
+from sqlalchemy import text  # noqa: E402
+
 from infrastructure.db.engine import dispose_engine  # noqa: E402
+from infrastructure.db.session import get_session_factory  # noqa: E402
 from platform_layer.billing.cost_ledger import reset_cost_ledger  # noqa: E402
 from platform_layer.billing.pricing import reset_pricing_loader  # noqa: E402
 from platform_layer.governance.service_factory import reset_service_factory  # noqa: E402
 from platform_layer.observability import reset_sla_recorder  # noqa: E402
 
+# Tenant codes used by tests that hit committing endpoints (PATCH /tenants/{id},
+# POST /tenants onboarding). Listed explicitly so the cleanup is surgical (does
+# NOT touch tenants seeded by non-committing tests, which roll back cleanly).
+# When a new committing test adds a code, add it here too.
+_COMMITTING_TEST_TENANT_CODES: tuple[str, ...] = (
+    # test_admin_tenant_patch.py — PATCH route commits
+    "IMMUTABLE_TEST",
+    "TOO_LONG_TEST",
+    "DN_ONLY",
+    "META_ONLY",
+    "BOTH_FIELDS",
+    "NO_OP",
+    "META_RT",
+    "SHAPE_TEST",
+    # test_admin_onboarding.py / test_admin_tenants_rbac.py — POST routes commit
+    "GET_HAPPY",
+    "admin",
+)
+
+
+async def _clear_committed_test_tenants() -> None:
+    """Delete stale committed test-tenant rows so each run starts clean.
+
+    Per 53.7 §Risk Class C: the test DB role owns the schema, so a plain DELETE
+    (no SET LOCAL app.tenant_id — `tenants` is a global no-RLS table per
+    migration 0009) is allowed. FK CASCADE from `tenants` reaches `audit_log`,
+    which carries the WORM trigger `audit_log_no_update_delete` (raises
+    "audit_log is append-only" on any DELETE). So we toggle that trigger off for
+    the duration of this housekeeping DELETE inside a single transaction — on
+    commit the net effect is trigger ENABLED + stale rows gone; on any error the
+    rollback leaves the trigger ENABLED + nothing deleted (best-effort cleanup).
+    """
+    factory = get_session_factory()
+    async with factory() as session:
+        try:
+            await session.execute(
+                text("ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_update_delete")
+            )
+            await session.execute(
+                text("DELETE FROM tenants WHERE code = ANY(:codes)"),
+                {"codes": list(_COMMITTING_TEST_TENANT_CODES)},
+            )
+            await session.execute(
+                text("ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_update_delete")
+            )
+            await session.commit()
+        except Exception:  # noqa: BLE001 — cleanup is best-effort; never fail the test setup
+            await session.rollback()
+    await dispose_engine()
+
 
 @pytest.fixture(autouse=True)
 async def _reset_module_singletons() -> AsyncIterator[None]:
-    """Clear module-level singletons + dispose async engine before + after each test.
+    """Clear module-level singletons + dispose async engine + clear stale test tenants.
 
     Sprint 57.11 fix (AD-Governance-RBAC-Flake): added await dispose_engine()
     to prevent cross-loop Future leak when one test's connection-pool futures
     are still pending when the next test's pytest-asyncio loop starts.
+
+    Sprint 57.12 fix (AD-AdminTenant-Patch-Flake): added
+    _clear_committed_test_tenants() so committing endpoints' persisted rows
+    don't collide on uq_tenants_code across runs.
     """
     reset_service_factory()
     reset_sla_recorder()
     reset_pricing_loader()
     reset_cost_ledger()
     await dispose_engine()
+    await _clear_committed_test_tenants()
     yield
     reset_service_factory()
     reset_sla_recorder()
     reset_pricing_loader()
     reset_cost_ledger()
     await dispose_engine()
+    await _clear_committed_test_tenants()

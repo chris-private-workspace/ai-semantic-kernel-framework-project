@@ -20,6 +20,7 @@
  * Last Modified: 2026-04-30
  *
  * Modification History:
+ *   - 2026-05-10: Sprint 57.12 US-6 — add Subagent{Spawned,Completed}Event + KNOWN set entries (closes AD-Cat11-SSEEvents frontend half)
  *   - 2026-05-04: Add GuardrailTriggeredEvent type (Sprint 53.6 D2 — Day 0 探勘 finding)
  *     — backend yields GuardrailTriggered 7× in loop.py (Cat 9 Stage 1/2/3); frontend
  *     defensive type so KNOWN_LOOP_EVENT_TYPES includes the wire type and
@@ -151,12 +152,38 @@ export type VerificationFailedEvent = {
   };
 };
 
+// Sprint 57.12 US-6: Cat 11 subagent lifecycle SSE events.
+// Backend yields these from DefaultSubagentDispatcher.spawn (Spawned at start,
+// Completed when the subagent's asyncio.Task resolves). SSE schema sourced from
+// api/v1/chat/sse.py. AD-Cat11-SSEEvents (54.2 carryover) — both type union AND
+// KNOWN_LOOP_EVENT_TYPES set must list these so parseSSEFrame doesn't silently
+// drop them per CONVENTION.md §7 3-edit checklist.
+
+export type SubagentSpawnedEvent = {
+  type: "subagent_spawned";
+  data: {
+    subagent_id: string | null;
+    mode: string; // fork / teammate / handoff / as_tool
+    parent_session_id: string | null;
+  };
+};
+
+export type SubagentCompletedEvent = {
+  type: "subagent_completed";
+  data: {
+    subagent_id: string | null;
+    summary: string;
+    tokens_used: number;
+  };
+};
+
 /**
  * Sprint 50.2 wired 7 known event types; Sprint 53.5 adds 2 (approval_*);
- * Sprint 53.6 adds 1 (guardrail_triggered); Sprint 57.11 adds 2 (verification_*).
- * Unknown event types from later phases are filtered at the SSE parser
- * (chatService.parseSSEFrame returns null) so the store never sees them —
- * preserving discriminated-union narrowing inside mergeEvent's switch.
+ * Sprint 53.6 adds 1 (guardrail_triggered); Sprint 57.11 adds 2 (verification_*);
+ * Sprint 57.12 adds 2 (subagent_*). Unknown event types from later phases are
+ * filtered at the SSE parser (chatService.parseSSEFrame returns null) so the
+ * store never sees them — preserving discriminated-union narrowing inside
+ * mergeEvent's switch.
  */
 export type LoopEvent =
   | LoopStartEvent
@@ -170,9 +197,11 @@ export type LoopEvent =
   | ApprovalReceivedEvent
   | GuardrailTriggeredEvent
   | VerificationPassedEvent
-  | VerificationFailedEvent;
+  | VerificationFailedEvent
+  | SubagentSpawnedEvent
+  | SubagentCompletedEvent;
 
-/** Set of SSE event type names recognized by Sprint 50.2 + 53.5 + 53.6 + 57.11 frontend. */
+/** Set of SSE event type names recognized by Sprint 50.2 + 53.5 + 53.6 + 57.11 + 57.12 frontend. */
 export const KNOWN_LOOP_EVENT_TYPES = new Set<string>([
   "loop_start",
   "turn_start",
@@ -187,6 +216,9 @@ export const KNOWN_LOOP_EVENT_TYPES = new Set<string>([
   // Sprint 57.11 US-5: Cat 10 verification SSE events (AD-Frontend-SSE-Silent-Drop-Fix)
   "verification_passed",
   "verification_failed",
+  // Sprint 57.12 US-6: Cat 11 subagent SSE events (AD-Cat11-SSEEvents)
+  "subagent_spawned",
+  "subagent_completed",
 ]);
 
 // === UI aggregate types =====================================================

@@ -8,6 +8,7 @@
 **Status**: Active
 
 > **Modification History**
+> - 2026-05-10: Sprint 57.12 US-7 — add §Committed-Row Cleanup Pattern (closes AD-AdminTenant-Patch-Flake)
 > - 2026-05-05: Sprint 55.6 triage cleanup — add §SAVEPOINT pattern (closes AD-Test-DB-Trigger)
 > - 2026-05-04: Sprint 53.7 Day 1 — add §Module-level Singleton Reset Pattern (closes AD-Test-1; pattern from 53.6 Day 4 ServiceFactory consolidation event-loop-cache cascade fix)
 > - 2026-04-28: Enhance for V2 — 新增範疇層級測試分工、主流量驗證、Contract Test、Multi-tenant Tests、Anti-Pattern Tests、Test Performance、Observability Tests
@@ -222,6 +223,67 @@ async def test_audit_chain_persists_despite_downstream_error(db_session):
 
 - `multi-tenant-data.md` §Audit chain triggers (Migration 0005)
 - `04-anti-patterns.md` AP-9 verification (don't skip the failing case to dodge poisoning)
+
+---
+
+## Committed-Row Cleanup Pattern (Sprint 57.12+ — closes AD-AdminTenant-Patch-Flake)
+
+**When you need this**: an integration test exercises an endpoint that calls `await db.commit()` internally (e.g. `PATCH /tenants/{id}`, `POST /tenants` onboarding). When the test injects its own `db_session` as the route's session (via `app.dependency_overrides`), that commit **persists** any rows the test seeded — past the `db_session` fixture's teardown `rollback()` (which is now a no-op on an already-committed session). The next run then collides on a unique constraint (e.g. `uq_tenants_code` — "Key (code)=(BOTH_FIELDS) already exists").
+
+**Source**: Sprint 57.12 US-7 (AD-AdminTenant-Patch-Flake — recurring 57.8+57.9+57.10+57.11 dev-DB pollution; 3/9 `test_admin_tenant_patch.py` tests failing on a polluted DB). Root cause: `src/api/v1/admin/tenants.py` PATCH route line ~488 `await db.commit()`.
+
+### Required pattern: autouse cleanup fixture with WORM-trigger toggle
+
+```python
+# tests/integration/api/conftest.py
+_COMMITTING_TEST_TENANT_CODES = ("BOTH_FIELDS", "DN_ONLY", "META_ONLY", ...)  # extend per new committing test
+
+async def _clear_committed_test_tenants() -> None:
+    """FK CASCADE from `tenants` reaches `audit_log`, which has the WORM trigger
+    `audit_log_no_update_delete`. Toggle it off inside ONE transaction so commit
+    => trigger ENABLED + rows gone; any error => rollback => trigger ENABLED + nothing deleted."""
+    factory = get_session_factory()
+    async with factory() as session:
+        try:
+            await session.execute(text("ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_update_delete"))
+            await session.execute(text("DELETE FROM tenants WHERE code = ANY(:codes)"),
+                                  {"codes": list(_COMMITTING_TEST_TENANT_CODES)})
+            await session.execute(text("ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_update_delete"))
+            await session.commit()
+        except Exception:  # best-effort cleanup; never fail test setup
+            await session.rollback()
+    await dispose_engine()
+
+@pytest.fixture(autouse=True)
+async def _reset_module_singletons():
+    reset_service_factory(); ...; await dispose_engine()
+    await _clear_committed_test_tenants()       # ← before yield
+    yield
+    reset_service_factory(); ...; await dispose_engine()
+    await _clear_committed_test_tenants()       # ← after yield
+```
+
+### Why the trigger toggle (and not just `DELETE FROM tenants`)
+
+`tenants` is a global no-RLS table (migration 0009), so the DELETE itself is permitted — but the FK CASCADE to `audit_log` hits `audit_log_no_update_delete` which raises `audit_log is append-only`. Without `DISABLE TRIGGER` the whole DELETE fails (and a `try/except` swallows it → nothing cleaned). The single-transaction toggle (DISABLE → DELETE → ENABLE → COMMIT) is the V2 idiom — same toggle 57.10 D-PRE-DAY4-1 used for manual dev-DB cleanup.
+
+### Anti-patterns
+
+- ❌ Surgical-list a permanent allowlist instead of cleaning → committing tests still leak; new committing test silently re-introduces the flake
+- ❌ `DELETE FROM tenants` without the trigger toggle → fails on the audit_log CASCADE; `try/except` hides it
+- ❌ Make committing tests use UUID-suffixed codes → loses predictable test IDs; harder to read assertions (the plan's "alternative", rejected)
+- ❌ Disable the WORM trigger globally for the test DB → defeats the append-only invariant the trigger exists to test elsewhere
+
+### When NOT to use
+
+- Test exercises only GET / read endpoints (no internal `db.commit()`) → `db_session` rollback handles cleanup; no fixture needed
+- Test seeds via `db_session` and the route uses a *different* session that never commits → already isolated
+
+### Cross-reference
+
+- `multi-tenant-data.md` §Audit chain triggers (WORM `audit_log_no_update_delete`)
+- §Module-level Singleton Reset Pattern (same conftest autouse fixture houses both)
+- 53.7 §Risk Class C (Module-level Singleton Across Test Event Loops — sibling test-isolation pattern)
 
 ---
 

@@ -21,6 +21,7 @@
  * Last Modified: 2026-05-09
  *
  * Modification History (newest-first):
+ *   - 2026-05-10: Sprint 57.12 US-6 §3.8 — mount inline LoopVisualizer + SubagentTree panels
  *   - 2026-05-09: Sprint 57.8 US-5 Day 3 — auth gate + AppShellV2 wrap (real ship)
  *   - 2026-04-30: Wire MessageList + InputBar (Sprint 50.2 Day 4.4)
  *   - 2026-04-30: Replace 49.1 placeholder with ChatLayout shell (Sprint 50.2 Day 3.7)
@@ -29,6 +30,8 @@
  *   - frontend/src/features/auth/services/authService.ts (isAuthenticated, setPostLoginRedirect)
  *   - frontend/src/components/AppShellV2.tsx (page-level shell)
  *   - frontend/src/features/chat_v2/components/ChatLayout.tsx (D11 surgical fix)
+ *   - frontend/src/features/orchestrator-loop/components/LoopVisualizer.tsx (Sprint 57.12 US-4)
+ *   - frontend/src/features/subagent/components/SubagentTree.tsx (Sprint 57.12 US-6)
  */
 
 import { Navigate } from "react-router-dom";
@@ -38,6 +41,8 @@ import { isAuthenticated, setPostLoginRedirect } from "@/features/auth/services/
 import ChatLayout from "@/features/chat_v2/components/ChatLayout";
 import InputBar from "@/features/chat_v2/components/InputBar";
 import MessageList from "@/features/chat_v2/components/MessageList";
+import { LoopVisualizer } from "@/features/orchestrator-loop/components/LoopVisualizer";
+import { SubagentTree } from "@/features/subagent/components/SubagentTree";
 import { VerificationPanel } from "@/features/verification/components/VerificationPanel";
 
 export default function ChatV2Page(): JSX.Element {
@@ -49,9 +54,12 @@ export default function ChatV2Page(): JSX.Element {
     <AppShellV2 pageTitle="Chat (V2)">
       <ChatLayout>
         <MessageList />
-        {/* Sprint 57.11 US-5: inline verification events panel
-            (renders null when no events; mounted between message stream and input). */}
+        {/* Inline panels — each renders null when no events; mounted between
+            the message stream and input. Sprint 57.11 US-5 (verification) +
+            Sprint 57.12 US-4 (loop) + US-6 (subagent). */}
         <VerificationPanel />
+        <SubagentTree />
+        <LoopVisualizer mode="inline" />
         <InputBar />
       </ChatLayout>
     </AppShellV2>

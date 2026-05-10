@@ -25,15 +25,18 @@
  * Last Modified: 2026-04-30
  *
  * Modification History:
+ *   - 2026-05-10: Sprint 57.12 US-6 — add subagents slice + reducers + mergeEvent SSE branch (closes AD-Cat11-SSEEvents)
  *   - 2026-04-30: Initial creation (Sprint 50.2 Day 3.3)
  *
  * Related:
  *   - ../types.ts (LoopEvent + Message + ToolCallEntry)
  *   - ../hooks/useLoopEventStream.ts (calls mergeEvent per SSE chunk)
+ *   - ../../subagent/types.ts (SubagentNode UI tree node)
  */
 
 import { create } from "zustand";
 
+import type { SubagentNode } from "../../subagent/types";
 import type { VerificationEvent } from "../../verification/types";
 import type {
   ApprovalEntry,
@@ -58,6 +61,9 @@ type ChatStoreState = {
   // Sprint 57.11 US-5: Cat 10 verification events for inline VerificationPanel
   // (chronological append; cleared on reset / new session).
   verifications: VerificationEvent[];
+  // Sprint 57.12 US-6: Cat 11 subagent tree nodes for inline SubagentTree
+  // (keyed-update by subagent_id; cleared on reset / new session).
+  subagents: SubagentNode[];
   // actions
   setMode: (m: ChatMode) => void;
   setStatus: (s: ChatStatus) => void;
@@ -66,6 +72,7 @@ type ChatStoreState = {
   mergeEvent: (ev: LoopEvent) => void;
   appendVerification: (event: VerificationEvent) => void;
   clearVerifications: () => void;
+  clearSubagents: () => void;
   reset: () => void;
 };
 
@@ -80,6 +87,7 @@ const _initial = (): Pick<
   | "rawEvents"
   | "approvals"
   | "verifications"
+  | "subagents"
 > => ({
   sessionId: null,
   status: "idle",
@@ -90,6 +98,7 @@ const _initial = (): Pick<
   rawEvents: [],
   approvals: {},
   verifications: [],
+  subagents: [],
 });
 
 let _msgCounter = 0;
@@ -273,6 +282,54 @@ export const useChatStore = create<ChatStoreState>((set) => ({
           };
         }
 
+        // Sprint 57.12 US-6: Cat 11 subagent lifecycle events. Spawned → push
+        // a "running" node; Completed → update the matching node to "completed"
+        // + summary + tokens (defensive create if Completed arrives without a
+        // prior Spawned). UI status derived from event ordering per Day 1 D1-005.
+        // AD-Cat11-SSEEvents: type+set listed in types.ts per CONVENTION.md §7.
+        case "subagent_spawned": {
+          const sid = ev.data.subagent_id;
+          if (!sid) return { ...s, rawEvents };
+          if (s.subagents.some((n) => n.subagentId === sid)) return { ...s, rawEvents };
+          const node: SubagentNode = {
+            subagentId: sid,
+            parentId: ev.data.parent_session_id,
+            mode: ev.data.mode,
+            status: "running",
+            summary: null,
+            tokensUsed: null,
+            spawnedAt: Date.now(),
+          };
+          return { ...s, rawEvents, subagents: [...s.subagents, node] };
+        }
+
+        case "subagent_completed": {
+          const sid = ev.data.subagent_id;
+          if (!sid) return { ...s, rawEvents };
+          const idx = s.subagents.findIndex((n) => n.subagentId === sid);
+          if (idx === -1) {
+            // Defensive create — Completed arrived without prior Spawned.
+            const node: SubagentNode = {
+              subagentId: sid,
+              parentId: null,
+              mode: "unknown",
+              status: "completed",
+              summary: ev.data.summary,
+              tokensUsed: ev.data.tokens_used,
+              spawnedAt: Date.now(),
+            };
+            return { ...s, rawEvents, subagents: [...s.subagents, node] };
+          }
+          const updated = s.subagents.slice();
+          updated[idx] = {
+            ...updated[idx],
+            status: "completed",
+            summary: ev.data.summary,
+            tokensUsed: ev.data.tokens_used,
+          };
+          return { ...s, rawEvents, subagents: updated };
+        }
+
         default: {
           // Unreachable: parser filters unknown event types upstream.
           // Defensive return to keep TypeScript exhaustive-check happy.
@@ -286,6 +343,8 @@ export const useChatStore = create<ChatStoreState>((set) => ({
     set((s) => ({ verifications: [...s.verifications, event] })),
 
   clearVerifications: () => set({ verifications: [] }),
+
+  clearSubagents: () => set({ subagents: [] }),
 
   reset: () => set({ ..._initial() }),
 }));
