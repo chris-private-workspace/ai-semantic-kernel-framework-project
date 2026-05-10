@@ -69,12 +69,12 @@ Build enterprise AI agent teams that work like **human professional teams** — 
 
 | Attribute | Value |
 |-----------|-------|
-| **Phase** | V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend 7/N（57.1/57.3/57.4/57.7/57.8/57.9/57.11）+ 57.10 PIVOTED Convention Codify ✅ |
-| **Latest Sprint** | 57.11 ✅ 2026-05-10 — Verification Real Ship + AD-Frontend-SSE-Silent-Drop-Fix bundle (PR #125 main `923e808b`)。pytest 1622→1635 / Vitest 93→119 / Playwright 27→31。詳細 retro 見 `memory/project_phase57_11_verification_ship.md` |
+| **Phase** | V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend 9/N（57.1/57.3/57.4/57.7/57.8/57.9/57.11/57.12 loop-debug + 57.12 memory）+ 57.10 PIVOTED Convention Codify ✅ |
+| **Latest Sprint** | 57.12 ✅ 2026-05-10 — Agent Harness UI Suite (LoopVisualizer + MemoryViewer + SubagentTree) + Cat 11 SubagentSpawned/Completed SSE + Cat 3 `/api/v1/memory` REST (role/session 501) + AD-AdminTenant-Patch-Flake fix (PR #127 main `3e06c48d`)。8/8 USs。pytest 1635→1654 / Vitest 119→168 / Playwright 31→37。詳細 retro 見 `memory/project_phase57_12_agent_harness_ui_suite.md` |
 | **Last Convention Codify Sprint** | 57.10 PIVOTED ✅ 2026-05-09 — Frontend Convention Codify (CONVENTION.md 667 行 + STYLE.md 447 行;PR #122 main `7d85df4c`)|
-| **main HEAD** | `923e808b` (Sprint 57.11 via PR #125, 2026-05-10) |
-| **Next Phase 候選** | Phase 57.12+ 5 候選（user 明確選定才起草 plan）:(a) Agent Harness UI suite (LoopVisualizer + MemoryViewer + SubagentTree) ⭐ ~15-20 hr — User Option A bundle (a)+(c) complement / (b) AD-Bundle-Size-285kB optimization sprint ~3-5 hr / (c) AD-AdminTenant-Patch-Flake + AD-Governance-RBAC-Flake (closed via 57.11) audit cycle mini ~2-3 hr / (d) Tier 1 IaC + DR drill ~15-20 hr / (e) SOC 2 + SBOM ~12-15 hr |
-| **Roadmap** | Phase 49-55 V2 ✅ / Phase 56-58 SaaS Stage 1 3/3 ✅ / Phase 57+ Frontend 7/N（57.1/57.3/57.4/57.7/57.8/57.9/57.11）/ 57.10 PIVOTED Convention Codify ✅ |
+| **main HEAD** | `3e06c48d` (Sprint 57.12 via PR #127, 2026-05-10) |
+| **Next Phase 候選** | Phase 57.13+ 5 候選（user 明確選定才起草 plan）:(a) AD-Bundle-Size optimization sprint ~3-5 hr — main 296.58 kB,extract shared inline-panel components (LoopVisualizer/SubagentTree/SubagentStatusBadge/VerifierTypeBadge) to dedicated chunk / (b) Cat 11 deepening ~8-12 hr — close AD-Cat11-Multiturn-Full + AD-Cat11-ParentCtx-Full + AD-Cat11-Handoff-Events-Phase58+ / (c) Memory read facade completion ~5-7 hr — close AD-Memory-Role-Session-Phase58 + AD-Memory-ABC-ListMethods（role+session layers + MemoryStore ABC list_*）/ (d) Tier 1 IaC + DR drill ~15-20 hr / (e) SOC 2 + SBOM ~12-15 hr |
+| **Roadmap** | Phase 49-55 V2 ✅ / Phase 56-58 SaaS Stage 1 3/3 ✅ / Phase 57+ Frontend 9/N（57.1/57.3/57.4/57.7/57.8/57.9/57.11/57.12×2）/ 57.10 PIVOTED Convention Codify ✅ |
 | **Tech Stack** | FastAPI + React 18 + PostgreSQL + Redis（V1 沿用）|
 | **Architecture** | TAO/ReAct loop + 11+1 範疇 全 Level 4（Cat 9 L5）+ LLM Provider 中性（CI-enforced）+ Multi-tenant 3 鐵律 |
 | **Branch Protection** | enforce_admins=true / **review_count=0**（solo-dev policy 永久，2026-05-03 Sprint 53.2 起）/ 5 active required CI checks |
@@ -574,10 +574,10 @@ V1 完整 CLAUDE.md 已保留於 `CLAUDE.backup.md`。如需查閱 V1 架構（M
 
 ---
 
-**Last Updated**: 2026-05-10 (Sprint 57.11 closeout — Verification Real Ship + AD-Frontend-SSE-Silent-Drop-Fix bundle)
-**Recent Sprints (詳情見 memory/)**: 57.11 (Verification ship) / 57.10 (Convention Codify) / 57.9 (Governance ship) / 57.8 (AppShell V2 + chat-v2) / 57.7 (IAM + frontend foundation) / 57.6 (Reality Gap Fix) / 57.5 (Reality Check)
+**Last Updated**: 2026-05-10 (Sprint 57.12 closeout — Agent Harness UI Suite + Cat 11 SSE + Cat 3 /api/v1/memory + AD-AdminTenant-Patch-Flake)
+**Recent Sprints (詳情見 memory/)**: 57.12 (Agent Harness UI Suite) / 57.11 (Verification ship) / 57.10 (Convention Codify) / 57.9 (Governance ship) / 57.8 (AppShell V2 + chat-v2) / 57.7 (IAM + frontend foundation) / 57.6 (Reality Gap Fix)
 **Project Start**: 2025-11-14
-**Current Phase**: V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend 7/N（57.11 Verification Real Ship）。Phase 57.12+ 候選 5 條 pending user 明確選定（見上方表格 Next Phase 候選 row）。
-**main HEAD**: `923e808b` (Sprint 57.11 via PR #125, 2026-05-10)
+**Current Phase**: V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend 9/N（57.12 Agent Harness UI Suite — /loop-debug + /memory + chat-v2 inline LoopVisualizer/SubagentTree）。Phase 57.13+ 候選 5 條 pending user 明確選定（見上方表格 Next Phase 候選 row）。
+**main HEAD**: `3e06c48d` (Sprint 57.12 via PR #127, 2026-05-10)
 **V2 Authority**: `docs/03-implementation/agent-harness-planning/` (21 docs — 20 規劃 + 1 review)
 **V1 Reference**: `CLAUDE.backup.md` + `docs/07-analysis/V9/00-index.md`
