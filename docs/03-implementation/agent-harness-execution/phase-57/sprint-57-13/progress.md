@@ -125,9 +125,45 @@
 
 ---
 
-## Remaining for Day 3-9
+## Day 3 — US-A5 (connectivity smoke) + US-B1 (Toast) — `e1c3f58e`
 
-- [ ] Day 3: US-A5 (connectivity smoke + .env.example) + US-B1 (Toast)
+One commit covering both USs (+ a small `.gitignore` hygiene fix).
+
+### US-A5 — connectivity smoke + .env.example
+- **NEW `backend/tests/integration/api/test_api_smoke.py`** (2 tests). Builds the *real* app via `api.main.create_app()` (so middleware + router wiring is exactly prod's), overrides only `get_db_session` + `get_db_session_with_tenant` with the per-test rollback session, seeds a tenant + user, encodes `JWTManager().encode(sub=user.id, tenant_id=tenant.id, roles=["admin","platform_admin"])` (those two roles cover every RBAC dep in scope), then hits one representative GET per router: `/health` (middleware-exempt), `/auth/me`, `/admin/tenants`, `/admin/tenants/{t}/cost-summary?month=2026-05`, `.../sla-report?month=2026-05`, `/audit/log?limit=10`, `/verification/recent?limit=10`, `/memory/recent?layer=user&limit=10`, `/governance/approvals` → assert status ∈ {200,404} + `resp.json()` parses. Second test: `/admin/tenants` with no JWT → 401. **Must `set_pricing_loader(PricingLoader().load_from_yaml(config/llm_pricing.yml))` + `set_sla_recorder(SLAMetricRecorder(redis_client=FakeRedis()))` before `create_app()`** — same strict singleton accessors the focused cost/sla tests init; the autouse `reset_pricing_loader` / `reset_sla_recorder` fixtures in `tests/integration/api/conftest.py` clean up. (Hit two iterations of "singleton not initialised" 500s while writing it — D-DAY3 lesson: smoke-testing the real app surfaces every module-level singleton the route path touches.)
+- **NEW `frontend/tests/e2e/connectivity/connectivity.spec.ts`** — opt-in (`test.skip(!process.env.RUN_CONNECTIVITY)`); real `page.request.post("/api/v1/auth/dev-login")` (sets the `v2_jwt` cookie on the browser context), then `page.goto` each of the 9 active routes → assert `page.url()` not `/auth/login`, `[data-testid="app-shell"]` visible, zero `console.error`. Manual run: `RUN_CONNECTIVITY=1 npm run test:e2e -- connectivity` (needs backend + frontend both up). Not part of CI / `npm run test:e2e`.
+- **`AppShellV2.tsx`** — added `data-testid="app-shell"` on the root `<div>` (connectivity anchor; no behavior change).
+- **`.env.example`** (root only — no `backend/.env.example` / `frontend/.env.example` exist → D-DAY3-3) — added a WorkOS OIDC block (`WORKOS_API_KEY=` / `WORKOS_CLIENT_ID=` / `OIDC_REDIRECT_URI=http://localhost:8000/api/v1/auth/callback` / `FRONTEND_BASE_URL=http://localhost:3007` / `COOKIE_SECURE=false`) + `VITE_SENTRY_DSN=`, each commented, and a "dev needs no WorkOS — use `POST /api/v1/auth/dev-login`" note. **README** env section + a **NEW SITUATION-6 §認證（本地開發）** mirror that note. (D-DAY3-4: the root file already had WorkOS-ish fields under "Identity" from 57.7 US-A2's `core/config` change — reorganised into a dedicated block + added the 4 newer keys.)
+
+### US-B1 — Toast system
+- `<Toaster richColors position="top-right" />` — **D-DAY3-1**: already mounted in `main.tsx` since 57.7 US-B2. No edit; checklist item satisfied as-is.
+- **NEW `frontend/src/lib/toast.ts`** — `toastError` / `toastSuccess` / `toastInfo` thin wrappers over `sonner` (`toast.error` / `.success` / `()`), plus `errorMessage(err, fallback?)` that normalises an unknown thrown value to a string.
+- **NEW `frontend/src/lib/queryClient.ts`** — **D-DAY3-2**: the `QueryClient` was inline in `main.tsx` (57.7 US-B2 + 57.9 US-6's `retry:false` rationale). Extracted with the same `defaultOptions` (queries `staleTime 30s` / `refetchOnWindowFocus:false` / `retry:false`; mutations `retry:false`) + a `MutationCache({ onError: (err) => toastError(errorMessage(err)) })`. `main.tsx` now `import { queryClient } from "./lib/queryClient"`. Query failures are intentionally NOT toasted globally — the 4 TanStack-migrated pages (cost / sla / tenant-settings / governance per 57.9) render inline error + Retry; a global toast would double-surface. Mutations have no inline error slot → they toast.
+- **`authService.ts` `fetchWithAuth(input, init, opts?)`** — added a 3rd `{ redirectOn401?: boolean }` param (default true). On a 401 → `handleAuthExpired()`: `toastError("登入已過期，請重新登入")` + `clearDevToken()` + `useAuthStore.getState().clear()` + `setPostLoginRedirect(window.location.pathname + search)` + `window.location.href = "/auth/login"`, then still returns the response. `fetchAuthMe()` and `logout()` pass `{ redirectOn401: false }` so `authStore.bootstrap()` (first anonymous load) and the logout flow aren't hijacked. Replaces the Day-1 "401 handled by callers/QueryClient" stub note — `fetchWithAuth` is the only layer that sees the raw status for *every* request (feature services rethrow as plain `Error`, losing the status), so 401 handling belongs here.
+- **NEW `frontend/tests/unit/lib/toast.test.ts`** (9 — wrappers delegate to mocked sonner via `vi.hoisted`; `errorMessage` Error/string/fallback) + **`frontend/tests/unit/lib/queryClient.test.ts`** (4 — query/mutation defaults; `mutationCache.config.onError` invokes mocked `toastError` with the message).
+
+### Bonus hygiene — `.gitignore` (D-DAY3-5)
+The stock-Python `lib/` line in `.gitignore` matches ANY `lib/` directory — including `frontend/src/lib/` (where `cn` lives, and the two new files). `frontend/src/lib/utils.ts` was tracked (added before the line), but the new files were silently dropped from `git status`. Fixed: anchored to `/lib/` + `/lib64/` (only the repo-root Python build dirs). Also added `/test-results/` (stray root-level Playwright output dir that was showing as untracked).
+
+### Drift findings (Day 3)
+| ID | Finding | Implication |
+|----|---------|-------------|
+| D-DAY3-1 | `<Toaster>` already mounted in `main.tsx` (57.7 US-B2), not App.tsx | Checklist §3.3 item-1 needs no code; verified only |
+| D-DAY3-2 | `QueryClient` already a single inline instance in `main.tsx` (57.7 + 57.9 retry:false) | "NEW `lib/queryClient.ts`" became *extract + add mutationCache*, preserving the 57.9 retry:false e2e contract |
+| D-DAY3-3 | No `backend/.env.example` / `frontend/.env.example` — only repo-root `.env.example` | Updated the root file only |
+| D-DAY3-4 | Root `.env.example` already had WorkOS-ish fields under "Identity" (57.7 US-A2 via `core/config`) | Reorganised into a WorkOS OIDC block + added `OIDC_REDIRECT_URI` / `FRONTEND_BASE_URL` / `COOKIE_SECURE` / `VITE_SENTRY_DSN` |
+| D-DAY3-5 | `.gitignore` `lib/` silently ignores `frontend/src/lib/`; new files there don't appear in `git status` | Anchored to `/lib/` (bonus hygiene fix this commit); relevant for Day 4 component-layer files too |
+
+### Verification (Day 3 aggregate)
+- Backend: `black`/`isort`/`flake8` clean on changed files; **`mypy src/ --strict` → 305 source files, no issues**; **9/9 V2 lints green** (`python scripts/lint/run_all.py`); **full `pytest -q` → 1670 passed + 4 skipped** (Day 2: 1668+4; +2 from `test_api_smoke.py`).
+- Frontend: `npm run lint` clean; `npm run build` ✅ (main `index-*.js` 243.81 kB gzip 77.29 — ≈flat vs Day 2 243.37); **`npm run test` → 52 files / 196 passed** (Day 2: 51/187; +9 tests from toast (9) + queryClient (4) net the prior count mechanics). One pre-existing jsdom "Not implemented: navigation" warning on stderr (a `window.location.href` assignment in an unrelated test path) — not a failure.
+- Manual UI not run (no dev server boot). The connectivity spec is opt-in / not in CI; the smoke `pytest` covers the wiring.
+
+---
+
+## Remaining for Day 4-9
+
+- [x] Day 3: US-A5 (connectivity smoke + .env.example) + US-B1 (Toast) — `e1c3f58e`
 - [ ] Day 4: US-B2 (design-system component layer + refactor 6 feature areas) + mid-sprint ratio check
 - [ ] Day 5: US-B3 (Radix Dialog+DropdownMenu + DecisionModal+UserMenu refactor)
 - [ ] Day 6: US-B4 (Sentry + Web Vitals + telemetry endpoint)

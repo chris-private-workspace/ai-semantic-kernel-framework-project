@@ -150,24 +150,25 @@ Related:
 ## Day 3 — US-A5 (connectivity smoke) + US-B1 (Toast)
 
 ### 3.1 US-A5: backend smoke test
-- [ ] **NEW `tests/integration/api/test_api_smoke.py`** — dev JWT 打每 router 代表 GET（health / auth/me / admin/tenants / admin/tenants/{seed}/cost-summary / .../sla-report / audit/log / verification/recent / memory/recent?layer=user / governance/approvals）→ assert status ∈ {200,404}, 合法 JSON
-  - Verify: `pytest tests/integration/api/test_api_smoke.py -v`
+- [x] **NEW `tests/integration/api/test_api_smoke.py`** — dev JWT 打每 router 代表 GET（health / auth/me / admin/tenants / admin/tenants/{seed}/cost-summary / .../sla-report / audit/log / verification/recent / memory/recent?layer=user / governance/approvals）→ assert status ∈ {200,404}, 合法 JSON
+  - Verify: `pytest tests/integration/api/test_api_smoke.py -v` ✅ 2 passed（uses `create_app()` + platform_admin JWT；needs `set_pricing_loader` + `set_sla_recorder` like the focused cost/sla tests — autouse conftest resets both）
 
 ### 3.2 US-A5: frontend connectivity spec + .env.example
-- [ ] **NEW `tests/e2e/connectivity/connectivity.spec.ts`** — `test.skip(!process.env.RUN_CONNECTIVITY)`；dev-login → `page.goto` 9 active 頁 → assert root testid + no console error
-- [ ] **`.env.example`**（root + `backend/.env.example` if exists）— `WORKOS_API_KEY=` / `WORKOS_CLIENT_ID=` / `OIDC_REDIRECT_URI=http://localhost:8000/api/v1/auth/callback` / `VITE_SENTRY_DSN=` + 註解（dev 不需 WorkOS，用 /auth/dev-login）
-- [ ] **README / SITUATION-6** — dev 不需 WorkOS 說明
+- [x] **NEW `tests/e2e/connectivity/connectivity.spec.ts`** — `test.skip(!process.env.RUN_CONNECTIVITY)`；dev-login（`page.request.post /auth/dev-login`）→ `page.goto` 9 active 頁 → assert `[data-testid="app-shell"]` + no console error + not redirected to /auth/login。**AppShellV2 加 `data-testid="app-shell"`（connectivity anchor）**
+- [x] **`.env.example`**（root only — no `backend/.env.example`）— WorkOS OIDC block（`WORKOS_API_KEY=` / `WORKOS_CLIENT_ID=` / `OIDC_REDIRECT_URI=http://localhost:8000/api/v1/auth/callback` / `FRONTEND_BASE_URL=` / `COOKIE_SECURE=false`）+ `VITE_SENTRY_DSN=` + 註解（dev 不需 WorkOS，用 /auth/dev-login）
+- [x] **README / SITUATION-6** — dev 不需 WorkOS 說明（README env section + SITUATION-6 NEW §認證（本地開發））
 
 ### 3.3 US-B1: Toast system
-- [ ] **`App.tsx`（或 main.tsx）— 掛 `<Toaster position="top-right" richColors />`**（sonner，已裝）
-- [ ] **NEW `lib/toast.ts`** — `toastError/toastSuccess/toastInfo` 薄包 sonner
-- [ ] **NEW `lib/queryClient.ts`** — 集中 `QueryClient` + `mutationCache onError → toastError`；`App.tsx` 用這個
-- [ ] **`authService.ts` `fetchWithAuth`** — 401 → `toastError("登入已過期")` + clear + redirect（取代 Day 1 stub）
-  - Verify: `tests/unit/lib/{toast,queryClient}.test.ts`
+- [x] **`App.tsx`（或 main.tsx）— 掛 `<Toaster position="top-right" richColors />`**（sonner，已裝）— D-DAY3-1: already mounted in `main.tsx` since 57.7 US-B2; no edit needed
+- [x] **NEW `lib/toast.ts`** — `toastError/toastSuccess/toastInfo` 薄包 sonner + `errorMessage()` normaliser
+- [x] **NEW `lib/queryClient.ts`** — 集中 `QueryClient`（staleTime 30s / retry:false per 57.9 US-6）+ `mutationCache onError → toastError`；`main.tsx` imports it（D-DAY3-2: QueryClient was inline in main.tsx — extracted）
+- [x] **`authService.ts` `fetchWithAuth`** — 401 → `toastError("登入已過期，請重新登入")` + clear + redirect（取代 Day 1 stub；`fetchAuthMe`/`logout` opt out via `{redirectOn401:false}` so bootstrap/logout aren't hijacked）
+  - Verify: `tests/unit/lib/{toast,queryClient}.test.ts` ✅（toast 9 / queryClient 4）
 
 ### 3.4 Day 3 wrap
-- [ ] **Day 3 progress entry** + drift catalog
-- [ ] **Day 3 commit**: `feat(sprint-57-13, Day 3): US-A5 connectivity smoke + .env.example + US-B1 Toast system`
+- [x] **Day 3 progress entry** + drift catalog（D-DAY3-1..5）
+- [x] **Day 3 commit**: `feat(sprint-57-13, Day 3): US-A5 connectivity smoke + .env.example + US-B1 Toast system` (`e1c3f58e`)
+- [x] **Bonus hygiene fix** — `.gitignore` `lib/` → `/lib/` (D-DAY3-5: was silently ignoring `frontend/src/lib/`) + ignore root-level `test-results/`
 
 ---
 
