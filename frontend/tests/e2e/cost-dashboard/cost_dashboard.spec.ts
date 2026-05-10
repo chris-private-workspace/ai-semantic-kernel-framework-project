@@ -19,6 +19,8 @@
 
 import { expect, test } from "@playwright/test";
 
+import { seedAuthJwt } from "../fixtures/auth-fixtures";
+
 const TENANT_ID = "00000000-0000-4000-8000-000000000099";
 const COST_ENDPOINT = `**/api/v1/admin/tenants/${TENANT_ID}/cost-summary**`;
 
@@ -40,6 +42,11 @@ const mockCostSummary = {
 };
 
 test.describe("Sprint 57.1 US-5 — Cost Dashboard e2e", () => {
+  // Sprint 57.13 US-A2: the page is <RequireAuth>-gated + reads authStore.tenant.id.
+  test.beforeEach(async ({ page }) => {
+    await seedAuthJwt(page, { tenantId: TENANT_ID });
+  });
+
   test("happy path: admin loads dashboard, sees total + breakdown", async ({ page }) => {
     await page.route(COST_ENDPOINT, async (route) => {
       await route.fulfill({

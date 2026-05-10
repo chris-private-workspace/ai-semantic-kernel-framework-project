@@ -13,7 +13,7 @@
  *
  *   `page.route` registered here in beforeEach is checked before later spec
  *   routes for the same URL (Playwright matches the most-recently-registered
- *   handler, but specs almost never override **/api/v1/auth/me).
+ *   handler, but specs almost never override the /api/v1/auth/me route).
  *
  *   NOTE: tenant-scoped pages (cost-dashboard / sla-dashboard / tenant-settings)
  *   now read tenant_id from authStore.tenant.id, not the URL ?tenant_id=.

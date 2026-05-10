@@ -18,6 +18,8 @@
 
 import { expect, test } from "@playwright/test";
 
+import { seedAuthJwt } from "../fixtures/auth-fixtures";
+
 const TENANT_LIST_ENDPOINT = "**/api/v1/admin/tenants?**";
 const TENANT_GET_ENDPOINT = "**/api/v1/admin/tenants/**";
 
@@ -42,6 +44,11 @@ const baseTenantB = {
 };
 
 test.describe("Sprint 57.4 US-5 — Admin Tenants Console list e2e", () => {
+  // Sprint 57.13 US-A2: the page is <RequireAuth>-gated (platform-admin list — no tenant scope).
+  test.beforeEach(async ({ page }) => {
+    await seedAuthJwt(page);
+  });
+
   test("happy path: page renders mocked rows + state badges", async ({ page }) => {
     await page.route(TENANT_LIST_ENDPOINT, async (route) => {
       await route.fulfill({
