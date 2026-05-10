@@ -161,10 +161,54 @@ The stock-Python `lib/` line in `.gitignore` matches ANY `lib/` directory — in
 
 ---
 
-## Remaining for Day 4-9
+## Day 4 — US-B2 (design-system component layer + adopt across feature areas) — `02910cfe`
+
+### NEW `src/components/ui/` (shadcn-style; barrel `index.ts`)
+- `skeleton.tsx` — `<Skeleton className?>` (base pulse box) + `<TableSkeleton rows=5 cols=6>` + `<CardSkeleton count=3>` (STYLE.md §6 canonical).
+- `empty-state.tsx` — `<EmptyState title message? icon? action?>` (STYLE.md §7 — centred py-12, always an actionable next step).
+- `error-retry.tsx` — `<ErrorRetry error? message? onRetry>` (STYLE.md §8 — "Failed to load data" headline + `error.message` line + `<Button variant="outline">Retry</Button>`). NOTE: STYLE.md §8's sample writes `text-danger` but this app has no `danger` Tailwind token → `text-destructive` used. `retryClicked` in STYLE.md §8 is the *e2e mock* idempotency flag (gate mock on user-click not call-count), not component state — the component just exposes a `role="button"` named "Retry" so that mock pattern works against it.
+- `card.tsx` — `<Card>/<CardHeader>/<CardTitle>/<CardContent>/<CardFooter>` (Tailwind only; no Radix). Surface = `rounded-lg border border-border bg-background` (this app's index.css has no `--card` token).
+- `button.tsx` — `<Button variant size asChild>` via `cva` + `cn` + Radix `Slot` (`asChild` renders the single child with the button classes). `class-variance-authority` / `tailwind-merge` / `@radix-ui/react-slot` all already in package.json (57.7 D-PRE-6).
+- `badge.tsx` — `<Badge variant>`: default / secondary / outline / destructive + STYLE.md §3 `risk-low|risk-medium|risk-high|risk-critical` (same hex as `features/governance/components/ApprovalCard.tsx`).
+- `button.tsx` + `badge.tsx` carry a file-level `/* eslint-disable react-refresh/only-export-components */` — they export both the component and the `cva` `*Variants` (standard shadcn; the variants must be importable for `cn(buttonVariants(...), className)` composition). Project `eslint.config.js` enforces `--max-warnings 0`, so the file-level disable is the minimal fix (vs editing the flat config).
+- Removed the `components/ui/.gitkeep` placeholder (dir is now populated). No new dependency.
+
+### Adoption (消重複)
+- **admin-tenants `TenantListTable`** — `if (isLoading)` block (5 inline-`style={{}}` placeholder rows) → `<div role="status" aria-label="Loading tenants" className="p-4"><TableSkeleton rows={5} cols={6} /></div>` (kept the `role`/`aria-label` for the existing test). `if (items.length === 0)` block → `<EmptyState title="No tenants match current filter." action={<Button variant="outline" onClick={handleReset}>Reset Filters</Button>} />`. The table body itself still uses inline styles (out of scope — only loading/empty was listed).
+- **governance `AuditLogViewer`** — the in-`<tbody>` skeleton rows: inner `<div className="h-4 w-full animate-pulse rounded bg-muted">` → `<Skeleton className="h-4 w-full">`. The empty-state row stays a `<tr><td colSpan={6}>…</td></tr>` (it's table-structured — `<TableSkeleton>` is a full `<table>` that can't nest, and `<EmptyState>` doesn't fit inside a `<td>` cleanly). `ApprovalsPage` has no skeleton (its only `isLoading` use is the Refresh-button label) — nothing to swap.
+- **verification `VerificationList` + `CorrectionTraceView`** — loading skeleton inner divs (`h-10` / `h-16` `animate-pulse`) → `<Skeleton className="h-N">`. The `isError` / empty blocks stay as-is: they carry `data-testid="error-retry" / "empty-reset" / "trace-error" / "trace-empty"` and a `retryClicked`-driven "Retrying…" pending label that `<ErrorRetry>`/`<EmptyState>` as-built don't replicate.
+- **memory `MemoryRecentList` + `MemoryByScopeBrowser`** — same: loading skeleton inner divs → `<Skeleton>`; `isError` blocks unchanged.
+- **cost-dashboard `CostOverview` + sla-dashboard `SLAOverview`** — `{isLoading && tenantId}` text (`<p>Loading cost summary…</p>` / `<p>Loading SLA report…</p>`) → `<CardSkeleton count={3} />` (these dashboards render summary cards). `{error}` alert div → `<div role="alert"><ErrorRetry error={error} onRetry={() => void refetch()} /></div>` (preserved `role="alert"`). cost/sla `migrate.test.tsx` vitest both green after the swap (they don't assert on the loading-text or the `Error:` prefix).
+- **`CONVENTION.md`** — added `## 10. Design System Component Layer (components/ui/)`: a table of "need → use / NOT", the shadcn eslint-disable note, the existing-per-feature-badge carve-out (AuditChainBadge/VerifierTypeBadge/MemoryScopeBadge keep own colours), and the codification basis (57.9 ApprovalList + admin-tenants established the shapes ≥ 2 examples → STYLE.md §6-§8 → 57.13 extracted + adopted).
+
+### Adoption depth — what's NOT done (D-DAY4-2 — 🚧 carryover within US-B2)
+The `<Skeleton>` primitive swap is everywhere; `<TableSkeleton>`/`<EmptyState>` landed in admin-tenants and `<CardSkeleton>`/`<ErrorRetry>` in cost/sla. **Not yet migrated**: the bespoke `isError` blocks in verification (`VerificationList`/`CorrectionTraceView`) + memory (`MemoryRecentList`/`MemoryByScopeBrowser`) and the in-table empty/error rows in `AuditLogViewer`. Reason: those blocks carry `data-testid` hooks + a `retryClicked` "Retrying…" pending state that `<ErrorRetry>`/`<EmptyState>` as-built don't expose. Closing this needs `data-testid?` + `pending?` props added to the components, then the swap — mechanical, ~1-2 hr, slated for a B-series day or US-C1 closeout. The deliverable (the `components/ui` layer + its tests + CONVENTION codification) is complete; this is incremental adoption.
+
+### Drift findings (Day 4)
+| ID | Finding | Implication |
+|----|---------|-------------|
+| D-DAY4-1 | STYLE.md §8 error-retry sample uses `text-danger`; this app's tailwind.config has no `danger` token (only `destructive`) | `<ErrorRetry>` uses `text-destructive`; STYLE.md §8 sample is aspirational — left STYLE.md untouched (minor; could be an addendum later) |
+| D-DAY4-2 | verification/memory `isError` blocks + AuditLogViewer in-table empty row have `data-testid` + `retryClicked` pending state that `<ErrorRetry>`/`<EmptyState>` don't replicate | Full swap deferred (🚧 within US-B2) — `<Skeleton>` primitive swap done everywhere; needs `data-testid?`/`pending?` props on the components |
+| D-DAY4-3 | `components/ui/` already existed as an empty dir with `.gitkeep` (57.8 scaffolding) | Removed the `.gitkeep`; populated the dir |
+| D-DAY4-4 | `eslint.config.js` enforces `--max-warnings 0`; shadcn's "component + cva variants in one file" trips `react-refresh/only-export-components` | File-level `eslint-disable` in button.tsx + badge.tsx (shadcn's own convention) — minimal blast radius vs editing the flat config |
+
+### Verification (Day 4 aggregate)
+- Frontend: `npm run lint` clean (after the 2 shadcn `eslint-disable`s); `npm run build` ✅ (main `index-*.js` 243.86 kB gzip 77.31 — ≈flat vs Day 3 243.81; the new `components/ui` primitives are tree-shaken into the pages that use them); **`npm run test` → 53 files / 212 passed** (Day 3: 52/196; +1 file / +16 tests from `components.test.tsx`). Pre-existing jsdom "Not implemented: navigation" + a deliberate ErrorBoundary "kaboom" throw on stderr — not failures.
+- Backend: untouched this day (no backend changes); `pytest` baseline stays 1670 + 4 skipped.
+- Manual UI not run (no dev server boot).
+
+### Mid-sprint ratio check (retrospective Q2)
+- Scope class `frontend-foundation-spike` HYBRID **0.50** (1st application). Plan committed **~25-32 hr** over Days 0-9.
+- Done through Day 4: US-A1/A2/A3/A4/A5/B1/B2 (7 of 15 USs) at 5 of 10 calendar days. Bottom-up for these ≈ ~22 hr → calibrated ≈ **~11 hr** ≈ ~40% of the committed budget at 50% of calendar days — slightly under / on track.
+- Ratio (actual vs committed-so-far) ≈ **~0.9**; `|delta from 1.0| < 30%` → **no `AD-Sprint-Plan-N`** logged this checkpoint. The 0.50 multiplier holds for now (single-data-point class — 2-3 sprint window validation per the `When to adjust` rule; revisit at Day 9 retrospective Q2).
+- **Schedule note**: Days 5-9 (4 days) carry 8 USs (B3 / B4 / B5 / B6 / B7 / B8 / B9 / C1) — denser than Days 0-4's 7 USs / 5 days, but the B-series USs are individually smaller (Radix dialog+dropdown / Sentry+vitals / i18n / a11y / Lighthouse / visual-regression / AuthShell+cleanup / closeout). Plus the D-DAY4-2 carryover. Tight but feasible; if a B-series day over-runs, the carryover/cleanup work compresses into US-C1.
+
+---
+
+## Remaining for Day 5-9
 
 - [x] Day 3: US-A5 (connectivity smoke + .env.example) + US-B1 (Toast) — `e1c3f58e`
-- [ ] Day 4: US-B2 (design-system component layer + refactor 6 feature areas) + mid-sprint ratio check
+- [x] Day 4: US-B2 (design-system component layer + adopt across 6 feature areas) + mid-sprint ratio check — `02910cfe`
 - [ ] Day 5: US-B3 (Radix Dialog+DropdownMenu + DecisionModal+UserMenu refactor)
 - [ ] Day 6: US-B4 (Sentry + Web Vitals + telemetry endpoint)
 - [ ] Day 7: US-B5 (i18n)

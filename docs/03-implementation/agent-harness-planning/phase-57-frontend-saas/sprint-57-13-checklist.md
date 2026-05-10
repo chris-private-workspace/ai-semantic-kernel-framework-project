@@ -175,29 +175,29 @@ Related:
 ## Day 4 — US-B2: 設計系統組件層 (components/ui/)
 
 ### 4.1 NEW components/ui/ — base components
-- [ ] **`components/ui/skeleton.tsx`** — `<Skeleton>` + `<TableSkeleton rows cols>` + `<CardSkeleton count>`（取自 STYLE.md §6）
-- [ ] **`components/ui/empty-state.tsx`** — `<EmptyState icon title message action?>`（取自 STYLE.md §7）
-- [ ] **`components/ui/error-retry.tsx`** — `<ErrorRetry error message onRetry>` 含 `retryClicked` StrictMode-safe state（STYLE.md §7 完整 code）
-- [ ] **`components/ui/card.tsx`** — `<Card> <CardHeader> <CardTitle> <CardContent> <CardFooter>`（Tailwind only）
-- [ ] **`components/ui/button.tsx`** — `<Button variant size>` 用 `cva`（D-PRE-6: `class-variance-authority@^0.7.1` **已裝**）+ `tailwind-merge`(已裝) + `@radix-ui/react-slot`(已裝, asChild)
-- [ ] **`components/ui/badge.tsx`** — `<Badge variant>`（含 STYLE.md §3 risk palette）
-- [ ] **`components/ui/index.ts`** — barrel export
-- [ ] **`package.json`** — (no new dep — cva/tailwind-merge/radix-slot 都已裝 per D-PRE-6)
+- [x] **`components/ui/skeleton.tsx`** — `<Skeleton>` + `<TableSkeleton rows cols>` + `<CardSkeleton count>`（取自 STYLE.md §6）
+- [x] **`components/ui/empty-state.tsx`** — `<EmptyState title message? icon? action?>`（取自 STYLE.md §7）
+- [x] **`components/ui/error-retry.tsx`** — `<ErrorRetry error? message? onRetry>`（STYLE.md §8；NOTE: `retryClicked` 是 §8 e2e *mock* pattern,非 component state — component 用 `role="button" name="Retry"` 讓該 mock pattern 可用;另 §8 sample 的 `text-danger` 非本專案 tailwind token,改用 `text-destructive`）
+- [x] **`components/ui/card.tsx`** — `<Card> <CardHeader> <CardTitle> <CardContent> <CardFooter>`（Tailwind only;surface = `bg-background border`,本專案無 `--card` token）
+- [x] **`components/ui/button.tsx`** — `<Button variant size asChild>` 用 `cva` + `tailwind-merge` + `@radix-ui/react-slot`（皆已裝 per D-PRE-6）;file-level `eslint-disable react-refresh/only-export-components`（shadcn:component + cva variants 同檔）
+- [x] **`components/ui/badge.tsx`** — `<Badge variant>`（default/secondary/outline/destructive + STYLE.md §3 risk-low/-medium/-high/-critical）;同上 eslint-disable
+- [x] **`components/ui/index.ts`** — barrel export
+- [x] **`package.json`** — no new dep（cva/tailwind-merge/radix-slot 都已裝 per D-PRE-6）;另刪 `components/ui/.gitkeep`
 
 ### 4.2 採用（消重複）— refactor feature areas
-- [ ] **governance** — ApprovalsPage / AuditLogViewer skeleton+empty+retry → `<TableSkeleton>/<EmptyState>/<ErrorRetry>`；跑 governance Vitest 確認無 regression
-- [ ] **verification** — VerificationList / CorrectionTraceView → 共用組件
-- [ ] **memory** — MemoryRecentList / MemoryByScopeBrowser → 共用組件
-- [ ] **admin-tenants** — TenantListTable skeleton/empty → 共用組件
-- [ ] **cost-dashboard / sla-dashboard** — loading → `<TableSkeleton>/<CardSkeleton>`
-- [ ] `CONVENTION.md` — §design-system addendum（loading/empty/error 必須用 components/ui/）
+- [x] **governance** — AuditLogViewer in-table skeleton rows → `<Skeleton>`（empty/retry stay bespoke — in-`<tbody>` `<td colSpan>` 結構 + 已有 reset link;`<TableSkeleton>` 是完整 `<table>` 不能巢狀,`<EmptyState>` 不替代 in-table cell — full swap 留 D-DAY4-2 follow-up）。ApprovalsPage 無 skeleton（loading 只在 refresh 按鈕 label）。vitest governance suite 全綠
+- [x] **verification** — VerificationList / CorrectionTraceView loading skeleton rows → `<Skeleton>`（error/empty blocks 保留:有 `data-testid="error-retry"/"empty-reset"/"trace-error"/"trace-empty"` + `retryClicked`「Retrying…」pending state,`<ErrorRetry>`/`<EmptyState>` as-built 不複製這些 — full swap 需加 testid/pending props → D-DAY4-2 follow-up）
+- [x] **memory** — MemoryRecentList / MemoryByScopeBrowser loading skeleton rows → `<Skeleton>`（同 verification:error block 保留）
+- [x] **admin-tenants** — TenantListTable loading → `<TableSkeleton>`（保留 `role="status" aria-label="Loading tenants"` wrapper）;empty → `<EmptyState>` + `<Button variant="outline">Reset Filters</Button>`（取代 inline-style placeholder rows + empty div）
+- [x] **cost-dashboard / sla-dashboard** — `{isLoading && tenantId}` 「Loading…」text → `<CardSkeleton count={3}>`;`{error}` alert div → `<div role="alert"><ErrorRetry error onRetry={refetch}/></div>`。vitest cost/sla migrate suites 全綠
+- [x] `CONVENTION.md` — §10 "Design System Component Layer (components/ui/)" addendum（feature pages MUST use components/ui/ for loading/empty/error/button/badge + shadcn pattern note + codification basis）
 
 ### 4.3 Tests
-- [ ] **`tests/unit/components/ui/*.test.tsx`** ≥ 12 tests（各組件 render + variant + ErrorRetry retryClicked 行為）
+- [x] **`tests/unit/components/ui/components.test.tsx`** — 17 tests（Skeleton className / TableSkeleton rows·cols / CardSkeleton count / Button variant·size·asChild·onClick / Badge default·risk-critical hex / Card header·title·content / EmptyState title·message·action·title-only / ErrorRetry default-headline·custom-message·Unknown-error·Retry-onClick）
 
 ### 4.4 Day 4 wrap
-- [ ] **Day 4 progress entry** + **retrospective Q2 mid-sprint ratio check**（actual vs committed so far；|delta|>30% → log AD-Sprint-Plan-N）
-- [ ] **Day 4 commit**: `feat(sprint-57-13, Day 4): US-B2 design-system component layer + refactor 6 feature areas`
+- [x] **Day 4 progress entry** + **retrospective Q2 mid-sprint ratio check**（7/15 USs done at 5/10 days;committed ~25-32 hr;Day 0-4 bottom-up ≈ ~22 hr → calibrated ≈ ~11 hr ≈ ~40% of committed budget at 50% calendar days — slightly under / on track;ratio ≈ ~0.9;|delta from 1.0| < 30% → **no AD-Sprint-Plan-N**。Schedule note: Days 5-9 = 8 remaining USs (B3-B9 + C1) over 4 days — tighter than Days 0-4's 7 USs / 5 days; B-series USs are individually smaller. D-DAY4-2 (full EmptyState/ErrorRetry adoption in verification/memory + AuditLogViewer) is a 🚧 carryover within US-B2 — components exist + dogfooded via `<Skeleton>`; the bespoke-error→`<ErrorRetry>` swap needs `data-testid`/`pending` props on the components → defer to a B-series day or US-C1 closeout）
+- [x] **Day 4 commit**: `feat(sprint-57-13, Day 4): US-B2 design-system component layer + refactor 6 feature areas` (`02910cfe`)
 
 ---
 
