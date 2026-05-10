@@ -28,6 +28,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { Skeleton } from "../../../components/ui";
 import { useVerificationRecent } from "../hooks/useVerificationRecent";
 import type { VerificationLogFilter, VerifierType } from "../types";
 import { VerifierTypeBadge } from "./VerifierTypeBadge";
@@ -163,7 +164,7 @@ export function VerificationList(): JSX.Element {
       {query.isLoading && (
         <div className="space-y-2" data-testid="loading-skeleton">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-10 animate-pulse rounded bg-muted" />
+            <Skeleton key={i} className="h-10" />
           ))}
         </div>
       )}

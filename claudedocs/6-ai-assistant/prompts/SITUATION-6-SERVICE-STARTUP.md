@@ -90,6 +90,17 @@ python scripts/dev.py status
 | **Backend** | FastAPI + Uvicorn | 8000 | `uvicorn main:app --reload` | `.pids/backend_8000.pid` |
 | **Frontend** | React + Vite | 3005 | `npm run dev` | `.pids/frontend_3005.pid` |
 
+### 認證（本地開發）
+
+本地開發**不需要 WorkOS 帳號**。`.env` 把 `WORKOS_API_KEY` 留空即可：
+
+- OIDC 路由（`/api/v1/auth/login`、`/callback`）會回 503
+- 前端 `/auth/login` 頁面在 `import.meta.env.DEV` 下會顯示「Dev login」表單
+- 該表單呼叫 `POST /api/v1/auth/dev-login`（prod 會回 404）→ 自動建立 `dev` tenant + dev user，發 `v2_jwt` cookie（roles `platform_admin`），之後 9 個 active 頁都可進
+- 完整 stack 連通煙霧測試：`RUN_CONNECTIVITY=1 npm run test:e2e -- connectivity`（需 backend + frontend 都已啟動）
+
+真正 SSO 只在 staging / prod 需要（填 `WORKOS_API_KEY` / `WORKOS_CLIENT_ID` / `OIDC_REDIRECT_URI` / `FRONTEND_BASE_URL` / `COOKIE_SECURE=true`）。
+
 ### 監控服務 (可選)
 
 | 服務 | 端口 | 說明 | 啟動方式 |

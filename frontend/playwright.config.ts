@@ -17,11 +17,13 @@
  * Last Modified: 2026-05-04
  *
  * Modification History:
+ *   - 2026-05-10: Sprint 57.13 US-B8 — expect.toHaveScreenshot config (animations off + small diff tolerance) for visual regression
  *   - 2026-05-04: Initial creation (Sprint 53.6 US-1)
  *
  * Related:
  *   - .github/workflows/playwright-e2e.yml
  *   - tests/e2e/smoke.spec.ts
+ *   - tests/e2e/visual/visual-regression.spec.ts (consumes the toHaveScreenshot defaults)
  */
 
 import { defineConfig, devices } from "@playwright/test";
@@ -33,7 +35,12 @@ const IS_CI = Boolean(process.env.CI);
 export default defineConfig({
   testDir: "./tests/e2e",
   timeout: 30_000,
-  expect: { timeout: 5_000 },
+  expect: {
+    timeout: 5_000,
+    // Visual regression (US-B8): disable animations + allow a tiny anti-aliasing
+    // delta so font-hinting jitter doesn't cause flaky diffs.
+    toHaveScreenshot: { animations: "disabled", maxDiffPixelRatio: 0.02 },
+  },
   retries: IS_CI ? 2 : 0,
   workers: IS_CI ? 1 : undefined,
   reporter: IS_CI

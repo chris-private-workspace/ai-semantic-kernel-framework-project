@@ -19,6 +19,8 @@
 
 import { expect, test } from "@playwright/test";
 
+import { seedAuthJwt } from "../fixtures/auth-fixtures";
+
 const TENANT_ID = "00000000-0000-4000-8000-000000000099";
 const TENANT_ENDPOINT = `**/api/v1/admin/tenants/${TENANT_ID}`;
 
@@ -36,6 +38,11 @@ const mockTenant = {
 };
 
 test.describe("Sprint 57.3 US-5 — Tenant Settings View e2e", () => {
+  // Sprint 57.13 US-A2: the page is <RequireAuth>-gated + reads authStore.tenant.id.
+  test.beforeEach(async ({ page }) => {
+    await seedAuthJwt(page, { tenantId: TENANT_ID });
+  });
+
   test("happy path: admin loads view, sees 10 fields + State + Plan badges", async ({ page }) => {
     await page.route(TENANT_ENDPOINT, async (route) => {
       await route.fulfill({

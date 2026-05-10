@@ -8,6 +8,7 @@ Per project rules (.claude/rules/code-quality.md): always use Pydantic
 Settings (not raw os.environ) so type-safe + validation + .env support.
 
 Modification History (newest-first):
+    - 2026-05-10: Sprint 57.13 US-A1 — fix oidc_redirect_uri + frontend_base_url + cookie_secure
     - 2026-05-09: Sprint 57.7 US-A2 — add WorkOS OIDC fields (vendor route per US-A1 matrix)
     - 2026-05-06: Sprint 56.1 Day 2 — add quota_enforcement_enabled (US-2)
     - 2026-05-05: Sprint 55.5 — add chat_verification_mode (AD-Cat10-Wire-1; Option E)
@@ -77,7 +78,20 @@ class Settings(BaseSettings):
     # account; OIDC routes return 503 if api_key blank.
     workos_api_key: str = ""
     workos_client_id: str = ""
-    oidc_redirect_uri: str = "http://localhost:3005/auth/callback"
+    # OIDC code-exchange needs the *backend* callback (client secret lives
+    # server-side) — Sprint 57.13 D-PRE-5 fix: was http://localhost:3005/auth/callback
+    # which is both the V1 frontend port and a frontend path with no secret.
+    # Prod: set via env to the reverse-proxy host, e.g.
+    # https://app.example.com/api/v1/auth/callback.
+    oidc_redirect_uri: str = "http://localhost:8000/api/v1/auth/callback"
+    # Public SPA origin — /api/v1/auth/callback redirects the browser here
+    # (frontend_base_url + "/auth/callback?next=...") so the SPA runs
+    # authStore.bootstrap() then navigates to the originally-requested page.
+    # Prod: the public SPA origin behind the reverse proxy. Override via env: FRONTEND_BASE_URL.
+    frontend_base_url: str = "http://localhost:3007"
+    # httpOnly auth cookies (v2_jwt + oidc_*) Secure flag. False in dev (http
+    # localhost); MUST be True in prod (https). Override via env: COOKIE_SECURE=true.
+    cookie_secure: bool = False
 
     # ---- Business domain (Sprint 55.1) ------------------------------
     # mock   → 51.0 HTTP mock_executor pathway (PoC default; backwards-compat)

@@ -9,9 +9,14 @@ Description:
     with breakdown by cost_type and sub_type. Reads from CostLedgerService
     (singleton wired at app startup or test fixture).
 
-    Auth: `require_admin_platform_role` (consistent admin endpoint pattern).
+    Auth: `require_tenant_match_or_platform_admin` (Sprint 57.13 US-A3) —
+    platform admins see any tenant; a regular user sees only their own.
 
 Created: 2026-05-06 (Sprint 56.3 Day 3)
+Last Modified: 2026-05-10
+
+Modification History (newest-first):
+    - 2026-05-10: Sprint 57.13 US-A3 — auth dep → require_tenant_match_or_platform_admin
 
 Modification History:
     - 2026-05-06: Initial creation (Sprint 56.3 Day 3 / US-3)
@@ -34,7 +39,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from infrastructure.db.session import get_db_session
 from platform_layer.billing import CostLedgerService, get_pricing_loader
-from platform_layer.identity.auth import require_admin_platform_role
+from platform_layer.identity.auth import require_tenant_match_or_platform_admin
 
 router = APIRouter(prefix="/admin/tenants", tags=["admin", "cost"])
 
@@ -57,7 +62,7 @@ class CostSummaryResponse(BaseModel):
 @router.get(
     "/{tenant_id}/cost-summary",
     response_model=CostSummaryResponse,
-    dependencies=[Depends(require_admin_platform_role)],
+    dependencies=[Depends(require_tenant_match_or_platform_admin)],
 )
 async def get_cost_summary(
     tenant_id: UUID,

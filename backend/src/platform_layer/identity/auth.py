@@ -31,6 +31,7 @@ Created: 2026-05-01 (Sprint 52.5 Day 1.2)
 Last Modified: 2026-05-01
 
 Modification History:
+    - 2026-05-10: Sprint 57.13 US-A3 — add require_tenant_match_or_platform_admin dep
     - 2026-05-09: Sprint 57.7 US-A3 — DB-backed RBAC hybrid path (closes Tier 0 #5)
     - 2026-05-04: Add require_approver_role RBAC dep + extract _require_role helper
         (Sprint 53.5 US-1 — approver / admin / manager)
@@ -153,6 +154,38 @@ async def require_admin_platform_role(request: Request) -> UUID:
     return await _require_role(request, _ADMIN_PLATFORM_ROLES, role_label="Platform admin")
 
 
+async def require_tenant_match_or_platform_admin(tenant_id: UUID, request: Request) -> UUID:
+    """Authorize a `/{tenant_id}/...` endpoint: caller is a platform admin OR
+    the path `tenant_id` equals the caller's own JWT tenant_id.
+
+    Returns the authenticated user_id. Raises 401 (no JWT context) / 403
+    (a non-platform-admin reaching for another tenant via the URL).
+
+    Sprint 57.13 US-A3: closes the "any admin can change the URL to read
+    another tenant's data" hole on `/api/v1/admin/tenants/{tenant_id}/...`
+    read endpoints (GET tenant / cost-summary / sla-report). It also lets a
+    regular user read their own tenant's data — those pages (cost-dashboard /
+    sla-dashboard / tenant-settings) now derive tenant_id from the session
+    (authStore.tenant.id), not a hand-typed URL param.
+    """
+    user_id = await get_current_user_id(request)
+    roles = getattr(request.state, "roles", None)
+    if not isinstance(roles, list):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="roles middleware contract violated",
+        )
+    if any(r in _ADMIN_PLATFORM_ROLES for r in roles):
+        return user_id  # platform admin — any tenant
+    caller_tenant = await get_current_tenant(request)
+    if tenant_id != caller_tenant:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="cross-tenant access denied (not a platform admin)",
+        )
+    return user_id
+
+
 async def _require_role(request: Request, allowed: frozenset[str], *, role_label: str) -> UUID:
     """Shared role-check helper used by require_audit_role + require_approver_role.
 
@@ -208,4 +241,5 @@ __all__ = [
     "require_admin_platform_role",
     "require_audit_role",
     "require_approver_role",
+    "require_tenant_match_or_platform_admin",
 ]

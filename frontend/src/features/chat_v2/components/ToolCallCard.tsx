@@ -91,7 +91,14 @@ export default function ToolCallCard({ entry }: Props): JSX.Element {
       <div
         style={styles.header}
         onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setOpen((v) => !v);
+          }
+        }}
         role="button"
+        tabIndex={0}
         aria-expanded={open}
       >
         <span style={styles.toolIcon}>🔧</span>

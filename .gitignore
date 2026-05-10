@@ -16,8 +16,10 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# Anchored to repo root so it only ignores Python build artifacts here —
+# NOT app source dirs like frontend/src/lib/ (Sprint 57.13 — D-DAY3-5).
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -129,6 +131,10 @@ data/temp/*
 frontend/playwright-report/
 frontend/test-results/
 frontend/playwright/.cache/
+# Stray root-level test-results/ when playwright is run from repo root (57.13).
+/test-results/
+# Lighthouse CI run output (Sprint 57.13 US-B7 — lhci autorun writes here)
+frontend/.lighthouseci/
 
 # Test artifacts and results
 phase_tests_results_*.json

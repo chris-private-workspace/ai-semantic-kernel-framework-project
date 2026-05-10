@@ -23,10 +23,11 @@
  * Last Modified: 2026-05-10
  *
  * Modification History (newest-first):
+ *   - 2026-05-10: Sprint 57.13 US-A1 — gate via <RequireAuth> (was inline isAuthenticated() check)
  *   - 2026-05-10: Initial creation (Sprint 57.12 US-5 Day 2-3 — real ship)
  *
  * Related:
- *   - frontend/src/features/auth/services/authService.ts (isAuthenticated, setPostLoginRedirect)
+ *   - frontend/src/features/auth/components/RequireAuth.tsx (route gate)
  *   - frontend/src/components/AppShellV2.tsx (page-level shell)
  *   - frontend/src/features/memory/components/MemoryRecentList.tsx (Day 2-3 §3.1)
  *   - frontend/src/features/memory/components/MemoryByScopeBrowser.tsx (Day 2-3 §3.2)
@@ -36,7 +37,7 @@
 import { Navigate, NavLink, Route, Routes } from "react-router-dom";
 
 import { AppShellV2 } from "@/components/AppShellV2";
-import { isAuthenticated, setPostLoginRedirect } from "@/features/auth/services/authService";
+import { RequireAuth } from "@/features/auth/components/RequireAuth";
 import { MemoryByScopeBrowser } from "@/features/memory/components/MemoryByScopeBrowser";
 import { MemoryRecentList } from "@/features/memory/components/MemoryRecentList";
 
@@ -48,26 +49,24 @@ const tabClass = ({ isActive }: { isActive: boolean }): string =>
   }`;
 
 export default function MemoryPage(): JSX.Element {
-  if (!isAuthenticated()) {
-    setPostLoginRedirect("/memory");
-    return <Navigate to="/auth/login" replace />;
-  }
   return (
-    <AppShellV2 pageTitle="Memory">
-      <nav className="mb-4 flex gap-2 border-b border-border" aria-label="Memory tabs">
-        <NavLink to="recent" className={tabClass}>
-          Recent
-        </NavLink>
-        <NavLink to="by-scope" className={tabClass}>
-          By Scope
-        </NavLink>
-      </nav>
-      <Routes>
-        <Route index element={<Navigate to="recent" replace />} />
-        <Route path="recent" element={<MemoryRecentList />} />
-        <Route path="by-scope" element={<MemoryByScopeBrowser />} />
-        <Route path="*" element={<Navigate to="recent" replace />} />
-      </Routes>
-    </AppShellV2>
+    <RequireAuth>
+      <AppShellV2 pageTitle="Memory">
+        <nav className="mb-4 flex gap-2 border-b border-border" aria-label="Memory tabs">
+          <NavLink to="recent" className={tabClass}>
+            Recent
+          </NavLink>
+          <NavLink to="by-scope" className={tabClass}>
+            By Scope
+          </NavLink>
+        </nav>
+        <Routes>
+          <Route index element={<Navigate to="recent" replace />} />
+          <Route path="recent" element={<MemoryRecentList />} />
+          <Route path="by-scope" element={<MemoryByScopeBrowser />} />
+          <Route path="*" element={<Navigate to="recent" replace />} />
+        </Routes>
+      </AppShellV2>
+    </RequireAuth>
   );
 }

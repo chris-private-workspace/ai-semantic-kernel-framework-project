@@ -1,0 +1,50 @@
+{
+  "shell": {
+    "brand": "IPA",
+    "primaryNavigation": "Primary navigation",
+    "mainNav": "Main",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar",
+    "comingSoon": "Coming soon"
+  },
+  "nav": {
+    "category": {
+      "operations": "Operations",
+      "admin": "Admin",
+      "settings": "Settings"
+    },
+    "chatV2": "Chat (V2)",
+    "costDashboard": "Cost Dashboard",
+    "slaDashboard": "SLA Dashboard",
+    "tenants": "Tenants",
+    "tenantSettings": "Tenant Settings",
+    "auditLog": "Audit Log",
+    "featureFlags": "Feature Flags",
+    "governance": "Governance",
+    "verification": "Verification",
+    "loopDebug": "Loop Debug",
+    "memory": "Memory",
+    "userProfile": "User Profile",
+    "mfaSettings": "MFA Settings"
+  },
+  "userMenu": {
+    "label": "User menu",
+    "options": "User menu options",
+    "signedInAs": "Signed in as",
+    "signOut": "Sign out",
+    "language": "Language"
+  },
+  "action": {
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save",
+    "loading": "Loading…"
+  },
+  "verification": {
+    "tabsLabel": "Verification tabs",
+    "tab": {
+      "recent": "Recent",
+      "correctionTrace": "Correction Trace"
+    }
+  }
+}

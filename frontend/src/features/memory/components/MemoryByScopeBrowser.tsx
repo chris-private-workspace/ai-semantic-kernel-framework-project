@@ -29,6 +29,7 @@
 
 import { useState } from "react";
 
+import { Skeleton } from "../../../components/ui";
 import { useMemoryByScope } from "../hooks/useMemoryByScope";
 import type { MemoryLayer } from "../types";
 import { MemoryScopeBadge } from "./MemoryScopeBadge";
@@ -143,7 +144,7 @@ export function MemoryByScopeBrowser(): JSX.Element {
         {query.isLoading && (
           <div className="space-y-2" data-testid="loading-skeleton">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-8 animate-pulse rounded bg-muted" />
+              <Skeleton key={i} className="h-8" />
             ))}
           </div>
         )}

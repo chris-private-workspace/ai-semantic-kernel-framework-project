@@ -38,9 +38,10 @@ Description:
     work without code changes.
 
 Created: 2026-04-29 (Sprint 49.3 Day 4.4)
-Last Modified: 2026-05-01
+Last Modified: 2026-05-10
 
 Modification History (newest-first):
+    - 2026-05-10: Sprint 57.13 US-A1 — v2_jwt cookie fallback + EXEMPT auth/* + telemetry (D-PRE-8)
     - 2026-05-01: Sprint 52.5 Day 6.1 (P0 #14) — replace X-Tenant-Id
         header path with Authorization Bearer JWT decode. user_id +
         roles are now also populated from JWT claims. EXEMPT path
@@ -78,26 +79,50 @@ from platform_layer.identity.jwt import (
 
 
 class TenantContextMiddleware(BaseHTTPMiddleware):
-    """Extract Bearer JWT + populate request.state.{tenant_id, user_id, roles}.
+    """Extract JWT (Bearer header or v2_jwt cookie) → request.state.{tenant_id, user_id, roles}.
+
+    JWT source priority: `Authorization: Bearer <jwt>` header (API clients /
+    tests) → `v2_jwt` httpOnly cookie (SPA browser; set by /api/v1/auth/callback).
 
     Returns 401 on:
-        - missing/empty Authorization header
-        - non-Bearer scheme
+        - no Bearer header AND no v2_jwt cookie
+        - Authorization header present but not the Bearer scheme
         - expired token
         - invalid signature / malformed token / missing required claim
 
     System endpoints listed in EXEMPT_PATH_PREFIXES are skipped — they're
-    infrastructure (k8s probes / OTel scrape / auth gateway dispatch) and have
-    no tenant scope. Adding a path here is a deliberate decision: it MUST NOT
-    touch tenant-scoped tables.
+    infrastructure (k8s probes / auth gateway dispatch / anonymous telemetry)
+    and have no tenant scope. Adding a path here is a deliberate decision: it
+    MUST NOT touch tenant-scoped tables.
     """
 
     AUTH_HEADER = "Authorization"
     BEARER_PREFIX = "Bearer "
+    # SPA browsers can't set Authorization headers across the OIDC redirect
+    # chain, so /api/v1/auth/callback writes the V2 JWT into this httpOnly
+    # cookie and the middleware reads it as a fallback (Bearer header wins
+    # when both present — preserves API-client + test behaviour).
+    JWT_COOKIE_NAME = "v2_jwt"
 
-    # Paths exempt from tenant header requirement. Sprint 49.4 Day 5 added
-    # /api/v1/health for k8s probes. Add new paths only with code review.
-    EXEMPT_PATH_PREFIXES: tuple[str, ...] = ("/api/v1/health",)
+    # Paths exempt from JWT requirement. Adding a path here is a deliberate
+    # decision: it MUST NOT touch tenant-scoped tables.
+    #   - /api/v1/health           : k8s probes (Sprint 49.4 Day 5)
+    #   - /api/v1/auth/login|callback|dev-login|logout : the auth gateway
+    #     itself — these *establish* the session, so they can't require one
+    #     (Sprint 57.13 D-PRE-8 fix: previously only /health was exempt, so
+    #     the OIDC flow 401'd before it could ever set a cookie)
+    #   - /api/v1/telemetry        : frontend Web-Vitals / error beacons —
+    #     anonymous-by-design (no tenant scope; Sprint 57.13 US-B4 endpoint)
+    # NOT exempt: /api/v1/auth/me — it *reads* the established session and
+    #   correctly 401s without a valid JWT.
+    EXEMPT_PATH_PREFIXES: tuple[str, ...] = (
+        "/api/v1/health",
+        "/api/v1/auth/login",
+        "/api/v1/auth/callback",
+        "/api/v1/auth/dev-login",
+        "/api/v1/auth/logout",
+        "/api/v1/telemetry",
+    )
 
     def __init__(
         self,
@@ -122,20 +147,33 @@ class TenantContextMiddleware(BaseHTTPMiddleware):
             if path == prefix or path.startswith(prefix + "/"):
                 return await call_next(request)
 
+        # JWT source priority: Authorization: Bearer header (API clients,
+        # tests) → v2_jwt httpOnly cookie (SPA browser, set by /auth/callback).
+        # When an Authorization header is present it must be a non-empty Bearer
+        # token — we don't fall through to the cookie, since a client that set
+        # the header almost certainly meant it (and error messages stay stable
+        # for the existing test suite).
+        token: str | None
+        _unauth = JSONResponse(
+            {"error": "Authorization Bearer token required"},
+            status_code=401,
+            headers={"WWW-Authenticate": 'Bearer realm="api"'},
+        )
         raw = request.headers.get(self.AUTH_HEADER)
-        if not raw or not raw.startswith(self.BEARER_PREFIX):
-            return JSONResponse(
-                {"error": "Authorization Bearer token required"},
-                status_code=401,
-                headers={"WWW-Authenticate": 'Bearer realm="api"'},
-            )
-        token = raw[len(self.BEARER_PREFIX) :].strip()
-        if not token:
-            return JSONResponse(
-                {"error": "Bearer token is empty"},
-                status_code=401,
-                headers={"WWW-Authenticate": 'Bearer realm="api"'},
-            )
+        if raw is not None:
+            if not raw.startswith(self.BEARER_PREFIX):
+                return _unauth
+            token = raw[len(self.BEARER_PREFIX) :].strip()
+            if not token:
+                return JSONResponse(
+                    {"error": "Bearer token is empty"},
+                    status_code=401,
+                    headers={"WWW-Authenticate": 'Bearer realm="api"'},
+                )
+        else:
+            token = request.cookies.get(self.JWT_COOKIE_NAME)
+            if not token:
+                return _unauth
 
         try:
             claims = self._get_jwt_manager().decode(token)

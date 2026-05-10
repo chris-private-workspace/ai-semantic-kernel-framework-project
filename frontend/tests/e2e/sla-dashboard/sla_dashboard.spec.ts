@@ -18,6 +18,8 @@
 
 import { expect, test } from "@playwright/test";
 
+import { seedAuthJwt } from "../fixtures/auth-fixtures";
+
 const TENANT_ID = "00000000-0000-4000-8000-000000000099";
 const SLA_ENDPOINT = `**/api/v1/admin/tenants/${TENANT_ID}/sla-report**`;
 
@@ -34,6 +36,11 @@ const mockSLAReport = {
 };
 
 test.describe("Sprint 57.1 US-5 — SLA Dashboard e2e", () => {
+  // Sprint 57.13 US-A2: the page is <RequireAuth>-gated + reads authStore.tenant.id.
+  test.beforeEach(async ({ page }) => {
+    await seedAuthJwt(page, { tenantId: TENANT_ID });
+  });
+
   test("happy path: admin loads dashboard, sees violations badge + 6 metric cards", async ({ page }) => {
     await page.route(SLA_ENDPOINT, async (route) => {
       await route.fulfill({
@@ -83,7 +90,8 @@ test.describe("Sprint 57.1 US-5 — SLA Dashboard e2e", () => {
 
     await page.goto(`/sla-dashboard?tenant_id=${TENANT_ID}`);
 
-    await expect(page.getByText(/Error:/)).toBeVisible();
+    // Error UX visible (Sprint 57.13 US-B2: <ErrorRetry> headline)
+    await expect(page.getByText("Failed to load data")).toBeVisible();
     const retryButton = page.getByRole("button", { name: "Retry" });
     await expect(retryButton).toBeVisible();
 

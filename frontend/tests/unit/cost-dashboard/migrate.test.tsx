@@ -56,8 +56,9 @@ describe("CostOverview — Sprint 57.7 US-B3 → 57.8 US-4 architectural migrati
 
   it("body description paragraph rendered without inline style (Tailwind only)", () => {
     renderInRouter();
-    // The page description sentence was preserved post-migration.
-    const desc = screen.getByText(/Per-tenant cost ledger summary/);
+    // Description sentence (Sprint 57.13 US-A2 reworded to "for your tenant" —
+    // tenant now comes from authStore, not a URL param).
+    const desc = screen.getByText(/Cost ledger summary for your tenant/);
     expect(desc.getAttribute("style")).toBeNull();
     expect(desc.parentElement?.getAttribute("style")).toBeNull();
   });

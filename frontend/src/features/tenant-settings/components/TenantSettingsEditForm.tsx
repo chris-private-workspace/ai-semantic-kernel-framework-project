@@ -81,10 +81,11 @@ export function TenantSettingsEditForm({ tenantId, initialData, onDone }: Props)
       <h2>Edit Tenant Settings</h2>
 
       <div style={{ marginTop: "1rem" }}>
-        <label style={{ display: "block", fontWeight: 600 }}>
+        <label htmlFor="tenant-settings-display-name" style={{ display: "block", fontWeight: 600 }}>
           Display Name (1-256 chars)
         </label>
         <input
+          id="tenant-settings-display-name"
           type="text"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
@@ -99,10 +100,11 @@ export function TenantSettingsEditForm({ tenantId, initialData, onDone }: Props)
       </div>
 
       <div style={{ marginTop: "1rem" }}>
-        <label style={{ display: "block", fontWeight: 600 }}>
+        <label htmlFor="tenant-settings-meta-data" style={{ display: "block", fontWeight: 600 }}>
           Meta Data (JSON object)
         </label>
         <textarea
+          id="tenant-settings-meta-data"
           value={metaDataText}
           onChange={(e) => setMetaDataText(e.target.value)}
           onBlur={(e) => validateJson(e.target.value)}

@@ -274,6 +274,10 @@ AZURE_OPENAI_API_KEY=<key>
 AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
 ```
 
+> See `.env.example` for the full V2 variable list (DB / Redis / RabbitMQ / Qdrant / Azure OpenAI / JWT / WorkOS OIDC / OTel / Sentry).
+
+**Auth in local dev**: you do **not** need a WorkOS account. Leave `WORKOS_API_KEY` blank — the OIDC routes (`/api/v1/auth/login`, `/callback`) return 503, and the login page shows a "Dev login" form (`POST /api/v1/auth/dev-login`) that issues a platform-admin session against an auto-created `dev` tenant. Real SSO is only required in staging/prod.
+
 ### Health Check
 
 ```bash

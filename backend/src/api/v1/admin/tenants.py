@@ -43,9 +43,10 @@ Key Components:
     - get_tenant / update_tenant (Sprint 57.3)
 
 Created: 2026-05-06 (Sprint 56.1 Day 1)
-Last Modified: 2026-05-07
+Last Modified: 2026-05-10
 
 Modification History:
+    - 2026-05-10: Sprint 57.13 US-A3 — /{tenant_id} dep → require_tenant_match_or_platform_admin
     - 2026-05-07: Sprint 57.4 — add GET "" list endpoint (US-1 closes D1)
     - 2026-05-07: Sprint 57.3 Day 2 — add PATCH /{id} + TenantUpdateRequest + audit chain (US-2)
     - 2026-05-07: Sprint 57.3 Day 1 — add GET /{tenant_id} + TenantResponse (US-1 closes D1)
@@ -77,7 +78,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from infrastructure.db.audit_helper import append_audit
 from infrastructure.db.models.identity import Tenant, TenantPlan, TenantState
 from infrastructure.db.session import get_db_session
-from platform_layer.identity.auth import require_admin_platform_role
+from platform_layer.identity.auth import (
+    require_admin_platform_role,
+    require_tenant_match_or_platform_admin,
+)
 from platform_layer.tenant.health_check import TenantHealthChecker
 from platform_layer.tenant.lifecycle import IllegalTransitionError, TenantLifecycle
 from platform_layer.tenant.onboarding import (
@@ -394,7 +398,7 @@ class TenantResponse(BaseModel):
 @router.get(
     "/{tenant_id}",
     response_model=TenantResponse,
-    dependencies=[Depends(require_admin_platform_role)],
+    dependencies=[Depends(require_tenant_match_or_platform_admin)],
 )
 async def get_tenant(
     tenant_id: UUID,
@@ -402,8 +406,10 @@ async def get_tenant(
 ) -> TenantResponse:
     """Return full tenant entity (10 fields) given tenant_id.
 
-    Auth: require_admin_platform_role (super-admin only). 404 if tenant
-    not found via _load_tenant_or_404.
+    Auth: require_tenant_match_or_platform_admin (Sprint 57.13 US-A3) —
+    platform admins read any tenant; a regular user reads only their own
+    (the tenant-settings page derives tenant_id from the session). 404 if
+    tenant not found via _load_tenant_or_404.
     """
     tenant = await _load_tenant_or_404(db, tenant_id)
     return TenantResponse.model_validate(tenant)

@@ -1,57 +1,68 @@
 /**
  * File: frontend/src/features/auth/services/authService.ts
- * Purpose: V2 JWT helpers + auth fetch wrapper for OIDC PKCE flow.
+ * Purpose: V2 auth fetch wrapper + /auth/me client + post-login redirect helpers.
  * Category: Frontend / auth / services
- * Scope: Phase 57 / Sprint 57.7 US-A2
+ * Scope: Phase 57 / Sprint 57.13 US-A1
  *
  * Description:
- *   Foundational auth service consumed by ALL feature services. Provides:
+ *   Foundational auth service consumed by ALL feature services + the
+ *   authStore. Provides:
  *
- *   1. getJwt() — read JWT cookie value (set by /api/v1/auth/callback)
- *   2. setJwt(token) — write JWT to localStorage (Day 2 cookie-based; Day 3
- *      may swap to httpOnly cookie when SameSite/CSRF model finalized)
- *   3. clearJwt() — remove JWT for logout
- *   4. isAuthenticated() — boolean check for guard logic
- *   5. fetchWithAuth(url, init) — wrapper adding Authorization: Bearer header
- *
- *   Day 2 skeleton uses localStorage for simplicity (matches backend cookie
- *   placement in /callback; both readable/writable from JS). Day 3 may
- *   harden via httpOnly secure cookie + CSRF token + SameSite=Lax once
- *   security model finalized in 20-iam-deep-dive.md design note §2.5.
+ *   1. fetchWithAuth(url, init, opts?) — fetch() wrapper; sends cookies
+ *      (credentials:"include") and adds Authorization: Bearer ONLY when a
+ *      dev-login token is present in localStorage. Production browsers
+ *      authenticate via the httpOnly v2_jwt cookie set by /api/v1/auth/callback.
+ *      On a 401 it (by default) toasts "session expired", clears local auth
+ *      state, stashes the current path, and navigates to /auth/login —
+ *      callers that handle 401 themselves (fetchAuthMe / logout) opt out via
+ *      { redirectOn401: false }.
+ *   2. fetchAuthMe() — GET /api/v1/auth/me → {user, tenant, roles} | null
+ *      (null on 401). Used by authStore.bootstrap().
+ *   3. setPostLoginRedirect / consumePostLoginRedirect — stash the page the
+ *      user was heading to so /auth/callback can return there.
+ *   4. getDevToken / setDevToken / clearDevToken — dev fake-login token in
+ *      localStorage (US-A4 path; absent in normal cookie flow).
+ *   5. isAuthenticated() — reads authStore status (Sprint 57.13: source of
+ *      truth moved from "localStorage has a token" to "authStore.status").
+ *   6. logout() — POST /api/v1/auth/logout, clear local state, redirect to
+ *      vendor signout (or /auth/login on error).
  *
  * Created: 2026-05-09 (Sprint 57.7 Day 2 PM)
- * Last Modified: 2026-05-09
+ * Last Modified: 2026-05-10
  *
  * Modification History:
+ *   - 2026-05-10: Sprint 57.13 US-B4 — fetchWithAuth reports network failure + 5xx via reportError
+ *   - 2026-05-10: Sprint 57.13 US-B1 — fetchWithAuth 401 → toast + clear + redirect (redirectOn401 opt-out)
+ *   - 2026-05-10: Sprint 57.13 US-A1 — add fetchAuthMe; isAuthenticated reads authStore; rename JWT helpers → dev-token; logout clears authStore
  *   - 2026-05-09: Initial creation (Sprint 57.7 US-A2 Day 2)
  *
  * Related:
- *   - backend/src/api/v1/auth.py (login + callback + logout endpoints)
- *   - backend/src/platform_layer/identity/jwt.py (JWTManager.encode HS256)
- *   - frontend/src/pages/auth/{login,callback}/index.tsx (consumers)
+ *   - backend/src/api/v1/auth.py (login + callback + me + logout endpoints)
+ *   - frontend/src/features/auth/store/authStore.ts (bootstrap consumer)
+ *   - frontend/src/features/auth/components/RequireAuth.tsx (route gate)
+ *   - frontend/src/lib/toast.ts (toastError on 401)
+ *   - frontend/src/lib/observability.ts (reportError on network / 5xx)
  */
 
-const JWT_STORAGE_KEY = "v2_jwt";
+import { reportError } from "../../../lib/observability";
+import { toastError } from "../../../lib/toast";
+import { useAuthStore } from "../store/authStore";
+import type { AuthMeResponse } from "../store/authStore";
+
+const DEV_TOKEN_KEY = "v2_jwt";
 const REDIRECT_KEY = "v2_post_login_redirect";
 
-export function getJwt(): string | null {
-  return localStorage.getItem(JWT_STORAGE_KEY);
+/** Dev fake-login token (US-A4) — absent in the normal httpOnly-cookie flow. */
+export function getDevToken(): string | null {
+  return localStorage.getItem(DEV_TOKEN_KEY);
 }
 
-export function setJwt(token: string): void {
-  localStorage.setItem(JWT_STORAGE_KEY, token);
+export function setDevToken(token: string): void {
+  localStorage.setItem(DEV_TOKEN_KEY, token);
 }
 
-export function clearJwt(): void {
-  localStorage.removeItem(JWT_STORAGE_KEY);
-}
-
-export function isAuthenticated(): boolean {
-  const token = getJwt();
-  if (!token) return false;
-  // Day 3 may add expiry parsing via jose / jwt-decode; for skeleton
-  // presence-of-token is sufficient.
-  return token.length > 0;
+export function clearDevToken(): void {
+  localStorage.removeItem(DEV_TOKEN_KEY);
 }
 
 export function setPostLoginRedirect(path: string): void {
@@ -64,38 +75,91 @@ export function consumePostLoginRedirect(): string {
   return path || "/cost-dashboard";
 }
 
+interface FetchWithAuthOptions {
+  /** When true (default) a 401 toasts + clears auth + navigates to /auth/login. */
+  redirectOn401?: boolean;
+}
+
+function handleAuthExpired(): void {
+  toastError("登入已過期，請重新登入");
+  clearDevToken();
+  useAuthStore.getState().clear();
+  setPostLoginRedirect(window.location.pathname + window.location.search);
+  window.location.href = "/auth/login";
+}
+
 /**
- * Wrapper around fetch() that adds Authorization: Bearer header when
- * JWT is present. Use this in all feature services instead of raw fetch.
+ * fetch() wrapper used by all feature services + authStore. Always sends
+ * cookies; adds Authorization: Bearer only if a dev-login token exists in
+ * localStorage (so the normal cookie flow doesn't need JS-readable tokens).
  *
- * 401 responses surface as Error so feature components can redirect to
- * /auth/login (Day 3 may add automatic redirect via QueryClient onError).
+ * On a 401 it (by default) treats the session as expired: toast + clear local
+ * auth state + stash current path + navigate to /auth/login. The response is
+ * still returned so callers can inspect it. fetchAuthMe() / logout() opt out
+ * via { redirectOn401: false } because they handle 401 themselves.
  */
 export async function fetchWithAuth(
   input: RequestInfo | URL,
   init?: RequestInit,
+  opts?: FetchWithAuthOptions,
 ): Promise<Response> {
-  const token = getJwt();
   const headers = new Headers(init?.headers);
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
+  const devToken = getDevToken();
+  if (devToken) {
+    headers.set("Authorization", `Bearer ${devToken}`);
   }
-  return fetch(input, {
-    ...init,
-    headers,
-    credentials: "include",
-  });
+  const url = typeof input === "string" ? input : input instanceof URL ? input.href : String(input);
+  let res: Response;
+  try {
+    res = await fetch(input, { ...init, headers, credentials: "include" });
+  } catch (err) {
+    // Network failure (DNS / offline / CORS). Surface to observability, then rethrow.
+    reportError(err, { url, kind: "network" });
+    throw err;
+  }
+  if (res.status === 401 && opts?.redirectOn401 !== false) {
+    handleAuthExpired();
+  }
+  if (res.status >= 500) {
+    reportError(new Error(`HTTP ${res.status} from ${url}`), { url, status: res.status });
+  }
+  return res;
+}
+
+/**
+ * GET /api/v1/auth/me. Returns the parsed identity payload, or null when the
+ * server says 401 (no / invalid / expired session). Throws only on network
+ * failure or unexpected (5xx) responses so callers can distinguish "not
+ * logged in" (null) from "backend down" (throw).
+ */
+export async function fetchAuthMe(): Promise<AuthMeResponse | null> {
+  const res = await fetchWithAuth("/api/v1/auth/me", undefined, { redirectOn401: false });
+  if (res.status === 401) return null;
+  if (!res.ok) {
+    throw new Error(`/auth/me failed: ${res.status}`);
+  }
+  return (await res.json()) as AuthMeResponse;
+}
+
+/** True iff authStore has resolved to an authenticated session. */
+export function isAuthenticated(): boolean {
+  return useAuthStore.getState().status === "authenticated";
 }
 
 export async function logout(): Promise<void> {
-  // Call backend /auth/logout to get vendor signout URL
-  const response = await fetchWithAuth("/api/v1/auth/logout", { method: "POST" });
-  clearJwt();
-  if (response.ok) {
-    const body = (await response.json()) as { redirect_to: string };
-    window.location.href = body.redirect_to;
-  } else {
-    // Even on backend error clear local JWT; redirect to login
-    window.location.href = "/auth/login";
+  let redirectTo = "/auth/login";
+  try {
+    const response = await fetchWithAuth("/api/v1/auth/logout", { method: "POST" }, {
+      redirectOn401: false,
+    });
+    if (response.ok) {
+      const body = (await response.json()) as { redirect_to: string };
+      redirectTo = body.redirect_to;
+    }
+  } catch {
+    // Network error — still clear local state + go to login.
   }
+  clearDevToken();
+  useAuthStore.getState().clear();
+  window.location.href = redirectTo;
 }

@@ -30,6 +30,7 @@
 
 import { useMemo, useState } from "react";
 
+import { Skeleton } from "../../../components/ui";
 import { useMemoryRecent } from "../hooks/useMemoryRecent";
 import type { MemoryLayer, MemoryRecentFilter } from "../types";
 import { MemoryScopeBadge } from "./MemoryScopeBadge";
@@ -97,7 +98,7 @@ export function MemoryRecentList(): JSX.Element {
       {query.isLoading && (
         <div className="space-y-2" data-testid="loading-skeleton">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-10 animate-pulse rounded bg-muted" />
+            <Skeleton key={i} className="h-10" />
           ))}
         </div>
       )}

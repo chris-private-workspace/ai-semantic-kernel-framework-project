@@ -25,12 +25,13 @@
  * Last Modified: 2026-05-09
  *
  * Modification History (newest-first):
+ *   - 2026-05-10: Sprint 57.13 US-A1 — gate via <RequireAuth> (was inline isAuthenticated() check)
  *   - 2026-05-09: Sprint 57.9 US-1 Day 1 — auth gate + AppShellV2 + 2-tab routes (real ship)
  *   - 2026-05-04: Wire ApprovalsPage at /approvals (Sprint 53.5 US-1)
  *   - 2026-04-29: Initial placeholder (Sprint 49.1)
  *
  * Related:
- *   - frontend/src/features/auth/services/authService.ts (isAuthenticated, setPostLoginRedirect)
+ *   - frontend/src/features/auth/components/RequireAuth.tsx (route gate)
  *   - frontend/src/components/AppShellV2.tsx (Sprint 57.8 US-1.3)
  *   - frontend/src/features/governance/components/ApprovalsPage.tsx (Sprint 53.5 US-1)
  *   - frontend/src/features/governance/components/AuditLogViewer.tsx (Sprint 57.9 US-4 Day 3)
@@ -39,7 +40,7 @@
 import { Navigate, NavLink, Route, Routes } from "react-router-dom";
 
 import { AppShellV2 } from "@/components/AppShellV2";
-import { isAuthenticated, setPostLoginRedirect } from "@/features/auth/services/authService";
+import { RequireAuth } from "@/features/auth/components/RequireAuth";
 import { ApprovalsPage } from "@/features/governance/components/ApprovalsPage";
 import { AuditLogViewer } from "@/features/governance/components/AuditLogViewer";
 
@@ -51,26 +52,24 @@ const tabClass = ({ isActive }: { isActive: boolean }): string =>
   }`;
 
 export default function GovernancePage(): JSX.Element {
-  if (!isAuthenticated()) {
-    setPostLoginRedirect("/governance");
-    return <Navigate to="/auth/login" replace />;
-  }
   return (
-    <AppShellV2 pageTitle="Governance">
-      <nav className="mb-4 flex gap-2 border-b border-border" aria-label="Governance tabs">
-        <NavLink to="approvals" className={tabClass}>
-          Pending Approvals
-        </NavLink>
-        <NavLink to="audit-log" className={tabClass}>
-          Audit Log
-        </NavLink>
-      </nav>
-      <Routes>
-        <Route index element={<Navigate to="approvals" replace />} />
-        <Route path="approvals" element={<ApprovalsPage />} />
-        <Route path="audit-log" element={<AuditLogViewer />} />
-        <Route path="*" element={<Navigate to="approvals" replace />} />
-      </Routes>
-    </AppShellV2>
+    <RequireAuth>
+      <AppShellV2 pageTitle="Governance">
+        <nav className="mb-4 flex gap-2 border-b border-border" aria-label="Governance tabs">
+          <NavLink to="approvals" className={tabClass}>
+            Pending Approvals
+          </NavLink>
+          <NavLink to="audit-log" className={tabClass}>
+            Audit Log
+          </NavLink>
+        </nav>
+        <Routes>
+          <Route index element={<Navigate to="approvals" replace />} />
+          <Route path="approvals" element={<ApprovalsPage />} />
+          <Route path="audit-log" element={<AuditLogViewer />} />
+          <Route path="*" element={<Navigate to="approvals" replace />} />
+        </Routes>
+      </AppShellV2>
+    </RequireAuth>
   );
 }

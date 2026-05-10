@@ -31,6 +31,7 @@
  * Last Modified: 2026-05-10
  *
  * Modification History:
+ *   - 2026-05-10: Sprint 57.13 US-A5 — add data-testid="app-shell" on root (connectivity spec anchor)
  *   - 2026-05-10: Initial creation (Sprint 57.8 US-1.3)
  *
  * Related:
@@ -66,7 +67,7 @@ export const AppShellV2: FC<AppShellV2Props> = ({
 }) => {
   const userMenuSlot = userMenu === undefined ? <UserMenu /> : userMenu;
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <div data-testid="app-shell" className="flex min-h-screen bg-background text-foreground">
       <Sidebar />
       <div className="flex flex-1 flex-col">
         <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-background/95 px-6 backdrop-blur">

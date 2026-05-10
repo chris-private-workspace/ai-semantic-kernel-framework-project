@@ -1,147 +1,130 @@
 /**
  * File: frontend/src/components/UserMenu.tsx
- * Purpose: Header avatar dropdown — consume Sprint 57.7 IAM JWT for username + logout.
+ * Purpose: Header avatar dropdown — current user (authStore) + role badges + locale switcher + sign out.
  * Category: Frontend / components / auth-aware
- * Scope: Phase 57 / Sprint 57.8 US-2 Day 2
+ * Scope: Phase 57 / Sprint 57.8 US-2 → Sprint 57.13 US-A1 (authStore) → US-B3 (Radix DropdownMenu) → US-B5 (i18n)
  *
  * Description:
- *   Avatar circle in AppShellV2 header right slot. Click → popover showing
- *   user email + Sign out button. Sign out clears JWT (clearJwt) + redirects
- *   to /auth/login (existing 57.7 IAM flow).
+ *   Avatar circle in AppShellV2's header right slot. Click → menu showing the
+ *   signed-in user (display name / email) + role <Badge>s + a language switcher
+ *   (one item per SUPPORTED_LOCALES; the active one is marked) + Sign out (calls
+ *   logout() — backend /auth/logout + clear authStore + redirect to vendor signout).
+ *   Renders null unless authStore.status === "authenticated".
  *
- *   Auth-aware: if !isAuthenticated() returns null (caller skips slot).
- *
- *   Avatar initials derived from JWT email claim — "alice@example.com" → "A".
- *   Day 2 simplification: only first char extracted (full name parsing deferred
- *   to Phase 58.x AD-Frontend-AuthUX when WorkOS profile name claim wired).
- *
- *   Design choice (Day 2): minimal custom dropdown (NO @radix-ui dep) per
- *   YAGNI — 2 menu items don't justify ~15 KB gzipped radix-ui dep. Click
- *   outside closes via document mousedown listener; escape key closes via
- *   keydown listener. If future menu grows to 5+ items / sub-menus / tooltips
- *   → swap to @radix-ui/react-dropdown-menu (AD-Frontend-Dropdown candidate).
+ *   Sprint 57.13 US-B3: replaced the hand-rolled popover with components/ui
+ *   <DropdownMenu> (Radix) — focus, keyboard nav, ESC/outside-click close come free.
+ *   Sprint 57.13 US-B5: filled the reserved locale-switcher slot — picking a locale
+ *   writes localStorage `ipa-locale` + calls i18n.changeLanguage() (survives reload).
  *
  * Created: 2026-05-10 (Sprint 57.8 Day 2)
  * Last Modified: 2026-05-10
  *
  * Modification History:
+ *   - 2026-05-10: Sprint 57.13 US-B5 — locale switcher items + i18n the labels
+ *   - 2026-05-10: Sprint 57.13 US-B3 — swap custom popover → <DropdownMenu>; add role badges
+ *   - 2026-05-10: Sprint 57.13 US-A1 — read authStore.user instead of decoding the JWT; sign out via logout()
  *   - 2026-05-10: Initial creation (Sprint 57.8 US-2)
  *
  * Related:
- *   - frontend/src/features/auth/services/authService.ts (getJwt + clearJwt + isAuthenticated)
+ *   - frontend/src/components/ui/dropdown-menu.tsx (Radix wrapper)
+ *   - frontend/src/features/auth/store/authStore.ts (user + status + roles)
+ *   - frontend/src/features/auth/services/authService.ts (logout)
+ *   - frontend/src/i18n/index.ts (SUPPORTED_LOCALES + LOCALE_STORAGE_KEY)
  *   - frontend/src/components/AppShellV2.tsx (host via userMenu prop slot)
  */
 
-import { LogOut, User as UserIcon } from "lucide-react";
-import { useEffect, useRef, useState, type FC } from "react";
-import { useNavigate } from "react-router-dom";
+import { Check, LogOut, User as UserIcon } from "lucide-react";
+import type { FC } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
-  clearJwt,
-  getJwt,
-  isAuthenticated,
-} from "@/features/auth/services/authService";
+  Badge,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui";
+import { logout } from "@/features/auth/services/authService";
+import { useAuthStore } from "@/features/auth/store/authStore";
+import { LOCALE_STORAGE_KEY, SUPPORTED_LOCALES } from "@/i18n";
 import { cn } from "@/lib/utils";
 
-/**
- * Decode JWT email claim without verifying signature (browser-side display
- * only; backend always re-verifies signature on every request). Returns
- * null on malformed token.
- */
-function decodeJwtEmail(token: string): string | null {
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(atob(parts[1]));
-    return typeof payload.email === "string" ? payload.email : null;
-  } catch {
-    return null;
-  }
-}
-
 export const UserMenu: FC = () => {
-  // ALL hooks unconditional per React Rules of Hooks; early return below.
-  const [open, setOpen] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
+  const { t, i18n } = useTranslation("common");
+  const status = useAuthStore((s) => s.status);
+  const user = useAuthStore((s) => s.user);
+  const roles = useAuthStore((s) => s.roles);
 
-  // Close on click outside or Escape (effect runs unconditionally; cleanup handles unmount)
-  useEffect(() => {
-    if (!open) return;
+  if (status !== "authenticated" || user === null) return null;
 
-    function handleMouseDown(e: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+  const label = user.display_name?.trim() || user.email;
+  const initial = label ? label.charAt(0).toUpperCase() : "?";
+  const showEmailLine = Boolean(user.display_name?.trim()) && user.email !== label;
+
+  const currentLng = i18n.resolvedLanguage ?? i18n.language;
+  const changeLocale = (id: string): void => {
+    try {
+      window.localStorage.setItem(LOCALE_STORAGE_KEY, id);
+    } catch {
+      /* localStorage unavailable (private mode) — changeLanguage still works for the session */
     }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-
-    document.addEventListener("mousedown", handleMouseDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleMouseDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
-
-  // Re-read auth state per render (React re-renders after navigate / setState)
-  const authed = isAuthenticated();
-  if (!authed) return null;
-
-  const token = getJwt();
-  const email = token ? decodeJwtEmail(token) : null;
-  const initial = email ? email.charAt(0).toUpperCase() : "?";
-
-  const handleSignOut = () => {
-    clearJwt();
-    setOpen(false);
-    navigate("/auth/login");
+    void i18n.changeLanguage(id);
   };
 
   return (
-    <div ref={wrapperRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
+    <DropdownMenu>
+      <DropdownMenuTrigger
         className={cn(
           "inline-flex h-8 w-8 items-center justify-center rounded-full",
           "bg-primary text-primary-foreground text-sm font-medium",
-          "hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+          "hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         )}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label="User menu"
+        aria-label={t("userMenu.label")}
       >
         {initial === "?" ? <UserIcon size={16} /> : initial}
-      </button>
-
-      {open && (
-        <div
-          className={cn(
-            "absolute right-0 top-10 z-20 min-w-[200px] rounded-md border border-border",
-            "bg-popover text-popover-foreground shadow-lg",
-            "py-1",
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" aria-label={t("userMenu.options")}>
+        <DropdownMenuLabel className="font-normal">
+          <div className="text-xs text-muted-foreground">{t("userMenu.signedInAs")}</div>
+          <div className="truncate text-sm font-medium text-foreground">{label}</div>
+          {showEmailLine && (
+            <div className="truncate text-xs text-muted-foreground">{user.email}</div>
           )}
-          role="menu"
-          aria-label="User menu options"
-        >
-          <div className="px-3 py-2 text-sm border-b border-border">
-            <div className="text-xs text-muted-foreground">Signed in as</div>
-            <div className="truncate font-medium">{email ?? "Unknown user"}</div>
-          </div>
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted"
-            role="menuitem"
-          >
-            <LogOut size={14} />
-            Sign out
-          </button>
-        </div>
-      )}
-    </div>
+          {roles.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {roles.map((r) => (
+                <Badge key={r} variant="outline">
+                  {r}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+          {t("userMenu.language")}
+        </DropdownMenuLabel>
+        {SUPPORTED_LOCALES.map((loc) => {
+          const isCurrent = currentLng === loc.id;
+          return (
+            <DropdownMenuItem
+              key={loc.id}
+              onSelect={() => changeLocale(loc.id)}
+              aria-current={isCurrent ? "true" : undefined}
+            >
+              <Check size={14} className={cn(!isCurrent && "invisible")} />
+              {loc.label}
+            </DropdownMenuItem>
+          );
+        })}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => void logout()}>
+          <LogOut size={14} />
+          {t("userMenu.signOut")}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };

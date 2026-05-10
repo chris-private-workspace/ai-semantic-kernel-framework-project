@@ -27,6 +27,7 @@ Created: 2026-04-29 (Sprint 49.4 Day 5)
 Last Modified: 2026-04-29
 
 Modification History (newest-first):
+    - 2026-05-10: Sprint 57.13 US-B4 — mount telemetry router (frontend beacons; anonymous)
     - 2026-05-09: Sprint 57.7 US-A2 — mount auth router (3 OIDC PKCE endpoints; WorkOS skeleton)
     - 2026-05-08: Sprint 57.6 US-2 — _lifespan() autoload .env via dotenv (closes AD-Reality-2)
     - 2026-05-06: Sprint 56.1 — mount admin_tenants router (POST /api/v1/admin/tenants)
@@ -63,6 +64,7 @@ from api.v1.chat import router as chat_router
 from api.v1.governance import router as governance_router
 from api.v1.health import router as health_router
 from api.v1.memory import router as memory_router
+from api.v1.telemetry import router as telemetry_router
 from api.v1.verification import router as verification_router
 from infrastructure.db import dispose_engine
 from platform_layer.middleware import TenantContextMiddleware
@@ -108,6 +110,7 @@ def create_app() -> FastAPI:
     # Routers: api/v1.
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(auth_router, prefix="/api/v1")
+    app.include_router(telemetry_router, prefix="/api/v1")
     app.include_router(chat_router, prefix="/api/v1")
     app.include_router(audit_router, prefix="/api/v1")
     app.include_router(verification_router, prefix="/api/v1")

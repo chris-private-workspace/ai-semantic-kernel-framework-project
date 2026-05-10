@@ -27,7 +27,7 @@ from api.v1.admin.cost_summary import router as admin_cost_summary_router
 from infrastructure.db.session import get_db_session
 from platform_layer.billing.cost_ledger import CostLedgerService
 from platform_layer.billing.pricing import PricingLoader, set_pricing_loader
-from platform_layer.identity.auth import require_admin_platform_role
+from platform_layer.identity.auth import require_tenant_match_or_platform_admin
 from tests.conftest import seed_tenant
 
 pytestmark = pytest.mark.asyncio
@@ -48,7 +48,7 @@ def _build_app(db_session: AsyncSession | None = None) -> FastAPI:
             return UUID("00000000-0000-0000-0000-000000000001")
 
         app.dependency_overrides[get_db_session] = _override_session
-        app.dependency_overrides[require_admin_platform_role] = _override_admin
+        app.dependency_overrides[require_tenant_match_or_platform_admin] = _override_admin
     return app
 
 

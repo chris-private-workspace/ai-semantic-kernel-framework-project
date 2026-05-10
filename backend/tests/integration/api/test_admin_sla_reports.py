@@ -28,7 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.v1.admin.sla_reports import router as admin_sla_reports_router
 from infrastructure.db.session import get_db_session
-from platform_layer.identity.auth import require_admin_platform_role
+from platform_layer.identity.auth import require_tenant_match_or_platform_admin
 from platform_layer.observability.sla_monitor import (
     SLAMetricRecorder,
     set_sla_recorder,
@@ -49,8 +49,10 @@ def _build_app(db_session: AsyncSession | None = None) -> FastAPI:
     ) -> Response:
         user_header = request.headers.get("X-Test-User")
         roles_header = request.headers.get("X-Test-Roles")
+        tenant_header = request.headers.get("X-Test-Tenant")
         request.state.user_id = UUID(user_header) if user_header else None
         request.state.roles = json.loads(roles_header) if roles_header else None
+        request.state.tenant_id = UUID(tenant_header) if tenant_header else None
         return await call_next(request)
 
     if db_session is not None:
@@ -62,26 +64,29 @@ def _build_app(db_session: AsyncSession | None = None) -> FastAPI:
             return UUID("00000000-0000-0000-0000-000000000001")
 
         app.dependency_overrides[get_db_session] = _override_session
-        app.dependency_overrides[require_admin_platform_role] = _override_admin
+        app.dependency_overrides[require_tenant_match_or_platform_admin] = _override_admin
 
     return app
 
 
 async def test_admin_sla_report_endpoint_403_without_admin_role() -> None:
-    """Non-admin role → 403."""
+    """Non-admin role reaching for a different tenant via the URL → 403 (Sprint 57.13 US-A3)."""
     app = _build_app()
     user_id = uuid4()
-    tenant_id = uuid4()
+    path_tenant_id = uuid4()
+    caller_tenant_id = uuid4()  # different → cross-tenant
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         resp = await ac.get(
-            f"/api/v1/admin/tenants/{tenant_id}/sla-report?month=2026-05",
+            f"/api/v1/admin/tenants/{path_tenant_id}/sla-report?month=2026-05",
             headers={
                 "X-Test-User": str(user_id),
                 "X-Test-Roles": json.dumps(["tenant_admin"]),
+                "X-Test-Tenant": str(caller_tenant_id),
             },
         )
     assert resp.status_code == 403
+    assert "cross-tenant" in resp.json()["detail"]
 
 
 async def test_admin_sla_report_endpoint_returns_json_with_4_metrics(

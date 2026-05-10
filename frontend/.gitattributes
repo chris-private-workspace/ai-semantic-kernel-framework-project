@@ -1,0 +1,3 @@
+# Playwright visual-regression screenshot baselines (Sprint 57.13 US-B8) — binary,
+# no EOL normalization / no diff in PRs. Generated on the CI Linux runner.
+*.png binary

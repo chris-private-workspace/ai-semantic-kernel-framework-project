@@ -26,28 +26,25 @@
  * Last Modified: 2026-05-10
  *
  * Modification History (newest-first):
+ *   - 2026-05-10: Sprint 57.13 US-A1 — gate via <RequireAuth> (was inline isAuthenticated() check)
  *   - 2026-05-10: Initial creation (Sprint 57.12 US-4 Day 2 — real ship)
  *
  * Related:
- *   - frontend/src/features/auth/services/authService.ts (isAuthenticated, setPostLoginRedirect)
+ *   - frontend/src/features/auth/components/RequireAuth.tsx (route gate)
  *   - frontend/src/components/AppShellV2.tsx (page-level shell)
  *   - frontend/src/features/orchestrator-loop/components/LoopVisualizer.tsx (Day 2 §2.6)
  */
 
-import { Navigate } from "react-router-dom";
-
 import { AppShellV2 } from "@/components/AppShellV2";
-import { isAuthenticated, setPostLoginRedirect } from "@/features/auth/services/authService";
+import { RequireAuth } from "@/features/auth/components/RequireAuth";
 import { LoopVisualizer } from "@/features/orchestrator-loop/components/LoopVisualizer";
 
 export default function LoopDebugPage(): JSX.Element {
-  if (!isAuthenticated()) {
-    setPostLoginRedirect("/loop-debug");
-    return <Navigate to="/auth/login" replace />;
-  }
   return (
-    <AppShellV2 pageTitle="Loop Debug">
-      <LoopVisualizer mode="standalone" />
-    </AppShellV2>
+    <RequireAuth>
+      <AppShellV2 pageTitle="Loop Debug">
+        <LoopVisualizer mode="standalone" />
+      </AppShellV2>
+    </RequireAuth>
   );
 }
