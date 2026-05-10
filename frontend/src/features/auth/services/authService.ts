@@ -31,6 +31,7 @@
  * Last Modified: 2026-05-10
  *
  * Modification History:
+ *   - 2026-05-10: Sprint 57.13 US-B4 — fetchWithAuth reports network failure + 5xx via reportError
  *   - 2026-05-10: Sprint 57.13 US-B1 — fetchWithAuth 401 → toast + clear + redirect (redirectOn401 opt-out)
  *   - 2026-05-10: Sprint 57.13 US-A1 — add fetchAuthMe; isAuthenticated reads authStore; rename JWT helpers → dev-token; logout clears authStore
  *   - 2026-05-09: Initial creation (Sprint 57.7 US-A2 Day 2)
@@ -40,8 +41,10 @@
  *   - frontend/src/features/auth/store/authStore.ts (bootstrap consumer)
  *   - frontend/src/features/auth/components/RequireAuth.tsx (route gate)
  *   - frontend/src/lib/toast.ts (toastError on 401)
+ *   - frontend/src/lib/observability.ts (reportError on network / 5xx)
  */
 
+import { reportError } from "../../../lib/observability";
 import { toastError } from "../../../lib/toast";
 import { useAuthStore } from "../store/authStore";
 import type { AuthMeResponse } from "../store/authStore";
@@ -105,9 +108,20 @@ export async function fetchWithAuth(
   if (devToken) {
     headers.set("Authorization", `Bearer ${devToken}`);
   }
-  const res = await fetch(input, { ...init, headers, credentials: "include" });
+  const url = typeof input === "string" ? input : input instanceof URL ? input.href : String(input);
+  let res: Response;
+  try {
+    res = await fetch(input, { ...init, headers, credentials: "include" });
+  } catch (err) {
+    // Network failure (DNS / offline / CORS). Surface to observability, then rethrow.
+    reportError(err, { url, kind: "network" });
+    throw err;
+  }
   if (res.status === 401 && opts?.redirectOn401 !== false) {
     handleAuthExpired();
+  }
+  if (res.status >= 500) {
+    reportError(new Error(`HTTP ${res.status} from ${url}`), { url, status: res.status });
   }
   return res;
 }

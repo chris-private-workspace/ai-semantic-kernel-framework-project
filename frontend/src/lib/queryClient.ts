@@ -19,14 +19,20 @@
  *
  * Created: 2026-05-10 (Sprint 57.13 Day 3)
  *
+ * Modification History:
+ *   - 2026-05-10: Sprint 57.13 US-B4 — mutationCache.onError also reportError(err, {source:"mutation"})
+ *   - 2026-05-10: Initial creation (Sprint 57.13 Day 3)
+ *
  * Related:
  *   - frontend/src/main.tsx (QueryClientProvider consumer)
  *   - frontend/src/lib/toast.ts (toastError + errorMessage)
+ *   - frontend/src/lib/observability.ts (reportError)
  *   - frontend/src/features/auth/services/authService.ts (401 → redirect)
  */
 
 import { MutationCache, QueryClient } from "@tanstack/react-query";
 
+import { reportError } from "./observability";
 import { errorMessage, toastError } from "./toast";
 
 // staleTime 30s favours freshness over over-fetching for SaaS dashboards.
@@ -48,6 +54,7 @@ export const queryClient = new QueryClient({
   mutationCache: new MutationCache({
     onError: (err) => {
       toastError(errorMessage(err));
+      reportError(err, { source: "mutation" });
     },
   }),
 });
