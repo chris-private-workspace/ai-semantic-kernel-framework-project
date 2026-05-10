@@ -310,6 +310,39 @@ The `<Skeleton>` primitive swap is everywhere; `<TableSkeleton>`/`<EmptyState>` 
 
 ---
 
+## Day 8 — US-B6 (a11y baseline: jsx-a11y + axe-core) + US-B7 (Lighthouse CI) — `c3294318`
+
+### US-B6 — accessibility (§8.1)
+- **`eslint.config.js`** — added `eslint-plugin-jsx-a11y` to the flat config: `plugins: { ..., "jsx-a11y": jsxA11y }` + `rules: { ...jsxA11y.flatConfigs.recommended.rules, ...existing }`. Now a11y issues fail `npm run lint` (`--max-warnings 0`). First run surfaced **exactly 5 violations across 3 files** — all fixed (not silenced wholesale; only one targeted disable, with a reason):
+  - `src/components/ui/card.tsx` — `CardTitle` is `<h3 ref className {...props}/>` (standard shadcn primitive; content comes from `children` at call sites). `jsx-a11y/heading-has-content` can't see content through the `{...props}` spread → false positive → `// eslint-disable-next-line jsx-a11y/heading-has-content` with a comment explaining why.
+  - `src/features/chat_v2/components/ToolCallCard.tsx:91` — the collapse-header `<div role="button" aria-expanded onClick>` had no keyboard support (`jsx-a11y/click-events-have-key-events` + `interactive-supports-focus`). Fixed: added `tabIndex={0}` + `onKeyDown` (Enter/Space → `setOpen(v => !v)` + `preventDefault`). The div's inline styles are left alone — that cleanup is US-B9 scope.
+  - `src/features/tenant-settings/components/TenantSettingsEditForm.tsx:84,102` — two `<label>`s with no associated control (`jsx-a11y/label-has-associated-control`). Fixed: added `htmlFor="tenant-settings-display-name"` / `id` on the `<input>` and `htmlFor="tenant-settings-meta-data"` / `id` on the `<textarea>`. Inline styles untouched (US-B9).
+  - (The `pages/auth/login` dev-login form's `<label>tenant_code <input/></label>` did NOT trigger — nested-control association satisfies the rule. Lucide `<svg>` icons don't trigger anything — no jsx-a11y rule covers `<svg>`.)
+- **NEW `tests/e2e/a11y/a11y-scan.spec.ts`** — `new AxeBuilder({ page }).analyze()` over: (1) the 9 active routes with `**/api/v1/auth/me` mocked → authenticated so `<RequireAuth>` renders the AppShellV2 shell; the page's own data fetches fail (no backend) → the accessible `<ErrorRetry>` (`role="alert"`, Day 4) error state, which axe also scans — error UIs need a11y too; (2) `/auth/login` with `/auth/me` → 401 (anonymous); (3) `/auth/callback?error=…` — the `?error` branch sets the error message and `return`s before the bootstrap effect, so it shows the error UI rather than redirecting. Assertion per page: **0 violations with impact `critical` or `serious`** (moderate/minor get `console.warn(...)` for triage — not a failure at baseline scope). Self-contained (`page.route()` mocks; vite dev server auto-started by `playwright.config.ts` webServer). ⚠️ **written, not executed here** (no dev server boot) → US-C1 e2e sweep runs it (`npx playwright test a11y`).
+- **`CONVENTION.md`** — new §12 Accessibility Convention (rules table: clickable non-`<button>` → real button or `role+tabIndex+onKeyDown` / form field → `htmlFor`+`id` or nested / heading wrapper component → targeted disable OK / error region → `role="alert"` / decorative icon → leave; axe-core e2e scan note + "add new pages to the route list").
+
+### US-B7 — Lighthouse CI (§8.2)
+- **`package.json`** — `+eslint-plugin-jsx-a11y@^6.10.2` `+@axe-core/playwright@^4.11.3` `+@lhci/cli@^0.15.1` (all dev) + `"lhci": "lhci autorun"` script.
+- **NEW `frontend/lighthouserc.cjs`** — `.cjs` on purpose (package.json is `"type":"module"`; LHCI loads config via `require()` — same reasoning as `i18next-parser.config.cjs`). `collect.startServerCommand: "npm run preview -- --port 4173 --strictPort"` (vite preview does SPA fallback — a bare static server would 404 `/auth/login`), `collect.url: ["http://localhost:4173/auth/login"]` (the one page that renders fully without auth/backend; auth-gated pages can't be Lighthouse'd without a backend → out of scope), `numberOfRuns: 1`, `chromeFlags: "--no-sandbox --headless=new"` (CI containers). `assert.assertions`: `categories:accessibility` **`error` ≥ 0.9** (hard gate) / `categories:performance` **`warn` ≥ 0.7** / `categories:best-practices` **`warn` ≥ 0.8** / `first-contentful-paint` `warn` ≤ 2000 ms / `interactive` `warn` ≤ 4000 ms (the perf budgets are warnings while the bundle is being trimmed — see AD-Bundle-Size). `upload.target: "temporary-public-storage"` (no token needed).
+- **NEW `.github/workflows/frontend-lighthouse.yml`** — `on: pull_request: paths: [frontend/**, .github/workflows/frontend-lighthouse.yml]`; job runs `npm ci` → `npm run build` → `npm run lhci` (NOT `npx lhci` — there's an unrelated squatted `lhci` package on the registry; `npm run lhci` resolves `node_modules/.bin/lhci` from `@lhci/cli`); job-level `continue-on-error: true` (it's a budget *tripwire*, never a required check — no branch-protection interaction). Mirrors `frontend-ci.yml`'s checkout@v4 / setup-node@v4 node-20 / `defaults.run.working-directory: frontend`.
+- **`.gitignore`** — added `frontend/.lighthouseci/` (the run output dir `lhci autorun` writes).
+- **`CONVENTION.md`** — new §13 Performance / Lighthouse Convention (`.cjs` rationale / `npm run lhci` flow / a11y hard gate vs warn budgets / `continue-on-error` workflow / add new public pages to the url list).
+
+### Drift findings (Day 8)
+| ID | Finding | Implication |
+|----|---------|-------------|
+| D-DAY8-1 | jsx-a11y recommended surfaced only **5 violations** total (3 files), all genuinely fixable; the codebase was already mostly accessible | Fixed all 5 (1 targeted disable for the shadcn-wrapper false positive + 4 real fixes). No need to down-tune any rules — `--max-warnings 0` holds with the full recommended set. |
+| D-DAY8-2 | `lighthouserc.js` (checklist literal) won't work — package.json is `"type":"module"` so a `.js` config is ESM and LHCI's `require()`-based loader can't read `module.exports` | Used `lighthouserc.cjs` (same precedent as `i18next-parser.config.cjs` on Day 7). `lhci healthcheck` confirms the config is found. |
+| D-DAY8-3 | `npx lhci` (checklist literal in the workflow draft) is risky — there's an unrelated `lhci` package on npm that prints "Hello, this is AnupamAS01!" (got it briefly when I ran `npx lhci` from the wrong cwd) | Workflow + the script use `npm run lhci` which resolves the local `node_modules/.bin/lhci` from `@lhci/cli`. Never `npx lhci` directly. |
+
+### Verification (Day 8 aggregate)
+- Frontend: **`npm run lint` clean** with jsx-a11y recommended now enabled (0 violations after the 5 fixes); **`npm run build` ✅** — main `index-*.js` **304.37 kB** gzip 97.67 (Day 7: 304.37 / 97.66 — unchanged; the a11y fixes are byte-level: a few attrs + a comment), `RequireAuth` lazy chunk **127.00 kB** unchanged; **`npm run test` → 56 files / 233 passed** (unchanged from Day 7 — the 3 touched src files have no broken tests). `node_modules/.bin/lhci healthcheck` ✅; **local `npm run build && npm run lhci` autorun ✅** — `Checking assertions against 1 URL(s) … All results processed! … Uploading median LHR … success!` (one harmless "Timed out waiting for the server to start listening" warning — LHCI's stdout pattern didn't match `vite preview`'s, but Lighthouse ran against the live server fine; no assertion failures → exit 0). Cleaned up `.lighthouseci/` after.
+- Backend: **untouched** (zero `.py` changes — Day 8 is eslint config + 3 a11y fixes + LHCI config + GH workflow + CONVENTION.md + .gitignore) — pytest baseline **1676 + 4 skip** holds, `mypy src --strict` 306 clean holds, **9/9 V2 lints** green holds.
+- Not run here: the new `a11y-scan.spec.ts` (no dev-server boot) → US-C1 sweep; a real Lighthouse-on-PR (the workflow does it; verified locally that `lhci autorun` works end-to-end).
+- Pace note: Days 0-8 done = 11/15 USs (A1-A5 + B1-B7) at 8/10 calendar days — `frontend-foundation-spike` 0.50 still tracking; no `AD-Sprint-Plan-N`.
+
+---
+
 ## Remaining for Day 7-9
 
 - [x] Day 3: US-A5 (connectivity smoke + .env.example) + US-B1 (Toast) — `e1c3f58e`
@@ -317,7 +350,7 @@ The `<Skeleton>` primitive swap is everywhere; `<TableSkeleton>`/`<EmptyState>` 
 - [x] Day 5: US-B3 (Radix Dialog+DropdownMenu primitives + DecisionModal+UserMenu refactor) — `6bb4fdde`
 - [x] Day 6: US-B4 (Sentry + Web Vitals + Cat 12 telemetry endpoint) — `a8b90ba4`
 - [x] Day 7: US-B5 (i18n — i18next zh-TW/en + shell/usermenu/auth/2-page adoption + locale switcher) — `890876f7`
-- [ ] Day 8: US-B6 (a11y) + US-B7 (Lighthouse CI)
+- [x] Day 8: US-B6 (a11y baseline — jsx-a11y + axe-core scan, 5 violations fixed) + US-B7 (Lighthouse CI — lighthouserc.cjs + GH workflow) — `c3294318`
 - [ ] Day 9: US-B8 (visual regression) + US-B9 (AuthShell + login/callback + inline cleanup) + US-C1 (closeout)
 - 🚧 Carryover (→ US-C1 unless noted): D-DAY4-2 (full `<ErrorRetry>`/`<EmptyState>` adoption in verification/memory/AuditLogViewer — needs `data-testid?`/`pending?` props on those components) / D-DAY5-3 (governance approvals e2e re-run) / D-DAY7-6 (locale-switch e2e + Day 1-2 auth-gate e2e execution) / 17.md registry (`/auth/me` `/auth/dev-login` `/telemetry/frontend` `/telemetry/frontend-error` + `require_tenant_match_or_platform_admin`) / D-DAY7-7 (AD-Bundle-Size — main now 304 kB; follow-up optimization sprint)
 

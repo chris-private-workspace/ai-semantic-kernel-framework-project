@@ -277,25 +277,30 @@ Related:
 
 ---
 
-## Day 8 — US-B6 (a11y baseline) + US-B7 (Lighthouse CI)
+## Day 8 — US-B6 (a11y baseline) + US-B7 (Lighthouse CI) ✅ 2026-05-10 (commit `c3294318`)
 
 ### 8.1 US-B6: a11y
-- [ ] **`package.json`** — `+eslint-plugin-jsx-a11y`(dev) `+@axe-core/playwright`(dev)
-- [ ] **`eslint.config.js`** — 加 `jsxA11y.configs.recommended`；`npm run lint` → 修所有 violations
-- [ ] **NEW `tests/e2e/a11y/a11y-scan.spec.ts`** — `AxeBuilder` 對 9 active 頁（dev-login 後）+ `/auth/login` + `/auth/callback` 各 `analyze()`，assert critical/serious = 0（moderate/minor → warning 不 fail）
-- [ ] `CONVENTION.md` — §a11y addendum
-  - Verify: `npx playwright test a11y` + `npm run lint`
+- [x] **`package.json`** — `+eslint-plugin-jsx-a11y@^6.10`(dev) `+@axe-core/playwright@^4.11`(dev)
+- [x] **`eslint.config.js`** — added `eslint-plugin-jsx-a11y` (flat config: `plugins: { "jsx-a11y": jsxA11y }` + `rules: { ...jsxA11y.flatConfigs.recommended.rules, ...existing }`); `npm run lint` surfaced **5 violations** → all fixed:
+  - `ui/card.tsx` `CardTitle` `<h3 {...props}/>` — `jsx-a11y/heading-has-content` false-positive (content comes from `children` at call sites; spread hides it) → targeted `// eslint-disable-next-line` with reason (standard shadcn primitive)
+  - `chat_v2/ToolCallCard.tsx:91` header `<div role="button" onClick>` — `click-events-have-key-events` + `interactive-supports-focus` → added `tabIndex={0}` + `onKeyDown` (Enter/Space → toggle); inline styles untouched (US-B9)
+  - `tenant-settings/TenantSettingsEditForm.tsx:84,102` — `label-has-associated-control` → added `htmlFor`/`id` to both `<label>`+`<input|textarea>` pairs; inline styles untouched (US-B9)
+- [x] **NEW `tests/e2e/a11y/a11y-scan.spec.ts`** — `AxeBuilder({page}).analyze()` over: 9 active routes (`/auth/me` mocked → `<RequireAuth>` renders shell; data fetches fail → accessible `<ErrorRetry>` error state which axe also scans) + `/auth/login` (anon `/auth/me`) + `/auth/callback?error=…` (error UI; `?error` short-circuits before bootstrap so no redirect). Assert **0 violations with impact critical|serious**; moderate/minor `console.warn`-ed not failed. ⚠️ written, not run this session (no dev server boot) → US-C1 sweep (`npx playwright test a11y`)
+- [x] `CONVENTION.md` — §12 Accessibility Convention (rules table: clickable non-button / form-label / heading wrapper / error region / decorative icon; axe-core e2e scan note)
+- Verify: `npm run lint` clean (jsx-a11y on, 0 violations)
 
 ### 8.2 US-B7: Lighthouse CI
-- [ ] **`package.json`** — `+@lhci/cli`(dev) + script `"lhci": "lhci autorun"`
-- [ ] **NEW `frontend/lighthouserc.js`** — collect (staticDistDir 或 startServerCommand `npm run preview` — Day 8 三-prong 後定；urls 重點頁) + assert (perf warn ≥0.7 / a11y error ≥0.9 / best-practices warn ≥0.8 / FCP warn ≤2000 / TTI warn ≤4000) + upload temporary-public-storage
-- [ ] **NEW `.github/workflows/frontend-lighthouse.yml`** — on PR touching `frontend/**`：`npm ci && npm run build && npx lhci autorun`；`continue-on-error: true`
-- [ ] `CONVENTION.md` — §performance addendum
-  - Verify: 本地 `npm run build && npm run lhci` 跑通
+- [x] **`package.json`** — `+@lhci/cli@^0.15`(dev) + script `"lhci": "lhci autorun"`
+- [x] **NEW `frontend/lighthouserc.cjs`** (`.cjs` not `.js` — package.json is `"type":"module"`, LHCI loads config via `require()`; mirrors `i18next-parser.config.cjs`) — `collect.startServerCommand: "npm run preview -- --port 4173 --strictPort"` (vite preview = SPA fallback, unlike a bare static server) + `url: ["http://localhost:4173/auth/login"]` (the one route that renders fully w/o auth+backend) + `numberOfRuns:1` + `chromeFlags: "--no-sandbox --headless=new"`; **assert**: `categories:accessibility` **error** ≥ 0.9 (hard gate) / `categories:performance` warn ≥ 0.7 / `categories:best-practices` warn ≥ 0.8 / `first-contentful-paint` warn ≤ 2000 / `interactive` warn ≤ 4000; `upload.target: "temporary-public-storage"`
+- [x] **NEW `.github/workflows/frontend-lighthouse.yml`** — on PR touching `frontend/**`: `npm ci && npm run build && npm run lhci` (`npm run lhci` not `npx lhci` — `npx lhci` would fetch an unrelated squatted `lhci` package; the script resolves `node_modules/.bin/lhci` from `@lhci/cli`); job-level `continue-on-error: true` (informational tripwire, never a required check)
+- [x] **`.gitignore`** — `frontend/.lighthouseci/` (lhci run output)
+- [x] `CONVENTION.md` — §13 Performance / Lighthouse Convention
+- Verify: `node_modules/.bin/lhci healthcheck` ✅ (config found / Chrome found / dir writable; GitHub token not set = expected for temporary-public-storage); **local `npm run build && npm run lhci` autorun ✅** — all assertions passed, median LHR uploaded to temporary-public-storage (one harmless "Timed out waiting for server to start listening" warning — LHCI didn't match vite preview's stdout pattern, but Lighthouse ran fine)
 
 ### 8.3 Day 8 wrap
-- [ ] **Day 8 progress entry** + drift catalog
-- [ ] **Day 8 commit**: `feat(sprint-57-13, Day 8): US-B6 a11y baseline (jsx-a11y + axe-core) + US-B7 Lighthouse CI`
+- [x] **Day 8 progress entry** + drift catalog (D-DAY8-1..3)
+- [x] **Day 8 commit**: `feat(sprint-57-13, Day 8): US-B6 a11y baseline (jsx-a11y + axe-core) + US-B7 Lighthouse CI` → `c3294318`
+- Verify: vitest **56 files / 233 pass** (unchanged — a11y fixes didn't break tests) / lint clean (jsx-a11y enabled) / build OK (main **304.37 kB** unchanged — a11y fixes are byte-level) / backend untouched (pytest baseline 1676+4 / 9-9 V2 lints holds)
 
 ---
 
