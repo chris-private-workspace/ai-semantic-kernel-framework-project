@@ -58,9 +58,10 @@ Description:
 
 Created: 2026-05-10 (Sprint 57.14 drafting; closes Sprint 57.13 carryover AD-Frontend-E2E-Sweep)
 Last Modified: 2026-05-10
-Status: Draft
+Status: Closed (Day 3 closeout — 4/4 USs done; e2e suite 40 pass / 7 opt-in skip; visual CI mechanism landed; ratio ~1.05 in band; see retrospective.md)
 
 Modification History (newest-first):
+    - 2026-05-10: Day 3 closeout — sprint done; calibration `frontend-e2e-sweep` 0.50 1st app ratio ~1.05 KEEP; carryover in retrospective.md Q4
     - 2026-05-10: Initial creation (Sprint 57.14 — AD-Frontend-E2E-Sweep; ~4 USs / Day 0-3)
 
 Related:

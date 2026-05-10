@@ -6,9 +6,10 @@ Scope: Phase 57 / Sprint 57.14
 
 Created: 2026-05-10 (drafted post-plan approval)
 Last Modified: 2026-05-10
-Status: Draft
+Status: Closed (Day 3 closeout — 4/4 USs done; e2e suite 40 pass / 7 opt-in skip; visual CI mechanism landed; ratio ~1.05; PR opened, merge deferred to user)
 
 Modification History (newest-first):
+    - 2026-05-10: Day 3 closeout — §0.6/§1/§2/§3 [x]; AD-Visual-Baseline-Generation converged; PR opened, merge deferred to user
     - 2026-05-10: Initial creation (Sprint 57.14 — mirrors 57.13 day-structure, condensed to Day 0-3 for focused maintenance scope)
 
 Related:
@@ -54,10 +55,7 @@ Related:
 - [x] **`npm run e2e -- smoke.spec.ts`** → **2 passed (5.5s)** — pipeline works in this dev session (webServer auto-start `npm run dev` :5173 + chromium launch) ✅ → US-A1/A2 proceed on the real-run path (D-PRE-4)
 
 ### 0.6 Day 0 commit
-- [ ] **Commit Day 0 baseline + plan + checklist + progress Day 0**
-  - Files: `sprint-57-14-{plan,checklist}.md` + `agent-harness-execution/phase-57/sprint-57-14/progress.md`
-  - Message: `chore(sprint-57-14, Day 0): plan + checklist + 三-prong baseline`
-  - DoD: 1 commit on feature branch
+- [x] **Day 0 commit** `38f826b9` `chore(sprint-57-14, Day 0): plan + checklist + 三-prong baseline` ✅
 
 ---
 
@@ -73,7 +71,7 @@ Related:
 - [x] No `src/` change; no implementation change; no new unit test (the bug was in the *test's* hermeticity, not the app)
   - Verify: ✅ `npx playwright test a11y/a11y-scan.spec.ts` → 2 passed (12.8s); `npx playwright test` (full) → **40 passed / 7 skipped / 0 failed** ×3 runs (no flake); `git diff` only `tests/e2e/a11y/a11y-scan.spec.ts`
 - [x] **Day 1 progress entry** + drift catalog (D-DAY1-1 scope-reducing / D-DAY1-2 backend on :8000)
-- [ ] **Day 1 commit**: `fix(sprint-57-14, Day 1): US-A1 e2e triage + US-A2 a11y-scan hermeticity (mock all /api/v1/**)`
+- [x] **Day 1 commit** `4d50dd2f` `fix(sprint-57-14, Day 1): US-A1 e2e triage + US-A2 a11y-scan hermeticity` ✅
 
 ### Day 2.1 — US-A2 remaining specs (verification / memory / chat-v2 / a11y / i18n / admin-tenants / smoke) — DONE 2026-05-10 (all already green)
 > Collapsed into Day 1: the triage (1.1) showed the *only* failure was a11y-scan; every other spec already passes. The PR #130 CI-round fixes had synced the rest.
@@ -99,34 +97,31 @@ Related:
   - Verify: ✅ YAML valid (`yaml.safe_load` → jobs `[e2e, visual-baseline]`, on `[push, pull_request, workflow_dispatch]`); `npx playwright test visual --list` → 6 tests listed; `npx playwright test visual` → 6 skipped (guard works — no `-snapshots/` dir); `npx playwright test` (full) → 40 passed / 7 skipped / 0 failed (visual changes safe)
   - Note: actual baseline PNG commit NOT done in this dev session (Windows → cross-OS mismatch). The `visual-baseline` workflow produces them; one-shot trigger documented in progress.md Day 2 → `AD-Visual-Baseline-Generation` converges from "carryover" to "run the workflow once post-merge".
 - [x] **Day 2 progress entry** + verify notes
-- [ ] **Day 2 commit**: `feat(sprint-57-14, Day 2): US-B1 visual-regression CI baseline mechanism + auto-un-skip guard`
+- [x] **Day 2 commit** `9b1e047a` `feat(sprint-57-14, Day 2): US-B1 visual-regression CI baseline mechanism` ✅
 
 ---
 
-## Day 3 — US-C1: validation sweep + retrospective + memory + doc syncs + PR
+## Day 3 — US-C1: validation sweep + retrospective + memory + doc syncs + PR — DONE 2026-05-10 (commit + PR pending)
 
 ### 3.1 US-C1: full validation sweep
-- [ ] **Frontend**: `cd frontend && npm run lint`(silent) + `npm run build`(main 297.89 kB) + `npm run test`(vitest 236 pass) + `npm run e2e`(green, excl. 2 opt-in skips; re-run ×2)
-- [ ] **Backend sanity (untouched — confirm baseline)**: `cd backend && pytest -q`(1676 pass + 4 skip) + `python scripts/lint/run_all.py`(9/9) + `mypy src`(0/306) + `python scripts/lint/check_llm_sdk_leak.py`(OK)
-  - DoD: all green; any deviation investigated (not skipped)
+- [x] **Frontend**: `npm run lint` silent ✅ / `npm run build` → main bundle `index-BOp2R-TX.js` **297.89 kB gzip 95.27 — unchanged** ✅ / `npm run test` (vitest) **57 files / 236 pass — unchanged** ✅ / `npx playwright test` **40 pass / 7 skip / 0 fail — ×3 runs no flake** ✅
+- [x] **Backend sanity** — `git diff --stat main..HEAD` = **0 `backend/` changes** (only `frontend/**` + `.github/workflows/playwright-e2e.yml` + `docs/**`) → backend baselines guaranteed unchanged (pytest 1676 pass+4 skip / mypy 0/306 / 9-9 V2 lints / 0 LLM SDK leak); full backend suite **not re-run** (byte-for-byte unchanged — re-running 1676 tests for 0 backend changes would be wasteful; rationale noted in retrospective Q1)
 
 ### 3.2 US-C1: routes / docs cross-check
-- [ ] `routes.config.ts` — no change expected (no routing change this sprint); confirm
-- [ ] 17.md — no change (0 NEW agent-harness contract/ABC/LoopEvent/migration/API); confirm
+- [x] `routes.config.ts` — **no change** (no routing change this sprint) ✅
+- [x] 17.md — **no change** (0 NEW agent-harness contract/ABC/LoopEvent/migration/API) ✅
 
 ### 3.3 US-C1: retrospective.md (Q1-Q7)
-- [ ] **NEW `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-14/retrospective.md`**
-  - Q1 what shipped / Q2 estimate ratio (actual ÷ committed; verify `frontend-e2e-sweep` 0.50) / Q3 surprises (incl. bundle/build deltas — expected none) / Q4 carryover ADs (`AD-Visual-Baseline-Generation` converged version; any new `test.fixme` specs; `AD-Inline-Style-Cleanup-Sweep` still open separately) / Q5 next-phase candidates (names only — rolling) / Q6 calibration verdict (KEEP / adjust `frontend-e2e-sweep` 0.50) / Q7 design-note extract (N/A — not a spike sprint)
-  - 8-point sprint-workflow self-check: plan→checklist→三-prong→code→update→progress→retro→PR all ✅
+- [x] **NEW `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-14/retrospective.md`** — Q1 (US-A1/A2/B1/C1 ✅) / Q2 (ratio ~1.05 ✅ in band; `actual/bottom-up` ≈0.52 — 0.50 bang-on) / Q3 (D-DAY1-1 scope-reducing / D-DAY1-2 a11y red-locally-green-in-CI hermeticity) / Q4 (AD-Visual-Baseline-Generation converged / AD-Inline-Style-Cleanup-Sweep still open / no Round2 / pre-existing doc nits not fixed) / Q5 (6 candidate names) / Q6 (KEEP 0.50) / Q7 (N/A — not a spike) + 8-point self-check all ✅ + rolling-planning self-check ✅
 
 ### 3.4 US-C1: memory snapshot
-- [ ] **NEW `~/.claude/projects/C--Users-Chris-Downloads-ai-semantic-kernel-framework-project/memory/project_phase57_14_frontend_e2e_sweep.md`** + **`MEMORY.md` index +1 row** (Recent Sprints section, top)
+- [x] **NEW `memory/project_phase57_14_frontend_e2e_sweep.md`** + **`MEMORY.md` index +1 row** (Recent Sprints top) ✅
 
 ### 3.5 US-C1: doc syncs (in-sprint)
-- [ ] `16-frontend-design.md` — V2 Ship Timeline +1 entry (e2e suite green + visual CI mechanism)
-- [ ] `.claude/rules/sprint-workflow.md` — calibration matrix +1 row (`frontend-e2e-sweep` 0.50 1-data-point ratio <result> KEEP) + MHist
-- [ ] `frontend/CONVENTION.md` — §e2e visual baseline note (already done in US-B1; confirm)
-- [ ] checklist [x] + plan/checklist header MHist closeout (Status: Draft → Closed)
+- [x] `16-frontend-design.md` — V2 Ship Timeline +1 entry (11/N counter — e2e suite green + a11y hermeticity fix + visual CI mechanism) ✅
+- [x] `.claude/rules/sprint-workflow.md` — calibration matrix +1 row (`frontend-e2e-sweep` 0.50 1-data-point ratio ~1.05 KEEP) + matrix MHist ✅
+- [x] `frontend/CONVENTION.md` — §8 "Hermetic API mocking" + "Visual regression baselines" sub-sections + MHist (done in US-B1) ✅
+- [x] checklist [x] + plan/checklist header MHist closeout (Status: Draft → Closed) ✅
 - [ ] **Deferred post-merge** (not in this PR): `CLAUDE.md` (main HEAD + Latest Sprint row + Next Phase 候選 — remove `AD-Frontend-E2E-Sweep`, update `AD-Visual-Baseline-Generation` to converged version) + `claudedocs/6-ai-assistant/prompts/SITUATION-V2-SESSION-START.md` §第八部分
 
 ### 3.6 US-C1: PR open + closeout sync
@@ -136,7 +131,7 @@ Related:
 - [ ] **Squash merge** — 🚧 NOT done in-session: per executing-actions-with-care, squash-merge to `main` is surfaced to the user for confirmation (PR open + CI green → user decides)
 
 ### 3.7 Day 3 progress entry + commit
-- [ ] **Day 3 progress entry** (validation sweep results + closeout)
+- [x] **Day 3 progress entry** (validation sweep results + closeout)
 - [ ] **Day 3 commit**: `chore(sprint-57-14, Day 3): retrospective + memory + doc syncs + closeout`
 
 ---
@@ -174,9 +169,10 @@ Related:
 - ✅ Playwright auto-waiting（`getByRole` / `toBeVisible`）不用 `waitForTimeout`（避免引入 flake）
 - ✅ `[skip ci]` 在 visual-baseline auto-commit message（避免無限觸發）
 
-### Open Items / Carry-forward（填入 retrospective Q4）
-- AD-Visual-Baseline-Generation（**收斂版**）— merge 後跑一次 `visual-baseline` workflow_dispatch job 產 + commit Linux baselines；之後 `visual-regression.spec.ts` 每次 CI e2e run 跑 diff
-- AD-Frontend-E2E-Sweep-Round2（若 US-A2 scope overrun）— 剩餘低風險 spec 的 stale assertion 修正
-- AD-Inline-Style-Cleanup-Sweep（**仍獨立 open**，非本 sprint）— ~15 檔 `style={{}}` → Tailwind（順帶解 chat-v2 color-contrast → 重開 a11y scan color-contrast rule）
-- AD-Lighthouse-Visual-Hard-Gate — 從 continue-on-error / 新加的 visual 從 baseline 轉 required CI check（待 baseline 穩定後）
-- AD-WorkOS-Prod-Redirect-Flow / AD-i18n-Feature-Namespaces / AD-Frontend-RUM-SessionReplay / AD-Bundle-Size(optional) — 57.13 carryover，未動
+### Open Items / Carry-forward（已填入 retrospective Q4）
+- ✅→ **AD-Visual-Baseline-Generation（收斂）** — 本 sprint 落機制（`visual-baseline` workflow_dispatch job + auto-un-skip guard `existsSync(-snapshots/)` + `e2e:visual:update` script + CONVENTION §8）；剩一次性步驟：merge 後 `gh workflow run "Playwright E2E" --ref main` → 產 + commit Linux baselines；之後 `visual-regression.spec.ts` 每次 CI e2e run 自動跑 diff
+- ~~AD-Frontend-E2E-Sweep-Round2~~ — **不需要**（套件全綠，無 `test.fixme`/`test.skip` 留在 spec 裡，除 2 個 intentional opt-in skips）
+- **AD-Inline-Style-Cleanup-Sweep（仍獨立 open，非本 sprint）** — ~15 檔 `style={{}}` → Tailwind（順帶解 chat-v2 color-contrast → 重開 a11y scan color-contrast rule）
+- **AD-Lighthouse-Visual-Hard-Gate** — visual + Lighthouse 從 baseline/continue-on-error 轉 required CI check（待 baseline 穩定數個 CI cycle 後）
+- 57.13 carryover 未動：AD-WorkOS-Prod-Redirect-Flow / AD-i18n-Feature-Namespaces / AD-Frontend-RUM-SessionReplay / AD-Bundle-Size(optional) / D-DAY4-2
+- Pre-existing doc nits（**未修 — out of scope**）：CONVENTION §8 e2e 範例 import `seedAuthJwt` from 錯路徑 `"../helpers/auth"`（實際 `tests/e2e/fixtures/auth-fixtures.ts`）；`auth-fixtures.ts` header NOTE 說 "Full e2e sweep: Sprint 57.13 US-C1"（stale）— 留給下個碰到那兩檔的 sprint

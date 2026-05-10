@@ -122,6 +122,39 @@ gh workflow run "Playwright E2E" --ref main
 ```
 
 ### Day 2 commit
-- (pending) `feat(sprint-57-14, Day 2): US-B1 visual-regression CI baseline mechanism + auto-un-skip guard`
+- `9b1e047a` `feat(sprint-57-14, Day 2): US-B1 visual-regression CI baseline mechanism` ✅
 
 ---
+
+## Day 3 — 2026-05-10 — US-C1 closeout
+
+### Validation sweep
+- **Frontend**: `npm run lint` → silent ✅ / `npm run build` → main bundle `index-BOp2R-TX.js` **297.89 kB gzip 95.27 — unchanged** vs baseline ✅ / `npm run test` (vitest) → **57 files / 236 pass — unchanged** ✅ / `npx playwright test` → **40 pass / 7 skip / 0 fail** (×3 runs, no flake) ✅
+- **Backend**: `git diff --stat main..HEAD` → **0 `backend/` changes** (only `frontend/**` + `.github/workflows/playwright-e2e.yml` + `docs/**`) → backend baselines guaranteed unchanged (pytest 1676 pass+4 skip / mypy 0/306 / 9-9 V2 lints / 0 LLM SDK leak); full backend suite **not re-run** (byte-for-byte unchanged — re-running 1676 tests for 0 backend changes would be wasteful)
+- **routes/17.md cross-check**: no routing change → `routes.config.ts` unchanged ✅; 0 NEW agent-harness contract/ABC/LoopEvent/migration/API → 17.md unchanged ✅
+
+### Closeout artifacts
+- `retrospective.md` — Q1-Q7 + 8-point sprint-workflow self-check + rolling-planning self-check ✅
+- memory snapshot `project_phase57_14_frontend_e2e_sweep.md` + `MEMORY.md` index +1 row ✅
+- doc syncs: `16-frontend-design.md` V2 Ship Timeline +1 (11/N) ✅ / `.claude/rules/sprint-workflow.md` calibration matrix +1 row (`frontend-e2e-sweep` 0.50 ratio ~1.05 KEEP) + matrix MHist ✅ / `CONVENTION.md` §8 (done in US-B1) ✅ / checklist [x] + plan/checklist Status → Closed + MHist ✅
+- deferred post-merge: `CLAUDE.md` (main HEAD + Latest Sprint + Next Phase 候選 — remove AD-Frontend-E2E-Sweep, AD-Visual-Baseline-Generation converged) + `SITUATION-V2-SESSION-START.md` §第八部分
+
+### PR
+- `git push -u origin feature/sprint-57-14-frontend-e2e-sweep` + `gh pr create` (pending — Day 3 commit first)
+- Squash merge 🚧 NOT in-session — surfaced to user (PR open + CI green → user decides)
+
+### Day 3 commit
+- (pending) `chore(sprint-57-14, Day 3): retrospective + memory + doc syncs + closeout`
+
+---
+
+## Summary
+
+| | Value |
+|--|-------|
+| USs | 4/4 done (US-A1 / US-A2 / US-B1 / US-C1) |
+| e2e suite | **40 pass / 7 skip / 0 fail** (7 skip = 1 connectivity + 6 visual-regression opt-in; was: never run green) |
+| Fix scope | 1 file (`a11y-scan.spec.ts` hermeticity) + 4 files (visual CI mechanism: `playwright-e2e.yml` / `visual-regression.spec.ts` / `package.json` / `CONVENTION.md`) — 0 `src/` change, 0 `backend/` change |
+| Calibration | `frontend-e2e-sweep` HYBRID 0.50 1st app → ratio ~1.05 ✅ in band → KEEP |
+| Commits | `38f826b9` D0 / `4d50dd2f` D1 / `9b1e047a` D2 / D3 pending |
+| Carryover | AD-Visual-Baseline-Generation (converged — run workflow once post-merge) / AD-Inline-Style-Cleanup-Sweep (still open, separate) / AD-Lighthouse-Visual-Hard-Gate |
