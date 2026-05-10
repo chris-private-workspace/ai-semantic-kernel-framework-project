@@ -9,6 +9,7 @@
 **Status**: Active
 
 > **Modification History (newest-first)**
+> - 2026-05-10: Sprint 57.14 post-merge — §8 visual-baseline note: job opens a PR (was: direct push to protected main; FIX-008)
 > - 2026-05-10: Sprint 57.14 — §8 add "hermetic API mocking" + "visual regression baselines" sub-sections (AD-Frontend-E2E-Sweep / AD-Visual-Baseline-Generation)
 > - 2026-05-10: Sprint 57.13 — add §10 design-system / §11 i18n / §12 a11y / §13 performance
 > - 2026-05-09: Initial creation (Sprint 57.10 — closes convention drift identified by user 2026-05-09 reality check)
@@ -641,11 +642,13 @@ differ across OSes, so Windows/macOS-generated PNGs would all mismatch in CI.
 - The spec **auto-skips** until the `-snapshots/` dir is committed (its guard does
   `existsSync(...)`), so push/PR e2e is never red on a missing baseline. Once the dir
   lands, the spec runs as part of the regular `e2e` job on every push/PR.
-- To **bootstrap or regenerate** baselines: run the **`visual-baseline` job** in
+- To **regenerate** baselines (after a UI change that legitimately moves the
+  screenshots): run the **`visual-baseline` job** in
   `.github/workflows/playwright-e2e.yml` (GitHub → Actions → "Playwright E2E" → Run
   workflow). It runs `RUN_VISUAL=1 playwright test visual --update-snapshots` on
-  `ubuntu-latest` and commits the `-snapshots/` dir back to the branch (`[skip ci]`).
-  Re-run it whenever a UI change legitimately moves the screenshots.
+  `ubuntu-latest` and opens a `chore/visual-baselines-<run_id>` PR with the updated
+  `-snapshots/` dir (a human reviews/merges it — direct push to protected `main` is
+  rejected; the run also uploads the PNGs as a `visual-baselines` artifact as a fallback).
 - Locally on **Linux/WSL only** you can preview with `npm run e2e:visual:update` (the
   output PNGs match CI). **Do NOT commit Windows/macOS-generated baselines.**
 - `.gitattributes` marks `*.png binary` so diffs aren't line-mangled.

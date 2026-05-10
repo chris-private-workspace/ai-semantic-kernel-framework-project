@@ -14,18 +14,20 @@
  *     6. /admin-tenants (mocked tenants list)
  *   All data + /auth/me are page.route()-mocked so the renders are deterministic.
  *
- *   AUTO-SKIPPED UNTIL BASELINES EXIST — the guard runs iff either (a) the
- *   `visual-regression.spec.ts-snapshots/` dir is committed (Playwright's default
- *   baseline location), or (b) `RUN_VISUAL=1` is set (the regeneration path).
- *   Screenshot baselines (`*-snapshots/*.png`) must be generated on the Linux
- *   runner, NOT a dev machine — font rendering / DPI differ, so locally-made
- *   baselines would all mismatch. To bootstrap (or regenerate after a UI change
- *   that legitimately moves the screenshots): run the `visual-baseline` job in
+ *   RUNS ONLY ON THE LINUX RUNNER (or with RUN_VISUAL=1) — the guard runs iff
+ *   either (a) the committed `visual-regression.spec.ts-snapshots/*-chromium-linux.png`
+ *   baselines exist AND `process.platform === "linux"` (= the CI runner), or
+ *   (b) `RUN_VISUAL=1` is set (the regeneration path / WSL). Screenshot baselines
+ *   must be generated on the Linux runner, NOT a dev machine — font rendering /
+ *   DPI differ, so locally-made (Windows/macOS) baselines would all mismatch; only
+ *   the linux ones are committed, so a Windows/macOS dev run skips this spec. To regenerate after a UI change that
+ *   legitimately moves the screenshots: run the `visual-baseline` job in
  *   .github/workflows/playwright-e2e.yml (Actions → "Playwright E2E" → Run
  *   workflow) — it runs `RUN_VISUAL=1 playwright test visual --update-snapshots`
- *   on ubuntu-latest and commits the `-snapshots/` dir back; from then on this
- *   spec runs as part of the regular `e2e` job on every push/PR. Tracked:
- *   AD-Visual-Baseline-Generation (Sprint 57.14 landed the mechanism).
+ *   on ubuntu-latest and opens a `chore/visual-baselines-<run_id>` PR with the
+ *   updated `-snapshots/` dir; merge it and this spec keeps running on every
+ *   push/PR. Tracked: AD-Visual-Baseline-Generation (Sprint 57.14 landed the
+ *   mechanism; FIX-007 fixed the `git add` glob, FIX-008 the protected-main push).
  *
  *   Mock pattern mirrors cost_dashboard.spec.ts (page.route() browser-layer).
  *
@@ -33,6 +35,7 @@
  * Last Modified: 2026-05-10
  *
  * Modification History:
+ *   - 2026-05-10: Sprint 57.14 post-merge — visual-baseline job opens a PR (was: direct push to protected main, FIX-008); doc prose synced
  *   - 2026-05-10: Sprint 57.14 US-B1 — skip guard auto-un-skips once the -snapshots/ dir is committed (or RUN_VISUAL); CONVENTION.md §e2e + the visual-baseline CI job own the regeneration
  *   - 2026-05-10: Initial creation (Sprint 57.13 Day 9)
  */
@@ -43,12 +46,17 @@ import { fileURLToPath } from "node:url";
 
 import { expect, test, type Page } from "@playwright/test";
 
-// Playwright stores baselines next to the spec in `<spec-filename>-snapshots/`.
-// Once that dir is committed (via the `visual-baseline` CI job), this spec runs;
-// until then it skips (so push/PR e2e isn't red on a missing baseline).
+// Playwright stores baselines next to the spec in `<spec-filename>-snapshots/`
+// with OS-tagged names (`*-chromium-linux.png`). We only commit the *linux*
+// baselines (generated on the CI Linux runner — see the `visual-baseline` job),
+// so this spec only runs when (a) those baselines exist AND we're on linux
+// (= the CI runner; a Windows/macOS dev would have no matching `*-win32.png` and
+// the test would write+fail), or (b) `RUN_VISUAL=1` is set explicitly (WSL /
+// the regeneration job). Until the linux baselines land it skips, so push/PR
+// e2e is never red on a missing baseline.
 const SNAPSHOTS_DIR = join(dirname(fileURLToPath(import.meta.url)), "visual-regression.spec.ts-snapshots");
-const HAS_BASELINES = existsSync(SNAPSHOTS_DIR);
-const RUN_VISUAL = HAS_BASELINES || Boolean(process.env.RUN_VISUAL);
+const HAS_LINUX_BASELINES = existsSync(SNAPSHOTS_DIR) && process.platform === "linux";
+const RUN_VISUAL = HAS_LINUX_BASELINES || Boolean(process.env.RUN_VISUAL);
 
 const TENANT_ID = "00000000-0000-4000-8000-000000000099";
 
@@ -69,9 +77,11 @@ async function fulfillJson(page: Page, glob: string, body: unknown): Promise<voi
 test.describe("Sprint 57.13 US-B8 — visual regression", () => {
   test.skip(
     !RUN_VISUAL,
-    "Visual baselines not committed yet — run the `visual-baseline` workflow_dispatch job " +
-      "(.github/workflows/playwright-e2e.yml) to generate them on Linux + commit the -snapshots/ dir; " +
-      "then this spec runs on every push/PR. See AD-Visual-Baseline-Generation + frontend/CONVENTION.md §e2e.",
+    "Visual regression: skipped here. Runs on the CI Linux runner (where the committed " +
+      "`*-chromium-linux.png` baselines match). Locally on Windows/macOS it's skipped (the baselines " +
+      "are linux-only); use `RUN_VISUAL=1 npm run e2e -- visual` on WSL/Linux. To regenerate baselines " +
+      "after a UI change: run the `visual-baseline` workflow_dispatch job (it opens a PR). " +
+      "See AD-Visual-Baseline-Generation + frontend/CONVENTION.md §8.",
   );
 
   test.beforeEach(async ({ page }) => {
