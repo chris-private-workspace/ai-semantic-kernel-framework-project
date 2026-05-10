@@ -121,30 +121,29 @@ Related:
 ## Day 2 — US-A2 (4-page gate) + US-A3 (cross-tenant) + US-A4 (dev-login)
 
 ### 2.1 US-A2: 4-page auth gate + tenant-from-authStore
-- [ ] **`pages/{cost-dashboard,sla-dashboard,admin-tenants,tenant-settings}/index.tsx`** — 加 `authStore.status` gate (同 US-A1 pattern)
-- [ ] **cost/sla/tenant-settings** — `tenant_id` 改從 `authStore.tenant.id`（移除 URL `?tenant_id=` / hardcoded）
-- [ ] **admin-tenants** — gate + 無 platform_admin role → `<EmptyState>` "需要平台管理員權限"（stub until B2）
-- [ ] `CONVENTION.md` — "所有 active page 必須 auth-gated"
-  - Verify: `tests/unit/pages/authGate.test.tsx`（補這 4 頁）
+- [x] **`pages/{cost-dashboard,sla-dashboard,admin-tenants,tenant-settings}/index.tsx`** — wrap in `<RequireAuth>` (shared wrapper from US-A1; was the per-page inline gate option in plan)
+- [x] **cost/sla/tenant-settings** — `tenant_id` 改從 `useAuthStore((s)=>s.tenant?.id)`（移除 URL `?tenant_id=`；description copy reworded "for your tenant")
+- [x] **admin-tenants** — `<RequireAuth>` + 無 platform-admin role → "需要平台管理員權限" notice (B2 will style); `<AdminTenantsContent>` split so the data hook only fires for platform admins
+- [x] `CONVENTION.md` §1 — rewrite Page Architecture Pattern for `<RequireAuth>` + add "all active pages must be auth-gated" + role-gate + tenant-from-session rules
+  - Verify: ✅ `tests/unit/pages/adminTenantsRoleGate.test.tsx` (3 — replaces planned per-page authGate.test.tsx; the `<RequireAuth>` wrap itself is covered by Day-1 `RequireAuth.test.tsx`) + `migrate.test.tsx` description matcher updated; npm lint clean / build OK / vitest 183
 
 ### 2.2 US-A3: backend cross-tenant hardening
-- [ ] **NEW `require_tenant_match_or_platform_admin(tenant_id, request)` dependency** (in `tenant_context.py` 或 `api/_deps.py`)
-- [ ] **`api/v1/admin/{tenants,cost_summary,sla_reports}.py`** — `{tenant_id}` path endpoints 套用；`GET /admin/tenants` (list) 保持 platform-admin only
-- [ ] 確認 RLS：若用裸 session 補 `SET LOCAL app.tenant_id`
-  - Verify: `pytest tests/integration/api/test_admin_cross_tenant.py -v`
+- [x] **NEW `require_tenant_match_or_platform_admin(tenant_id, request)` dep** (in `platform_layer/identity/auth.py` next to `require_admin_platform_role`): platform admin → any tenant; else only own JWT tenant_id (403); no JWT → 401; roles not list → 500
+- [x] **`api/v1/admin/{tenants,cost_summary,sla_reports}.py`** — applied to the 3 `{tenant_id}` **read** endpoints (`GET /tenants/{tenant_id}`, `GET .../cost-summary`, `GET .../sla-report`); mutating ones (POST /tenants, PATCH /{id}, POST onboarding, GET onboarding-status, GET /tenants list) stay `require_admin_platform_role`
+- [x] RLS: read endpoints query via `get_db_session` filtering by `tenant_id` explicitly (consistent with existing); `/auth/me` uses `get_db_session_with_tenant` (US-A1) — no裸 session left ungated
+  - Verify: ✅ `pytest tests/integration/api/test_admin_cross_tenant.py` (6) + test_admin_{cost_summary,sla_reports,tenant_get}.py updated; full pytest 1668 passed + 4 skipped
 
 ### 2.3 US-A4: dev fake-login endpoint
-- [ ] **`api/v1/auth.py` — `POST /auth/dev-login?tenant_code=&email=`** (`Settings.env=="prod"` → 404；upsert dev tenant + dev user；JWT roles `["user","admin","platform_admin"]`；set v2_jwt cookie + return `{user,tenant,roles}` JSON)
-  - Verify: `pytest tests/integration/api/test_dev_login.py -v`（env=dev 200 + cookie；env=prod 404）
+- [x] **`api/v1/auth.py` — `POST /auth/dev-login?tenant_code=&email=`** (`Settings.env in {production,prod}` → 404；auto-creates dev tenant + upserts dev user;JWT roles `["user","admin","platform_admin"]`;set v2_jwt cookie + return `{user,tenant,roles}` JSON;path already in middleware EXEMPT)
+  - Verify: ✅ `pytest tests/integration/api/test_dev_login.py` (3 — dev 200+cookie+rows+JWT / idempotent / prod 404)
 
 ### 2.4 US-A4: frontend DevLoginSection
-- [ ] **`pages/auth/login/index.tsx`** — `{import.meta.env.DEV && <DevLoginSection/>}`：tenant_code(default "dev") + email(default "dev@local") form → POST → authStore 設 authenticated → navigate(consumePostLoginRedirect())
-  - 確認 prod build (`import.meta.env.DEV===false`) 不 render
-  - Verify: `tests/unit/pages/auth/login.test.tsx`（DEV → DevLoginSection 出現）
+- [x] **`pages/auth/login/index.tsx`** — rewrote: WorkOS button + `{import.meta.env.DEV && <DevLoginSection/>}`(tenant_code default "dev" + email default "dev@local" form → POST /auth/dev-login → `authStore.bootstrap()` → `navigate(consumePostLoginRedirect())`;404 → "disabled in this environment" message);prod build doesn't render it. NEW `src/vite-env.d.ts` (`/// <reference types="vite/client" />` so `import.meta.env.DEV` type-checks under tsc).
+  - Verify: ✅ `tests/unit/pages/auth/login.test.tsx` (4 — WorkOS button / DEV section renders / dev-login→bootstrap→authenticated / 404 message)
 
 ### 2.5 Day 2 wrap
-- [ ] **Day 2 progress entry** + drift catalog
-- [ ] **Day 2 commit**: `feat(sprint-57-13, Day 2): US-A2 4-page auth gate + US-A3 cross-tenant hardening + US-A4 dev-login`
+- [x] **Day 2 progress entry** + drift catalog (see progress.md Day 2)
+- [x] **Day 2 commits** (3, one per US): `1ada31fb` US-A2 / `eb6f0c1e` US-A4 / `77d238bd` US-A3 — incremental per RULES (logical units)
 
 ---
 

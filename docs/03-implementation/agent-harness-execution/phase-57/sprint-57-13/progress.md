@@ -91,9 +91,42 @@
 
 ---
 
-## Remaining for Day 2-9
+## Day 2 Accomplishments (2026-05-10) — US-A2 (4-page gate) + US-A3 (cross-tenant) + US-A4 (dev-login)
 
-- [ ] Day 2: US-A2 (4-page gate + tenant-from-authStore) + US-A3 (cross-tenant hardening) + US-A4 (dev-login)
+3 commits, one per US: `1ada31fb` (US-A2) / `eb6f0c1e` (US-A4) / `77d238bd` (US-A3).
+
+### US-A2 — 4-page auth gate + tenant-from-session (commit `1ada31fb`)
+- `pages/{cost-dashboard,sla-dashboard,tenant-settings,admin-tenants}/index.tsx` — wrapped in `<RequireAuth>` (these 4 were the only `active:true` pages still ungated). admin-tenants additionally role-gates: `useAuthStore((s)=>s.roles)` ∩ {admin, platform_admin} — if empty, renders a "需要平台管理員權限" notice instead of mounting `useAdminTenants` (which would just 403); data children moved into `<AdminTenantsContent>` so the hook only runs when the role check passes.
+- `features/{cost-dashboard,sla-dashboard,tenant-settings}/components/{CostOverview,SLAOverview,TenantSettingsView}.tsx` — `tenantId` now `useAuthStore((s)=>s.tenant?.id ?? "")` instead of `useSearchParams().get("tenant_id")`. Inside `<RequireAuth>`, `tenant` is always set. Description copy reworded ("for your tenant"; dropped the "Backend enforces admin-platform role" / "Missing ?tenant_id=" lines).
+- `tests/e2e/fixtures/auth-fixtures.ts` — `seedAuthJwt`/`clearAuthJwt` now `page.route` the GET /api/v1/auth/me mock (200 fake admin payload / 401) instead of seeding localStorage — the auth gate is authStore-based now. Added `seedAuthJwt(page, {tenantId, tenantCode, roles})` opts + exported `E2E_TENANT_ID`. **The individual e2e specs (chat/governance/verification/loop-debug/memory + cost/sla/tenant-settings/admin-tenants) are not re-run/updated this turn — the full Playwright sweep is US-C1 (Day 9)**; some will need their per-tenant endpoint mocks pointed at the seeded tenant id.
+- `CONVENTION.md` §1 — rewrote "Page Architecture Pattern" for the `<RequireAuth>` + `<AppShellV2>` composition; added "every `active:true` route MUST be auth-gated", the role-gate pattern (data hooks only mount past the role check), the tenant-from-session rule, and the "RequireAuth is the outermost wrapper" ordering rule.
+- NEW `tests/unit/pages/adminTenantsRoleGate.test.tsx` (3 — non-platform-admin → notice / platform_admin → table / "admin" also counts). `tests/unit/cost-dashboard/migrate.test.tsx` — description-text matcher updated to the new copy.
+
+### US-A4 — dev fake-login (commit `eb6f0c1e`)
+- `api/v1/auth.py` — NEW `POST /api/v1/auth/dev-login?tenant_code=&email=`. `Settings.env in {production, prod}` → 404 (route invisible in prod, so safe to ship). Else: resolve-or-auto-create a dev Tenant by code (`display_name="Dev Tenant (<code>)"`), upsert a dev User (`external_id=dev:<email>`), issue a `v2_jwt` cookie (roles `[user, admin, platform_admin]` so every page renders), return `AuthMeResponse {user,tenant,roles}` JSON (no 302 — the SPA navigates). Path already in `EXEMPT_PATH_PREFIXES` (US-A1).
+- `pages/auth/login/index.tsx` — rewrote: WorkOS login button (`?redirect_to=` carried through; `?error=` surfaced) + DEV-only `<DevLoginSection>` (tenant_code/email form → POST /auth/dev-login → `authStore.bootstrap()` (the dev-login cookie authenticates `/auth/me`) → `navigate(consumePostLoginRedirect())`; 404 → "disabled in this environment" message). Hidden in prod via `import.meta.env.DEV`. Inline styles kept (Tailwind-ize + `<AuthShell>` wrap: US-B9). NOTE: cookie-only path — if dev cross-port cookie (`:3007` ↔ `:8000` via vite proxy) ever fails, the fallback (dev-login also returns the raw token → write to localStorage → Bearer header) needs a small backend tweak; not done now.
+- NEW `src/vite-env.d.ts` (`/// <reference types="vite/client" />`) — `import.meta.env.DEV` wasn't typed (no prior `import.meta.env` usage); `tsc -b` was failing without it.
+- NEW backend `tests/integration/api/test_dev_login.py` (3 — dev 200+cookie+rows+decodable JWT / idempotent (one tenant, one user) / prod 404 via `monkeypatch.setenv("ENV","production")` + `get_settings.cache_clear()`). NEW frontend `tests/unit/pages/auth/login.test.tsx` (4).
+
+### US-A3 — backend cross-tenant hardening (commit `77d238bd`)
+- NEW dep `require_tenant_match_or_platform_admin(tenant_id, request)` in `platform_layer/identity/auth.py` (next to `require_admin_platform_role`): platform admin (`admin`/`platform_admin` role) → any tenant; else only the caller's own JWT `tenant_id` (mismatch → 403 "cross-tenant access denied (not a platform admin)"); no JWT → 401; `roles` not a list → 500.
+- Applied to the 3 `{tenant_id}` **read** endpoints: `GET /api/v1/admin/tenants/{tenant_id}` (tenants.py — tenant-settings page), `GET .../cost-summary` (cost_summary.py — cost-dashboard), `GET .../sla-report` (sla_reports.py — sla-dashboard). **Deviation/scope note**: the *mutating* `{tenant_id}` endpoints — `PATCH /tenants/{id}`, `POST /tenants/{id}/onboarding/{step}` — and `GET /tenants/{id}/onboarding-status` + `GET /tenants` list + `POST /tenants` stay `require_admin_platform_role` (admin-only). Rationale: the plan's threat is cross-tenant *reads* via the URL; making the read endpoints same-tenant-accessible covers the 3 dashboard pages; tenant lifecycle/config mutations staying platform-admin-only is strictly safer (the tenant-settings Edit form will 403 for a non-admin — the page handles that). A future role-refinement could allow same-tenant `tenant_admin` PATCH.
+- Tests: NEW `tests/integration/api/test_admin_cross_tenant.py` (6 — platform-admin any tenant 200 / "admin" role 200 / own-tenant 200 / cross-tenant 403 / no user 401 / roles-missing 500, via a probe endpoint + X-Test-{User,Roles,Tenant} headers). `test_admin_{cost_summary,sla_reports,tenant_get}.py` updated: `dependency_overrides` → the new dep; `test_admin_sla_reports` + `test_admin_tenant_get` middleware now also reads `X-Test-Tenant` → `request.state.tenant_id`, and their "403 wrong role" tests are now "403 cross-tenant" (assert `"cross-tenant" in detail`).
+
+### Verification (Day 2 aggregate)
+- Backend: `black`/`isort`/`flake8` clean on all changed files; `mypy src` 305 clean; **9/9 V2 lints** (incl. `check_rls_policies` + `check_llm_sdk_leak`); **full `pytest -q` → 1668 passed + 4 skipped** (Day 1: 1659+4; +9 from test_dev_login (3) + test_admin_cross_tenant (6)).
+- Frontend: `npm run lint` clean; `npm run build` ✅ (main `index-*.js` 243.37 kB gzip 77.04 — flat vs Day 1 243.58); **`npm run test` → 51 files / 187 tests pass** (Day 1: 50/183; +4 from adminTenantsRoleGate (3) + migrate matcher fix is in-place + login.test.tsx (4) — wait, 183→187 = +4 net: adminTenantsRoleGate +3, login.test +4, but migrate.test.tsx already counted... actual: 183 after US-A2 commit, +4 from login.test.tsx in US-A4 = 187).
+- Manual UI not run (no dev server boot). The e2e Playwright suite is NOT re-run this turn — `auth-fixtures.ts` is updated for the new authStore-based gate but the individual specs need a sweep (US-C1, Day 9). Auth flow unit/integration layer is green.
+
+### Drift / notes
+- e2e specs (chat/governance/verification/loop-debug/memory + the 4 admin pages) — `seedAuthJwt` change makes the gate work, but specs that mock per-tenant endpoints (cost-summary / sla-report / tenant GET) need their URL patterns pointed at the seeded `E2E_TENANT_ID` (since the page now reads tenant from authStore). → US-C1.
+- `PATCH /tenants/{id}` stays admin-only (not changed to the cross-tenant dep) — tenant-settings Edit form 403s for non-admins. Noted above; acceptable this sprint.
+- No new agent-harness contract / ABC / LoopEvent / migration. 17.md registration of `/auth/me` + `/auth/dev-login` + `/telemetry` + `require_tenant_match_or_platform_admin` → US-C1 closeout.
+
+---
+
+## Remaining for Day 3-9
+
 - [ ] Day 3: US-A5 (connectivity smoke + .env.example) + US-B1 (Toast)
 - [ ] Day 4: US-B2 (design-system component layer + refactor 6 feature areas) + mid-sprint ratio check
 - [ ] Day 5: US-B3 (Radix Dialog+DropdownMenu + DecisionModal+UserMenu refactor)
