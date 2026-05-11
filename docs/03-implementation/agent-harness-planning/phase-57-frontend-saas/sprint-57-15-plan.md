@@ -71,9 +71,10 @@ Description:
 
 Created: 2026-05-11 (Sprint 57.15 drafting; closes the standing carryover AD-Inline-Style-Cleanup-Sweep)
 Last Modified: 2026-05-11
-Status: Draft (Day 1 in progress — US-A1 triage + scope revision (B-tiered: 10 files this sprint, 5 → Round2) + US-A2 chat-v2/subagent 4 files migrated)
+Status: Draft (Day 2 done — all 10 files migrated; 5 Round2 files file-level-disabled; `no-restricted-syntax` guard `error`; `color-contrast` re-enabled 8/9 routes; STYLE.md §1 updated. Day 3 = closeout + visual baseline refresh)
 
 Modification History (newest-first):
+    - 2026-05-11: Day 2 — §2.1 5 visual/a11y files migrated (ApprovalList was a no-op — already 57.9-migrated) + §2.3 5 Round2 file-level disables + US-B1 (guard / a11y color-contrast 8/9 / STYLE.md); D-DAY2-1 hotfix (ApprovalCard risk colours → `text-[#hex]` to keep approval-card.spec.ts color assertion + match §3 reference)
     - 2026-05-11: Day 1 — D-DAY1-1 scope finding (15 files / 133 `style=` attrs vs plan's 80/14); user chose (B) Tiered (10 files this sprint, 5 → NEW AD-Inline-Style-Cleanup-Sweep-Round2); see §"Day 1 scope revision"
     - 2026-05-11: Day 0 三-prong — 4 D-PRE findings (D-PRE-1 `eslint-plugin-react` not a dep → `no-restricted-syntax` selector instead; D-PRE-2/3/4 de-risk/align); see §"Day 0 三-prong drift findings" + progress.md
     - 2026-05-11: Initial creation (Sprint 57.15 — AD-Inline-Style-Cleanup-Sweep; 4 USs / Day 0-3)

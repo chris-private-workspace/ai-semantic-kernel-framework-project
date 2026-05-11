@@ -12,16 +12,15 @@
  *   state (with Reset Filters button) are rendered conditionally based on
  *   store flags.
  *
- *   Mirrors inline-style pattern from 57.3 TenantSettingsView (no Tailwind).
- *
  *   Sprint 57.9 US-6 Day 4: items + loading now sourced from useAdminTenants
  *   TanStack hook (was store.items + store.loading); reset still calls
  *   store.reset (TanStack auto-refetches via queryKey change).
  *
  * Created: 2026-05-07 (Sprint 57.4 Day 3)
- * Last Modified: 2026-05-09
+ * Last Modified: 2026-05-11
  *
  * Modification History (newest-first):
+ *   - 2026-05-11: Sprint 57.15 — inline styles → Tailwind utility classes; badge colours via semantic tokens (AD-Inline-Style-Cleanup-Sweep)
  *   - 2026-05-10: Sprint 57.13 US-B2 — loading/empty now use components/ui (TableSkeleton/EmptyState/Button)
  *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — items+loading from useAdminTenants hook
  *   - 2026-05-07: Initial creation (Sprint 57.4 Day 3)
@@ -36,48 +35,32 @@
 import { useNavigate } from "react-router-dom";
 
 import { Button, EmptyState, TableSkeleton } from "../../../components/ui";
+import { cn } from "../../../lib/utils";
 import { useAdminTenants } from "../hooks/useAdminTenants";
 import { useAdminTenantsStore } from "../store/adminTenantsStore";
 import { TenantPlan, TenantState, type TenantListItem } from "../types";
 
-function stateBadgeColor(state: TenantState): string {
+function stateBadgeClass(state: TenantState): string {
   switch (state) {
     case TenantState.ACTIVE:
-      return "#0a0";
+      return "bg-success";
     case TenantState.PROVISIONING:
     case TenantState.REQUESTED:
-      return "#a80";
+      return "bg-warning";
     case TenantState.SUSPENDED:
     case TenantState.ARCHIVED:
-      return "#888";
     default:
-      return "#666";
+      return "bg-muted-foreground";
   }
 }
 
-function planBadgeColor(plan: TenantPlan): string {
-  return plan === TenantPlan.ENTERPRISE ? "#06c" : "#888";
+function planBadgeClass(plan: TenantPlan): string {
+  return plan === TenantPlan.ENTERPRISE ? "bg-primary" : "bg-muted-foreground";
 }
 
-const BADGE_STYLE: React.CSSProperties = {
-  padding: "0.15rem 0.5rem",
-  borderRadius: "0.25rem",
-  color: "white",
-  fontSize: "0.85rem",
-  whiteSpace: "nowrap",
-};
-
-const TH_STYLE: React.CSSProperties = {
-  textAlign: "left",
-  borderBottom: "2px solid #ccc",
-  padding: "0.5rem",
-  fontWeight: 600,
-};
-
-const TD_STYLE: React.CSSProperties = {
-  borderBottom: "1px solid #eee",
-  padding: "0.5rem",
-};
+const BADGE_CLASS = "rounded px-2 py-0.5 text-sm whitespace-nowrap text-white";
+const TH_CLASS = "border-b-2 border-border p-2 text-left font-semibold";
+const TD_CLASS = "border-b border-border p-2";
 
 interface RowProps {
   tenant: TenantListItem;
@@ -87,22 +70,16 @@ interface RowProps {
 function TenantRow({ tenant, onView }: RowProps): JSX.Element {
   return (
     <tr>
-      <td style={{ ...TD_STYLE, fontFamily: "monospace" }}>{tenant.code}</td>
-      <td style={TD_STYLE}>{tenant.display_name}</td>
-      <td style={TD_STYLE}>
-        <span style={{ ...BADGE_STYLE, background: stateBadgeColor(tenant.state) }}>
-          {tenant.state}
-        </span>
+      <td className={cn(TD_CLASS, "font-mono")}>{tenant.code}</td>
+      <td className={TD_CLASS}>{tenant.display_name}</td>
+      <td className={TD_CLASS}>
+        <span className={cn(BADGE_CLASS, stateBadgeClass(tenant.state))}>{tenant.state}</span>
       </td>
-      <td style={TD_STYLE}>
-        <span style={{ ...BADGE_STYLE, background: planBadgeColor(tenant.plan) }}>
-          {tenant.plan}
-        </span>
+      <td className={TD_CLASS}>
+        <span className={cn(BADGE_CLASS, planBadgeClass(tenant.plan))}>{tenant.plan}</span>
       </td>
-      <td style={{ ...TD_STYLE, fontSize: "0.85rem", color: "#666" }}>
-        {tenant.created_at}
-      </td>
-      <td style={TD_STYLE}>
+      <td className={cn(TD_CLASS, "text-sm text-muted-foreground")}>{tenant.created_at}</td>
+      <td className={TD_CLASS}>
         <button onClick={() => onView(tenant.id)}>View</button>
       </td>
     </tr>
@@ -146,15 +123,15 @@ export function TenantListTable(): JSX.Element {
   }
 
   return (
-    <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "0.5rem" }}>
+    <table className="mt-2 w-full border-collapse">
       <thead>
         <tr>
-          <th style={TH_STYLE}>Code</th>
-          <th style={TH_STYLE}>Display Name</th>
-          <th style={TH_STYLE}>State</th>
-          <th style={TH_STYLE}>Plan</th>
-          <th style={TH_STYLE}>Created</th>
-          <th style={TH_STYLE}>Action</th>
+          <th className={TH_CLASS}>Code</th>
+          <th className={TH_CLASS}>Display Name</th>
+          <th className={TH_CLASS}>State</th>
+          <th className={TH_CLASS}>Plan</th>
+          <th className={TH_CLASS}>Created</th>
+          <th className={TH_CLASS}>Action</th>
         </tr>
       </thead>
       <tbody>

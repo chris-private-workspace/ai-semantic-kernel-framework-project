@@ -9,9 +9,10 @@
  *   Each row: cost_type / sub_type / quantity / total_cost_usd / entry_count.
  *
  * Created: 2026-05-06 (Sprint 57.1 Day 1)
- * Last Modified: 2026-05-06
+ * Last Modified: 2026-05-11
  *
- * Modification History:
+ * Modification History (newest-first):
+ *   - 2026-05-11: Sprint 57.15 — inline styles → Tailwind utility classes; `#666`→text-muted-foreground (AD-Inline-Style-Cleanup-Sweep)
  *   - 2026-05-06: Initial creation (Sprint 57.1 Day 1 / US-2 — breakdown table)
  */
 
@@ -43,28 +44,28 @@ export function CostBreakdownTable({ data }: CostBreakdownTableProps) {
   }
 
   if (rows.length === 0) {
-    return <p style={{ fontStyle: "italic", color: "#666" }}>No cost entries for this month.</p>;
+    return <p className="italic text-muted-foreground">No cost entries for this month.</p>;
   }
 
   return (
-    <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "1rem" }}>
+    <table className="mt-4 w-full border-collapse">
       <thead>
-        <tr style={{ borderBottom: "2px solid #333", textAlign: "left" }}>
-          <th style={{ padding: "0.5rem" }}>Cost Type</th>
-          <th style={{ padding: "0.5rem" }}>Sub Type</th>
-          <th style={{ padding: "0.5rem", textAlign: "right" }}>Quantity</th>
-          <th style={{ padding: "0.5rem", textAlign: "right" }}>Total (USD)</th>
-          <th style={{ padding: "0.5rem", textAlign: "right" }}>Entries</th>
+        <tr className="border-b-2 border-border text-left">
+          <th className="p-2">Cost Type</th>
+          <th className="p-2">Sub Type</th>
+          <th className="p-2 text-right">Quantity</th>
+          <th className="p-2 text-right">Total (USD)</th>
+          <th className="p-2 text-right">Entries</th>
         </tr>
       </thead>
       <tbody>
         {rows.map((row, idx) => (
-          <tr key={`${row.costType}-${row.subType}-${idx}`} style={{ borderBottom: "1px solid #ddd" }}>
-            <td style={{ padding: "0.5rem" }}>{row.costType}</td>
-            <td style={{ padding: "0.5rem" }}>{row.subType}</td>
-            <td style={{ padding: "0.5rem", textAlign: "right" }}>{row.quantity}</td>
-            <td style={{ padding: "0.5rem", textAlign: "right" }}>${row.totalCostUsd}</td>
-            <td style={{ padding: "0.5rem", textAlign: "right" }}>{row.entryCount}</td>
+          <tr key={`${row.costType}-${row.subType}-${idx}`} className="border-b border-border">
+            <td className="p-2">{row.costType}</td>
+            <td className="p-2">{row.subType}</td>
+            <td className="p-2 text-right">{row.quantity}</td>
+            <td className="p-2 text-right">${row.totalCostUsd}</td>
+            <td className="p-2 text-right">{row.entryCount}</td>
           </tr>
         ))}
       </tbody>

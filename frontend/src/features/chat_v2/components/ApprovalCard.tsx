@@ -33,12 +33,15 @@ import { governanceService } from "../../governance/services/governanceService";
 import type { DecisionLabel } from "../../governance/types";
 import { useChatStore } from "../store/chatStore";
 
-// Risk colour classes per STYLE.md §3 Risk Badge Palette (canonical 4-level).
+// Risk colour classes per STYLE.md §3 Risk Badge Palette — canonical 53.5 hex
+// via Tailwind arbitrary-value classes (matches features/governance/components/
+// ApprovalList.tsx, the §3 reference component; also the regression sentinel for
+// any test asserting the computed colour, e.g. approval-card.spec.ts CRITICAL).
 const RISK_TEXT_CLASS: Record<string, string> = {
-  LOW: "text-green-700",
-  MEDIUM: "text-orange-600",
-  HIGH: "text-orange-800",
-  CRITICAL: "text-red-800",
+  LOW: "text-[#2e7d32]",
+  MEDIUM: "text-[#ed6c02]",
+  HIGH: "text-[#d84315]",
+  CRITICAL: "text-[#b71c1c]",
 };
 
 // Decision badge background per outcome (semantic tokens — STYLE.md §2).

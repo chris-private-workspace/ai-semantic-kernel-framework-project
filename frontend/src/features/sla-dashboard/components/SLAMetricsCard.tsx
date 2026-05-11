@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-syntax -- AD-Inline-Style-Cleanup-Sweep-Round2: inline styles deferred (includes dynamic bar widths — CSS-custom-property migration in a follow-up sprint). */
 /**
  * File: frontend/src/features/sla-dashboard/components/SLAMetricsCard.tsx
  * Purpose: Render single SLA metric with pass-fail color indicator.

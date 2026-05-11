@@ -10,9 +10,10 @@
  *   sla-dashboard. Native <input type="month"> for browser-supported UX.
  *
  * Created: 2026-05-06 (Sprint 57.1 Day 1)
- * Last Modified: 2026-05-06
+ * Last Modified: 2026-05-11
  *
- * Modification History:
+ * Modification History (newest-first):
+ *   - 2026-05-11: Sprint 57.15 — inline styles → Tailwind utility classes (AD-Inline-Style-Cleanup-Sweep)
  *   - 2026-05-06: Initial creation (Sprint 57.1 Day 1 / US-1 — shared MonthPicker)
  */
 
@@ -24,7 +25,7 @@ interface MonthPickerProps {
 
 export function MonthPicker({ value, onChange, disabled }: MonthPickerProps) {
   return (
-    <label style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
+    <label className="inline-flex items-center gap-2">
       <span>Month:</span>
       <input
         type="month"
@@ -32,7 +33,7 @@ export function MonthPicker({ value, onChange, disabled }: MonthPickerProps) {
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
         aria-label="Select month"
-        style={{ padding: "0.25rem 0.5rem", fontFamily: "inherit" }}
+        className="px-2 py-1"
       />
     </label>
   );

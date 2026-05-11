@@ -108,3 +108,43 @@ This is a **>20% scope shift** (66% more occurrences + 1 more file + the work-pe
 - US-A2 §2.1: 6 visual/a11y files — `CostBreakdownTable` / `MonthPicker` / `ApprovalList` / `TenantListTable` / `TenantListPagination` / `TenantListFilters` → Tailwind (these affect the cost-dashboard / governance / admin-tenants visual snapshots)
 - §2.3: 5 Round2 files get a top-of-file `/* eslint-disable no-restricted-syntax -- AD-Inline-Style-Cleanup-Sweep-Round2: ... */` (`ChatLayout` / `InputBar` / `TenantSettingsView` / `TenantSettingsEditForm` / `SLAMetricsCard`)
 - US-B1: `eslint.config.js` += `no-restricted-syntax` `JSXAttribute[name.name='style']` (`error`); `a11y-scan.spec.ts` remove `.disableRules(["color-contrast"])`; `STYLE.md` §1 extend + escape-hatch sub-§
+
+---
+
+## Day 2 — 2026-05-11 — US-A2 §2.1 (5 visual/a11y files) + §2.3 (5 Round2 disables) + US-B1 (guard + a11y re-enable + STYLE.md)
+
+### US-A2 §2.1 — visual-snapshot + a11y files migrated (5 files; ApprovalList was a no-op)
+- **`CostBreakdownTable.tsx`** (14 `style={{}}`) — `<p>` `italic text-muted-foreground` (`#666`→AA); `<table>` `mt-4 w-full border-collapse`; thead `border-b-2 border-border text-left`; cells `p-2`/`p-2 text-right`; rows `border-b border-border`. MHist +1. **The cost-dashboard visual snapshot renders this `<p>`** (mocked `by_type` is empty → `rows.length===0`) → its colour changes (`#666`→token) ⇒ cost-dashboard baseline will change.
+- **`MonthPicker.tsx`** (2) — label `inline-flex items-center gap-2`; input `px-2 py-1` (= `padding 0.25rem 0.5rem` byte-equivalent → no pixel change); `fontFamily:"inherit"` dropped (already inherits). MHist +1.
+- **`ApprovalList.tsx`** — **NO-OP**: the earlier grep "1" was the JSDoc text `style={{}}`; the file is fully Tailwind (57.9). Not touched. ⇒ **governance visual snapshot UNCHANGED**.
+- **`TenantListTable.tsx`** (15 `style=` incl `style={objVar}` + `BADGE_STYLE`/`TH_STYLE`/`TD_STYLE` + `stateBadgeColor`/`planBadgeColor`) — `stateBadgeColor`→`stateBadgeClass` (`bg-success`/`bg-warning`/`bg-muted-foreground`); `planBadgeColor`→`planBadgeClass` (`bg-primary`/`bg-muted-foreground`); `BADGE_CLASS`="rounded px-2 py-0.5 text-sm whitespace-nowrap text-white" / `TH_CLASS`="border-b-2 border-border p-2 text-left font-semibold" / `TD_CLASS`="border-b border-border p-2"; `#666` date cell→`text-sm text-muted-foreground`; `cn()` for badge + TD; `import { cn }`. MHist +1. (Table itself not in the snapshot — mocked `items:[]`→`<EmptyState>`.)
+- **`TenantListPagination.tsx`** (2 incl `ROW_STYLE`) — `mt-4 flex items-center gap-3 py-2`; `style={{ color:"#666", fontSize:"0.9rem" }}`→`text-sm text-muted-foreground`. MHist +1. **The "0-0 of 0" text IS in the admin-tenants snapshot** → colour changes.
+- **`TenantListFilters.tsx`** (5 `style=` incl `ROW_STYLE`/`LABEL_STYLE`) — bar `flex flex-wrap items-end gap-3 rounded border border-border bg-muted/30 p-3` (`#fafafa`→`bg-muted/30`, `#ddd`→`border-border`); `LABEL_CLASS`="flex flex-col text-sm font-semibold text-muted-foreground" (`#444`→token per §2 "labels"); search `min-w-64`. MHist +1. **The filter bar IS in the admin-tenants snapshot** → bg/border colour changes. ⇒ admin-tenants baseline will change.
+- 0 `tailwind.config.ts` change (every colour mapped to an existing token/shade). `grep -rEn "style=\{" frontend/src` → only the 5 Round2 files now.
+
+### §2.3 — 5 Round2 files: top-of-file (line 1) `/* eslint-disable no-restricted-syntax -- AD-Inline-Style-Cleanup-Sweep-Round2: ... */`
+- `ChatLayout.tsx` (reason: header notes Phase 58+ migration when sidebar/inspector get real content) / `InputBar.tsx` (chat-v2 batch) / `SLAMetricsCard.tsx` (incl dynamic bar widths → CSS-var in Round2) / `TenantSettingsEditForm.tsx` (tenant-settings batch) / `TenantSettingsView.tsx` (tenant-settings batch). No MHist change — the disable directive's `-- reason` IS the WHY note; these files are explicitly *not* being migrated.
+
+### US-B1 — guard + color-contrast re-enable + STYLE.md
+- `eslint.config.js` — NEW `"no-restricted-syntax": ["error", { selector: "JSXAttribute[name.name='style']", message: "..." }]` + header comment. (`react/forbid-dom-props` unavailable — `eslint-plugin-react` not a dep; D-PRE-1.)
+- `a11y-scan.spec.ts` — `color-contrast` re-enabled for **8/9 gated routes + auth pages**; `/chat-v2` keeps it disabled (ChatLayout Round2 `#7c8696`-on-`#fbfbfd` ≈ 3.7:1 < AA). `scan(page, label, allowLowContrast=false)`; loop passes `route === "/chat-v2"`. MHist +1. **0 new out-of-scope violations on the other 8 routes** — the migration's tokens all pass AA. (`AD-Color-Contrast-Round2` subsumed by `AD-Inline-Style-Cleanup-Sweep-Round2` — migrating ChatLayout closes the `/chat-v2` gap.)
+- `STYLE.md` — §1 "Rules" bullet → references the `no-restricted-syntax` guard; NEW "### Inline-style escape hatches (dynamic values)" sub-§ (finite class lookup w/ §3 cross-ref + `ApprovalCard`/`SubagentTree` examples / CSS custom property + arbitrary value / last-resort `eslint-disable` + reason / whole-legacy-file `/* eslint-disable */` → Round2). MHist += 57.15; `Last Modified` → 2026-05-11.
+
+### Hotfix during verify (D-DAY2-1)
+Full `npx playwright test` flagged `chat/approval-card.spec.ts:108` "CRITICAL → dark red" — asserts `getComputedStyle(riskTextSpan).color === "rgb(183,28,28)"` (= `#b71c1c`). The migration had used `text-red-800` (`#991b1b`). **Fix**: `ApprovalCard.tsx` `RISK_TEXT_CLASS` → `text-[#2e7d32]`/`text-[#ed6c02]`/`text-[#d84315]`/`text-[#b71c1c]` (canonical 53.5 hex via Tailwind arbitrary-value classes — matches `governance/components/ApprovalList.tsx`, the §3 reference component + the named "test sentinel"; STYLE.md §3 lists `text-[#hex]` as acceptable for the risk palette). Not "change the spec to pass" — the spec asserts the canonical palette and the canonical palette is now what's rendered. Re-verified: lint silent / build 297.89 kB / `approval-card.spec.ts` 4 pass / full e2e 40 pass 7 skip 0 fail.
+
+### Verify (Day 2)
+- `npm run lint` silent (0 error, incl `--report-unused-disable-directives` — the 5 Round2 file-level disables are *used*; the new rule fires only inside them) ✅
+- `npm run build` main bundle **297.89 kB gzip 95.27 — unchanged** ✅
+- `npm run test` (vitest) **57 files / 236 pass — unchanged** ✅
+- `npm run e2e -- a11y/a11y-scan.spec.ts` → **2 passed** (color-contrast on for 8/9 routes; 0 new violations) ✅
+- `npx playwright test` (full) → **40 passed / 7 skipped / 0 failed** (7 skip = 1 connectivity + 6 visual-regression opt-in on Windows) ✅
+- `git diff --stat main..HEAD` (after Day 2 commit) — only `frontend/**` + `docs/**`; **0 `backend/` changes** ✅
+
+### Day 2 commit
+- (pending) `feat(sprint-57-15, Day 2): US-A2 §2.1 (5 visual/a11y files) + §2.3 (5 Round2 disables) + US-B1 (no-inline-style guard + color-contrast re-enabled 8/9 + STYLE.md)`
+
+### Remaining for Day 3 (US-C1)
+- full validation sweep (lint+build+vitest+playwright; backend untouched sanity)
+- **visual baseline refresh** (first end-to-end use of the 57.14 `visual-baseline` workflow): `git push` → `gh workflow run "Playwright E2E" --ref feature/sprint-57-15-inline-style-cleanup` → wait → `gh run download <run_id> -n visual-baselines` → commit the **2 changed** PNGs (`cost-dashboard-chromium-linux.png` + `admin-tenants-chromium-linux.png`; `governance`/`app-shell`/`auth-login`/`verification-recent` unchanged) → eyeball (only colour changed) → close the auto-PR
+- retrospective.md Q1-Q7 + memory snapshot + doc syncs (16-frontend-design.md / sprint-workflow.md calibration +1 row / STYLE.md done / checklist [x] + plan/checklist MHist closeout) + PR (+ post-merge: CLAUDE.md / SITUATION)

@@ -15,9 +15,10 @@
  *   becomes a real need.
  *
  * Created: 2026-05-07 (Sprint 57.4 Day 3)
- * Last Modified: 2026-05-09
+ * Last Modified: 2026-05-11
  *
  * Modification History (newest-first):
+ *   - 2026-05-11: Sprint 57.15 — inline styles → Tailwind utility classes (AD-Inline-Style-Cleanup-Sweep)
  *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — drop loadData calls (TanStack auto-refetch on query change)
  *   - 2026-05-07: Initial creation (Sprint 57.4 Day 3)
  */
@@ -27,24 +28,7 @@ import { useState } from "react";
 import { useAdminTenantsStore } from "../store/adminTenantsStore";
 import { TenantPlan, TenantState } from "../types";
 
-const ROW_STYLE: React.CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: "0.75rem",
-  alignItems: "flex-end",
-  padding: "0.75rem",
-  background: "#fafafa",
-  border: "1px solid #ddd",
-  borderRadius: "0.25rem",
-};
-
-const LABEL_STYLE: React.CSSProperties = {
-  fontSize: "0.85rem",
-  fontWeight: 600,
-  color: "#444",
-  display: "flex",
-  flexDirection: "column",
-};
+const LABEL_CLASS = "flex flex-col text-sm font-semibold text-muted-foreground";
 
 export function TenantListFilters(): JSX.Element {
   const setFilter = useAdminTenantsStore((s) => s.setFilter);
@@ -72,8 +56,8 @@ export function TenantListFilters(): JSX.Element {
   };
 
   return (
-    <div style={ROW_STYLE}>
-      <label style={LABEL_STYLE}>
+    <div className="flex flex-wrap items-end gap-3 rounded border border-border bg-muted/30 p-3">
+      <label className={LABEL_CLASS}>
         State
         <select
           value={stateInput}
@@ -88,7 +72,7 @@ export function TenantListFilters(): JSX.Element {
         </select>
       </label>
 
-      <label style={LABEL_STYLE}>
+      <label className={LABEL_CLASS}>
         Plan
         <select
           value={planInput}
@@ -100,7 +84,7 @@ export function TenantListFilters(): JSX.Element {
         </select>
       </label>
 
-      <label style={LABEL_STYLE}>
+      <label className={LABEL_CLASS}>
         Search
         <input
           type="text"
@@ -108,7 +92,7 @@ export function TenantListFilters(): JSX.Element {
           onChange={(e) => setSearchInput(e.target.value)}
           maxLength={128}
           placeholder="Code or display name…"
-          style={{ minWidth: "16rem" }}
+          className="min-w-64"
         />
       </label>
 

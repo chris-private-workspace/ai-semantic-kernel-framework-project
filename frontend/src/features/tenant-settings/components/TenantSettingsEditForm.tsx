@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-syntax -- AD-Inline-Style-Cleanup-Sweep-Round2: inline styles deferred (tenant-settings batch — migrated in a follow-up sprint). */
 /**
  * File: frontend/src/features/tenant-settings/components/TenantSettingsEditForm.tsx
  * Purpose: Edit form for tenant settings — TanStack-driven mutation.

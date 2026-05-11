@@ -8,10 +8,11 @@
 > [`docs/03-implementation/agent-harness-planning/16-frontend-design.md`](../docs/03-implementation/agent-harness-planning/16-frontend-design.md).
 
 **Created**: 2026-05-09 (Sprint 57.10 codified from Sprint 53.5+57.7+57.8+57.9 emergent palette + UX patterns)
-**Last Modified**: 2026-05-09
+**Last Modified**: 2026-05-11
 **Status**: Active
 
 > **Modification History (newest-first)**
+> - 2026-05-11: Sprint 57.15 — §1 no-inline-style is now lint-enforced (`no-restricted-syntax`); add "Inline-style escape hatches" sub-section (AD-Inline-Style-Cleanup-Sweep)
 > - 2026-05-09: Initial creation (Sprint 57.10 — closes style/UX drift identified by user 2026-05-09 reality check)
 
 ---
@@ -40,7 +41,7 @@ available for common UI patterns.
 
 ### Rules
 
-- ❌ **No inline styles** (`style={{ ... }}` objects forbidden per `.claude/rules/frontend-react.md`)
+- ❌ **No inline styles** — the JSX `style=` prop (on DOM elements *and* components, whether the value is an inline literal, a variable, or a fn call) is **lint-enforced** by `no-restricted-syntax` in `eslint.config.js` (`error`, since Sprint 57.15 / AD-Inline-Style-Cleanup-Sweep). Use Tailwind utility classes; for the rare dynamic case see "Inline-style escape hatches" below.
 - ❌ **No custom CSS files** except `index.css` (shadcn vars + global resets only)
 - ❌ **No CSS-in-JS** libraries (styled-components / emotion forbidden)
 - ✅ **shadcn primitives where available** (Button / Input / Dialog / Tabs / Dropdown / Tooltip)
@@ -72,6 +73,27 @@ return (
   </div>
 );
 ```
+
+### Inline-style escape hatches (dynamic values)
+
+The `no-restricted-syntax` guard is `error` — but a few values are genuinely runtime-computed (a progress bar's `width: ${pct}%`, a tree row's `marginLeft: depth*12px`). Three patterns, in order of preference:
+
+1. **Finite class lookup** — if the value comes from a small enum, map it to literal Tailwind classes (the JIT only sees literal strings, so `ml-[${n}px]` does *not* work — a lookup array does):
+   ```tsx
+   const RISK_TEXT_CLASS = { LOW: "text-green-700", MEDIUM: "text-orange-600", HIGH: "text-orange-800", CRITICAL: "text-red-800" };
+   const DEPTH_INDENT = ["ml-0", "ml-3", "ml-6", "ml-9", "ml-12", "ml-[60px]"];   // bounded depth
+   <span className={cn("font-bold", RISK_TEXT_CLASS[risk] ?? "text-muted-foreground")}>{risk}</span>
+   <li className={cn("space-y-1", DEPTH_INDENT[depth] ?? "ml-[60px]")} />
+   ```
+   (See `features/chat_v2/components/ApprovalCard.tsx` + `features/subagent/components/SubagentTree.tsx`.)
+2. **CSS custom property + Tailwind arbitrary value** — for truly continuous values (a percentage bar width, a computed pixel offset). Still a `style=`, so it carries an `eslint-disable` with a reason, but it sets *only* the variable:
+   ```tsx
+   // eslint-disable-next-line no-restricted-syntax -- CSS var only, dynamic bar width
+   <div style={{ "--bar-w": `${pct}%` } as React.CSSProperties} className="w-[var(--bar-w)] bg-success" />
+   ```
+3. **Last-resort inline `style=` with an `eslint-disable-next-line no-restricted-syntax -- <reason>`** — only when neither of the above fits. The reason must say *what's dynamic*.
+
+For a whole legacy file that hasn't been migrated yet, a top-of-file `/* eslint-disable no-restricted-syntax -- <AD reference> */` keeps the `error`-level guard on for everything else (see `features/chat_v2/components/ChatLayout.tsx` et al. — pending `AD-Inline-Style-Cleanup-Sweep-Round2`).
 
 ---
 

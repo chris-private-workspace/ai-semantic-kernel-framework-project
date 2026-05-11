@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-syntax -- AD-Inline-Style-Cleanup-Sweep-Round2: inline styles deferred (chat-v2 batch — migrated in a follow-up sprint). */
 /**
  * File: frontend/src/features/chat_v2/components/InputBar.tsx
  * Purpose: Bottom input bar — textarea + Send / Stop button + mode toggle.

@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-syntax -- AD-Inline-Style-Cleanup-Sweep-Round2: inline styles deferred; the file header below already notes a Phase 58+ Tailwind migration (when sessions sidebar + inspector get real content from 51.x / 52.x). */
 /**
  * File: frontend/src/features/chat_v2/components/ChatLayout.tsx
  * Purpose: 3-column body — sessions sidebar / conversation / inspector sidebar.

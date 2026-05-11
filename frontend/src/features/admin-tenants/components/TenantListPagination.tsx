@@ -11,23 +11,16 @@
  *   triggers TanStack auto-refetch via queryKey change.
  *
  * Created: 2026-05-07 (Sprint 57.4 Day 3)
- * Last Modified: 2026-05-09
+ * Last Modified: 2026-05-11
  *
  * Modification History (newest-first):
+ *   - 2026-05-11: Sprint 57.15 — inline styles → Tailwind utility classes; `#666`→text-muted-foreground (AD-Inline-Style-Cleanup-Sweep)
  *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — read total from useAdminTenants hook (drop store.total + loadData)
  *   - 2026-05-07: Initial creation (Sprint 57.4 Day 3)
  */
 
 import { useAdminTenants } from "../hooks/useAdminTenants";
 import { useAdminTenantsStore } from "../store/adminTenantsStore";
-
-const ROW_STYLE: React.CSSProperties = {
-  display: "flex",
-  gap: "0.75rem",
-  alignItems: "center",
-  marginTop: "1rem",
-  padding: "0.5rem 0",
-};
 
 export function TenantListPagination(): JSX.Element {
   const query = useAdminTenantsStore((s) => s.query);
@@ -52,14 +45,14 @@ export function TenantListPagination(): JSX.Element {
   };
 
   return (
-    <div style={ROW_STYLE}>
+    <div className="mt-4 flex items-center gap-3 py-2">
       <button onClick={handlePrev} disabled={prevDisabled}>
         ← Prev
       </button>
       <button onClick={handleNext} disabled={nextDisabled}>
         Next →
       </button>
-      <span style={{ color: "#666", fontSize: "0.9rem" }}>
+      <span className="text-sm text-muted-foreground">
         {from}-{to} of {total}
       </span>
     </div>
