@@ -12,6 +12,7 @@
 **Status**: Active
 
 > **Modification History (newest-first)**
+> - 2026-05-11: Sprint 57.16 — escape-hatch sub-§ no longer references ChatLayout (migrated; frontend/src now inline-style-clean) (AD-Inline-Style-Cleanup-Sweep-Round2)
 > - 2026-05-11: Sprint 57.15 — §1 no-inline-style is now lint-enforced (`no-restricted-syntax`); add "Inline-style escape hatches" sub-section (AD-Inline-Style-Cleanup-Sweep)
 > - 2026-05-09: Initial creation (Sprint 57.10 — closes style/UX drift identified by user 2026-05-09 reality check)
 
@@ -93,7 +94,7 @@ The `no-restricted-syntax` guard is `error` — but a few values are genuinely r
    ```
 3. **Last-resort inline `style=` with an `eslint-disable-next-line no-restricted-syntax -- <reason>`** — only when neither of the above fits. The reason must say *what's dynamic*.
 
-For a whole legacy file that hasn't been migrated yet, a top-of-file `/* eslint-disable no-restricted-syntax -- <AD reference> */` keeps the `error`-level guard on for everything else (see `features/chat_v2/components/ChatLayout.tsx` et al. — pending `AD-Inline-Style-Cleanup-Sweep-Round2`).
+For a whole legacy file that hasn't been migrated yet, a top-of-file `/* eslint-disable no-restricted-syntax -- <AD reference> */` keeps the `error`-level guard on for everything else. (No live examples remain after Sprint 57.16 — the entire `frontend/src` is inline-style-clean — but the pattern stays documented for future bulk migrations.)
 
 ---
 

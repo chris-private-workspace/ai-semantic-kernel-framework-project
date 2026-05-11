@@ -159,5 +159,78 @@ About to commit: `chore(sprint-57-16, Day 0): plan + checklist + 三-prong basel
 
 ### Day 1 commit
 
-About to commit: `refactor(sprint-57-16, Day 1): US-A1 triage + US-A2 chat-v2 + sla-dashboard inline styles → Tailwind` (3 component files + checklist + progress.md).
+Committed as `ad7b2fbe` — 5 files changed / +189 / -207 (net -18 lines from removing 2 `Record<string,CSSProperties>` + 4 helper fns + inline style object literals).
+
+---
+
+## Day 2 — 2026-05-11 — US-A2 tenant-settings (TenantSettingsView + TenantSettingsEditForm) + US-B1 (/chat-v2 color-contrast flip + STYLE.md §1 cleanup)
+
+### US-A2 execution + verification
+
+**Migrated** (2 files — completes the 5-file Round2 scope):
+- `frontend/src/features/tenant-settings/components/TenantSettingsView.tsx` (full rewrite — 27 `style=` + `stateBadgeColor`/`planBadgeColor` → `stateBadgeClass`/`planBadgeClass` returning Tailwind class strings; `BADGE_CLASS` const for shared badge utility classes; `<pre>` simplified to `bg-muted p-3 text-[0.85rem]` (existing visual was tight on horizontal padding so `p-3` matched better than full STYLE.md §4 `p-2 overflow-auto`); `cn()` for badge composition; `import { cn }`; line-1 disable removed; MHist +1)
+- `frontend/src/features/tenant-settings/components/TenantSettingsEditForm.tsx` (full rewrite — 13 `style=` all static → Tailwind; container `mt-6 border border-border p-6`; field groups `mt-4`; labels `block font-semibold`; inputs `mt-1 w-full px-2 py-1.5`; textarea adds `font-mono text-[0.85rem]` per STYLE.md §4; validation/save-error `<p>` `text-[0.85rem] text-danger` and `text-danger`; button row `mt-6 flex gap-3`; line-1 disable removed; MHist +1)
+
+### US-B1 execution
+
+- `frontend/tests/e2e/a11y/a11y-scan.spec.ts`:
+  - `scan(page: Page, label: string, allowLowContrast = false): Promise<void>` → `scan(page: Page, label: string): Promise<void>` (3rd param dropped)
+  - The `if (allowLowContrast) { builder.disableRules(["color-contrast"]); }` block + its 6-line comment about `/chat-v2 #7c8696` → replaced with a single Sprint-57.16 note: `/chat-v2 no longer needs the color-contrast escape hatch — ChatLayout + InputBar were migrated from inline #7c8696 hex to text-muted-foreground (≈ 4.6:1 on bg-muted; ≈ 4.9:1 on white — AA-compliant). All 9 gated routes + the auth pages now run the full axe rule set with no per-route disable.`
+  - Loop: `await scan(page, route, route === "/chat-v2");` → `await scan(page, route);` (loop comment updated to "Sprint 57.16: all 9 gated routes (incl /chat-v2) run the full axe rule set — no per-route disable.")
+  - MHist +1 at top
+- `frontend/STYLE.md`:
+  - §1 "Inline-style escape hatches" final paragraph: replaced "(see `features/chat_v2/components/ChatLayout.tsx` et al. — pending `AD-Inline-Style-Cleanup-Sweep-Round2`)" with "(No live examples remain after Sprint 57.16 — the entire `frontend/src` is inline-style-clean — but the pattern stays documented for future bulk migrations.)"
+  - MHist += `- 2026-05-11: Sprint 57.16 — escape-hatch sub-§ no longer references ChatLayout (migrated; frontend/src now inline-style-clean) (AD-Inline-Style-Cleanup-Sweep-Round2)`
+  - `CONVENTION.md` checked — no §1 inline-style cross-ref needing edit
+  - `Last Modified` already 2026-05-11
+
+### Verification (all ✅)
+
+- `npm run lint` (with `--report-unused-disable-directives`) — **silent** (0 error); 5 file-level disables now all removed across the sprint; `no-restricted-syntax` guard active on the entire codebase
+- `grep -rEn "style=\{" frontend/src --include="*.tsx"` — **2 matches, both JSDoc/comment**:
+  - `SubagentTree.tsx:43` — `// Replaces a dynamic` + `// \`style={{ marginLeft: depth*12 }}\`.` (57.15 migration history note in comment)
+  - `ApprovalList.tsx:11` — JSDoc `Sprint 57.9 US-2 Day 1: inline \`style={{}}\` migrated to Tailwind utility classes.` (history note)
+  - ⇒ **0 real inline `style=` in `frontend/src`** — entire codebase is inline-style-clean
+- `npm run test -- --run` — **57 files / 236 pass — unchanged** (full vitest; AuthShell `kaboom` is the intentional error-boundary test, NOT a Day 2 regression)
+- `npx playwright test a11y/a11y-scan.spec.ts` — **2 / 2 pass** ✅ CRITICAL — `/chat-v2` now runs with full axe rule set (incl color-contrast):
+  - 4 moderate/minor reported on `/chat-v2`: `heading-order` / `landmark-main-is-top-level` / `landmark-no-duplicate-main` / `landmark-unique` — these are structural/heading-hierarchy nits, **NOT color-contrast**; pre-existing (would have been reported at 57.15 had they been queried; but the 57.15 logic only suppressed `color-contrast` rule, not these), logged for retrospective Q4 as separate future a11y-hardening sprint scope (not Round2)
+  - 1 moderate/minor on `/auth/callback?error`: `page-has-heading-one` — pre-existing
+- `npx playwright test` (full) — **40 pass / 7 skip / 0 fail** ✅ (chat-v2 4 e2e + approval-card 4 e2e + chat-v2-loop-inline + chat-v2-subagent-inline + verification + governance + admin-tenants + 2 a11y-scan all green; 6 visual-regression opt-in skip on Windows + 1 connectivity skip)
+
+### V2 紀律 9 項 self-check (Day 2)
+
+- ① Server-Side First — N/A
+- ② LLM Provider Neutrality — N/A
+- ③ CC Reference 不照搬 — N/A
+- ④ 17.md Single-source — N/A
+- ⑤ 11+1 範疇 — N/A (純前端)
+- ⑥ AP-2/4/6 — no orphan / no Potemkin (color-contrast now actually scans `/chat-v2`) / YAGNI (no new tokens added; align with 57.15 vocab; no CSS-custom-property since no continuous value)
+- ⑦ Sprint workflow — plan→checklist→三-prong→code (Day 1+2)→progress→retro pending, no jumps
+- ⑧ File header MHist — 4 files updated (2 component + 1 spec + 1 doc); each entry 1-line ≤ E501
+- ⑨ Multi-tenant — N/A
+
+### Day 2 commit
+
+About to commit: `feat(sprint-57-16, Day 2): US-A2 tenant-settings + US-B1 /chat-v2 color-contrast re-enabled (all 5 file-level disables removed)` — 6 files (2 component rewrites + 1 spec edit + 1 STYLE.md edit + checklist + progress.md).
+
+### Verdict
+
+**Sprint 57.16 functional scope COMPLETE**:
+- ✅ 5 / 5 deferred files migrated to Tailwind utility classes
+- ✅ 5 / 5 file-level `/* eslint-disable no-restricted-syntax */` directives removed
+- ✅ `frontend/src` has **0 real inline `style=`** (entire feature codebase inline-style-clean)
+- ✅ `no-restricted-syntax` `JSXAttribute[name.name='style']` guard active on entire codebase with **0 file-level disables**
+- ✅ `/chat-v2` color-contrast axe rule re-enabled → **all 9 gated routes + auth pages run full axe rule set**
+- ✅ `a11y-scan.spec.ts` no longer has the `allowLowContrast` param or any per-route `disableRules(["color-contrast"])` call
+- ✅ `STYLE.md §1` escape-hatch documentation cleaned (no live example reference)
+- ✅ All verification gates green (lint / vitest 236 / a11y-scan 2/2 with full color-contrast / playwright 40/7 skip/0 fail)
+
+**Remaining for Day 3** (US-C1 closeout):
+- Full validation sweep wrap-up (re-run lint+test+playwright + build for byte size record)
+- Visual baseline sanity (`git diff --stat main..HEAD` confirms 0 snapshotted-route files — expected since 5 Round2 files are chat-v2/sla-dashboard/tenant-settings, none in the 6 snapshot routes)
+- retrospective.md Q1-Q7 + 8-point self-check + rolling-planning self-check
+- memory snapshot + MEMORY.md index
+- In-sprint doc syncs (16-frontend-design.md +1 entry / sprint-workflow.md calibration matrix +1 row / STYLE.md done / plan+checklist MHist closeout Status→Closed)
+- PR open + CI verify (deferred user-merge per executing-actions-with-care)
+- Post-merge doc syncs (CLAUDE.md + SITUATION) — Day 4 or post-PR-merge
 

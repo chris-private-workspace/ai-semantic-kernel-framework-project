@@ -28,6 +28,7 @@
  * Last Modified: 2026-05-11
  *
  * Modification History (newest-first):
+ *   - 2026-05-11: Sprint 57.16 — /chat-v2 color-contrast re-enabled (ChatLayout + InputBar migrated to AA tokens); all 9 gated routes + auth pages now full axe rule set (AD-Inline-Style-Cleanup-Sweep-Round2)
  *   - 2026-05-11: Sprint 57.15 — color-contrast re-enabled for every route except /chat-v2 (ChatLayout placeholder text still hardcoded-hex inline, deferred to AD-Inline-Style-Cleanup-Sweep-Round2)
  *   - 2026-05-10: Sprint 57.14 US-A2 — mock all /api/v1/** (data → 503) so the gated-pages scan is hermetic regardless of a running backend; wait for networkidle before axe to avoid mid-scan navigation
  *   - 2026-05-10: Initial creation (Sprint 57.13 Day 8)
@@ -82,16 +83,13 @@ async function mockApi(page: Page, authMe: object | null): Promise<void> {
   );
 }
 
-async function scan(page: Page, label: string, allowLowContrast = false): Promise<void> {
+async function scan(page: Page, label: string): Promise<void> {
+  // Sprint 57.16 (AD-Inline-Style-Cleanup-Sweep-Round2): /chat-v2 no longer
+  // needs the color-contrast escape hatch — ChatLayout + InputBar were
+  // migrated from inline `#7c8696` hex to `text-muted-foreground` (≈ 4.6:1 on
+  // bg-muted; ≈ 4.9:1 on white — AA-compliant). All 9 gated routes + the auth
+  // pages now run the full axe rule set with no per-route disable.
   const builder = new AxeBuilder({ page });
-  if (allowLowContrast) {
-    // Only /chat-v2: ChatLayout's sidebar/inspector placeholder text is still
-    // hardcoded-hex inline (deferred to AD-Inline-Style-Cleanup-Sweep-Round2 —
-    // see the file's top-of-file eslint-disable); its #7c8696-on-#fbfbfd is
-    // ~3.7:1 (< WCAG AA 4.5:1). Every other route is contrast-checked. Drop
-    // this once Round2 migrates ChatLayout to design-system colour tokens.
-    builder.disableRules(["color-contrast"]);
-  }
   const results = await builder.analyze();
   const blocking = results.violations.filter(
     (v) => v.impact === "critical" || v.impact === "serious",
@@ -117,9 +115,9 @@ test.describe("Sprint 57.13 US-B6 — accessibility scan", () => {
       // otherwise "Execution context was destroyed, most likely because of a
       // navigation" if the SPA route changes mid-scan.
       await page.waitForLoadState("networkidle");
-      // /chat-v2 still has ChatLayout's hardcoded-hex placeholder text (Round2);
-      // every other gated route is colour-contrast-checked too.
-      await scan(page, route, route === "/chat-v2");
+      // Sprint 57.16: all 9 gated routes (incl /chat-v2) run the full axe
+      // rule set — no per-route disable.
+      await scan(page, route);
     }
   });
 

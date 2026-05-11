@@ -1,9 +1,8 @@
-/* eslint-disable no-restricted-syntax -- AD-Inline-Style-Cleanup-Sweep-Round2: inline styles deferred (tenant-settings batch — migrated in a follow-up sprint). */
 /**
  * File: frontend/src/features/tenant-settings/components/TenantSettingsEditForm.tsx
  * Purpose: Edit form for tenant settings — TanStack-driven mutation.
  * Category: Frontend / tenant-settings / components
- * Scope: Phase 57 / Sprint 57.3 US-4 → Sprint 57.9 US-6 Day 4 (TanStack mutation)
+ * Scope: Phase 57 / Sprint 57.3 US-4 → Sprint 57.9 US-6 Day 4 (TanStack mutation) → Sprint 57.16 Tailwind migration
  *
  * Description:
  *   Two editable fields per US-2 backend PATCH scope:
@@ -21,10 +20,15 @@
  *   API change: NEW required `tenantId` prop (parent passes the URL-resolved
  *   tenant id; mutation hook signature uses `{ tenantId, payload }`).
  *
+ *   Sprint 57.16 (AD-Inline-Style-Cleanup-Sweep-Round2): inline styles →
+ *   Tailwind utility classes; textarea uses STYLE.md §4 code-display pattern
+ *   (`font-mono text-xs`).
+ *
  * Created: 2026-05-07 (Sprint 57.3 Day 3)
- * Last Modified: 2026-05-09
+ * Last Modified: 2026-05-11
  *
  * Modification History (newest-first):
+ *   - 2026-05-11: Sprint 57.16 — inline styles → Tailwind utility classes (AD-Inline-Style-Cleanup-Sweep-Round2)
  *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — drop store.save → useTenantSettingsSave mutation; NEW tenantId prop
  *   - 2026-05-07: Initial creation (Sprint 57.3 Day 3)
  */
@@ -78,11 +82,14 @@ export function TenantSettingsEditForm({ tenantId, initialData, onDone }: Props)
   }
 
   return (
-    <div style={{ marginTop: "1.5rem", padding: "1.5rem", border: "1px solid #ccc" }}>
+    <div className="mt-6 border border-border p-6">
       <h2>Edit Tenant Settings</h2>
 
-      <div style={{ marginTop: "1rem" }}>
-        <label htmlFor="tenant-settings-display-name" style={{ display: "block", fontWeight: 600 }}>
+      <div className="mt-4">
+        <label
+          htmlFor="tenant-settings-display-name"
+          className="block font-semibold"
+        >
           Display Name (1-256 chars)
         </label>
         <input
@@ -91,17 +98,20 @@ export function TenantSettingsEditForm({ tenantId, initialData, onDone }: Props)
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           maxLength={256}
-          style={{ width: "100%", padding: "0.4rem", marginTop: "0.25rem" }}
+          className="mt-1 w-full px-2 py-1.5"
         />
         {displayNameInvalid && (
-          <p style={{ color: "#a00", fontSize: "0.85rem", marginTop: "0.25rem" }}>
+          <p className="mt-1 text-[0.85rem] text-danger">
             {displayName.length === 0 ? "Display name cannot be empty" : "Display name too long"}
           </p>
         )}
       </div>
 
-      <div style={{ marginTop: "1rem" }}>
-        <label htmlFor="tenant-settings-meta-data" style={{ display: "block", fontWeight: 600 }}>
+      <div className="mt-4">
+        <label
+          htmlFor="tenant-settings-meta-data"
+          className="block font-semibold"
+        >
           Meta Data (JSON object)
         </label>
         <textarea
@@ -110,28 +120,22 @@ export function TenantSettingsEditForm({ tenantId, initialData, onDone }: Props)
           onChange={(e) => setMetaDataText(e.target.value)}
           onBlur={(e) => validateJson(e.target.value)}
           rows={8}
-          style={{
-            width: "100%",
-            padding: "0.4rem",
-            marginTop: "0.25rem",
-            fontFamily: "monospace",
-            fontSize: "0.85rem",
-          }}
+          className="mt-1 w-full px-2 py-1.5 font-mono text-[0.85rem]"
         />
         {jsonError && (
-          <p style={{ color: "#a00", fontSize: "0.85rem", marginTop: "0.25rem" }}>{jsonError}</p>
+          <p className="mt-1 text-[0.85rem] text-danger">{jsonError}</p>
         )}
       </div>
 
       {saveM.error && (
-        <p style={{ color: "#a00", marginTop: "1rem" }}>Save failed: {saveM.error.message}</p>
+        <p className="mt-4 text-danger">Save failed: {saveM.error.message}</p>
       )}
 
-      <div style={{ marginTop: "1.5rem", display: "flex", gap: "0.75rem" }}>
-        <button onClick={handleSubmit} disabled={!canSave} style={{ padding: "0.5rem 1rem" }}>
+      <div className="mt-6 flex gap-3">
+        <button onClick={handleSubmit} disabled={!canSave} className="px-4 py-2">
           {saving ? "Saving…" : "Save"}
         </button>
-        <button onClick={onDone} disabled={saving} style={{ padding: "0.5rem 1rem" }}>
+        <button onClick={onDone} disabled={saving} className="px-4 py-2">
           Cancel
         </button>
       </div>
