@@ -71,9 +71,10 @@ Description:
 
 Created: 2026-05-11 (Sprint 57.15 drafting; closes the standing carryover AD-Inline-Style-Cleanup-Sweep)
 Last Modified: 2026-05-11
-Status: Draft (Day 0 done — branch + plan + checklist + 三-prong; 4 D-PRE catalogued, 0 abort; Day 1 GO)
+Status: Draft (Day 1 in progress — US-A1 triage + scope revision (B-tiered: 10 files this sprint, 5 → Round2) + US-A2 chat-v2/subagent 4 files migrated)
 
 Modification History (newest-first):
+    - 2026-05-11: Day 1 — D-DAY1-1 scope finding (15 files / 133 `style=` attrs vs plan's 80/14); user chose (B) Tiered (10 files this sprint, 5 → NEW AD-Inline-Style-Cleanup-Sweep-Round2); see §"Day 1 scope revision"
     - 2026-05-11: Day 0 三-prong — 4 D-PRE findings (D-PRE-1 `eslint-plugin-react` not a dep → `no-restricted-syntax` selector instead; D-PRE-2/3/4 de-risk/align); see §"Day 0 三-prong drift findings" + progress.md
     - 2026-05-11: Initial creation (Sprint 57.15 — AD-Inline-Style-Cleanup-Sweep; 4 USs / Day 0-3)
 
@@ -402,6 +403,16 @@ NEW class `frontend-refactor-mechanical` — HYBRID weighted blend over the 4 US
 - **D-PRE-3** 🟢: `STYLE.md` already has §1 "Tailwind Utility-First" (with "Rules") / §2 "Color Tokens" / §3 "Risk Badge Palette" (with "Reference component" + "Future codification candidate"). ⇒ the §US-B1 "Inline styles" guard content should *extend* §1 "Rules" + add an escape-hatch sub-section (not a new top-level §); and US-A2's `ApprovalCard` `riskColor` migration must ALIGN with §3 "Risk Badge Palette" + its "Reference component" — read §3 before mapping risk colours.
 - **D-PRE-4** 🟢: no vitest spec asserts `toHaveStyle(...)` / `.style` on the 14 components ⇒ the Risk-matrix row "vitest asserts inline-style literal → migration fails" probability drops to ~0 (still verify other per-file assertions in US-A2).
 - **Path note**: `16-frontend-design.md` lives at `agent-harness-planning/16-frontend-design.md` (top level), NOT under `phase-57-frontend-saas/`; `tailwind.config` is `.ts` not `.js`. (Doc-sync targets corrected accordingly.)
+
+### Day 1 scope revision (2026-05-11 — user chose (B) Tiered; per sprint-workflow.md §Step 2.5 "20-50% shift → revise §Acceptance/§Workload, re-confirm with user")
+
+**D-DAY1-1**: plan §Background said "80 `style={{}}` / 14 files"; re-survey (`grep -rEn "style=\{" frontend/src --include="*.tsx"`) = **15 files / 133 `style=` JSX attrs** (80 inline-literal + 53 `style={objVar}`/`style={fn()}`) + ~6 module-level `Record<string,CSSProperties>` stylesheet objects + ~5 helper fns returning `CSSProperties`. The `no-restricted-syntax` `JSXAttribute[name.name='style']` guard flags ALL `style=` regardless of value shape ⇒ to pass at `error`, all 133 must be migrated or carry `eslint-disable`. >20% shift + the `ChatLayout.tsx` "Phase 58+ defer" header note ⇒ paused for a user scope decision.
+
+**User chose (B) Tiered** — revised scope:
+- **This sprint (10 files)**: `ApprovalCard` / `ToolCallCard` / `MessageList` / `SubagentTree` (chat-v2/subagent — `color-contrast` re-enable prerequisite) + `CostBreakdownTable` / `MonthPicker` / `ApprovalList` / `TenantListTable` / `TenantListPagination` / `TenantListFilters` (3 visual-regression snapshots + a11y). ≈ 70 `style=` attrs.
+- **Deferred → NEW `AD-Inline-Style-Cleanup-Sweep-Round2` (5 files)**: `ChatLayout` (its header's Phase-58 defer note) / `InputBar` / `TenantSettingsView` (27) / `TenantSettingsEditForm` (13) / `SLAMetricsCard` (4, incl dynamic bar widths). ≈ 63 `style=` attrs. Each gets a top-of-file `/* eslint-disable no-restricted-syntax -- AD-Inline-Style-Cleanup-Sweep-Round2: ... */` so the `error`-level guard passes for everything else. Logged in retrospective Q4.
+- **Unchanged**: `color-contrast` axe rule re-enabled (US-B1); 3 visual baselines (cost-dashboard / governance / admin-tenants) refreshed via the 57.14 workflow (US-C1); guard `no-restricted-syntax` = `error`; Day 0-3; calibration `frontend-refactor-mechanical` HYBRID 0.50 (~4-6 hr committed — the tiered scope ≈ what the original plan actually estimated).
+- §Acceptance Criteria (A1/A2) + §Deliverables + checklist §1.2/§2.1/§2.3 read "10 files this sprint, 5 → Round2". §Technical Spec's "Static → Tailwind 對照" + "Dynamic case 處理" tables remain valid (they describe the technique, not the file list).
 
 ### Roll-back plan
 - 每檔（或每組相關檔）一個 commit；某檔改壞可單獨 revert（feature branch）。

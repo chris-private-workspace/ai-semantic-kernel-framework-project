@@ -17,8 +17,10 @@
  *   layout when no multi-agent activity). Mirrors VerificationPanel.tsx pattern.
  *
  * Created: 2026-05-10 (Sprint 57.12 Day 3 / US-6)
+ * Last Modified: 2026-05-11
  *
  * Modification History:
+ *   - 2026-05-11: Sprint 57.15 — drop the lone inline style (dynamic tree-indent) for a finite ml-* class lookup (AD-Inline-Style-Cleanup-Sweep)
  *   - 2026-05-10: Initial creation (Sprint 57.12 Day 3 / US-6)
  *
  * Related:
@@ -28,12 +30,18 @@
  *   - frontend/src/features/verification/components/VerificationPanel.tsx (sibling pattern)
  */
 
+import { cn } from "../../../lib/utils";
 import { useChatStore } from "../../chat_v2/store/chatStore";
 import type { SubagentNode } from "../types";
 import { SubagentStatusBadge } from "./SubagentStatusBadge";
 
 const MAX_DEPTH = 5;
 const SUMMARY_SNIPPET_MAX = 60;
+
+// Tree-indent per depth (depth*12px), as literal Tailwind classes so the JIT
+// can see them; depth is bounded by MAX_DEPTH so 0..5. Replaces a dynamic
+// `style={{ marginLeft: depth*12 }}`.
+const DEPTH_INDENT = ["ml-0", "ml-3", "ml-6", "ml-9", "ml-12", "ml-[60px]"];
 
 function _truncate(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, max)}…`;
@@ -73,8 +81,7 @@ function NodeRow({ rn, depth }: { rn: RenderNode; depth: number }): JSX.Element 
   const { node } = rn;
   return (
     <li
-      className="space-y-1"
-      style={{ marginLeft: depth > 0 ? `${depth * 12}px` : undefined }}
+      className={cn("space-y-1", DEPTH_INDENT[depth] ?? "ml-[60px]")}
       data-testid={`subagent-node-${node.subagentId}`}
     >
       <div className="flex items-start gap-2 rounded bg-background p-2">

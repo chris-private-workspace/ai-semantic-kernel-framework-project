@@ -13,9 +13,10 @@
  *   component focuses on the message list only.
  *
  * Created: 2026-04-30 (Sprint 50.2 Day 4.1)
- * Last Modified: 2026-04-30
+ * Last Modified: 2026-05-11
  *
- * Modification History:
+ * Modification History (newest-first):
+ *   - 2026-05-11: Sprint 57.15 — inline styles → Tailwind utility classes (AD-Inline-Style-Cleanup-Sweep)
  *   - 2026-04-30: Initial creation (Sprint 50.2 Day 4.1)
  *
  * Related:
@@ -23,92 +24,36 @@
  *   - ToolCallCard.tsx (per-tool-call panel)
  */
 
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useEffect, useRef } from "react";
+
 import { useChatStore } from "../store/chatStore";
 import type { Message } from "../types";
 import { ApprovalCard } from "./ApprovalCard";
 import ToolCallCard from "./ToolCallCard";
 
-const styles: Record<string, CSSProperties> = {
-  list: {
-    flex: 1,
-    overflowY: "auto",
-    padding: "1.5rem",
-    display: "flex",
-    flexDirection: "column",
-    gap: "1rem",
-  },
-  row: {
-    maxWidth: "min(720px, 90%)",
-  },
-  rowUser: {
-    alignSelf: "flex-end",
-  },
-  rowAssistant: {
-    alignSelf: "flex-start",
-    width: "min(720px, 90%)",
-  },
-  bubbleUser: {
-    background: "#5a78c8",
-    color: "#fff",
-    padding: "0.6rem 0.9rem",
-    borderRadius: 12,
-    borderBottomRightRadius: 4,
-    fontSize: 14,
-    lineHeight: 1.5,
-    whiteSpace: "pre-wrap",
-    wordBreak: "break-word",
-  },
-  bubbleAssistant: {
-    background: "#fff",
-    border: "1px solid #d8dde7",
-    color: "#2c2c33",
-    padding: "0.6rem 0.9rem",
-    borderRadius: 12,
-    borderBottomLeftRadius: 4,
-    fontSize: 14,
-    lineHeight: 1.5,
-    whiteSpace: "pre-wrap",
-    wordBreak: "break-word",
-  },
-  thinking: {
-    color: "#7c8696",
-    fontSize: 12,
-    fontStyle: "italic",
-    marginBottom: "0.4rem",
-  },
-  toolCalls: {
-    marginTop: "0.6rem",
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
-  },
-  empty: {
-    color: "#9aa3b3",
-    fontSize: 13,
-    textAlign: "center",
-    padding: "2rem",
-  },
-};
+const BUBBLE_BASE =
+  "whitespace-pre-wrap break-words rounded-xl px-3.5 py-2.5 text-sm leading-normal";
 
 function MessageRow({ msg }: { msg: Message }): JSX.Element {
   if (msg.kind === "user") {
     return (
-      <div style={{ ...styles.row, ...styles.rowUser }}>
-        <div style={styles.bubbleUser}>{msg.content}</div>
+      <div className="max-w-[min(720px,90%)] self-end">
+        <div className={`${BUBBLE_BASE} rounded-br bg-primary text-white`}>{msg.content}</div>
       </div>
     );
   }
   // assistant
   return (
-    <div style={{ ...styles.row, ...styles.rowAssistant }}>
-      <div style={styles.bubbleAssistant}>
+    <div className="max-w-[min(720px,90%)] w-[min(720px,90%)] self-start">
+      <div className={`${BUBBLE_BASE} rounded-bl border border-border bg-card text-foreground`}>
         {msg.thinking !== null && msg.thinking !== "" && (
-          <div style={styles.thinking}>thinking: {msg.thinking}</div>
+          <div className="mb-1.5 text-xs italic text-muted-foreground">
+            thinking: {msg.thinking}
+          </div>
         )}
         {msg.content && <div>{msg.content}</div>}
         {msg.toolCalls.length > 0 && (
-          <div style={styles.toolCalls}>
+          <div className="mt-2.5 flex flex-col gap-2">
             {msg.toolCalls.map((tc) => (
               <ToolCallCard key={tc.toolCallId} entry={tc} />
             ))}
@@ -135,9 +80,9 @@ export default function MessageList(): JSX.Element {
   }, [messages.length, approvalEntries.length]);
 
   return (
-    <div style={styles.list} ref={scrollRef}>
+    <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6" ref={scrollRef}>
       {messages.length === 0 && approvalEntries.length === 0 ? (
-        <div style={styles.empty}>
+        <div className="p-8 text-center text-sm text-muted-foreground">
           Type a message below to start. Try <code>echo hello</code> in echo_demo
           mode.
         </div>

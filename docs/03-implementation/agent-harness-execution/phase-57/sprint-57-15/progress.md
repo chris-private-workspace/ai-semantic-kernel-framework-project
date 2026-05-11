@@ -45,12 +45,66 @@
 **Go/no-go**: findings shift scope by < 5% (D-PRE-1 is an implementation-primitive swap, same deliverable; D-PRE-2/3/4 are de-risking / alignment notes) → **GO for Day 1**. Plan §Technical Spec + §US-B1 + §Risks + checklist 2.2 updated to use `no-restricted-syntax`; plan/checklist Related-line path for `16-frontend-design.md` corrected.
 
 ### Day 0 commit
-- (pending) `chore(sprint-57-15, Day 0): plan + checklist + 三-prong baseline`
-
-### Remaining for Day 1
-- US-A1: per-file triage of all 14 files → migration table in this file (Day 1 entry)
-- US-A2 start: chat-v2 5 files (`ApprovalCard` / `ToolCallCard` / `ChatLayout` / `MessageList` / `SubagentTree`) — the `color-contrast` re-enable prerequisite; `ApprovalCard` riskColor per STYLE.md §3
+- `96877e11` `chore(sprint-57-15, Day 0): plan + checklist + 三-prong baseline` ✅
 
 ### Notes
 - Tailwind config is `tailwind.config.ts` (not `.js`).
 - `16-frontend-design.md` lives at `agent-harness-planning/16-frontend-design.md` (top level), not under `phase-57-frontend-saas/`.
+
+---
+
+## Day 1 — 2026-05-11 — US-A1 triage (in progress) + ⚠️ scope finding
+
+### Smoke probe (deferred 0.5 items)
+- `npm run lint` → silent (0 warnings/errors) ✅ baseline confirmed
+- (vitest + a11y-scan smoke run at migration start)
+
+### US-A1 triage — chat-v2 / subagent group (5 files read: ApprovalCard / ToolCallCard / ChatLayout / MessageList / SubagentTree)
+
+Read the 5 files. They do NOT use a handful of `style={{...}}` inline literals — they use the **`const styles: Record<string, CSSProperties> = {...}` stylesheet-object pattern** + helper functions returning `CSSProperties` (`ApprovalCard`: `cardStyle`/`headerStyle`/`buttonRow` consts + `buttonStyle(kind)` + `decisionBadgeStyle(decision)` + `RISK_COLOR` map; `ToolCallCard`: `styles` record (7 keys) + `badge(color)` + `statusColor(entry)`; `ChatLayout`: `styles` record (5 keys); `MessageList`: `styles` record (12 keys); `SubagentTree`: 1 `style={{ marginLeft: depth*12 }}`). So per file the real surface is much larger than the `style={{` grep suggested:
+
+| File | `style={{` (grep) | ALL `style=` JSX attrs | + module-level stylesheets/helpers | hardcoded hex (a11y-relevant) |
+|------|-------------------|------------------------|-----------------------------------|-------------------------------|
+| `chat_v2/ApprovalCard.tsx` | 4 | **11** | `cardStyle` `headerStyle` `buttonRow` consts + `buttonStyle()` + `decisionBadgeStyle()` + `RISK_COLOR` | `#666` (low-contrast) + `#c62828` `#2e7d32` `#ed6c02` `#d84315` `#b71c1c` `#1976d2` `#fff8e1` etc. |
+| `chat_v2/ToolCallCard.tsx` | 3 | **12** | `styles` record (7) + `badge()` + `statusColor()` | `#7c8696` `#3b4252` `#d8dde7` `#f4f6fa` `#5a78c8` `#c43d3d` `#2f9c59` etc. |
+| `chat_v2/ChatLayout.tsx` | 2 | **8** | `styles` record (5) | `#e2e6ee` `#fbfbfd` `#3b4252` `#7c8696` `#5a6377` — also has `gridTemplateAreas` / `gridTemplateColumns: "240px 1fr 280px"` / `calc(100vh - 6.5rem)`. **⚠️ file header says "Phase 58+ Tailwind migration when sessions sidebar + inspector get real content from 51.x / 52.x"** — explicitly deferred. |
+| `chat_v2/MessageList.tsx` | 2 | **8** | `styles` record (12) | `#5a78c8` `#fff` `#d8dde7` `#2c2c33` `#7c8696` `#9aa3b3` etc. |
+| `chat_v2/InputBar.tsx` | 0 | **10** | (not yet read — all `style={objVar}`) | TBD — **⚠️ this file is NOT in the CLAUDE.md carryover list** but matches `style=` |
+| `subagent/SubagentTree.tsx` | 1 | **1** | — | (none — only `marginLeft: depth*12` dynamic) |
+
+### ⚠️ D-DAY1-1 — scope finding: the plan undercounted (>20% shift)
+
+**Plan §Background said "80 `style={{}}` / 14 files".** Re-survey with `grep -rEn "style=\{" frontend/src --include="*.tsx"`: **15 files** (InputBar.tsx was missed — `chat_v2/components/InputBar.tsx`, 10 `style={objVar}` attrs) with **133 `style=` JSX attrs** (80 inline-literal + 53 `style={objVar}`/`style={fn()}`), plus ~6 module-level `Record<string, CSSProperties>` stylesheet objects + ~5 helper functions returning `CSSProperties` that must be deleted. The `no-restricted-syntax` `JSXAttribute[name.name='style']` guard flags ALL `style=` (whether the value is an inline object literal, a variable, or a fn call) — so to make the guard pass at `error` level, ALL 133 must be migrated (or carry `eslint-disable`).
+
+Per-file `style=` attr counts (descending): TenantSettingsView 27 / TenantListTable 15 / CostBreakdownTable 14 / TenantSettingsEditForm 13 / ToolCallCard 12 / ApprovalCard 11 / InputBar 10 / ChatLayout 8 / MessageList 8 / TenantListFilters 5 / SLAMetricsCard 4 / MonthPicker 2 / TenantListPagination 2 / ApprovalList 1 / SubagentTree 1.
+
+This is a **>20% scope shift** (66% more occurrences + 1 more file + the work-per-occurrence is higher for the chat-v2 stylesheet-object files than for 1-line literals) → per `.claude/rules/sprint-workflow.md` §Step 2.5 ("Findings shift scope by 20-50% → revise plan §Acceptance Criteria + §Workload, re-confirm with user") → **paused for a scope decision before migrating**. Plus the `ChatLayout.tsx` "Phase 58+ defer" header note is a per-file wrinkle.
+
+**Scope options presented to user**:
+- **(A) Full sweep** — 15 files / 133 `style=` attrs + stylesheets/helpers; guard `error` everywhere; extend Day 0-3 → Day 0-4; ~6-9 hr committed.
+- **(B) Tiered (a11y + visual first, Round2 the rest)** — this sprint: the files that gate the `color-contrast` re-enable + the 3 visual baselines = `ApprovalCard` / `ToolCallCard` / `MessageList` / `SubagentTree` (chat-v2 a11y) + `CostBreakdownTable` / `MonthPicker` / `ApprovalList` / `TenantListTable` / `TenantListPagination` / `TenantListFilters` (visual snapshots + a11y) ≈ 10 files / ~70 attrs; defer `ChatLayout` (Phase-58 note) / `InputBar` / `TenantSettingsView` / `TenantSettingsEditForm` / `SLAMetricsCard` ≈ 5 files / ~63 attrs → `AD-Inline-Style-Cleanup-Sweep-Round2` with file-level `/* eslint-disable no-restricted-syntax -- AD-Inline-Style-Cleanup-Sweep-Round2 */` + reason; guard `error` for everything else; Day 0-3 holds; ~4-6 hr.
+
+→ **user chose (B) Tiered** (2026-05-11). Revised scope:
+- **This sprint (10 files)**: `ApprovalCard` / `ToolCallCard` / `MessageList` / `SubagentTree` (chat-v2 a11y prereq) + `CostBreakdownTable` / `MonthPicker` / `ApprovalList` / `TenantListTable` / `TenantListPagination` / `TenantListFilters` (3 visual snapshots + a11y). ≈ 70 `style=` attrs.
+- **Deferred → `AD-Inline-Style-Cleanup-Sweep-Round2` (5 files)**: `ChatLayout` (header's Phase-58 defer note) / `InputBar` / `TenantSettingsView` (27) / `TenantSettingsEditForm` (13) / `SLAMetricsCard` (4). ≈ 63 `style=` attrs. These get a file-level `/* eslint-disable no-restricted-syntax -- AD-Inline-Style-Cleanup-Sweep-Round2: inline styles pending tiered migration */` at the top so the `error`-level guard passes for everything else. Logged in retrospective Q4.
+- Guard `no-restricted-syntax` = `error`; `color-contrast` axe rule re-enabled; 3 visual baselines (cost-dashboard / governance / admin-tenants) refreshed via the 57.14 workflow. Day 0-3 holds; calibration unchanged (~4-6 hr committed).
+- Plan §"Day 1 scope revision" + checklist §1.2/§2.1/§2.3 updated accordingly.
+
+### US-A2 — chat-v2 / subagent migration (4 files: ApprovalCard / ToolCallCard / MessageList / SubagentTree) — DONE 2026-05-11
+
+- **`SubagentTree.tsx`** — was already ~all-Tailwind; only `style={{ marginLeft: depth*12 }}` left → finite `DEPTH_INDENT = ["ml-0","ml-3","ml-6","ml-9","ml-12","ml-[60px]"]` literal-string array (Tailwind JIT sees them; depth bounded by `MAX_DEPTH=5`) + `className={cn("space-y-1", DEPTH_INDENT[depth] ?? "ml-[60px]")}` + `import { cn } from "../../../lib/utils"`. **No inline style left, no eslint-disable needed.** MHist +1.
+- **`ApprovalCard.tsx`** — full rewrite (4 `style={{}}` + `cardStyle`/`headerStyle`/`buttonRow` consts + `buttonStyle(kind)` + `decisionBadgeStyle(decision)` + `RISK_COLOR` map all removed). New: `RISK_TEXT_CLASS` map per STYLE.md §3 (`text-green-700`/`text-orange-600`/`text-orange-800`/`text-red-800` for LOW/MEDIUM/HIGH/CRITICAL, fallback `text-muted-foreground`) + `DECISION_BADGE_CLASS` map (`bg-success`/`bg-danger`/`bg-warning`, fallback `bg-muted-foreground`); card `my-2 rounded-md border border-warning bg-warning/10 px-4 py-3 text-[0.95rem]`; header `mb-1.5 font-semibold`; risk span `cn("font-bold", riskTextClass)`; request-id `text-sm text-muted-foreground` (was `#666` low-contrast → now WCAG-AA token); decision badge `cn("inline-block rounded-full px-2 py-0.5 text-xs font-bold text-white", decisionBadgeClass)`; error alert `mt-1.5 text-sm text-danger`; buttons `cursor-pointer rounded border-0 bg-success/bg-danger px-3 py-1 text-sm font-semibold text-white` + link `bg-transparent text-primary underline`. MHist +1; header comment + Related updated. **No inline style left.**
+- **`ToolCallCard.tsx`** — full rewrite (3 `style={{}}` + `styles` record (7 keys) + `badge(color)` + `statusColor(entry)` removed). `statusColor`→`statusBadge` returns `{label, cls}` (`bg-primary`/`bg-danger`/`bg-success`); card `overflow-hidden rounded-md border border-border bg-card font-mono text-[13px]`; header `flex cursor-pointer select-none items-center gap-2.5 border-b border-border bg-muted px-3 py-2`; tool name `font-semibold text-foreground`; "X ms" + chevron `text-[11px] text-muted-foreground`; badge `cn("ml-auto rounded px-2 py-0.5 text-[11px] uppercase tracking-wide text-white", status.cls)`; body `px-3.5 py-2.5`; labels `mb-1 text-[11px] text-muted-foreground` (+ `mt-2` for the Result/Error label); `pre` per STYLE.md §4 (`m-0 whitespace-pre-wrap break-words rounded border border-border bg-muted px-2 py-1.5`; `font-mono` inherited from card). MHist +1; stale "Tailwind retrofitted in Phase 53.4" header comment removed; Related += STYLE.md §4. **No inline style left.**
+- **`MessageList.tsx`** — full rewrite (2 `style={{}}` + `styles` record (12 keys) removed). `BUBBLE_BASE` const `whitespace-pre-wrap break-words rounded-xl px-3.5 py-2.5 text-sm leading-normal`; user bubble `${BUBBLE_BASE} rounded-br bg-primary text-white` in `<div className="max-w-[min(720px,90%)] self-end">`; assistant bubble `${BUBBLE_BASE} rounded-bl border border-border bg-card text-foreground` in `<div className="max-w-[min(720px,90%)] w-[min(720px,90%)] self-start">`; thinking `mb-1.5 text-xs italic text-muted-foreground`; tool-calls `mt-2.5 flex flex-col gap-2`; list `flex flex-1 flex-col gap-4 overflow-y-auto p-6`; empty `p-8 text-center text-sm text-muted-foreground`. MHist +1. **No inline style left.**
+
+**Verify**: `npm run lint` silent (incl `--report-unused-disable-directives` → no stale disables) ✅ / `npm run build` main bundle `index-FIvzMl_y.js` **297.89 kB gzip 95.27 — byte-identical to baseline** (removed inline-style objects ≈ neutral; Tailwind classes already in bundle) ✅ / `npm run test` (vitest) **57 files / 236 pass — unchanged** ✅ / `npm run e2e -- a11y/a11y-scan.spec.ts` → **2 passed** (chat-v2 in GATED_ROUTES; structural a11y rules unaffected; `color-contrast` still disabled — re-enable is §2.2/Day 2) ✅ / `git diff` only the 4 src files + docs; 0 component-logic change.
+
+**Tailwind ↔ original equivalence notes** (for the Day 3 visual-baseline eyeball — none of these 4 are in a visual snapshot, but recording the mapping discipline): `p-2`=0.5rem, `px-3 py-2`=0.75/0.5rem, `gap-2.5`=0.625rem, `mt-2`=0.5rem, `mb-1.5`=0.375rem, `rounded`=0.25rem(4px), `rounded-md`=0.375rem(6px), `rounded-xl`=0.75rem(12px) — all byte-equivalent to the original literals. Colour changes (intentional, a11y): `#666`→`text-muted-foreground` (WCAG-AA), `#7c8696`→`text-muted-foreground`, `#3b4252`/`#2c2c33`→`text-foreground`, `#d8dde7`/`#ebeef4`→`border-border`, `#fff`→`bg-card`, `#f4f6fa`/`#f8fafc`→`bg-muted`, `#5a78c8`→`bg-primary`, `#2e7d32`/`#2f9c59`→`bg-success`, `#c62828`/`#c43d3d`→`bg-danger`/`text-danger`, `#ed6c02`→`border-warning`, `#fff8e1`→`bg-warning/10`, risk levels→§3 classes.
+
+### Day 1 commit
+- (pending) `refactor(sprint-57-15, Day 1): US-A1 scope revision (B-tiered) + US-A2 chat-v2/subagent inline styles → Tailwind`
+
+### Remaining for Day 2
+- US-A2 §2.1: 6 visual/a11y files — `CostBreakdownTable` / `MonthPicker` / `ApprovalList` / `TenantListTable` / `TenantListPagination` / `TenantListFilters` → Tailwind (these affect the cost-dashboard / governance / admin-tenants visual snapshots)
+- §2.3: 5 Round2 files get a top-of-file `/* eslint-disable no-restricted-syntax -- AD-Inline-Style-Cleanup-Sweep-Round2: ... */` (`ChatLayout` / `InputBar` / `TenantSettingsView` / `TenantSettingsEditForm` / `SLAMetricsCard`)
+- US-B1: `eslint.config.js` += `no-restricted-syntax` `JSXAttribute[name.name='style']` (`error`); `a11y-scan.spec.ts` remove `.disableRules(["color-contrast"])`; `STYLE.md` §1 extend + escape-hatch sub-§
