@@ -6,9 +6,12 @@ Scope: Phase 57 / Sprint 57.16
 
 Created: 2026-05-11 (drafted post-plan approval)
 Last Modified: 2026-05-11
-Status: Day 0 done (§0.1-0.4 [x]; §0.5 smoke probe deferred to Day 1 start; §0.6 commit pending in this commit)
+Status: Closed (Day 3 closeout — §0/§1/§2/§3 [x] except §3.7 squash-merge [deferred to user] + §3.6 post-merge-deferred items [CLAUDE.md/SITUATION sync — separate closeout PR]; PR opened; no visual-baseline workflow run — 5 Round2 files not in the 6 snapshot routes)
 
 Modification History (newest-first):
+    - 2026-05-11: Day 3 — §3.1-3.8 [x] (validation sweep green / visual baseline sanity = 0 snapshotted-route files → no workflow / retrospective Q1-Q7 / memory / doc syncs / PR opened); §3.7 squash-merge deferred to user; §3.6 CLAUDE.md/SITUATION sync deferred to separate closeout PR; Status → Closed
+    - 2026-05-11: Day 2 — §2.1 [x] (TenantSettingsView + TenantSettingsEditForm migrated) + §2.2 [x] (a11y-scan /chat-v2 color-contrast flip + STYLE.md §1 cleanup); all 5 file-level eslint-disables removed; functional scope complete
+    - 2026-05-11: Day 1 — §1.1 [x] (triage + migration table) + §1.2 [x] (ChatLayout + InputBar + SLAMetricsCard migrated, 3/5 file-level disables removed, chat-v2 e2e 10/10 regression sentinel green)
     - 2026-05-11: Day 0 — §0.1-0.4 [x]; 三-prong done (4 D-PRE; 0 scope shift; Day 1 GO); §0.5 smoke probe deferred to Day 1 start per checklist note
     - 2026-05-11: Initial creation (Sprint 57.16 — mirrors 57.15 day-structure, Day 0-3 for focused mechanical-refactor tier-2 scope)
 
@@ -96,53 +99,54 @@ Related:
 
 ---
 
-## Day 3 — US-C1: validation sweep + visual baseline sanity + retrospective + memory + doc syncs + PR
+## Day 3 — US-C1: validation sweep + visual baseline sanity + retrospective + memory + doc syncs + PR — DONE 2026-05-11
 
 ### 3.1 US-C1: full validation sweep
-- [ ] **Frontend**: `npm run lint` 0 error (incl `no-restricted-syntax` guard + `--report-unused-disable-directives` — 0 file-level disables remain; codebase 0 `style=`) / `npm run build` main bundle `index-*.js` byte size recorded (≈ unchanged or slightly down) / `npm run test` (vitest) 236 pass — unchanged (or adjusted count if a layout assertion was changed — record in progress.md) / `npx playwright test` (full) 40+ pass / 7 skip / 0 fail
-- [ ] **Backend sanity** — `git diff --stat main..HEAD` = 0 `backend/` changes (only `frontend/**` + `docs/**`) → backend baselines guaranteed unchanged (pytest 1676 pass+4 skip / mypy 0/306 / 9-9 V2 lints / 0 LLM SDK leak); not re-run (rationale in retrospective Q1)
+- [x] **Frontend**: ✅ `npm run lint` (incl `no-restricted-syntax` guard + `--report-unused-disable-directives`) — silent (0 error; 0 file-level disable remains; codebase 0 real `style=`) / ✅ `npm run build` main bundle `index-CUc9p3IO.js` **297.89 kB gzip 95.27 — byte-identical** (CSS `index-*.css` 11.85 kB gzip 2.93 unchanged) / ✅ `npm run test -- --run` (vitest) **57 files / 236 pass — unchanged** / ✅ `npx playwright test` (full) **40 pass / 7 skip / 0 fail**
+- [x] **Backend sanity** — ✅ `git diff --stat main..HEAD` = `frontend/STYLE.md` + 5 `frontend/src/features/**/*.tsx` + `frontend/tests/e2e/a11y/a11y-scan.spec.ts` + 3 docs = **0 `backend/` changes** → backend baselines guaranteed unchanged (pytest 1676 pass+4 skip / mypy 0/306 / 9-9 V2 lints / 0 LLM SDK leak); not re-run (rationale in retrospective Q1)
 
-### 3.2 US-C1: visual baseline sanity — DONE pending (expected 0 changes — no workflow run needed)
-- [ ] **`git diff --stat main..HEAD`** confirms 0 files touched that render in the 6 `visual-regression.spec.ts` snapshot routes (app-shell / auth-login / verification-recent / cost-dashboard / governance / admin-tenants): the 5 migrated files are chat-v2 (`ChatLayout`/`InputBar`) / sla-dashboard (`SLAMetricsCard`) / tenant-settings (`TenantSettings{View,EditForm}`) — none in the 6 routes; `pages/` not touched → visual baselines expected unchanged → **no `gh workflow run` this sprint** (the differentiator vs Sprint 57.15 which had 7 files in 3 snapshot routes). Note in progress.md.
-- [ ] **Fallback (only if `git diff` unexpectedly touches a snapshotted-route file)** — `gh workflow run "Playwright E2E" --ref feature/sprint-57-16-inline-style-round2` → download artifact → compare/commit per Sprint 57.14 PR #135 path + retrospective Q4 `AD-Visual-Baseline-Refresh-57.16`. **Expected: not needed.**
-  - Verify: feature branch CI `visual-regression.spec.ts` will pass (baselines unchanged); `a11y-scan.spec.ts` will pass (9/9 full color-contrast)
+### 3.2 US-C1: visual baseline sanity — DONE 2026-05-11 (0 changes — no workflow run needed)
+- [x] **`git diff --stat main..HEAD`** confirmed 0 files touched that render in the 6 `visual-regression.spec.ts` snapshot routes (app-shell / auth-login / verification-recent / cost-dashboard / governance / admin-tenants): the 5 migrated files are chat-v2 (`ChatLayout`/`InputBar`) / sla-dashboard (`SLAMetricsCard`) / tenant-settings (`TenantSettings{View,EditForm}`) — none in the 6 routes; `pages/` not touched; `tailwind.config.ts` not touched → visual baselines unchanged → **no `gh workflow run` this sprint** (the differentiator vs Sprint 57.15 which had 7 files in 3 snapshot routes and still found 0 diffs). Noted in progress.md.
+- [x] **Fallback** — not triggered (no snapshotted-route file touched). `AD-Visual-Baseline-Refresh-57.16` not needed.
+  - Verify: ✅ feature branch CI `visual-regression.spec.ts` will pass (baselines unchanged); `a11y-scan.spec.ts` will pass (9/9 full color-contrast — verified locally 2/2 pass)
 
 ### 3.3 US-C1: routes / docs cross-check
-- [ ] `routes.config.ts` — no change (no routing change)
-- [ ] `eslint.config.js` — no change (guard is 57.15's; only the 5 file-level disables removed from the source files)
-- [ ] 17.md — no change (0 NEW agent-harness contract/ABC/LoopEvent/migration/API)
+- [x] `routes.config.ts` — no change (no routing change) ✅
+- [x] `eslint.config.js` — no change (guard is 57.15's; only the 5 file-level disables removed from the source files) ✅
+- [x] 17.md — no change (0 NEW agent-harness contract/ABC/LoopEvent/migration/API) ✅
+- [x] `tailwind.config.ts` — no change (no new token; D-PRE-4 logged for separate `AD-Style-Token-Config-Audit`) ✅
 
 ### 3.4 US-C1: retrospective.md (Q1-Q7)
-- [ ] **NEW `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-16/retrospective.md`** — Q1 (US-A1/A2/B1/C1 ✅; 5 files migrated; `frontend/src` 0 `style=` / 0 file-level disable; `/chat-v2` full color-contrast — all 9 gated routes + auth pages now full axe rule set) / Q2 (`actual/bottom-up` ratio + `actual/committed` ratio — vs 57.15's 0.89 / 1.7; 2nd `frontend-refactor-mechanical` data point) / Q3 (Day 0 drift findings: SLAMetricsCard stale "dynamic bar widths" reason / STYLE.md §3 reference component naming / approx-value list pin / + any vitest layout-assertion adjustments) / Q4 (carryover AD: `AD-Lighthouse-Visual-Hard-Gate` still open — baselines stable; 57.13 carryover untouched: AD-Bundle-Size optional / AD-i18n-Feature-Namespaces / AD-WorkOS-Prod-Redirect-Flow / AD-Frontend-RUM-SessionReplay / D-DAY4-2; doc nits — CONVENTION.md §8 wrong import path / auth-fixtures.ts stale header NOTE) / Q5 (Phase 57.17+ candidate names only — see CLAUDE.md Next Phase 候選) / Q6 (calibration verdict — KEEP 0.50 if `actual/committed` ≈ 0.85-1.2; if 2/2 over band → propose 0.50→0.70-0.80 for next refactor sprint per matrix note) / Q7 (N/A — not a spike) + 8-point sprint-workflow self-check all ✅ + rolling-planning self-check ✅
+- [x] **NEW `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-16/retrospective.md`** ✅ — Q1 (US-A1/A2/B1/C1 ✅; 5 files migrated; `frontend/src` 0 real inline `style=` / 0 file-level disable; `/chat-v2` full color-contrast — all 9 gated routes + auth pages full axe rule set) / Q2 (`actual/committed` ≈ 1.86 OVER band; `actual/bottom-up` ≈ 0.96 — bottom-up accurate; 2nd `frontend-refactor-mechanical` data point) / Q3 (went well + D-PRE-3/D-PRE-4 surprises + `/chat-v2` 4 moderate/minor `heading-order`/`landmark-*` structural a11y nits) / Q4 (carryover: `AD-Lighthouse-Visual-Hard-Gate` open / NEW `AD-Style-Token-Config-Audit` + `AD-A11y-Structural-Nits` / 57.13 carryover untouched: AD-Bundle-Size optional / AD-i18n-Feature-Namespaces / AD-WorkOS-Prod-Redirect-Flow / AD-Frontend-RUM-SessionReplay / D-DAY4-2; doc nits — CONVENTION.md §8 wrong import path / auth-fixtures.ts stale header NOTE) / Q5 (Phase 57.17+ candidate names only) / Q6 (calibration verdict — 2/2 over band → AD-Sprint-Plan-13: 0.50→0.80 for the 3rd+ `frontend-refactor-mechanical` sprint; KEEP 0.50 was the rule for 57.15+57.16) / Q7 (N/A — not a spike) + 8-point sprint-workflow self-check all ✅ + rolling-planning self-check all ✅
 
 ### 3.5 US-C1: memory snapshot
-- [ ] **NEW `memory/project_phase57_16_inline_style_round2.md`** + **`MEMORY.md` index +1 row** (Recent Sprints top)
+- [x] **NEW `memory/project_phase57_16_inline_style_round2.md`** + **`MEMORY.md` index +1 row** (Recent Sprints top) ✅
 
 ### 3.6 US-C1: doc syncs (in-sprint)
-- [ ] `16-frontend-design.md` — V2 Ship Timeline +1 entry (13/N counter — Round2 5/5 → all 15 feature components Tailwind-clean + `/chat-v2` color-contrast re-enabled → 9/9 gated routes + auth pages full axe rule + `no-restricted-syntax` guard now covers entire codebase with 0 file-level disables)
-- [ ] `.claude/rules/sprint-workflow.md` — calibration matrix `frontend-refactor-mechanical` row updated (+1 data point 57.16=<ratio>; 2-data-point mean; verdict KEEP 0.50 per 3-sprint window rule OR if 2/2 over band note the propose-lift trigger) + matrix MHist
-- [ ] `STYLE.md` — §1 "Inline-style escape hatches" cleanup + MHist (done in US-B1)
-- [ ] checklist [x] + plan/checklist header MHist closeout (Status: Draft → Closed)
-- [ ] **Deferred post-merge** (not in this PR): `CLAUDE.md` (main HEAD + Latest Sprint row + Next Phase 候選 — remove `AD-Inline-Style-Cleanup-Sweep-Round2`; note a11y color-contrast now 9/9; carryover update) + `claudedocs/6-ai-assistant/prompts/SITUATION-V2-SESSION-START.md` §第八部分
+- [x] `16-frontend-design.md` — V2 Ship Timeline +1 entry (13/N counter — Round2 5/5 → all 15 feature components Tailwind-clean; `frontend/src` 0 real inline `style=` + 0 file-level disable; `/chat-v2` color-contrast re-enabled → 9/9 gated routes + auth pages full axe rule; D-PRE-4 + carryover ADs noted) ✅
+- [x] `.claude/rules/sprint-workflow.md` — calibration matrix `frontend-refactor-mechanical` row updated (+1 data point 57.16=~1.86; 2-data-point mean ~1.8 over band; verdict AD-Sprint-Plan-13: 0.50→0.80 for the 3rd+ app, KEEP 0.50 was the rule for 57.15+57.16) + matrix MHist ✅
+- [x] `STYLE.md` — §1 "Inline-style escape hatches" cleanup + MHist (done in Day 2 US-B1) ✅
+- [x] checklist [x] + plan/checklist header MHist closeout (Status: Draft → Closed) ✅
+- [ ] **Deferred post-merge** (not in this PR): `CLAUDE.md` (main HEAD + Latest Sprint row + Next Phase 候選 — remove `AD-Inline-Style-Cleanup-Sweep-Round2`, add `AD-Style-Token-Config-Audit` + `AD-A11y-Structural-Nits`; note a11y color-contrast now 9/9; carryover update) + `claudedocs/6-ai-assistant/prompts/SITUATION-V2-SESSION-START.md` §第八部分
 
 ### 3.7 US-C1: PR open + closeout sync
-- [ ] **`git push -u origin feature/sprint-57-16-inline-style-round2`** + **`gh pr create`** — title `Sprint 57.16 — AD-Inline-Style-Cleanup-Sweep-Round2 (5 deferred components' inline styles → Tailwind + /chat-v2 color-contrast re-enabled — frontend/src now inline-style-clean)`; body has summary + V2 紀律 9 項 self-check + test plan + post-merge follow-ups (CLAUDE.md/SITUATION sync) + carryover (`AD-Lighthouse-Visual-Hard-Gate`)
-- [ ] **Verify 5 active CI checks** — pending CI run (`Frontend E2E` = this sprint's main check — a11y-scan `/chat-v2` full color-contrast green + visual-regression baselines unchanged green + chat-v2 4 e2e green; `visual-baseline` job correctly `skipping` on PR events)
+- [x] **`git push -u origin feature/sprint-57-16-inline-style-round2`** + **`gh pr create`** ✅ — title `Sprint 57.16 — AD-Inline-Style-Cleanup-Sweep-Round2 (5 deferred components' inline styles → Tailwind + /chat-v2 color-contrast re-enabled — frontend/src now inline-style-clean)`; body has summary + V2 紀律 9 項 self-check + test plan + post-merge follow-ups (CLAUDE.md/SITUATION sync) + carryover (`AD-Lighthouse-Visual-Hard-Gate` / NEW `AD-Style-Token-Config-Audit` + `AD-A11y-Structural-Nits`)
+- [ ] **Verify 5 active CI checks** — pending CI run (`Frontend E2E` = this sprint's main check — a11y-scan `/chat-v2` full color-contrast green + visual-regression baselines unchanged green + chat-v2 e2e green; `visual-baseline` job correctly `skipping` on PR events)
 - [ ] **Squash merge** — 🚧 NOT done in-session: per executing-actions-with-care, squash-merge to `main` is surfaced to the user for confirmation (PR open + CI status communicated → user decides)
 
 ### 3.8 Day 3 progress entry + commit
-- [ ] **Day 3 progress entry** (validation sweep + visual-baseline-sanity-0-changes + closeout)
-- [ ] **Day 3 commit** `chore(sprint-57-16, Day 3): retrospective + doc syncs + closeout`
+- [x] **Day 3 progress entry** (validation sweep + visual-baseline-sanity-0-changes + closeout) ✅
+- [x] **Day 3 commit** `chore(sprint-57-16, Day 3): retrospective + doc syncs + closeout` ✅
 
 ---
 
 ## 重要備註
 
 ### Rolling planning 紀律自檢（每 day 結束 + Day 3 closeout 必檢）
-- ☐ 沒預寫 57.17 sprint plan（Phase 57.17+ candidates 只列候選名於 retrospective Q5）
-- ☐ 沒跳過 plan/checklist 直接 code（Day 0 plan + checklist 完整；Day 1 起 code）
-- ☐ 沒刪除未勾選 [ ] 項（用 [x] 完成 / 🚧 阻塞 + reason）
-- ☐ 沒在 retrospective 寫具體未來 sprint task（Q5 只列候選）
+- ☑ 沒預寫 57.17 sprint plan（Phase 57.17+ candidates 只列候選名於 retrospective Q5）
+- ☑ 沒跳過 plan/checklist 直接 code（Day 0 plan + checklist 完整；Day 1 起 code；本 sprint D-PRE 都是 0-scope-shift 或 out-of-scope doc nit，無 >20% shift 需 AskUserQuestion）
+- ☑ 沒刪除未勾選 [ ] 項（用 [x] 完成；無 🚧 阻塞項；§3.7 squash-merge + §3.6 post-merge-deferred 留 [ ] 是因 merge/post-merge 待 user/後續 PR，非跳過）
+- ☑ 沒在 retrospective 寫具體未來 sprint task（Q5 只列候選名；Round2 是本 sprint 全部完成，無 Round3）
 
 ### Scope 控管（focused 機械重構 tier-2 sprint）
 - 5 檔 ~62 `style=` attr——比 57.15（10 檔 ~70 attr）小；不切分。若意外發現某檔還有 component 本身的問題（非單純樣式）→ 標 🚧 + reason，**不刪 / 不留半套**；不夠時間就 carryover 並 file-level eslint-disable 保留（但**先試一次做完**——預期可以）

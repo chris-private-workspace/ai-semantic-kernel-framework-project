@@ -86,9 +86,12 @@ Description:
 
 Created: 2026-05-11 (Sprint 57.16 drafting; closes the Sprint 57.15 carryover AD-Inline-Style-Cleanup-Sweep-Round2)
 Last Modified: 2026-05-11
-Status: Day 0 done (三-prong catalogued — 2🟢 / 2🟡 out-of-scope; 0 scope shift; Day 1 GO)
+Status: Closed (Day 3 closeout — 4/4 USs done; 5/5 deferred files migrated, all 5 file-level eslint-disables removed → frontend/src 0 real inline style=; /chat-v2 color-contrast re-enabled → 9/9 gated routes + auth pages full axe rule; STYLE.md §1 cleaned; no visual-baseline workflow needed (5 files not in 6 snapshot routes); calibration ratio ~1.86 over band → AD-Sprint-Plan-13 propose 0.50→0.80 for 3rd+ app; PR opened, merge deferred to user — see retrospective.md)
 
 Modification History (newest-first):
+    - 2026-05-11: Day 3 closeout — validation sweep green (lint silent / vitest 236 / a11y-scan 2/2 with /chat-v2 full color-contrast / full e2e 40 pass 7 skip 0 fail / build 297.89 kB byte-identical / 0 backend changes); no visual-baseline workflow run; retrospective Q1-Q7 + 8-point self-check + rolling-planning self-check; memory snapshot; doc syncs (16-frontend-design.md V2 Ship Timeline +1 / sprint-workflow.md calibration matrix +1 data point + AD-Sprint-Plan-13 / STYLE.md done Day 2); plan/checklist MHist closeout; PR opened; Status → Closed
+    - 2026-05-11: Day 2 — US-A2 tenant-settings (TenantSettingsView + TenantSettingsEditForm migrated) + US-B1 (a11y-scan /chat-v2 color-contrast flip — removed allowLowContrast param/conditional disableRules/route arg; STYLE.md §1 escape-hatch ChatLayout reference removed); all 5 file-level eslint-disables removed; functional scope complete
+    - 2026-05-11: Day 1 — US-A1 triage + migration table; US-A2 chat-v2 (ChatLayout + InputBar) + sla-dashboard (SLAMetricsCard) migrated; 3/5 file-level disables removed; chat-v2 e2e regression sentinel green
     - 2026-05-11: Day 0 — 三-prong done; 4 D-PRE findings catalogued (D-PRE-1🟢 5-file scope unchanged; D-PRE-2🟢 0 vitest style-literal assertion; D-PRE-3🟡 STYLE.md §3 stale path; D-PRE-4🟡 STYLE.md §2 vs config token drift — strategy: critical-path uses verified tokens, elsewhere aligns with 57.15 vocab)
     - 2026-05-11: Initial creation (Sprint 57.16 — AD-Inline-Style-Cleanup-Sweep-Round2; 4 USs / Day 0-3; mirrors Sprint 57.15 structure)
 

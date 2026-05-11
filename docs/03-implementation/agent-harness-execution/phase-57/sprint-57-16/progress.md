@@ -234,3 +234,54 @@ About to commit: `feat(sprint-57-16, Day 2): US-A2 tenant-settings + US-B1 /chat
 - PR open + CI verify (deferred user-merge per executing-actions-with-care)
 - Post-merge doc syncs (CLAUDE.md + SITUATION) — Day 4 or post-PR-merge
 
+---
+
+## Day 3 — 2026-05-11 — US-C1 closeout (validation sweep + visual baseline sanity + retrospective + memory + doc syncs + PR)
+
+### Full validation sweep (all ✅)
+
+- `npm run lint` (incl `no-restricted-syntax` guard + `--report-unused-disable-directives`) — **silent** (0 error; 0 file-level disable remains; codebase 0 real `style=`)
+- `npm run build` — main bundle `dist/assets/index-CUc9p3IO.js` **297.89 kB gzip 95.27 — byte-identical to baseline**; CSS `dist/assets/index-BpIzvW8j.css` 11.85 kB gzip 2.93 (unchanged); 2324 modules; built in 2.39s
+- `npm run test -- --run` (vitest) — **57 files / 236 pass — unchanged**
+- `npx playwright test` (full) — **40 pass / 7 skip / 0 fail** (6 visual-regression opt-in Windows skip + 1 connectivity skip)
+- `git diff --stat main..HEAD` — 10 files: `frontend/STYLE.md` + 5 `frontend/src/features/**/*.tsx` (`ChatLayout` / `InputBar` / `SLAMetricsCard` / `TenantSettingsView` / `TenantSettingsEditForm`) + `frontend/tests/e2e/a11y/a11y-scan.spec.ts` + 3 docs (`progress.md` + `sprint-57-16-checklist.md` + `sprint-57-16-plan.md`) — **0 `backend/` changes** → backend baselines guaranteed unchanged (pytest 1676 pass+4 skip / mypy 0/306 / 9-9 V2 lints / 0 LLM SDK leak); not re-run (rationale: zero backend diff = nothing to revalidate)
+
+### Visual baseline sanity (0 changes — no workflow run)
+
+`git diff --stat main..HEAD` shows the 5 migrated `frontend/src/features/**/*.tsx` are all under `chat_v2/` / `sla-dashboard/` / `tenant-settings/` — **none of the 6 `visual-regression.spec.ts` snapshot routes** (app-shell / auth-login / verification-recent / cost-dashboard / governance / admin-tenants) renders any of these files. `pages/` not touched; `tailwind.config.ts` not touched (no new token). ⇒ visual baselines unchanged → **no `gh workflow run "Playwright E2E"` this sprint** — the differentiator vs Sprint 57.15 which had 7 files in 3 snapshot routes (and still found 0 diffs because the snapshots capture the loading/`<TableSkeleton>` state before the data fetch). `AD-Visual-Baseline-Refresh-57.16` not needed (fallback not triggered).
+
+### Closeout artifacts
+
+- `retrospective.md` — NEW (Q1-Q7 + 8-point sprint-workflow self-check all ✅ + rolling-planning self-check all ✅; Q2 `actual/committed` ≈ 1.86 OVER band / `actual/bottom-up` ≈ 0.96 — bottom-up accurate, 2nd `frontend-refactor-mechanical` data point; Q4 carryover: `AD-Lighthouse-Visual-Hard-Gate` open + NEW `AD-Style-Token-Config-Audit` + NEW `AD-A11y-Structural-Nits` + 57.13 carryover untouched; Q6 verdict: AD-Sprint-Plan-13 propose 0.50→0.80 for the 3rd+ `frontend-refactor-mechanical` sprint, KEEP 0.50 was the rule for 57.15+57.16; Q7 N/A — not a spike)
+- memory: NEW `~/.claude/projects/.../memory/project_phase57_16_inline_style_round2.md` + `MEMORY.md` index +1 row (Recent Sprints top)
+- `16-frontend-design.md` — V2 Ship Timeline +1 entry (13/N counter — Round2 5/5 → all 15 feature components Tailwind-clean; `frontend/src` 0 real inline `style=` + 0 file-level disable; `/chat-v2` color-contrast re-enabled → 9/9 gated routes + auth pages full axe rule; D-PRE-3/D-PRE-4 + 3 carryover ADs noted)
+- `.claude/rules/sprint-workflow.md` — calibration matrix `frontend-refactor-mechanical` row updated (+2nd data point 57.16=~1.86; 2-data-point mean ~1.8 OVER [0.85, 1.20] band; verdict AD-Sprint-Plan-13: 0.50 for 57.15+57.16 → **0.80 for the 3rd+ application**) + matrix MHist entry
+- `STYLE.md` §1 "Inline-style escape hatches" — ChatLayout live-example reference removed (done Day 2 US-B1)
+- `sprint-57-16-plan.md` + `sprint-57-16-checklist.md` — MHist closeout entries + Status → Closed; checklist §0/§1/§2/§3 [x] except §3.7 squash-merge [deferred to user] + §3.6 post-merge-deferred [CLAUDE.md/SITUATION — separate closeout PR]; 重要備註 rolling-planning self-check ☐ → ☑
+
+### PR
+
+- `git push -u origin feature/sprint-57-16-inline-style-round2` + `gh pr create` — PR opened (title: `Sprint 57.16 — AD-Inline-Style-Cleanup-Sweep-Round2 (5 deferred components' inline styles → Tailwind + /chat-v2 color-contrast re-enabled — frontend/src now inline-style-clean)`; body has summary + V2 紀律 9 項 self-check + test plan + post-merge follow-ups + carryover)
+- Squash-merge **deferred to user** per executing-actions-with-care (PR open + CI status communicated → user decides)
+- Post-merge doc syncs (CLAUDE.md `Latest Sprint` / `Next Phase 候選` — remove `AD-Inline-Style-Cleanup-Sweep-Round2`, add `AD-Style-Token-Config-Audit` + `AD-A11y-Structural-Nits`; SITUATION §第八部分) — separate `chore/closeout-57-16` PR per the 57.7-57.15 pattern
+
+### V2 紀律 9 項 self-check (Day 3 / PR)
+
+1. ✅ Server-Side First — N/A (0 backend)
+2. ✅ LLM Provider Neutrality — N/A (0 agent_harness; Tailwind/@axe-core not LLM SDK)
+3. ✅ CC Reference 不照搬 — N/A
+4. ✅ 17.md Single-source — N/A (0 NEW agent-harness contract/ABC/LoopEvent/migration/API)
+5. ✅ 11+1 範疇 — N/A (pure frontend component + e2e spec + STYLE.md; no cross-category mixing)
+6. ✅ AP-2/4/6 — no orphan (`no-restricted-syntax` guard active on whole codebase; `/chat-v2` color-contrast actually scans now) / no Potemkin (sub-AA hex genuinely gone; `/chat-v2` no per-route disable special case) / YAGNI (no new tokens — verified tokens + 57.15 vocab; no CSS-custom-property since no continuous value; didn't extend `tailwind.config.ts`; didn't refactor component logic)
+7. ✅ Sprint workflow — plan→checklist→三-prong→code (Day 1-2)→progress→retro→PR, no jumps
+8. ✅ File header MHist — plan/checklist/progress/retrospective headers; 5 component files + a11y-scan.spec.ts + STYLE.md MHist entries (each ≤ E501); ChatLayout Description "Phase 58+ pending" → "migrated Sprint 57.16"
+9. ✅ Multi-tenant — N/A (0 backend/DB/API)
+
+### Day 3 commit
+
+About to commit: `chore(sprint-57-16, Day 3): retrospective + doc syncs + closeout`.
+
+### Sprint verdict
+
+**Sprint 57.16 COMPLETE** — Days 0-3 done. Functional scope (Days 1-2) + closeout (Day 3) all green. PR opened; merge deferred to user. Closes the standing Sprint 57.15 carryover `AD-Inline-Style-Cleanup-Sweep-Round2`. `frontend/src` is now inline-style-clean (0 real `style=`, 0 file-level disable, `no-restricted-syntax` guard active codebase-wide); `a11y-scan.spec.ts` runs the full axe rule set on all 9 gated routes + auth pages with no per-route disable. Phase 57+ Frontend 13/N. Calibration: `frontend-refactor-mechanical` HYBRID 0.50 2nd app `actual/committed` ≈ 1.86 (2/2 over band) → AD-Sprint-Plan-13 lifts the 3rd+ application to 0.80. Carryover → Phase 57.17+: `AD-Lighthouse-Visual-Hard-Gate` / NEW `AD-Style-Token-Config-Audit` / NEW `AD-A11y-Structural-Nits` / 57.13 carryover untouched.
+
