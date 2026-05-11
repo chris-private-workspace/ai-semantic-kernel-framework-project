@@ -145,8 +145,8 @@ Related:
 - [ ] **Deferred post-merge** (not in this PR): `CLAUDE.md` (main HEAD + Latest Sprint row + Next Phase 候選 — remove `AD-Inline-Style-Cleanup-Sweep`, add `AD-Inline-Style-Cleanup-Sweep-Round2`; note a11y color-contrast now on for 8/9; carryover update) + `claudedocs/6-ai-assistant/prompts/SITUATION-V2-SESSION-START.md` §第八部分
 
 ### 3.7 US-C1: PR open + closeout sync
-- [x] **`gh pr create`** — title `Sprint 57.15 — AD-Inline-Style-Cleanup-Sweep (10/15 components' inline styles → Tailwind + no-inline-style guard + color-contrast re-enabled 8/9)`; body has summary + V2 紀律 9 項 self-check + test plan + post-merge follow-ups (CLAUDE.md/SITUATION sync) + carryover (`AD-Inline-Style-Cleanup-Sweep-Round2`)
-- [ ] **Verify 5 active CI checks** — pending CI run (the `visual-baseline` job correctly `skipping` on PR events; `Frontend E2E (chromium headless)` = this sprint's main check — visual-regression.spec.ts will pass, baselines unchanged)
+- [x] **`gh pr create`** → **PR #137** (https://github.com/laitim2001/ai-semantic-kernel-framework-project/pull/137) — title `Sprint 57.15 — AD-Inline-Style-Cleanup-Sweep (10/15 components' inline styles → Tailwind + no-inline-style guard + color-contrast re-enabled 8/9)`; body has summary + V2 紀律 9 項 self-check + test plan + post-merge follow-ups (CLAUDE.md/SITUATION sync) + carryover (`AD-Inline-Style-Cleanup-Sweep-Round2`)
+- [ ] **Verify 5 active CI checks** — pending CI run (the `visual-baseline` job correctly `skipping` on PR events ✅; `Frontend E2E (chromium headless)` = this sprint's main check — `visual-regression.spec.ts` will pass, baselines unchanged)
 - [ ] **Squash merge** — 🚧 NOT done in-session: per executing-actions-with-care, squash-merge to `main` is surfaced to the user for confirmation (PR open + CI status communicated → user decides)
 
 ### 3.8 Day 3 progress entry + commit
