@@ -84,3 +84,80 @@ About to commit: `chore(sprint-57-16, Day 0): plan + checklist + 三-prong basel
 - D-PRE-2 reduces a risk-matrix row to ~0 probability
 - D-PRE-4 informs vocabulary choice in US-A2 (verified-existing tokens for `/chat-v2` critical path; align with 57.15 vocab elsewhere)
 - **Day 1 GO**: build the migration table (US-A1) + start chat-v2 migration (US-A2 first 2 files — the `/chat-v2` color-contrast prerequisite)
+
+---
+
+## Day 1 — 2026-05-11 — US-A1 triage + US-A2 chat-v2 (ChatLayout + InputBar) + sla-dashboard (SLAMetricsCard)
+
+### US-A1: per-file migration table
+
+| File | Original | Type | Target |
+|------|----------|------|--------|
+| **`ChatLayout.tsx`** | `styles.page` `display:grid` + `gridTemplateColumns:"240px 1fr 280px"` + `gridTemplateRows:"1fr"` + `gridTemplateAreas:'"sidebar main inspector"'` + `height:"calc(100vh - 6.5rem)"` | static | `grid grid-cols-[240px_1fr_280px] h-[calc(100vh_-_6.5rem)]` (drop areas — child order = sidebar/main/inspector via grid auto-placement) |
+| | `styles.sidebar` `gridArea:"sidebar"` + `borderRight:"1px solid #e2e6ee"` + `background:"#fbfbfd"` + `padding:"1rem"` + `fontSize:14` + `color:"#3b4252"` + `overflowY:"auto"` | static; **AA critical** | `overflow-y-auto border-r border-border bg-muted p-4 text-sm text-foreground` |
+| | `styles.main` `gridArea:"main"` + `display:"flex"` + `flexDirection:"column"` + `overflow:"hidden"` | static | `flex flex-col overflow-hidden` |
+| | `styles.inspector` (mirror sidebar with `borderLeft` + `fontSize:13`) | static; **AA critical** | `overflow-y-auto border-l border-border bg-muted p-4 text-[13px] text-foreground` |
+| | `styles.placeholder` `color:"#7c8696"` + `fontSize:13` + `lineHeight:1.5` | static; **AA critical (currently 3.7:1)** | `text-[13px] leading-relaxed text-muted-foreground` (verified `#64748b` ≈ 4.6:1 on bg-muted ✅ AA) |
+| | h3 inline `marginTop:0` + `fontSize:13` + `color:"#5a6377"` (×2) | static | `mt-0 text-[13px] text-muted-foreground` (5.9:1 was already AA; unify to token) |
+| **`InputBar.tsx`** | `styles.container` `borderTop:"1px solid #e2e6ee"` + `background:"#fff"` + `padding:"0.75rem 1.5rem"` + `display:"flex"` + `flexDirection:"column"` + `gap:"0.5rem"` | static | `flex flex-col gap-2 border-t border-border bg-background px-6 py-3` |
+| | `styles.topRow` `display:"flex"` + `alignItems:"center"` + `gap:"0.6rem"` + `fontSize:12` + `color:"#7c8696"` | static; **AA critical (currently 3.9:1)** | `flex items-center gap-2.5 text-xs text-muted-foreground` |
+| | `styles.modeToggle` `marginLeft:"auto"` + `display:"flex"` + `alignItems:"center"` + `gap:"0.3rem"` | static | `ml-auto flex items-center gap-1` |
+| | `styles.inputRow` `display:"flex"` + `gap:"0.6rem"` + `alignItems:"flex-end"` | static | `flex items-end gap-2.5` |
+| | `styles.textarea` `flex:1` + `resize:"none"` + `border:"1px solid #d8dde7"` + `borderRadius:8` + `padding:"0.6rem 0.8rem"` + `fontFamily:"inherit"` + `fontSize:14` + `lineHeight:1.5` + `minHeight:44` + `maxHeight:160` + `outline:"none"` | static | `max-h-40 min-h-11 flex-1 resize-none rounded-md border border-border px-3 py-2.5 text-sm leading-relaxed outline-none` (drop `fontFamily:inherit` — already inherits) |
+| | `styles.stopBtn` `padding` + `borderRadius:8` + `border:"none"` + `background:"#c43d3d"` + `color:"#fff"` + `fontSize:14` + `fontWeight:500` + `cursor:"pointer"` | static | `cursor-pointer rounded-md border-none bg-danger px-4 py-2.5 text-sm font-medium text-white` |
+| | `styles.errorBanner` `background:"#fff5f5"` + `color:"#9d2e2e"` + `border:"1px solid #f5c2c2"` + `padding:"0.4rem 0.6rem"` + `borderRadius:6` + `fontSize:12` | static; renders only when error | `rounded border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs text-danger` |
+| | `statusStyle(color)` helper fn | enum-driven (used by 1 call site) | inline `cn("inline-flex items-center gap-1 font-medium", pill.cls)` — fn removed |
+| | `statusPill(status)` returns `{label, color: hex}` 4-way + default | enum-driven | `STATUS_PILL` Record `{running:"text-primary", completed:"text-success", cancelled:"text-warning", error:"text-danger"}` + `getPill(status)` fallback `{label:"○ idle", cls:"text-muted-foreground"}` — replaces `color: hex` with class string |
+| | `modeButton(active)` helper fn `padding` + `borderRadius:4` + `border:"1px solid #d8dde7"` + `background: active?"#5a78c8":"#fff"` + `color: active?"#fff":"#5a6377"` + `fontSize:11` + `cursor:"pointer"` | boolean enum | inline `cn("cursor-pointer rounded-sm border border-border px-2 py-0.5 text-[11px]", active ? "bg-primary text-white" : "bg-background text-muted-foreground")` — fn removed |
+| | `sendBtn(disabled)` helper fn `padding` + `borderRadius:8` + `border:"none"` + `background: disabled?"#c0c8d6":"#5a78c8"` + `color:"#fff"` + `fontSize:14` + `fontWeight:500` + `cursor:disabled?"not-allowed":"pointer"` | boolean enum | inline `cn("rounded-md border-none px-4 py-2.5 text-sm font-medium text-white", sendDisabled ? "cursor-not-allowed bg-muted-foreground" : "cursor-pointer bg-primary")` — fn removed |
+| **`SLAMetricsCard.tsx`** | card `padding:"1rem"` + `` border:`2px solid ${color}` `` + `backgroundColor: bg` + `borderRadius:"0.5rem"` + `minWidth:"200px"` | enum-driven (3-way noData/pass/fail) | `cn("min-w-[200px] rounded-lg border-2 p-4", st.border, st.bg)` via `SLA_STATE` finite lookup |
+| | label `<p>` `margin:0` + `fontSize:"0.85rem"` + `color:"#444"` | static | `m-0 text-[0.85rem] text-muted-foreground` |
+| | value `<p>` `margin:"0.5rem 0"` + `fontSize:"1.5rem"` + `fontWeight:"bold"` + `color: <enum>` | enum-driven | `cn("my-2 text-2xl font-bold", st.text)` |
+| | status `<p>` `margin:0` + `fontSize:"0.8rem"` + `color: <enum>` | enum-driven | `cn("m-0 text-xs", st.text)` |
+
+**Finite lookups defined**:
+- `STATUS_PILL: Record<string, {label: string; cls: string}>` (InputBar): 4-way `running/completed/cancelled/error` → `text-primary/text-success/text-warning/text-danger` + default `○ idle / text-muted-foreground`
+- `SLA_STATE` const (SLAMetricsCard): 3-way `noData / pass / fail` → `{text, border, bg}` triples using `text-muted-foreground+border-border+bg-muted` / `text-success+border-success+bg-success/10` / `text-danger+border-danger+bg-danger/10` (57.15 vocab — visual continuity with `TenantListTable`)
+
+**Critical-path token verification (D-PRE-4)**:
+- `text-muted-foreground` ≈ `#64748b` (HSL 215.4 16.3% 46.9%) → on `bg-muted` `#f1f5f9` (HSL 210 40% 96.1%) ≈ **4.6:1 ✅ AA** / on `bg-background` `#fff` ≈ **4.9:1 ✅ AA**
+- `text-foreground` near-black on `bg-muted` ≈ **15+:1 ✅ AAA**
+- `bg-primary` dark slate `#0f172a` + `text-white` ≈ **17:1 ✅ AAA** (mode-toggle active, send button)
+- `bg-muted-foreground` + `text-white` ≈ **4.9:1 ✅ AA** (send button disabled, idle state)
+
+**Tailwind arbitrary-value note**: `h-[calc(100vh_-_6.5rem)]` uses underscore→space conversion (Tailwind v3+ JIT convention); equivalent to original `calc(100vh - 6.5rem)`.
+
+**Render baseline (sanity)**: vitest 236 / lint silent (Day 0 baseline unchanged before edits; will re-verify after Day 1 §1.2 edits).
+
+### US-A2 execution + verification
+
+**Migrated** (3 files):
+- `frontend/src/features/chat_v2/components/ChatLayout.tsx` (full rewrite — `styles` Record(6) gone, JSX uses Tailwind className; line-1 disable removed; MHist +1; Description updated)
+- `frontend/src/features/chat_v2/components/InputBar.tsx` (full rewrite — `styles` Record(7) + 3 helper fns + `statusPill` gone, `STATUS_PILL` Record + `getPill()` + inline `cn()` for booleans; line-1 disable removed; MHist +1)
+- `frontend/src/features/sla-dashboard/components/SLAMetricsCard.tsx` (full rewrite — 3-way enum colour/bg → `SLA_STATE` finite lookup; line-1 disable removed including stale "dynamic bar widths" reason; MHist +1)
+
+**Verification** (all green ✅):
+- `npm run lint` (with `--report-unused-disable-directives` per package.json) — **silent** (0 error); the 3 removed disables are gone; the 2 remaining file-level disables (TenantSettingsView / TenantSettingsEditForm) stay used because those files still have `style=` until Day 2
+- `npm run test -- --run` — **57 files / 236 passed / 0 failed** (full vitest); duration 7.72s; baseline unchanged (`AuthShell.test.tsx:94 'kaboom'` stack trace is the intentional error-boundary test, NOT a Day 1 regression)
+- `npx playwright test chat/` — **10/10 passed**:
+  - 4 × `chat-v2-ship.spec.ts` (Sprint 57.8 US-5): auth gate redirect / authenticated AppShellV2+ChatLayout render / send-message SSE consume / 500 graceful onError
+  - 4 × `approval-card.spec.ts` (Sprint 53.6 US-3): approve flow / reject flow / **`risk badge text + color reflects risk level (CRITICAL → dark red)` — colour-literal regression sentinel still green** (asserts `getComputedStyle(.color) === rgb(183,28,28)` = `#b71c1c`; the chat-v2 ApprovalCard wasn't touched this sprint so it stays correct) / approval_received SSE
+  - 1 × `chat-v2-loop-inline.spec.ts` (Sprint 57.12 US-4): inline LoopVisualizer panel hidden→appears after SSE
+  - 1 × `chat-v2-subagent-inline.spec.ts` (Sprint 57.12 US-6): inline SubagentTree spawned→completed via SSE
+  - ⇒ ChatLayout + InputBar structure didn't drift; SSE event flow + render path untouched
+
+**Files NOT touched (correctness check)**:
+- `frontend/src/components/`, `frontend/src/pages/`, `frontend/src/lib/` — 0 changes
+- `frontend/eslint.config.js` (the 57.15 `no-restricted-syntax` guard untouched — guard config doesn't change in 57.16; only the file-level disables that consumed it are being removed file-by-file)
+- `frontend/tests/e2e/a11y/a11y-scan.spec.ts` — untouched (the `/chat-v2` `allowLowContrast` flip happens in Day 2 §2.2 after TenantSettings files migrated too)
+- `frontend/tailwind.config.ts` — untouched (no new token; YAGNI per plan §V2 紀律 #6)
+- `frontend/STYLE.md` — untouched (cleanup happens in Day 2 §2.2 alongside the a11y-scan flip)
+
+**Remaining for Day 2**:
+- `TenantSettingsView.tsx` (27 `style=`) + `TenantSettingsEditForm.tsx` (13) — pure static + 2 enum helper fns (state 5-way→3-bucket + plan 2-way; align with 57.15 vocab `bg-success`/`bg-warning`/`bg-muted-foreground`/`bg-primary`)
+- US-B1: `a11y-scan.spec.ts` flip (`scan()` signature -1 param + loop arg -1 + the conditional `disableRules` block) + `STYLE.md §1` "Inline-style escape hatches" cleanup (drop ChatLayout live-example reference; the pattern documentation stays)
+
+### Day 1 commit
+
+About to commit: `refactor(sprint-57-16, Day 1): US-A1 triage + US-A2 chat-v2 + sla-dashboard inline styles → Tailwind` (3 component files + checklist + progress.md).
+

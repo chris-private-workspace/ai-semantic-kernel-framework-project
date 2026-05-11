@@ -1,9 +1,8 @@
-/* eslint-disable no-restricted-syntax -- AD-Inline-Style-Cleanup-Sweep-Round2: inline styles deferred (chat-v2 batch — migrated in a follow-up sprint). */
 /**
  * File: frontend/src/features/chat_v2/components/InputBar.tsx
  * Purpose: Bottom input bar — textarea + Send / Stop button + mode toggle.
  * Category: Frontend / chat_v2 / components
- * Scope: Phase 50 / Sprint 50.2 (Day 4.3)
+ * Scope: Phase 50 / Sprint 50.2 (Day 4.3) → Sprint 57.16 Tailwind migration
  *
  * Description:
  *   Two states:
@@ -18,124 +17,44 @@
  *     - Enter           → send
  *     - Shift+Enter     → newline
  *
- * Created: 2026-04-30 (Sprint 50.2 Day 4.3)
- * Last Modified: 2026-04-30
+ *   Sprint 57.16 (AD-Inline-Style-Cleanup-Sweep-Round2): migrated to Tailwind
+ *   utility classes. The 4-way status pill, mode-toggle active state, and
+ *   send-button disabled state use finite class lookups (STATUS_PILL Record +
+ *   inline `cn()` for the booleans); topRow text uses text-muted-foreground
+ *   (AA-compliant; prerequisite for re-enabling color-contrast on /chat-v2).
  *
- * Modification History:
+ * Created: 2026-04-30 (Sprint 50.2 Day 4.3)
+ * Last Modified: 2026-05-11
+ *
+ * Modification History (newest-first):
+ *   - 2026-05-11: Sprint 57.16 — inline styles → Tailwind utility classes; statusPill/modeButton/sendBtn → finite class lookup (AD-Inline-Style-Cleanup-Sweep-Round2)
  *   - 2026-04-30: Initial creation (Sprint 50.2 Day 4.3)
  *
  * Related:
  *   - ../hooks/useLoopEventStream.ts (send / cancel)
  *   - ../store/chatStore.ts (status / mode / errorMessage)
+ *   - frontend/STYLE.md §1 (no inline styles) + §2 (tokens)
  */
 
-import { useState, type CSSProperties, type KeyboardEvent } from "react";
+import { useState, type KeyboardEvent } from "react";
+
+import { cn } from "../../../lib/utils";
 import { useLoopEventStream } from "../hooks/useLoopEventStream";
 import { useChatStore } from "../store/chatStore";
 import type { ChatMode } from "../types";
 
-const styles: Record<string, CSSProperties> = {
-  container: {
-    borderTop: "1px solid #e2e6ee",
-    background: "#fff",
-    padding: "0.75rem 1.5rem",
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
-  },
-  topRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.6rem",
-    fontSize: 12,
-    color: "#7c8696",
-  },
-  modeToggle: {
-    marginLeft: "auto",
-    display: "flex",
-    alignItems: "center",
-    gap: "0.3rem",
-  },
-  inputRow: {
-    display: "flex",
-    gap: "0.6rem",
-    alignItems: "flex-end",
-  },
-  textarea: {
-    flex: 1,
-    resize: "none",
-    border: "1px solid #d8dde7",
-    borderRadius: 8,
-    padding: "0.6rem 0.8rem",
-    fontFamily: "inherit",
-    fontSize: 14,
-    lineHeight: 1.5,
-    minHeight: 44,
-    maxHeight: 160,
-    outline: "none",
-  },
-  stopBtn: {
-    padding: "0.55rem 1.1rem",
-    borderRadius: 8,
-    border: "none",
-    background: "#c43d3d",
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: 500,
-    cursor: "pointer",
-  },
-  errorBanner: {
-    background: "#fff5f5",
-    color: "#9d2e2e",
-    border: "1px solid #f5c2c2",
-    padding: "0.4rem 0.6rem",
-    borderRadius: 6,
-    fontSize: 12,
-  },
+// 4-way status pill (+ idle default). 57.15 vocab (`text-success` etc.) for
+// visual continuity with TenantListTable / ApprovalCard; literal class strings
+// so the Tailwind JIT sees them.
+const STATUS_PILL: Record<string, { label: string; cls: string }> = {
+  running: { label: "● running", cls: "text-primary" },
+  completed: { label: "● completed", cls: "text-success" },
+  cancelled: { label: "● cancelled", cls: "text-warning" },
+  error: { label: "● error", cls: "text-danger" },
 };
 
-const statusStyle = (color: string): CSSProperties => ({
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 4,
-  color,
-  fontWeight: 500,
-});
-
-const modeButton = (active: boolean): CSSProperties => ({
-  padding: "0.2rem 0.55rem",
-  borderRadius: 4,
-  border: "1px solid #d8dde7",
-  background: active ? "#5a78c8" : "#fff",
-  color: active ? "#fff" : "#5a6377",
-  fontSize: 11,
-  cursor: "pointer",
-});
-
-const sendBtn = (disabled: boolean): CSSProperties => ({
-  padding: "0.55rem 1.1rem",
-  borderRadius: 8,
-  border: "none",
-  background: disabled ? "#c0c8d6" : "#5a78c8",
-  color: "#fff",
-  fontSize: 14,
-  fontWeight: 500,
-  cursor: disabled ? "not-allowed" : "pointer",
-});
-
-function statusPill(status: string): { label: string; color: string } {
-  switch (status) {
-    case "running":
-      return { label: "● running", color: "#5a78c8" };
-    case "completed":
-      return { label: "● completed", color: "#2f9c59" };
-    case "cancelled":
-      return { label: "● cancelled", color: "#a26d23" };
-    case "error":
-      return { label: "● error", color: "#c43d3d" };
-    default:
-      return { label: "○ idle", color: "#7c8696" };
-  }
+function getPill(status: string): { label: string; cls: string } {
+  return STATUS_PILL[status] ?? { label: "○ idle", cls: "text-muted-foreground" };
 }
 
 export default function InputBar(): JSX.Element {
@@ -160,20 +79,30 @@ export default function InputBar(): JSX.Element {
     }
   };
 
-  const pill = statusPill(status);
+  const pill = getPill(status);
   const modes: ChatMode[] = ["echo_demo", "real_llm"];
+  const sendDisabled = text.trim().length === 0;
 
   return (
-    <div style={styles.container}>
-      {errorMessage && <div style={styles.errorBanner}>{errorMessage}</div>}
-      <div style={styles.topRow}>
-        <span style={statusStyle(pill.color)}>{pill.label}</span>
-        <div style={styles.modeToggle}>
+    <div className="flex flex-col gap-2 border-t border-border bg-background px-6 py-3">
+      {errorMessage && (
+        <div className="rounded border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs text-danger">
+          {errorMessage}
+        </div>
+      )}
+      <div className="flex items-center gap-2.5 text-xs text-muted-foreground">
+        <span className={cn("inline-flex items-center gap-1 font-medium", pill.cls)}>
+          {pill.label}
+        </span>
+        <div className="ml-auto flex items-center gap-1">
           <span>mode:</span>
           {modes.map((m) => (
             <button
               key={m}
-              style={modeButton(mode === m)}
+              className={cn(
+                "cursor-pointer rounded-sm border border-border px-2 py-0.5 text-[11px]",
+                mode === m ? "bg-primary text-white" : "bg-background text-muted-foreground",
+              )}
               onClick={() => setMode(m)}
               disabled={isRunning}
             >
@@ -182,9 +111,9 @@ export default function InputBar(): JSX.Element {
           ))}
         </div>
       </div>
-      <div style={styles.inputRow}>
+      <div className="flex items-end gap-2.5">
         <textarea
-          style={styles.textarea}
+          className="max-h-40 min-h-11 flex-1 resize-none rounded-md border border-border px-3 py-2.5 text-sm leading-relaxed outline-none"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKey}
@@ -193,14 +122,20 @@ export default function InputBar(): JSX.Element {
           disabled={isRunning}
         />
         {isRunning ? (
-          <button style={styles.stopBtn} onClick={cancel}>
+          <button
+            className="cursor-pointer rounded-md border-none bg-danger px-4 py-2.5 text-sm font-medium text-white"
+            onClick={cancel}
+          >
             Stop
           </button>
         ) : (
           <button
-            style={sendBtn(text.trim().length === 0)}
+            className={cn(
+              "rounded-md border-none px-4 py-2.5 text-sm font-medium text-white",
+              sendDisabled ? "cursor-not-allowed bg-muted-foreground" : "cursor-pointer bg-primary",
+            )}
             onClick={onSend}
-            disabled={text.trim().length === 0}
+            disabled={sendDisabled}
           >
             Send
           </button>
