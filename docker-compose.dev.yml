@@ -88,7 +88,7 @@ services:
   # Sprint 49.4 Day 3 — Observability stack (range cat 12)
   # Modern Jaeger 1.55+ accepts OTLP/gRPC on 4317; no jaeger-exporter needed.
   jaeger:
-    image: jaegertracing/all-in-one:1.62
+    image: jaegertracing/all-in-one:1.76.0
     container_name: ipa_v2_jaeger
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
@@ -137,7 +137,11 @@ services:
       # Optional: ALERT_WEBHOOK_URL=https://hooks.slack.com/...
       PYTHONPATH: /app
     volumes:
-      - ./backend/src:/app:ro
+      # NOTE: first bind is rw (not :ro) so Docker can create the
+      # /app/scripts mountpoint inside the bind. The verifier itself
+      # opens /app source files read-only; this rw is purely to allow
+      # the nested bind to mount. See sprint-57-?? infra fix.
+      - ./backend/src:/app
       - ./backend/scripts:/app/scripts:ro
     depends_on:
       postgres:

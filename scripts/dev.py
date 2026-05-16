@@ -57,7 +57,7 @@ PID_DIR = PROJECT_ROOT / ".pids"
 
 # Default ports
 DEFAULT_BACKEND_PORT = 8000
-DEFAULT_FRONTEND_PORT = 3005
+DEFAULT_FRONTEND_PORT = 3007
 
 # Docker services
 DOCKER_SERVICES = ["postgres", "redis", "rabbitmq"]

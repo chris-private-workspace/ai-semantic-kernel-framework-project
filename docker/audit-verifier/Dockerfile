@@ -13,7 +13,7 @@ FROM python:3.12-slim
 # supercronic is preferred over busybox crond inside docker because it forwards
 # SIGTERM to child jobs cleanly + logs to stdout (no /var/log/cron tailing).
 ARG SUPERCRONIC_VERSION=v0.2.30
-ARG SUPERCRONIC_SHA1=9a0baeaa00e0cb9f5fafd47e44d7bbe48f08778d
+ARG SUPERCRONIC_SHA1=9f27ad28c5c57cd133325b2a66bba69ba2235799
 ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/${SUPERCRONIC_VERSION}/supercronic-linux-amd64
 
 RUN apt-get update \
@@ -35,7 +35,7 @@ WORKDIR /app
 # Tenant aaaa-...-4444 holds W1-3 audit forgery rows id=36-39 — must be
 # ignored or the job exits 1 on every run. Override via $IGNORE_TENANTS env
 # at compose level if your DB has additional baseline noise.
-COPY crontab /etc/audit-verifier-crontab
+COPY docker/audit-verifier/crontab /etc/audit-verifier-crontab
 
 # supercronic logs runs + job exit codes to stdout (docker logs picks them up).
 CMD ["/usr/local/bin/supercronic", "-passthrough-logs", "/etc/audit-verifier-crontab"]
