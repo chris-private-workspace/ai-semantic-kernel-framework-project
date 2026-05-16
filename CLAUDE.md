@@ -146,6 +146,50 @@ V2 嚴格按以下範疇組織代碼，**禁止跨範疇雜湊**：
 
 ---
 
+## Frontend Mockup-Fidelity Hard Constraint（必守）⭐⭐⭐
+
+> **加入 2026-05-17**（Sprint 57.19 Day 0；user 明確 directive）：所有 frontend 頁面設計與 UX 必須**完全跟隨**`reference/design-mockups/`版本。**功能差距**與**後端 gap** 通過後續 sprint 逐一處理；**最最最基本是 UI / UX 視覺呈現完全按 mockup 實作**。
+
+### 唯一視覺真相來源
+
+| 來源 | 角色 | 何時用 |
+|------|------|--------|
+| **`reference/design-mockups/`** | ⭐ **canonical visual source of truth** | 所有 frontend 頁面開發 / port / retrofit 時必須 1:1 對照 |
+| `design/operator-portal/` | Sprint 57.18 cp 快照（同 content）+ INTEGRATION-LOG.md | 開發 reference；但**權威性低於** `reference/design-mockups/` |
+| Sprint 57.18 wired tokens (`tailwind.config.ts` + `index.css`) | Mockup oklch HSL approximation | 翻譯 mockup 樣式時優先用這些 tokens |
+
+### 禁止項
+
+- ❌ 用 shadcn `Card` / `Badge` / `Button` 預設值替代 mockup 的 padding / radius / shadow / color 如果**視覺不一致**
+- ❌ 用「production 簡化版」名義裁剪 mockup widget / 改 layout
+- ❌ 自創 i18n copy 不對照 mockup `reference/design-mockups/i18n.jsx`
+- ❌ 在 retrofit 既有頁時假設「現狀已 ship 就不重做」— 既有 8 頁（57.1-57.12）在 mockup 進專案前開發，**有 drift**，將通過 Sprint 57.20+ `AD-Mockup-Existing-Pages-Retrofit` 校準
+
+### 允許項（escape hatches，per STYLE.md §3）
+
+- ✅ Tailwind arbitrary values `text-[#hex]` / `p-[12px]` / `rounded-[10px]` — 當 Sprint 57.18 token 詞彙無對應時
+- ✅ shadcn primitives（`<Dialog>` / `<Sheet>` / `<Tabs>` / `<DropdownMenu>` / `<Command>`）— 當 mockup 的 interaction 模式直接對應這些 primitives 時
+- ✅ recharts 圖表 lib — 但**配色 / 軸標 / 資料形狀必須匹配 mockup**，不用 recharts 預設
+
+### 後端 / 功能差距處理
+
+- 後端尚未支援 mockup 顯示的某 widget → 該 widget **仍依 mockup 視覺實作**，data 用 fixture / placeholder；同 sprint 或後續 sprint 加 backend API（per 用戶 2026-05-16 Q3「前後端同 sprint」原則）
+- 不允許**因為**後端沒有就改 mockup widget layout / 刪 widget
+
+### Mockup-Fidelity DoD（每個 frontend port / retrofit task）
+
+1. Playwright MCP screenshot mockup target（從 `reference/design-mockups/` via `python -m http.server`）at 1440×900 viewport
+2. Playwright MCP screenshot production at same viewport
+3. Side-by-side compare；drift severity = cosmetic / structural / functional
+4. Cosmetic → 同 commit 內 iterate Tailwind classes 至 parity；structural / functional → 在同 sprint 或 retrofit sprint 處理（不可放棄）
+5. Parity verdict 記入 progress.md / DRIFT-REPORT.md
+
+### 既有 8 ship pages drift 狀態（2026-05-17 baseline）
+
+`/cost-dashboard` (57.1) / `/sla-dashboard` (57.1) / `/admin/tenants` list (57.4) / `/admin/tenants/settings` (57.3) / `/auth/login` (57.7) / `/auth/callback` (57.7) / `/chat-v2` (57.8) / `/governance/*` 3 pages (57.9) / `/verification` (57.11) / `/memory` (57.12) — **全部 drift 等待 Sprint 57.19 US-F1 audit + Sprint 57.20 retrofit**。詳見 `claudedocs/4-changes/sprint-57-19-existing-pages-drift-audit/DRIFT-REPORT.md`（Sprint 57.19 Day 5 產出）。
+
+---
+
 ## 「Check Existing Before Building」— V2 版
 
 建任何新 infra 前，**權威排序**：
