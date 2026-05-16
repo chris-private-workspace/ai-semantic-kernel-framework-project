@@ -364,7 +364,7 @@ claudedocs/
 - **Language**: 用戶溝通用繁體中文
 - **Documentation**: CLAUDE.md / 設計文件用英文
 - **Detail**: 詳細解釋並附理由
-- **Confirmation**: 破壞性操作前必問
+- **Confirmation on Destructive Only**: `git push` / `git reset --hard` / `git push --force` / 刪 production code / 改 shared infra / 改 CI/CD pipeline / 發外部訊息（Slack / email / PR comments）/ 上傳第三方 tool 前必問。**NOT destructive**: Write / Edit / Read 在已對齊 scope 內 / TaskCreate / Glob / Grep / Bash read-only 命令 / 創建 plan §File Change List 內預期的新檔。詳見 [`memory/feedback_tool_result_is_not_turn_boundary.md`](memory/feedback_tool_result_is_not_turn_boundary.md)。
 
 ### Code Style
 - **Comments**: 程式碼註解用英文
@@ -373,7 +373,7 @@ claudedocs/
 
 ### Behavior Rules
 - **Proactive Assistance**: 主動參與開發
-- **Ask Before Acting**: 不確定時必先問
+- **Ask Before Acting on STRATEGY**: 範圍模糊 / 多個有效方法 / 用戶意圖不明 / 新 sprint 方向時必先問。**NOT trigger**: tool result return / Write/Edit/Read 在已對齊的 scope 內 / sprint plan 內的下一步 / batch parallel tool calls。Karpathy §1「不清楚就停下」仍適用但限真 ambiguous decision，**不適用** tool chaining within aligned scope。詳見 [`memory/feedback_tool_result_is_not_turn_boundary.md`](memory/feedback_tool_result_is_not_turn_boundary.md)。
 - **Deep Error Analysis**: 找根因，不貼膏藥
 - **Never Delete Tests**: 不刪測試 / 不關測試 / 不跳測試
 - **Never Delete Docs**: 未授權不刪文件
