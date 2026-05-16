@@ -47,8 +47,8 @@ export default function ChatLayout({ children }: Props): JSX.Element {
   return (
     <div className="grid h-[calc(100vh_-_6.5rem)] grid-cols-[240px_1fr_280px]">
       <aside className="overflow-y-auto border-r border-border bg-muted p-4 text-sm text-foreground">
-        <h3 className="mt-0 text-[13px] text-muted-foreground">Sessions</h3>
-        <p className="text-[13px] leading-relaxed text-muted-foreground">
+        <h3 className="mt-0 text-[13px] text-foreground/80">Sessions</h3>
+        <p className="text-[13px] leading-relaxed text-foreground/80">
           Session list lands in Phase 51.x (when DB-backed session storage is wired).
           For now, each page reload starts a new in-memory session.
         </p>
@@ -57,8 +57,8 @@ export default function ChatLayout({ children }: Props): JSX.Element {
       <main className="flex flex-col overflow-hidden">{children}</main>
 
       <aside className="overflow-y-auto border-l border-border bg-muted p-4 text-[13px] text-foreground">
-        <h3 className="mt-0 text-[13px] text-muted-foreground">Inspector</h3>
-        <p className="text-[13px] leading-relaxed text-muted-foreground">
+        <h3 className="mt-0 text-[13px] text-foreground/80">Inspector</h3>
+        <p className="text-[13px] leading-relaxed text-foreground/80">
           Token / cost tracker (52.1+), memory layer inspector (51.2),
           verification status (54.1) — coming in later sprints.
         </p>

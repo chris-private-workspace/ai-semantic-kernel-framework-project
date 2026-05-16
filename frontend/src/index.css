@@ -1,11 +1,13 @@
-/* Tailwind 4 directives + shadcn CSS variables (Sprint 57.7 US-B1).
+/* Tailwind v4 import + v3 config bridge + shadcn CSS variables (Sprint 57.7 US-B1; v4 directive fix Sprint 57.17).
  *
  * Light/dark theme via :root + .dark CSS class. ThemeProvider US-B2 Day 3
  * toggles html.dark. shadcn slate base color scheme per components.json.
+ *
+ * Modification History:
+ *   - 2026-05-15: Sprint 57.17 — v3 @tailwind directives → v4 @import + @config (closes AD-Tailwind-v4-Directive-Hotfix)
  */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.ts";
 
 @layer base {
   :root {
