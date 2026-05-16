@@ -4,6 +4,7 @@
  * toggles html.dark. shadcn slate base color scheme per components.json.
  *
  * Modification History:
+ *   - 2026-05-16: Sprint 57.18 — +18 CSS vars (7 semantic + 4 risk) in :root + .dark (closes AD-Style-Token-Config-Audit)
  *   - 2026-05-15: Sprint 57.17 — v3 @tailwind directives → v4 @import + @config (closes AD-Tailwind-v4-Directive-Hotfix)
  */
 @import "tailwindcss";
@@ -25,6 +26,25 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
+    /* NEW Sprint 57.18 — mockup semantic + risk tokens (US-B2) */
+    --success: 150 60% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 10%;
+    --danger: 0 84% 60%;
+    --danger-foreground: 0 0% 100%;
+    --thinking: 270 75% 60%;
+    --thinking-foreground: 0 0% 100%;
+    --tool: 188 70% 50%;
+    --tool-foreground: 0 0% 100%;
+    --memory: 326 80% 60%;
+    --memory-foreground: 0 0% 100%;
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 100%;
+    --risk-low: 150 60% 45%;
+    --risk-medium: 38 92% 50%;
+    --risk-high: 20 90% 55%;
+    --risk-critical: 0 70% 40%;
   }
 
   .dark {
@@ -41,6 +61,25 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
+    /* NEW Sprint 57.18 — mockup semantic + risk tokens (US-B2) */
+    --success: 150 50% 55%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 80% 60%;
+    --warning-foreground: 0 0% 10%;
+    --danger: 0 70% 55%;
+    --danger-foreground: 0 0% 100%;
+    --thinking: 270 65% 65%;
+    --thinking-foreground: 0 0% 100%;
+    --tool: 188 60% 55%;
+    --tool-foreground: 0 0% 100%;
+    --memory: 326 70% 65%;
+    --memory-foreground: 0 0% 100%;
+    --info: 217 80% 65%;
+    --info-foreground: 0 0% 100%;
+    --risk-low: 150 50% 55%;
+    --risk-medium: 38 80% 60%;
+    --risk-high: 20 80% 60%;
+    --risk-critical: 0 60% 50%;
   }
 }
 

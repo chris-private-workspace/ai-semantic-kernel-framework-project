@@ -61,3 +61,51 @@
 - **Process improvement codified** post-incident: feedback rule "tool result not turn boundary" + 2 Project CLAUDE.md edits should prevent recurrence in Day 1-3 of this sprint + all future sessions.
 - **Karpathy Guidelines §1 preserved unchanged** per user explicit instruction "希望不要太大改變" — scope clarification lives in the new feedback memory, not in Karpathy section itself.
 - **Backend baseline UNTOUCHED this sprint** — pytest 1676+4 / mypy 0/306 / 9 V2 lints / LLM SDK leak 0 — pure frontend scaffolding work.
+
+---
+
+## Day 1 — 2026-05-16
+
+### Today's Accomplishments
+
+- **US-A1 mockup → design/operator-portal/** — actual ~25 min (est ~30 min, on-budget):
+  - `mkdir -p design && cp -r reference/design-mockups design/operator-portal` — succeeded (Day 0 attempt failed because parent `design/` dir didn't exist; root cause = `cp -r` does NOT auto-create parent. Fixed via `mkdir -p` prefix per `feedback_tool_result_is_not_turn_boundary.md` chain-with-retry pattern).
+  - `ls design/operator-portal/ | wc -l` → **23 files** (3 md: AGENTS / DESIGN_RATIONALE / README + 1 html: index.html + 1 css: styles.css + 18 jsx: app / i18n / page-admin / page-agents / page-auth-extras / page-chat / page-extras / page-governance / page-models / page-overview / page-platform / page-platform2 / page-sse / page-tools / shell / topbar-overlays / tweaks-panel / ui).
+  - Drift finding **D-DAY1-1** (in-scope, non-blocking): Plan + checklist claimed "24 files (3 md + 1 html + 1 css + 19 jsx)" — actual is 23 files (18 jsx, not 19). Plan Day 0 三-prong Prong 1 path-verify was approximate; AGENTS.md counted as 1 of the 3 md correctly but jsx count off by 1. Likely cause: plan author counted `app.jsx` + `i18n.jsx` as separate from "19 page-*" but mockup only has 18 .jsx total. Implication: AC1 verify "24 files" → adjust to "23 files" in retrospective Q3 + INTEGRATION-LOG.md (which is +1 NEW = total 24 after Day 1 commit 1).
+  - `design/operator-portal/INTEGRATION-LOG.md` NEW (~65 lines) — tracks 28 mockup-to-production port targets, dev server snippet, Modification History +1.
+  - `design/operator-portal/README.md` appended "Production Integration Cross-Ref" section (~40 lines) — V2 規劃權威 + 衝突處理 + 修改 Mockup 責任 sub-sections.
+  - `design/operator-portal/AGENTS.md` intact (NOT modified, per AC6).
+
+- **US-B1 tailwind.config.ts** — actual ~15 min (est ~30 min, under-budget):
+  - +7 semantic colors (success / warning / danger / thinking / tool / memory / info) each as `{ DEFAULT, foreground }` shadcn-style CSS var bridge
+  - +1 nested `risk` object with 4 flat sub-keys (low / medium / high / critical)
+  - +2 `fontFamily` arrays (sans = Geist + Noto Sans TC + ui-sans-serif fallback chain; mono = Geist Mono + ui-monospace + JetBrains Mono fallback)
+  - MHist +1 line at 92 chars (within E501 budget): "2026-05-16: Sprint 57.18 — +7 semantic tokens + 4 risk levels + Geist font (closes AD-Style-Token-Config-Audit)"
+  - Verify: `grep -c "hsl(var(--" frontend/tailwind.config.ts` → **31** (was 13 = 5 flat + 4 nested × 2; now 13 + 7 semantic × 2 + 4 risk = 31). Checklist Day 1.2 wrote "expect ~27" — actual 31 (delta = checklist undercounted; reality matches the additions correctly). Logged as **D-DAY1-2** (cosmetic, non-blocking).
+
+- **US-B2 index.css** — actual ~25 min (est ~60 min, well under-budget):
+  - `:root` (light) +18 CSS vars: --success / --warning / --danger / --thinking / --tool / --memory / --info each + matching --*-foreground + 4 --risk-{low,medium,high,critical}. HSL values per plan §Technical Specifications conversion table (mockup oklch → HSL approximation).
+  - `.dark` +18 CSS vars: same 18 keys with darkened HSL values (lightness shifted +10pp / saturation reduced ~10pp per shadcn slate pattern).
+  - MHist +1 line at 91 chars: "2026-05-16: Sprint 57.18 — +18 CSS vars (7 semantic + 4 risk) in :root + .dark (closes AD-Style-Token-Config-Audit)"
+  - Verify: `grep -cE "^\s+--(success|warning|danger|thinking|tool|memory|info|risk-)" frontend/src/index.css` → **36** ✅ matches plan AC4 expectation exactly.
+
+- **Day 1 smoke probe (deferred from Day 0.5)** — all green:
+  - `cd frontend && npm run build` → **✅ built in 2.80s** / main bundle 297.89 kB (gzip 95.28 kB) **byte-identical to Sprint 57.17 baseline**
+  - Compiled CSS: `dist/assets/index-CfVdqJv4.css` = **35,244 bytes ≈ 34.4 KB** (Sprint 57.17 baseline ≈ 32.55 KB → **+1.85 KB delta** from 18 new CSS vars + Tailwind utility bridges that components haven't consumed yet — only the var declarations + Tailwind's content-aware tree-shake emits utilities only when a class is used in `src/`; future Sprint 57.19+ ports will consume them and expand emitted CSS)
+  - `npx tsc --noEmit` → **0 errors** ✅
+  - `npm run lint` → silent (banner only, 0 warnings 0 errors) ✅
+  - `npx vitest run` → **236 / 236 pass** (57 test files) ✅
+
+### Remaining for Next Day (Day 2)
+
+- [ ] US-C1: `frontend/src/routes.config.ts` 6-category refactor + 20 NEW stub entries + 13 re-categorize + RouteCategory enum + RouteEntry `proposed?` + `designed?` fields
+- [ ] US-C2: NEW `frontend/src/components/ComingSoonPlaceholder.tsx` (~60 lines) + 20 NEW `frontend/src/pages/<id>/index.tsx` thin wrappers
+- [ ] i18n keys: `nav.<id>` × 20 + `nav.category.{operations,business,governance,observability,resources,admin}` × 6 in `frontend/src/i18n/locales/en/common.json` (and zh-TW)
+- [ ] Day 2 commits × 1-2
+
+### Notes
+
+- **Day 1 actual ~1.5 hr** (committed ~1.5 hr) — exactly on-budget.
+- **Anti-stop rule effective**: Day 1 executed as single continuous chain (Read → cp + Edit × 6 batch → Read + Write + Bash batch → smoke probe trio → commit) — 0 unnecessary pauses vs Day 0's 4 incidents. The `feedback_tool_result_is_not_turn_boundary.md` rule + 2 Project CLAUDE.md scope-narrowing edits are working as designed.
+- **Drift findings non-blocking**: D-DAY1-1 (jsx count 18 not 19) + D-DAY1-2 (hsl-bridge count 31 not ~27) are both cosmetic — plan/checklist text adjustments only, no scope shift. Retrospective Q3 will list them.
+- **CSS compiled delta +1.85 KB modest**: as expected — declarations alone don't emit utilities; tree-shake kicks in only when classes are consumed. Sprint 57.19+ first port will likely add ~3-5 KB more CSS as `bg-thinking`/`text-warning`/`border-risk-critical`/etc. start being used.

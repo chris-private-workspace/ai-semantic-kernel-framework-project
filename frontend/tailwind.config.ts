@@ -5,6 +5,7 @@
  * Scope: Phase 57 / Sprint 57.7 US-B1 (Frontend Foundation 1/N install)
  *
  * Modification History:
+ *   - 2026-05-16: Sprint 57.18 — +7 semantic tokens + 4 risk levels + Geist font (closes AD-Style-Token-Config-Audit)
  *   - 2026-05-09: Initial creation (Sprint 57.7 US-B1 Day 2 PM)
  */
 
@@ -38,11 +39,51 @@ const config: Config = {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
         },
+        // NEW Sprint 57.18 — mockup semantic tokens (US-B1)
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        danger: {
+          DEFAULT: "hsl(var(--danger))",
+          foreground: "hsl(var(--danger-foreground))",
+        },
+        thinking: {
+          DEFAULT: "hsl(var(--thinking))",
+          foreground: "hsl(var(--thinking-foreground))",
+        },
+        tool: {
+          DEFAULT: "hsl(var(--tool))",
+          foreground: "hsl(var(--tool-foreground))",
+        },
+        memory: {
+          DEFAULT: "hsl(var(--memory))",
+          foreground: "hsl(var(--memory-foreground))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
+        },
+        // NEW Sprint 57.18 — mockup risk severity tokens (US-B1)
+        risk: {
+          low: "hsl(var(--risk-low))",
+          medium: "hsl(var(--risk-medium))",
+          high: "hsl(var(--risk-high))",
+          critical: "hsl(var(--risk-critical))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      fontFamily: {
+        sans: ['"Geist"', '"Noto Sans TC"', "ui-sans-serif", "system-ui", "-apple-system", '"Segoe UI"', "sans-serif"],
+        mono: ['"Geist Mono"', "ui-monospace", '"JetBrains Mono"', "Menlo", "monospace"],
       },
     },
   },
