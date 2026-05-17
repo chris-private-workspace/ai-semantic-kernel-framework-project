@@ -11,14 +11,16 @@
  *   :root vs .dark CSS variable scopes).
  *
  *   Initial theme resolution order:
- *   1. localStorage[ipa-theme] (user override)
- *   2. matchMedia('(prefers-color-scheme: dark)') (OS preference)
- *   3. 'light' default
+ *   1. localStorage[ipa-theme] (user override via top-header theme toggle)
+ *   2. 'dark' default (Sprint 57.20 mockup dark-default intent; strict — no
+ *      matchMedia OS-preference path because Sprint 57.20 design directive
+ *      hard-coded dark regardless of OS)
  *
  * Created: 2026-05-10 (Sprint 57.7 Day 3 Tier 3)
- * Last Modified: 2026-05-10
+ * Last Modified: 2026-05-18
  *
- * Modification History:
+ * Modification History (newest-first):
+ *   - 2026-05-18: Sprint 57.21 Day 4 D-DAY4-6 — `resolveInitialTheme` final fallback `light`→`dark` to honour Sprint 57.20 index.html `class="dark"` intent; flip matchMedia check to light-preference override
  *   - 2026-05-10: Initial creation (Sprint 57.7 US-B2)
  */
 
@@ -45,11 +47,16 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 const STORAGE_KEY = "ipa-theme";
 
 function resolveInitialTheme(): Theme {
-  if (typeof window === "undefined") return "light";
+  // Sprint 57.21 Day 4 D-DAY4-6 reality-fix: Sprint 57.20 set index.html
+  // class="dark" (mockup dark-default intent) but this resolver previously
+  // returned "light" as final fallback, causing the ThemeProvider's mount
+  // effect to strip the static "dark" class. Sprint 57.20 strict intent =
+  // dark-default REGARDLESS of OS preference; user can toggle via top-header
+  // theme button if they want light.
+  if (typeof window === "undefined") return "dark";
   const stored = window.localStorage.getItem(STORAGE_KEY);
   if (stored === "light" || stored === "dark") return stored;
-  if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) return "dark";
-  return "light";
+  return "dark";
 }
 
 function applyHtmlClass(theme: Theme): void {
