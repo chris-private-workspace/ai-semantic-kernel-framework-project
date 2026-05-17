@@ -48,7 +48,7 @@ import { VerificationPanel } from "@/features/verification/components/Verificati
 export default function ChatV2Page(): JSX.Element {
   return (
     <RequireAuth>
-      <AppShellV2 pageTitle="Chat (V2)">
+      <AppShellV2 pageTitle="Chat (V2)" fullBleed>
         <ChatLayout>
           <TurnList />
           {/* Inline panels — each renders null when no events; mounted between

@@ -22,6 +22,21 @@ import App from "./App";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { ThemeProvider } from "./components/ThemeProvider";
 import "./i18n";
+
+// Sprint 57.21 Day 4 D-DAY4-8 — bundle Geist Sans/Mono + Noto Sans TC via @fontsource
+// (closes Sprint 57.20 carryover AD-Geist-Font-Asset-Bundling early). Tailwind config
+// `font-sans` / `font-mono` chains start with "Geist" / "Geist Mono"; without these
+// imports the browser falls back to system ui-sans-serif (Inter on macOS / Segoe UI
+// on Windows), creating visible inconsistency vs mockup hardcoded Geist render.
+import "@fontsource/geist-sans/400.css";
+import "@fontsource/geist-sans/500.css";
+import "@fontsource/geist-sans/600.css";
+import "@fontsource/geist-sans/700.css";
+import "@fontsource/geist-mono/400.css";
+import "@fontsource/noto-sans-tc/400.css";
+import "@fontsource/noto-sans-tc/500.css";
+import "@fontsource/noto-sans-tc/600.css";
+import "@fontsource/noto-sans-tc/700.css";
 import "./index.css";
 import { initObservability, reportWebVitals } from "./lib/observability";
 import { queryClient } from "./lib/queryClient";

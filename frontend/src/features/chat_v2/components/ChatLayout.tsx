@@ -28,6 +28,7 @@
  * Last Modified: 2026-05-17
  *
  * Modification History (newest-first):
+ *   - 2026-05-18: Sprint 57.21 Day 4 D-DAY4-7 — column widths align to mockup `chat-shell` (240/minmax(480,1fr)/320 vs Day 3 280/1fr/360); h-full (fullBleed parent fills viewport) instead of calc(100vh - 6.5rem)
  *   - 2026-05-17: Sprint 57.21 Day 3 §3.2 — 2-col placeholder → 3-col with collapsible rails + ChatHeader + SessionList + ChatInspector
  *   - 2026-05-17: Sprint 57.20 Day 3 US-D1 — token migration bg-muted→bg-bg-1
  *   - 2026-05-11: Sprint 57.16 — inline styles → Tailwind utility classes
@@ -65,13 +66,14 @@ export default function ChatLayout({ children }: Props): JSX.Element {
       data-list={listOpen ? "open" : "hidden"}
       data-insp={inspOpen ? "open" : "hidden"}
       className={cn(
-        "grid h-[calc(100vh_-_6.5rem)] w-full",
+        "grid h-full w-full",
         // Mobile: hide both rails.
         "grid-cols-[1fr]",
         // ≥768px: render rails based on open state (md-and-up).
-        listOpen && inspOpen && "md:grid-cols-[280px_minmax(0,1fr)_360px]",
-        listOpen && !inspOpen && "md:grid-cols-[280px_minmax(0,1fr)]",
-        !listOpen && inspOpen && "md:grid-cols-[minmax(0,1fr)_360px]",
+        // Column widths mirror mockup `chat-shell` exactly (styles.css §669-678).
+        listOpen && inspOpen && "md:grid-cols-[240px_minmax(480px,1fr)_320px]",
+        listOpen && !inspOpen && "md:grid-cols-[240px_minmax(480px,1fr)]",
+        !listOpen && inspOpen && "md:grid-cols-[minmax(480px,1fr)_320px]",
         !listOpen && !inspOpen && "md:grid-cols-[minmax(0,1fr)]",
       )}
     >

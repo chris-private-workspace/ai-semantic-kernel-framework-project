@@ -33,7 +33,8 @@
  * Created: 2026-05-10 (Sprint 57.8 Day 1)
  * Last Modified: 2026-05-17
  *
- * Modification History:
+ * Modification History (newest-first):
+ *   - 2026-05-18: Sprint 57.21 Day 4 D-DAY4-7 — add `fullBleed` opt-in prop; chat-v2 uses it to drop the default `<main p-6>` inset and render mockup `chat-shell` 3-col edge-to-edge
  *   - 2026-05-17: Sprint 57.20 Day 1 — V3 mockup-direct rewrite (grid layout + extract Topbar component)
  *   - 2026-05-17: Sprint 57.19 US-D1+D2 — mount CommandPalette + bell + NotificationsPanel; add ⌘K hotkey
  *   - 2026-05-10: Sprint 57.13 US-A5 — add data-testid="app-shell" on root (connectivity spec anchor)
@@ -62,6 +63,12 @@ interface AppShellV2Props {
   headerActions?: ReactNode;
   /** Override slot for the topbar avatar/menu area; defaults to canonical <UserMenu /> in Topbar. */
   userMenu?: ReactNode;
+  /**
+   * Sprint 57.21 Day 4 D-DAY4-7: when true, drops the default `p-6` padding around `<main>`.
+   * Required for pages whose own body is a full-bleed grid (e.g. chat-v2 `chat-shell` 3-col).
+   * Other pages (dashboards, settings) keep p-6 for consistent inset.
+   */
+  fullBleed?: boolean;
 }
 
 // Mockup placeholder unread count; AD-NotificationsPanel-Backend-Feed Sprint 57.21+ wires real feed.
@@ -72,6 +79,7 @@ export const AppShellV2: FC<AppShellV2Props> = ({
   pageTitle,
   headerActions,
   userMenu,
+  fullBleed = false,
 }) => {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -104,7 +112,9 @@ export const AppShellV2: FC<AppShellV2Props> = ({
           unreadCount={FIXTURE_UNREAD_COUNT}
         />
         <NotificationsPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main className={fullBleed ? "min-h-0 flex-1 overflow-hidden" : "flex-1 overflow-y-auto p-6"}>
+          {children}
+        </main>
       </div>
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </div>
