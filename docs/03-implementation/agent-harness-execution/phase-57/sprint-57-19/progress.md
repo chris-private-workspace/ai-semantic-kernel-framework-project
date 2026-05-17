@@ -388,3 +388,82 @@ Pre-Day-3: 8 commits (Day 0-2). Day 3 added US-C1 + US-C2 = 2 commits. Day 3 pro
 - US-C2 came in **well under** plan (~35 min vs plan's ~75 min) — tabs primitive being a tiny pure-React component (vs Radix install + setup) saved ~15-20 min; mockup port being mostly fixture-driven and shape-faithful meant zero re-iteration
 - Day 4 (US-C3 + US-C4) projected ~60-80 min given same pattern; Day 5 audit projected ~60-90 min — sprint likely lands ~70-80% of calibrated 0.60-multiplier commit (`mockup-page-port-with-backend-pairing-and-audit` 0.60 1st app)
 
+---
+
+## Day 4 — 2026-05-17 (planned) / actually executed 2026-05-17 — US-C3 SubagentsPage + US-C4 StateInspectorPage frontend port
+
+### Accomplished — US-C3 SubagentsPage (4.1)
+
+- NEW `frontend/src/features/subagents/types.ts` — `Subagent` + `SubagentsPage` + `SubagentMode` types matching backend US-B4 stub shape in `backend/src/api/v1/subagents.py`. `not_implemented_reason` field surfaced as `string | null` per AD-Subagent-RealList-Phase58 contract.
+- NEW `frontend/src/features/subagents/services/subagentsService.ts` — `fetchSubagents({mode, cursor, limit}, signal)` wrapper using `fetchWithAuth`.
+- NEW `frontend/src/features/subagents/hooks/useSubagents.ts` — TanStack Query hook; `staleTime: 5000`; queryKey `["subagents","list",mode,cursor,limit]`.
+- NEW `frontend/src/pages/subagents/SubagentsPage.tsx` (~390 lines) — 1:1 port of mockup `SubagentsRegistry` + `SubagentDetail`:
+  - **Scope tightening vs checklist plan**: checklist L306 said "Click row → open `SubagentDetail` drawer (shadcn `<Sheet>` component)". **Mockup uses inline 2-col layout (1.4fr list + 1fr right-side card)** with no drawer. Mockup-fidelity hard constraint wins (CLAUDE.md §Frontend Mockup-Fidelity). NOT installing shadcn Sheet primitive; rendered detail inline. Documented in code header + commit message.
+  - 4-mode KPI row (fork=thinking / as_tool=tool / teammate=memory / handoff=info) with per-mode left-border tint matching mockup color semantics exactly (Sprint 57.18 token system)
+  - List table 8 fixture rows; **live US-B4 stub call** populates `not_implemented_reason` → carryover banner shown above table; fixture rows preserved for visual reference (per mockup-fidelity — design review can proceed pre-persistence)
+  - Right-side detail card uses Sprint 57.19 `Tabs` primitive (from Day 3 US-C2) with 4 inner tabs: AgentSpec (role + model + system_prompt + allowed_modes) / Budget (max_tokens/duration/concurrent/depth + "Worktree absent" muted note exact mockup wording) / Tools (tool badges + Attach button) / Stats (calls24h / p95 / success rate / avg tokens / top orchestrator)
+  - Click any list row → updates `selectedId` state → detail re-renders; default `compliance-auditor` (mockup default)
+- Edit `frontend/src/pages/subagents/index.tsx` — swap ComingSoonPlaceholder re-export
+- Edit `frontend/src/routes.config.ts` — remove `proposed: true` from `/subagents` entry (also `/state-inspector` in same edit for Day 4.2)
+- Edit `frontend/src/i18n/locales/{en,zh-TW}/common.json` — +~30 `subagents.*` keys each lang (+pre-staged ~25 `stateInspector.*` keys for 4.2)
+- NEW `frontend/tests/unit/pages/subagents/SubagentsPage.test.tsx` — **7 cases** (pageTitle / 4 mode KPI / 8 fixture rows / carryover banner / default compliance-auditor / row click updates detail / Budget tab switch reveals max-tokens + worktree absent note)
+
+### Accomplished — US-C4 StateInspectorPage (4.2)
+
+- NEW `frontend/src/features/state/{types.ts, services/stateService.ts, hooks/useStateSnapshot.ts}` — Cat 7 single-snapshot frontend wire (US-B3 consumer):
+  - `StateSnapshot` interface mirrors `backend/src/infrastructure/db/models/state.py` ORM exposed by US-B3 endpoint
+  - `fetchStateSnapshot(sessionId, signal)` with `fetchWithAuth`
+  - `useStateSnapshot(sessionId)` TanStack hook, `enabled: Boolean(sessionId)` so unconditional render of page with no `?session_id=...` is safe
+- NEW `frontend/src/pages/state-inspector/StateInspectorPage.tsx` (~370 lines) — 1:1 port of mockup `StateInspector`:
+  - **Backend gap acknowledgment**: Cat 7 has NO list-by-session version-chain endpoint (US-B3 returns latest single snapshot only). Strategy = **hybrid live + fixture**: chain rendered from 10-version mockup fixture; current-state durable block shows live tenant_id / version / hash when `?session_id=<uuid>` provided in URL; carryover banner always visible explaining contract gap → NEW carryover **AD-State-VersionChain-Phase58**
+  - 4 KPI cards (Current version / Transient size / Durable bytes / Pending approvals); Current version dynamically shows live `v{liveSnapshot.version}` when URL has session_id, else `v{selected}` from chain click
+  - 320px / 1fr grid: left = version chain `<ol>` with lineage tick marks (absolutely-positioned border-segment between consecutive entries) + per-author colour (Sprint 57.18 primary/memory/tool/info/success tokens — exactly mockup author tone semantics) + checkpoint Shield icon when `checkpoint: true`
+  - Right top = current-state card with 2-col KvLine layout (transient + durable); durable block conditional render: live snapshot fields when present else mockup fixture
+  - Right bottom = diff-vs-parent card with pre-formatted diff text from mockup (variable-width font preserved via `whitespace-pre` via `<pre>` tag)
+  - Click any version row → updates `selected` state → right-side header re-renders
+  - `useSearchParams()` from react-router-dom reads `?session_id` (no hard dependency on session_id presence)
+- Edit `frontend/src/pages/state-inspector/index.tsx` — swap ComingSoonPlaceholder re-export
+- routes.config.ts /state-inspector flip already in US-C3 commit (bundled with /subagents)
+- i18n keys already pre-staged in US-C3 commit
+- NEW `frontend/tests/unit/pages/state-inspector/StateInspectorPage.test.tsx` — **8 cases** (pageTitle / 4 KPI / 10 version chain entries / default v18 selected / click v11 updates current-state header / carryover banner / diff text / fetchStateSnapshot called when ?session_id provided)
+
+### Sanity (Day 4 cumulative)
+
+- **Vitest: 61 files / 264 PASS** (Day 3 baseline 249 + 7 US-C3 + 8 US-C4 = 264; **0 regression**)
+- **tsc --noEmit: 0 errors**
+- **ESLint scoped to src/pages/subagents + src/pages/state-inspector + src/features/subagents + src/features/state: silent** (zero inline-style violations — both pages use Tailwind exclusively + Sprint 57.18 token vocabulary; SVG `<text>` migration learning from Day 3 D-DAY3-3 applied preemptively)
+- Backend: untouched this Day; pytest baseline preserved (29/29)
+- LLM SDK leak: still 0
+
+### Drift findings — Day 4
+
+| ID | Finding | Severity | Action |
+|----|---------|----------|--------|
+| D-DAY4-1 | Checklist 4.1 L306 specified "Click row → open `SubagentDetail` drawer (shadcn `<Sheet>` component)" — mockup uses INLINE 2-col layout (1.4fr / 1fr) with right-side card. **Mockup-fidelity hard constraint wins** per CLAUDE.md `§Frontend Mockup-Fidelity Hard Constraint`. NOT installing shadcn Sheet. Scope tightening. | Plan / scope | Documented in code header + commit body; no AD needed (mockup-vs-plan reconciliation; Sprint 57.19 governance principle applied) |
+| D-DAY4-2 | Backend US-B3 returns ONLY latest snapshot per session (single row, ORDER BY version DESC LIMIT 1) — mockup expects 10-version chain. Hybrid solution = fixture chain + live single-version durable block when `?session_id=<uuid>` provided. | Plan / backend gap | NEW carryover **AD-State-VersionChain-Phase58** (Cat 7 list-by-session endpoint + UI swap fixture chain → real entries) |
+| D-DAY4-3 | Vitest "renders all 10 version chain entries" initially failed because `getByText("v18")` matches 3 places (chain entry + current-state header + Current version Stat). Fixed by switching to `getAllByText(...).length >= 1` per Day 3 D-DAY3-2-recovery learning (subsequent test "defaults to v18" already used getAllByText `>= 2`). | Test | Resolved in 1 retry |
+| D-DAY4-4 | Tabs primitive (Sprint 57.19 Day 3 US-C2 NEW) re-used in US-C3 SubagentDetail inner-tab layout — confirmed primitive scales to nested tab contexts without changes (initial design intent). | Validation | None — primitive design validated |
+
+### NEW carryover AD (Day 4)
+
+- **AD-State-VersionChain-Phase58** (NEW): add Cat 7 list-by-session endpoint `GET /api/v1/sessions/{id}/state/versions` returning `[{version, parent_version, author, message, checkpoint, timestamp_ms}]`; swap StateInspectorPage chain fixture for real entries when endpoint lands. ~3-5 hr standalone or fold into Sprint 57.20 Operations retrofit. Author colour mapping (orchestrator_loop/reducer/tools/subagent/session_init) preserved in frontend constant for backend-shape alignment.
+
+### Commits (Day 4)
+
+3 commits:
+- `ec5e3927` (Day 4 commit A) — `feat(frontend-port, sprint-57-19): /subagents page real content from mockup page-agents.jsx (US-C3)` (9 files; +838 / -3) — includes both i18n langs + routes.config.ts flip for BOTH subagents AND state-inspector (bundled per Day 3 i18n precedent)
+- `afc3445a` (Day 4 commit B) — `feat(frontend-port, sprint-57-19): /state-inspector page real content from mockup page-platform.jsx (US-C4)` (6 files; +597 / -1)
+- Day 4 commit C (about to land) — `docs(sprint-57-19, Day 4): progress.md Day 4 entry + checklist flip + AD-State-VersionChain-Phase58 carryover`
+
+### Branch status
+
+Branch `feature/sprint-57-19-mockup-operations-port` now **13 commits ahead of main** (`a3d7d954`). After Day 4.3 docs commit = 14.
+
+### Calibration update (Day 4 partial)
+
+- Day 4 elapsed: ~70 min (US-C3 ~40 min / US-C4 ~25 min / test fix retry + sanity ~5 min)
+- Cumulative Day 0+1+2+3+4: ~370 min (~6.2 hr) of ~18.5 hr committed = **~34% spent / 80% of US shipped (B1-B4 + C1-C4 = 8 of 10; only D1-D3 Topbar overlays + Day 5 audit remain)**
+- US-C3 came in **under** plan (~40 min vs plan's ~75 min) — scope tightening (no Sheet install) + mockup mostly fixture rendering + Tabs primitive reuse zero design overhead
+- US-C4 came in **well under** plan (~25 min vs plan's ~60 min) — pure rendering page (no DnD / no JSON tree complexity per Day 0 deferred decision; single hook + 1 useState); hybrid live+fixture data model is straightforward
+- Day 5 (US-D1 CommandPalette ⌘K + US-D2 NotificationsPanel + US-D3 UserMenu + US-F1 existing 8-page audit + closeout) projected ~120-180 min — sprint likely lands ~50-55% of calibrated 0.60-multiplier commit (`mockup-page-port-with-backend-pairing-and-audit` 0.60 1st app) — well under-budget run, will report final ratio in retrospective.md
+

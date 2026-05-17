@@ -300,43 +300,46 @@ Related:
 ## Day 4 — US-C3 (Subagents) + US-C4 (State Inspector) — Frontend Port Day 2
 
 ### 4.1 US-C3: port `SubagentsRegistry` from `reference/design-mockups/page-agents.jsx`
-- [ ] **Read `reference/design-mockups/page-agents.jsx`** `SubagentsRegistry` + `SubagentDetail` drawer components
-- [ ] **NEW file `frontend/src/pages/subagents/SubagentsPage.tsx`** (~150 lines):
-  - List view with mockup-matched columns (mode badge / parent session / status / token usage / started_at)
-  - Click row → open `SubagentDetail` drawer (shadcn `<Sheet>` component)
-  - useQuery against US-B4 `fetchSubagents`
-  - Mode filter dropdown (matches mockup)
-  - Pagination via cursor (next/prev buttons)
-  - i18n keys
-  - Mockup style translation: badge colors per mockup (code=tool token / research=memory token / architect=thinking token / review=info token — Sprint 57.18 tokens applicable)
-  - File header
-- [ ] **Replace `pages/subagents/index.tsx`** + routes.config.ts flip active=true
-- [ ] **i18n keys**: `subagents.title` + columns + mode labels + drawer fields (~12 NEW keys each)
-- [ ] **NEW Vitest**
-- [ ] **Playwright MCP fidelity check**
-- [ ] DoD: route `/subagents` shows registry list + drawer; data from US-B4
+- [x] **Read `reference/design-mockups/page-agents.jsx`** — done; SubagentsRegistry parent + SubagentDetail inner-Tabs reviewed. **Mockup uses inline 2-col layout (1.4fr/1fr) NOT a `<Sheet>` drawer** — plan revised per mockup-fidelity hard constraint (D-DAY4-1).
+- [x] **NEW file `frontend/src/pages/subagents/SubagentsPage.tsx`** (~390 lines) — 1:1 mockup port:
+  - **Inline 2-col list + detail card** (NOT drawer; mockup-fidelity wins). No shadcn `<Sheet>` install.
+  - Live US-B4 stub backend wired via `useSubagents`; empty `items` + populated `not_implemented_reason` → carryover banner above table; **fixture 8 rows preserved for visual reference** (Sprint 57.20+ retrofit when AD-Subagent-RealList-Phase58 lands)
+  - 4-mode KPI row (fork=thinking / as_tool=tool / teammate=memory / handoff=info) per-mode left-border tint matching mockup exactly
+  - List table: 6 columns (role/model/modes/status/calls24h/p95); click row → updates `selectedId` state → detail re-renders
+  - Right-side detail card uses Sprint 57.19 `Tabs` primitive (Day 3 US-C2) with 4 inner tabs (AgentSpec/Budget/Tools/Stats); "Worktree absent" muted note exact mockup wording preserved
+  - Default selected = "compliance-auditor" (mockup default)
+  - Zero inline `style=` violations; Sprint 57.18 token vocabulary exclusively
+  - File header per convention
+- [x] **Replace `pages/subagents/index.tsx`** — `export { SubagentsPage as default } from "./SubagentsPage";`
+- [x] **Edit `frontend/src/routes.config.ts`** — removed `proposed: true` from `/subagents` entry (also `/state-inspector` in same edit per US-C4)
+- [x] **i18n keys**: en + zh-TW common.json +~30 `subagents.*` keys each (title/subtitle/registered/syncFromRepo/newSubagent/carryoverHeading/mode.{4 descs}/list.{title,subtitle}/col.{6 cols}/detail.{20 keys for tabs + role/model/prompt/modes/budgets/tools/stats})
+- [x] **NEW Vitest** at `frontend/tests/unit/pages/subagents/SubagentsPage.test.tsx` — **7 cases** (pageTitle / 4 mode KPI / 8 fixture rows / carryover banner / default compliance-auditor / row click updates detail / Budget tab switch reveals max-tokens + worktree absent note)
+- [x] 🚧 **Playwright MCP fidelity check** — **DEFERRED to Day 5 US-F1 audit pass** per drift D-DAY3-5 (same as Day 3 deferral; will batch-screenshot all 4 newly-ported pages at Day 5)
+- [x] DoD: route `/subagents` renders KPI + list + inline detail card; data shape from US-B4 stub; carryover banner respects backend gap; Vitest 7/7 PASS; code-level mockup parity verified
 
 ### 4.2 US-C4: port `StateInspector` from `reference/design-mockups/page-platform.jsx`
-- [ ] **Read `reference/design-mockups/page-platform.jsx`** `StateInspector` component (note: mockup may have multiple platform pages; identify the exact one)
-- [ ] **Decision (Day 0 deferred)**: JSON tree via custom recursive component (~50 lines) per plan §Open Question 5 default (NO `react-json-tree` dep)
-- [ ] **NEW file `frontend/src/pages/state-inspector/StateInspectorPage.tsx`** (~150 lines):
-  - Session selector (URL query string `?session_id=X` or dropdown)
-  - useQuery against US-B3 `fetchStateSnapshot(sessionId)`
-  - Render: split view — left side transient state JSON tree, right side durable state JSON tree
-  - JSON tree custom component: recursive `<JsonNode>` rendering nested object/array with expand/collapse + key+value coloring per mockup
-  - Diff view between transient and durable (basic — show keys present in only one side)
-  - i18n keys
-  - File header
-- [ ] **Replace `pages/state-inspector/index.tsx`** + routes.config.ts flip active=true
-- [ ] **i18n keys**: `stateInspector.title` + JSON tree labels + diff labels (~10 NEW keys each)
-- [ ] **NEW Vitest** — render with mock state snapshot; verify tree structure + diff section
-- [ ] **Playwright MCP fidelity check**
-- [ ] DoD: route `/state-inspector?session_id=<test-id>` renders JSON tree
+- [x] **Read `reference/design-mockups/page-platform.jsx`** `StateInspector` (L21-146) — done; identified as the right component (file also has Compaction/Workflows/etc. for other routes)
+- [x] **Decision (Day 0 deferred)**: JSON tree NOT needed this sprint — mockup uses flat KvLine list for transient/durable, NOT a tree. Render as `<KvLine k=... v=... />` directly per mockup (zero recursion / zero `react-json-tree` dep) — even simpler than original Day 0 plan
+- [x] **NEW file `frontend/src/pages/state-inspector/StateInspectorPage.tsx`** (~370 lines) — 1:1 mockup port:
+  - **Backend gap hybrid solution**: Cat 7 has NO list-by-session version-chain endpoint (US-B3 returns latest single snapshot only) → chain rendered from 10-version mockup fixture; current-state durable block shows live `tenant_id`/`session_id`/`version`/`hash` when `?session_id=<uuid>` provided in URL; always-visible carryover banner explaining gap → NEW carryover **AD-State-VersionChain-Phase58**
+  - 4 KPI cards (Current version / Transient size / Durable bytes / Pending approvals); Current version dynamic
+  - 320px / 1fr grid: chain `<ol>` with absolute-positioned lineage tick marks between consecutive entries + per-author colour (Sprint 57.18 primary/memory/tool/info/success tokens — exact mockup author tone semantics) + checkpoint Shield icon
+  - Right top = current-state card; transient block = mockup fixture (5 KvLines); durable block = hybrid (live snapshot fields when ?session_id provided, else mockup fixture)
+  - Right bottom = diff-vs-parent pre-formatted text from mockup verbatim
+  - Click any version row → updates `selected` state → header re-renders
+  - `useSearchParams()` from react-router-dom (zero-dep extension; no extra install)
+  - File header per convention
+- [x] **Replace `pages/state-inspector/index.tsx`** — `export { StateInspectorPage as default } from "./StateInspectorPage";`; routes.config.ts flip already in US-C3 commit
+- [x] **i18n keys**: en + zh-TW common.json +~25 `stateInspector.*` keys each (title/subtitle/versions/checkpoints/diffVsParent/restore/exportCheckpoint/carryoverHeading/carryoverBody/liveFetchError/kpi.{4}/chain.{title,subtitle}/transient.heading/durable.heading/diff.{title,noParent}) — pre-staged in US-C3 commit
+- [x] **NEW Vitest** at `frontend/tests/unit/pages/state-inspector/StateInspectorPage.test.tsx` — **8 cases** (pageTitle / 4 KPI / 10 version chain entries / default v18 selected / click v11 updates current-state header / carryover banner / diff text / fetchStateSnapshot called when ?session_id provided)
+- [x] 🚧 **Playwright MCP fidelity check** — **DEFERRED to Day 5 US-F1 audit pass** per drift D-DAY3-5 (same)
+- [x] DoD: route `/state-inspector` renders chain + state + diff; route `/state-inspector?session_id=<uuid>` calls live US-B3 backend; Vitest 8/8 PASS; mockup parity verified
 
 ### 4.3 Day 4 commits
-- [ ] **Day 4 commit A** `feat(frontend-port, sprint-57-19): /subagents page real content from mockup page-agents.jsx (US-C3)`
-- [ ] **Day 4 commit B** `feat(frontend-port, sprint-57-19): /state-inspector page real content from mockup page-platform.jsx (US-C4)`
-- [ ] Frontend sanity: `npm run lint` silent; `npm run typecheck` 0 errors; `npm run test` 236 + ~20 new = ~256 pass
+- [x] **Day 4 commit A** `ec5e3927` — `feat(frontend-port, sprint-57-19): /subagents page real content from mockup page-agents.jsx (US-C3)` (9 files; +838 / -3)
+- [x] **Day 4 commit B** `afc3445a` — `feat(frontend-port, sprint-57-19): /state-inspector page real content from mockup page-platform.jsx (US-C4)` (6 files; +597 / -1)
+- [x] **Day 4 commit C** (about to land) — `docs(sprint-57-19, Day 4): progress.md Day 4 entry + checklist flip + AD-State-VersionChain-Phase58 carryover`
+- [x] Frontend sanity: ESLint silent ✅; tsc 0 errors ✅; **Vitest 264/264 PASS** (Day 3 baseline 249 + 7 US-C3 + 8 US-C4 = 264 ✅; exceeds plan's "~256 pass" target)
 
 ---
 
