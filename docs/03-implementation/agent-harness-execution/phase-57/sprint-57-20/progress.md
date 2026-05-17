@@ -172,3 +172,68 @@ All 6 baseline captures at 1440×900 viewport saved to `claudedocs/4-changes/spr
 - 14 active pages prop interface backward compat preserved (`pageTitle` / `headerActions` / `userMenu` all still work)
 - Anti-stop rule continued validation: 5+ Bash + 8+ Playwright tool calls within aligned scope, 0 user-blocking interruptions
 - 1 NEW carryover opened: **AD-Geist-Font-Asset-Bundling** Phase 58+ (self-host via `@fontsource/geist-sans` for offline + perf; currently CDN Noto Sans TC + system Geist fallback works for online dev)
+
+---
+
+## Day 2 — 2026-05-17 — `/overview` token migration + visual refinement
+
+### Today's accomplishments
+
+**Discovery**: Sprint 57.19 US-C1 OverviewPage.tsx **already ships 1:1 mockup port** (726 lines: 4 KPI cards + ActiveLoops with real `useActiveLoops` hook + HITL fixture + Cost burn SVG + Providers fixture + Incidents fixture + Error trend SVG + Quick actions strip). Day 2 真正 scope **reduces** from "full rewrite" to **token migration shadcn → mockup tree** for visual consistency with new shell + visual refinements.
+
+**Token migration (8 `replace_all` edits)**:
+- `bg-card text-card-foreground` → `bg-bg-1 text-foreground` (Card containers)
+- `border border-border bg-card` → `border border-border bg-bg-1` (Stat cards)
+- Added `shadow-sm` to Stat cards for mockup parity
+- `text-muted-foreground` → `text-fg-muted` (primary muted text)
+- `hsl(var(--muted-foreground))` → `hsl(var(--fg-subtle))` (SVG text fills — finer subtle gray per mockup `var(--fg-subtle)`)
+- `hover:bg-muted/40` → `hover:bg-bg-hover` (interactive surfaces)
+- `bg-muted/30` → `bg-bg-2` (secondary surface)
+- `bg-muted` → `bg-bg-2` (general muted bg; e.g. mini progress bar tracks)
+
+**MHist entry** in OverviewPage.tsx 1-line per file-header-convention.md.
+
+**Data sources preserved**:
+- `useActiveLoops(10)` — real backend (Sprint 57.19 US-B1 GET /api/v1/loops) ✅
+- HITL_QUEUE / RECENT_INCIDENTS / PROVIDERS / ERROR_24H — fixtures unchanged; AD-Overview-Backend-Wire Sprint 57.21+ deferred
+- CostBurnChart inline SVG — fixture math unchanged (D-DAY1-4: backend cost endpoints 500 — defer real wire)
+
+### Anti-Pattern self-check (Day 2 scope)
+
+- **AP-1 No god component**: OverviewPage.tsx 727 lines = component-per-card pattern (ActiveLoopsCard / HITLQueueCard / ProvidersCard / IncidentsCard) + 2 inline SVG charts; each under 150 lines ✅
+- **AP-2 No Potemkin**: All non-fixture data uses real hook (useActiveLoops); fixtures explicitly documented as Sprint 57.21+ wire ADs ✅
+- **AP-3 No cross-directory scattering**: page in `pages/overview/`; uses `features/loops/` hook + types ✅
+- **AP-4 No rename-only refactor**: Token migration delivers visible visual consistency gain (Card backgrounds now match new shell dark theme; previously rendered as transparent due to bg-card token gap) ✅
+- **AP-5 No hardcoded secrets**: 0 ✅
+- **AP-6 No silent backend assumptions**: 0 backend changes; fixture banners surface AD references ✅
+- **AP-7 No prop drilling**: hooks consume directly ✅
+- **AP-8 No event handler swallowing errors**: useActiveLoops error → `<div role="alert">{error.message}</div>` ✅
+- **AP-9 No race conditions**: TanStack Query refetch interval 10s + staleTime 5s ✅
+- **AP-10 No untested critical path**: 277 Vitest pass including overview test cases ✅
+- **AP-11 No TS any**: 0 ✅
+
+### Tests + build + visual
+
+- **Vitest 277/277 PASS** ✅ (no test changes needed — assertions test text content + tone classes which are preserved)
+- **Build 2.70s** ✅ / main bundle **320.76 kB unchanged** ✅
+- **Lint silent** ✅
+- **Playwright POST capture** at 1440×900 → `screenshots/overview/prod-overview-post-day2.png` (after dev-login flow to authenticate; RequireAuth wrapper enforces auth)
+
+### Drift findings Day 2
+
+- **D-DAY2-1 (info)**: Sprint 57.19 OverviewPage used `bg-card` (undefined token; rendered transparent in dark theme — visually broken before Sprint 57.20 shell tokens). Token migration fixes this — was a silent latent visual bug.
+- **D-DAY2-2 (deferred)**: Cost burn chart uses fixture math; AD-Cost-Backend-Wire (folds into AD-Overview-Backend-Wire bundle) Sprint 57.21+ when /api/v1/cost/* endpoints fixed (D-DAY1-4 carryover).
+- **D-DAY2-3 (deferred)**: useCostSummary hook exists (`features/cost-dashboard/hooks/useCostSummary.ts`) — could replace fixture in Sprint 57.21+ once backend cost endpoint stabilizes.
+
+### Remaining for Day 3
+
+- US-D1: `/chat-v2` mockup-direct port (mockup `page-chat.jsx` 533 lines) — REWRITE preserving SSE/HITL/state machine 100%
+- Use `features/chat_v2/` (underscore — D-PRE-1 correction)
+- Adapt Vitest + Playwright spec selectors per new DOM
+- Playwright MCP pair-verify chat-v2
+
+### Notes
+
+- Day 2 was lighter-than-expected scope (3 hr → 1.5 hr) because Sprint 57.19 already shipped the structural port. Day 2 = visual consistency layer.
+- Calibration implication: if Day 3 (chat-v2) is similar (already partially mockup-ported in Sprint 57.8 + Sprint 57.16 inline-style sweep), Sprint 57.20 total may finish under bottom-up estimate. Will recompute ratio at Day 4 retrospective.
+- 0 backend changes; 0 features layer touched; 0 i18n keys added (Sprint 57.19 keys reused)

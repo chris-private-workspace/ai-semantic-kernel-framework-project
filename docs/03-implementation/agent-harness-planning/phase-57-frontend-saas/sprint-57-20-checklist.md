@@ -108,7 +108,9 @@
 
 ---
 
-## Day 2 — /overview mockup-direct port (US-C1) (~4-5 hr)
+## Day 2 — /overview token migration + visual refinement (US-C1) — COMPLETED
+
+**Day 2 scope reduced** from full rewrite to token migration after discovery that Sprint 57.19 US-C1 already shipped 1:1 mockup port. Day 2 delivers visual consistency with new shell via shadcn → mockup token tree migration.
 
 ### 2.1 Mockup analog deep read
 - [ ] Read `reference/design-mockups/page-overview.jsx` end-to-end
