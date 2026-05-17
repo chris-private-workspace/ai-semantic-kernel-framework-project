@@ -237,3 +237,91 @@ All 6 baseline captures at 1440×900 viewport saved to `claudedocs/4-changes/spr
 - Day 2 was lighter-than-expected scope (3 hr → 1.5 hr) because Sprint 57.19 already shipped the structural port. Day 2 = visual consistency layer.
 - Calibration implication: if Day 3 (chat-v2) is similar (already partially mockup-ported in Sprint 57.8 + Sprint 57.16 inline-style sweep), Sprint 57.20 total may finish under bottom-up estimate. Will recompute ratio at Day 4 retrospective.
 - 0 backend changes; 0 features layer touched; 0 i18n keys added (Sprint 57.19 keys reused)
+
+---
+
+## Day 3 — 2026-05-17 — `/chat-v2` token migration + mockup gap audit
+
+### Today's accomplishments
+
+**Discovery (D-DAY3-1 — CRITICAL scope finding)**: Mockup `page-chat.jsx` (533L) has **~10× richer UX** than current `chat_v2` implementation:
+
+| Aspect | Mockup `page-chat.jsx` | Current `chat_v2/` |
+|--------|-----------------------|--------------------|
+| Layout | 3-col chat-shell with collapse toggles (data-list/data-insp) | 3-col placeholder ChatLayout (`240px / 1fr / 280px`) |
+| SessionList | 6 sessions × {status badge / domain dot / agent / turns / time / HITL/running pill} | "Session list lands in Phase 51.x" placeholder text |
+| ChatHeader | Title + agent badges + model + provider-neutral + streaming pill + Loop/Audit buttons + panel toggles | Not rendered (AppShellV2 provides simple page title h1 only) |
+| TurnRender | user / agent / HITL turn types with rails + markers + heads + bodies | Simple user/assistant bubble Message types |
+| Agent blocks | thinking / tool / memory / verification / subagent_fork (5 block types) | ToolCallCard only |
+| HITL turn | Full approval card with rationale + payload + 4 action buttons + countdown SLA | Basic ApprovalCard with Approve/Reject/governance link |
+| Composer | Textarea + attachments + tools + memory scope + Send | Textarea + Send + status pill + mode toggle |
+| Inspector | 4 tabs (Turn / Trace / Memory / Tree) with token stats + OTel spans + memory ops + subagent tree | "Inspector lands in 52.1+" placeholder text |
+
+**Realistic Day 3 scope** (under (γ) single commit + Option W "preserve functional"): **token migration shadcn → mockup tree** only. Full UX rewrite requires multi-sprint backend wire ADs (turn data structure with thinking/memory/verification blocks; subagent_fork data; OTel span extraction for inspector; session list per-detail endpoint).
+
+**Token migration (10 `replace_all` edits across 5 files)**:
+- `ChatLayout.tsx`: `bg-muted` (sidebar+inspector aside bg) → `bg-bg-1`
+- `MessageList.tsx`: `bg-card text-foreground` (assistant bubble) → `bg-bg-1 text-foreground`; `text-muted-foreground` → `text-fg-muted`
+- `InputBar.tsx`: `text-muted-foreground` → `text-fg-muted`; `bg-muted-foreground` (disabled Send) → `bg-fg-muted`
+- `ApprovalCard.tsx`: `text-muted-foreground` (×2) → `text-fg-muted`; `bg-muted-foreground` (decision badge fallback) → `bg-fg-muted`
+- `ToolCallCard.tsx`: `bg-card` → `bg-bg-1`; `bg-muted` (×3: header + 2× pre code blocks) → `bg-bg-2`; `text-muted-foreground` (×4: duration / chevron / "Arguments" / "Result" labels) → `text-fg-muted`
+
+**MHist entries** in all 5 files per file-header-convention.md (1-line each).
+
+### Behavioral preservation (per Option W "Backend-Follows" philosophy)
+
+100% preserved:
+- SSE event handler (`useLoopEventStream` hook)
+- InputBar state machine (status pill running/completed/cancelled/error/idle)
+- HITL approval workflow (ApprovalCard `governanceService.decide` call + optimistic store update + SSE `ApprovalReceived` overwrite)
+- Cat 9 audit logging (preserved through governance service path)
+- Mode toggle (echo_demo / real_llm)
+- Keyboard shortcuts (Enter to send, Shift+Enter newline)
+- Tool call collapse UX (ToolCallCard)
+- Risk level color mapping (RISK_TEXT_CLASS per STYLE.md §3)
+
+### Anti-Pattern self-check (Day 3 scope)
+
+- **AP-1 No god component**: All 5 files under 160 lines ✅
+- **AP-2 No Potemkin**: Tokens migrated; all functional behavior preserved with real hooks (chatStore, useLoopEventStream, governanceService) ✅
+- **AP-3 No cross-directory scattering**: All migrations in `features/chat_v2/components/` ✅
+- **AP-4 No rename-only refactor**: Token migration delivers visible dark-theme consistency for chat-v2 (previously `bg-card` rendered transparent) ✅
+- **AP-5 No hardcoded secrets**: 0 ✅
+- **AP-6 No silent backend assumptions**: 0 backend changes; SSE/HITL endpoints unchanged ✅
+- **AP-7 No prop drilling**: chatStore/useTheme/useLoopEventStream consumed via hooks ✅
+- **AP-8 No event handler swallowing errors**: setError + errorMessage display in InputBar preserved; ApprovalCard error state preserved ✅
+- **AP-9 No race conditions**: chatStore optimistic update + SSE overwrite pattern preserved ✅
+- **AP-10 No untested critical path**: chat-v2 vitest cases preserved (approval-card.spec, message flow) ✅
+- **AP-11 No TS any leak**: 0 ✅
+
+### Tests + build + visual
+
+- **Vitest 277/277 PASS** ✅ (no test changes — assertions verify text content + risk class names which are preserved)
+- **Build 2.69s** ✅ / main bundle **320.76 kB unchanged** ✅
+- **Lint silent** ✅
+- **Playwright POST capture** at 1440×900 → `screenshots/chat-v2/prod-chat-v2-post-day3.png` (auth persisted from Day 2 dev-login)
+
+### Drift findings Day 3
+
+- **D-DAY3-1 (CRITICAL, multi-sprint)**: Mockup chat UX vs current implementation has ~10× gap (see table above). Sprint 57.20 Day 3 = token migration only; **AD-ChatV2-Full-Mockup-Fidelity** NEW carryover Phase 58+ multi-sprint epic covering:
+  - Session list backend endpoint per-session detail (title / agent / turns / time / domain / status) — extends AD-Loop-Session-Enrich-Phase58
+  - Turn data structure with thinking/memory/verification/subagent_fork blocks — extends Cat 6 (output parsing) + Cat 4 (context)
+  - OTel span extraction for inspector Trace tab — extends Cat 12 (observability)
+  - Subagent tree live data feed — extends AD-Subagent-RealList-Phase58
+  - Memory ops in-conversation feed — extends Cat 3 (memory)
+  - HITL card 4-action UX (Approve / Approve with edits / Reject / Escalate to L2) — extends governance service
+- **D-DAY3-2 (latent visual bug fix)**: ToolCallCard used `bg-card` (undefined shadcn token; rendered transparent in dark theme; tool call panel had no visible frame). Token migration to `bg-bg-1` fixes the silent bug — pattern matches D-DAY2-1.
+- **D-DAY3-3 (visual nit)**: ApprovalCard uses `bg-warning/10` for outer container — that uses Tailwind alpha modifier which only works on `colors.warning` defined token (Sprint 57.18). Confirmed working in current Tailwind output.
+
+### Remaining for Day 4
+
+- US-E1: Sprint 57.19 7-output runtime fidelity verification (Operations 4 pages + 3 Topbar overlays inheriting new shell)
+- US-E2: Closeout — retrospective.md + memory snapshot + 4 doc syncs (CLAUDE.md / MEMORY.md / sprint-workflow calibration / SITUATION) + PR + closeout PR
+
+### Notes
+
+- Day 3 was lighter-than-expected (5-6 hr estimate → ~1.5 hr) for same reason as Day 2 — Sprint 57.15/16 inline-style sweeps already shipped Tailwind structural baseline; Day 3 = token consistency layer
+- Calibration impact: 3-day actual ratio = ~1.5+1.5+1.5 = 4.5 hr vs ~10-12 hr calibrated commit → tracking ~0.4 ratio (below band by 0.45). Will record in Day 4 retrospective Q2.
+- Reason for under-band: Sprint 57.18-57.19 (token foundation + Sprint 57.19 OverviewPage port) front-loaded much of the per-page port work; Sprint 57.20 only needs the token-tree consistency layer + new shell.
+- This is a SIGNAL for calibration class adjustment per `When to adjust` 3-sprint window rule. If next 1-2 frontend-mockup-direct-port sprints repeat the pattern → propose 0.55 → 0.35-0.40 multiplier.
+- 0 backend changes; 0 features layer touched; 0 i18n keys added

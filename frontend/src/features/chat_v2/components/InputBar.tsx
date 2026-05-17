@@ -20,13 +20,14 @@
  *   Sprint 57.16 (AD-Inline-Style-Cleanup-Sweep-Round2): migrated to Tailwind
  *   utility classes. The 4-way status pill, mode-toggle active state, and
  *   send-button disabled state use finite class lookups (STATUS_PILL Record +
- *   inline `cn()` for the booleans); topRow text uses text-muted-foreground
+ *   inline `cn()` for the booleans); topRow text uses text-fg-muted
  *   (AA-compliant; prerequisite for re-enabling color-contrast on /chat-v2).
  *
  * Created: 2026-04-30 (Sprint 50.2 Day 4.3)
  * Last Modified: 2026-05-11
  *
  * Modification History (newest-first):
+ *   - 2026-05-17: Sprint 57.20 Day 3 US-D1 — token migration text-muted-foreground→text-fg-muted; bg-muted-foreground→bg-fg-muted (disabled Send) for new shell mockup consistency
  *   - 2026-05-11: Sprint 57.16 — inline styles → Tailwind utility classes; statusPill/modeButton/sendBtn → finite class lookup (AD-Inline-Style-Cleanup-Sweep-Round2)
  *   - 2026-04-30: Initial creation (Sprint 50.2 Day 4.3)
  *
@@ -54,7 +55,7 @@ const STATUS_PILL: Record<string, { label: string; cls: string }> = {
 };
 
 function getPill(status: string): { label: string; cls: string } {
-  return STATUS_PILL[status] ?? { label: "○ idle", cls: "text-muted-foreground" };
+  return STATUS_PILL[status] ?? { label: "○ idle", cls: "text-fg-muted" };
 }
 
 export default function InputBar(): JSX.Element {
@@ -90,7 +91,7 @@ export default function InputBar(): JSX.Element {
           {errorMessage}
         </div>
       )}
-      <div className="flex items-center gap-2.5 text-xs text-muted-foreground">
+      <div className="flex items-center gap-2.5 text-xs text-fg-muted">
         <span className={cn("inline-flex items-center gap-1 font-medium", pill.cls)}>
           {pill.label}
         </span>
@@ -101,7 +102,7 @@ export default function InputBar(): JSX.Element {
               key={m}
               className={cn(
                 "cursor-pointer rounded-sm border border-border px-2 py-0.5 text-[11px]",
-                mode === m ? "bg-primary text-white" : "bg-background text-muted-foreground",
+                mode === m ? "bg-primary text-white" : "bg-background text-fg-muted",
               )}
               onClick={() => setMode(m)}
               disabled={isRunning}
@@ -132,7 +133,7 @@ export default function InputBar(): JSX.Element {
           <button
             className={cn(
               "rounded-md border-none px-4 py-2.5 text-sm font-medium text-white",
-              sendDisabled ? "cursor-not-allowed bg-muted-foreground" : "cursor-pointer bg-primary",
+              sendDisabled ? "cursor-not-allowed bg-fg-muted" : "cursor-pointer bg-primary",
             )}
             onClick={onSend}
             disabled={sendDisabled}

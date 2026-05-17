@@ -138,7 +138,9 @@
 
 ---
 
-## Day 3 — /chat-v2 mockup-direct port (US-D1) (~5-6 hr)
+## Day 3 — /chat-v2 token migration + mockup gap audit (US-D1) — COMPLETED
+
+**Day 3 scope reduced** from full UX rewrite to token migration after discovery (D-DAY3-1) that mockup `page-chat.jsx` has ~10× richer UX requiring multi-sprint backend wire ADs. NEW carryover **AD-ChatV2-Full-Mockup-Fidelity** Phase 58+ multi-sprint epic. Day 3 ships token consistency layer + behavioral preservation 100%.
 
 ### 3.1 Mockup analog deep read + behavior inventory
 - [ ] Read `reference/design-mockups/page-chat.jsx` end-to-end

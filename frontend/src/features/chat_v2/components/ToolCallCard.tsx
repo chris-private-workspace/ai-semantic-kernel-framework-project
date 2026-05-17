@@ -14,6 +14,7 @@
  * Last Modified: 2026-05-11
  *
  * Modification History (newest-first):
+ *   - 2026-05-17: Sprint 57.20 Day 3 US-D1 — token migration bg-card→bg-bg-1; bg-muted→bg-bg-2; text-muted-foreground→text-fg-muted for new shell mockup consistency
  *   - 2026-05-11: Sprint 57.15 — inline styles → Tailwind utility classes (AD-Inline-Style-Cleanup-Sweep)
  *   - 2026-04-30: Initial creation (Sprint 50.2 Day 4.2)
  *
@@ -43,9 +44,9 @@ export default function ToolCallCard({ entry }: Props): JSX.Element {
   const status = statusBadge(entry);
 
   return (
-    <div className="overflow-hidden rounded-md border border-border bg-card font-mono text-[13px]">
+    <div className="overflow-hidden rounded-md border border-border bg-bg-1 font-mono text-[13px]">
       <div
-        className="flex cursor-pointer select-none items-center gap-2.5 border-b border-border bg-muted px-3 py-2"
+        className="flex cursor-pointer select-none items-center gap-2.5 border-b border-border bg-bg-2 px-3 py-2"
         onClick={() => setOpen((v) => !v)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -60,7 +61,7 @@ export default function ToolCallCard({ entry }: Props): JSX.Element {
         <span className="text-sm">🔧</span>
         <span className="font-semibold text-foreground">{entry.toolName}</span>
         {typeof entry.durationMs === "number" && (
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-[11px] text-fg-muted">
             {entry.durationMs.toFixed(1)} ms
           </span>
         )}
@@ -72,20 +73,20 @@ export default function ToolCallCard({ entry }: Props): JSX.Element {
         >
           {status.label}
         </span>
-        <span className="text-[11px] text-muted-foreground">{open ? "▾" : "▸"}</span>
+        <span className="text-[11px] text-fg-muted">{open ? "▾" : "▸"}</span>
       </div>
       {open && (
         <div className="px-3.5 py-2.5">
-          <div className="mb-1 text-[11px] text-muted-foreground">Arguments</div>
-          <pre className="m-0 whitespace-pre-wrap break-words rounded border border-border bg-muted px-2 py-1.5">
+          <div className="mb-1 text-[11px] text-fg-muted">Arguments</div>
+          <pre className="m-0 whitespace-pre-wrap break-words rounded border border-border bg-bg-2 px-2 py-1.5">
             {JSON.stringify(entry.args, null, 2)}
           </pre>
           {entry.result !== undefined && (
             <>
-              <div className="mb-1 mt-2 text-[11px] text-muted-foreground">
+              <div className="mb-1 mt-2 text-[11px] text-fg-muted">
                 {entry.isError ? "Error" : "Result"}
               </div>
-              <pre className="m-0 whitespace-pre-wrap break-words rounded border border-border bg-muted px-2 py-1.5">
+              <pre className="m-0 whitespace-pre-wrap break-words rounded border border-border bg-bg-2 px-2 py-1.5">
                 {entry.result}
               </pre>
             </>
