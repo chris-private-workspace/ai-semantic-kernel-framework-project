@@ -21,8 +21,9 @@
  *
  * Created: 2026-05-17 (Sprint 57.21 Day 2 §2.1)
  *
- * Modification History:
- *   - 2026-05-17: Initial extract from mockup L270-313 + Tailwind convert
+ * Modification History (newest-first):
+ *   - 2026-05-17: Sprint 57.21 Day 4 D-DAY3-3 — add role="region" + aria-label="HITL approval" for e2e contract preservation (approval-card.spec.ts selector compatibility post-TurnList swap)
+ *   - 2026-05-17: Initial extract from mockup L270-313 + Tailwind convert (Sprint 57.21 Day 2 §2.1)
  *
  * Related:
  *   - reference/design-mockups/page-chat.jsx L270-313 (source JSX)
@@ -99,7 +100,12 @@ export function HITLTurn({ turn }: { turn: HITLTurnType }): JSX.Element {
   const countdownLabel = turn.countdownSec !== null ? `${turn.countdownSec}s` : "—";
 
   return (
-    <div className="relative border-b border-border bg-bg px-6 py-3.5" data-role="hitl">
+    <div
+      className="relative border-b border-border bg-bg px-6 py-3.5"
+      data-role="hitl"
+      role="region"
+      aria-label="HITL approval"
+    >
       <div className="absolute bottom-0 left-[10px] top-0 w-px bg-border" />
       <div className="absolute left-[6px] top-[18px] h-[9px] w-[9px] rounded-full border-2 border-warning bg-warning" />
       <div className="mb-2 flex items-center gap-2 pl-[22px] text-[11px] text-fg-muted">
