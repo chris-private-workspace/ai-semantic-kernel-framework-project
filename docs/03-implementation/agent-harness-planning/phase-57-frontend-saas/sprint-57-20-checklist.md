@@ -170,7 +170,9 @@
 
 ---
 
-## Day 4 — Sprint 57.19 inheritance check + closeout (US-E1 + US-E2)
+## Day 4 — Sprint 57.19 inheritance check + closeout (US-E1 + US-E2) — COMPLETED
+
+**Day 4 deliverables**: 7 Sprint 57.19 output inheritance captures + DRIFT-REPORT-ROUND-2.md (16 R2 findings → Sprint 57.21+ ADs) + retrospective.md (Q1-Q7) + memory snapshot + 3 doc syncs (sprint-workflow.md calibration +1 row + MEMORY.md +1 line + this checklist tick).
 
 ### 4.1 Sprint 57.19 7-output runtime fidelity check (US-E1)
 - [ ] Playwright MCP capture POST-Sprint-57.20 at 1440×900:
