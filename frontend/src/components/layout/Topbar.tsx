@@ -56,6 +56,8 @@ import { ROUTES } from "@/routes.config";
 interface TopbarProps {
   pageTitle?: string;
   headerActions?: ReactNode;
+  /** Override slot for the avatar/menu area (rare; defaults to canonical <UserMenu />). */
+  userMenu?: ReactNode;
   onOpenPalette: () => void;
   onToggleNotifs: () => void;
   unreadCount?: number;
@@ -64,6 +66,7 @@ interface TopbarProps {
 export const Topbar: FC<TopbarProps> = ({
   pageTitle,
   headerActions,
+  userMenu,
   onOpenPalette,
   onToggleNotifs,
   unreadCount = 0,
@@ -99,9 +102,9 @@ export const Topbar: FC<TopbarProps> = ({
       className="flex h-12 items-center gap-3 border-b border-border bg-bg-1 px-4"
       data-testid="topbar"
     >
-      {/* Breadcrumb */}
+      {/* Breadcrumb — h1 preserves pre-Sprint-57.20 page-title-is-h1 contract for a11y */}
       <div className="flex items-center gap-2 min-w-0">
-        <span className="truncate text-sm font-medium text-foreground">{title}</span>
+        <h1 className="truncate text-sm font-medium text-foreground m-0">{title}</h1>
         {pathPill && (
           <span className="rounded-sm border border-border bg-bg-2 px-1.5 py-0.5 font-mono text-[10px] text-fg-muted">
             {pathPill}
@@ -202,8 +205,8 @@ export const Topbar: FC<TopbarProps> = ({
         )}
       </button>
 
-      {/* UserMenu avatar (Sprint 57.19 extended) */}
-      <UserMenu />
+      {/* UserMenu avatar (Sprint 57.19 extended); override slot for backward compat */}
+      {userMenu ?? <UserMenu />}
     </header>
   );
 };

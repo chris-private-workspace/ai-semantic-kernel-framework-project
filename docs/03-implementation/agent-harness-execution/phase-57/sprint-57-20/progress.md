@@ -95,3 +95,80 @@ All 6 baseline captures at 1440×900 viewport saved to `claudedocs/4-changes/spr
 - Anti-stop rule continued validation: 6 Bash + multiple Playwright tool calls executed without frequent stops — `memory/feedback_tool_result_is_not_turn_boundary.md` continues to apply correctly.
 - Console errors observed on production overview (~156-162): backend cost endpoints 500 — known carryover, irrelevant to Sprint 57.20 (0 backend changes).
 - Plan/checklist correction needed: replace `features/chat-v2` → `features/chat_v2` (underscore) in checklist Day 3 references. Will apply in Day 1 commit batch.
+
+---
+
+## Day 1 — 2026-05-17 — Shell rewrite + theme/font wire + cascade fix
+
+### Today's accomplishments
+
+**B1a (research, 0 file change)**:
+- Read mockup `shell.jsx` (226L) + `styles.css` head (220L tokens + variants + density + layout) + current AppShellV2.tsx (99L) + Sidebar.tsx (202L) + UserMenu.tsx (178L; Sprint 57.19 extended)
+- Synthesized: mockup uses grid `[232px sidebar | 1fr main]` 100vh edge-to-edge; sidebar = brand + tenant-switcher + nav + sidebar-foot (user-card); topbar = breadcrumb + tenant-pill + cmdk + locale + theme + bell + tweaks + avatar
+- Identified reuse: UserMenu (Sprint 57.19 extended) handles avatar dropdown completely; Topbar avatar slot delegates; CommandPalette + NotificationsPanel mount points preserved
+
+**B1b + B1c + B1d (commit `19c30990`)** — Shell rewrite:
+- REWRITE `AppShellV2.tsx` (99→90 lines): full-screen CSS grid `[240px | 1fr]`, height:100vh, dark default, drop inline `<header>` → Topbar component. Preserve: prop interface, CommandPalette + NotificationsPanel mount, ⌘K hotkey, data-testid
+- NEW `components/layout/Topbar.tsx` (~180 lines): breadcrumb + tenant pill (acme-prod · role fixture) + ⌘K cmdk button + EN/中 locale toggle + sun/moon theme toggle + divider + bell w/ unread badge + UserMenu avatar
+- REWRITE `Sidebar.tsx` (202→236 lines): add mockup `.sidebar-head` brand block (LOOP-FIRST sub) + `.tenant-switcher` fixture pill + `.sidebar-foot` user identity card consuming authStore. Preserve CATEGORY_ORDER + PROP/DRAFT/SOON badges (Sprint 57.18) + collapse state
+
+**B1e + B1f (commit `a361455c`)** — Theme + font wire:
+- `index.css`: add 11 mockup layout tokens × 2 modes (`--bg/--bg-1/--bg-2/--bg-3/--bg-hover/--fg/--fg-muted/--fg-subtle/--border-strong/--primary-soft/--shadow`); add `[data-density="compact"|"comfortable"]` mechanism; add `@layer base body { font-family: Geist, Noto Sans TC, ... }`; add Noto Sans TC Google Fonts `@import`. Preserve all Sprint 57.18 semantic + risk + existing shadcn tokens
+- `tailwind.config.ts`: add 11 mockup color mappings (`bg` nested + `fg` nested + `border-strong` + `primary-soft`)
+- `index.html`: add `class="dark" data-variant="linear" data-density="default"` to `<html>` (first paint dark; ThemeProvider override still works)
+
+**B1g — Cascade fix + smoke test**:
+- Vitest initial run: 275/277 (2 fail in `AppShellV2.test.tsx`)
+  - L52 `getByRole("heading", { level: 1 })` — V3 Topbar title was `<span>`
+  - L63 `userMenu={...}` slot — V3 dropped slot rendering
+- Fix: Topbar title `<span>` → `<h1>` (preserves a11y page-title-is-h1 contract); thread `userMenu` prop through AppShellV2 → Topbar override slot (default canonical `<UserMenu />`)
+- Re-run: **Vitest 277/277 PASS** ✅ (the AuthShell.test "kaboom" stack trace is intentional error-boundary test fixture, not a real failure)
+- `npm run build` 2.79s ✅, main bundle 320.76 kB (unchanged from Sprint 57.19 baseline; token additions absorbed by tree-shaking)
+- `npm run lint` silent ✅ (--max-warnings 0)
+
+**Playwright MCP smoke captures (4 critical pages) at 1440×900**:
+- `shell/prod-shell-post-day1.png` — `/` shell baseline
+- `shell/prod-overview-post-day1.png` — `/overview` (Sprint 57.19 Operations page) on new shell
+- `shell/prod-cost-dashboard-post-day1.png` — `/cost-dashboard` (Sprint 57.1 ship) on new shell
+- `shell/prod-governance-post-day1.png` — `/governance` (auto-redirect to /governance/approvals; Sprint 57.9 ship) on new shell
+- All 4 pages: navigate succeeded, page-title set, no fatal errors (cost-dashboard 2-3 console errors = carryover backend 500 from `/api/v1/cost/*` endpoints; unrelated to Sprint 57.20)
+
+### Anti-Pattern self-check (Day 1 scope)
+
+- **AP-1 No god component**: Topbar 180L (under 250), AppShellV2 90L (under 100), Sidebar 236L (under 250) ✅
+- **AP-2 No Potemkin**: All shell features consume real data: tenant pill from authStore.roles, bottom user card from authStore.user, breadcrumb from useLocation + ROUTES; tenant name itself is fixture documented as Sprint 57.21+ AD-UserMenu-Tenant-Switch ✅
+- **AP-3 No cross-directory scattering**: Topbar in `components/layout/`; CommandPalette + NotificationsPanel in `components/topbar/` (Sprint 57.19); Sidebar + AppShellV2 + UserMenu remain in `components/` ✅
+- **AP-4 No rename-only refactor**: AppShellV2 changed from flex+sticky → grid; Sidebar +3 new sections; both deliver visible mockup-fidelity gains ✅
+- **AP-5 No hardcoded secrets**: 0 env/config changes ✅
+- **AP-6 No silent backend assumptions**: 0 backend changes ✅
+- **AP-7 No prop drilling > 2 levels**: AppShellV2 → Topbar (1 level); Topbar consumes authStore/ThemeProvider via hooks (no prop drilling) ✅
+- **AP-8 No event handler swallowing errors**: ⌘K hotkey preserved, callbacks plain delegation ✅
+- **AP-9 No race conditions**: state via useState + ThemeProvider context ✅
+- **AP-10 No untested critical path**: AppShellV2 has Vitest cases (277 pass) ✅
+- **AP-11 No TypeScript `any` leak**: 0 new `any`; tsc 0 errors ✅
+
+### Drift findings catalogued
+
+- **D-DAY1-1 (info)**: vitest `--reporter=basic` flag doesn't exist this version; use `npm test -- --run` (default reporter). Documented for Day 2-4 test command.
+- **D-DAY1-2 (info)**: `AuthShell.test.tsx` outputs intentional "kaboom" error trace as part of error-boundary test fixture — looks like a failure in `tail` output but actual file count "63 passed" confirms no regression.
+- **D-DAY1-3 (deferred)**: Detailed visual parity pair-verify (prod-post vs mockup target) for shell deferred to Day 4 US-E1 inheritance check + Day 2 (post-anchor-page-1) + Day 3 (post-anchor-page-2). Day 1 captures are baseline screenshots only; verdict in Day 4 retrospective.
+- **D-DAY1-4 (info)**: Cost-dashboard console errors (2-3) are pre-existing backend 500s on `/api/v1/cost/*` endpoints; unrelated to Sprint 57.20 shell rewrite. NOT a regression.
+
+### Remaining for Day 2
+
+- US-C1: REWRITE `/overview` mockup-direct port (mockup `page-overview.jsx` 381 lines)
+  - Read mockup analog + grep `features/loops/types.ts` + `subagents/types.ts` + `memory/types.ts` to confirm data shape
+  - REWRITE `pages/overview/index.tsx` JSX 100% per mockup; reuse existing hooks
+  - Add `overview.*` i18n keys (en + zh-TW)
+  - Adapt Vitest spec
+  - Playwright MCP pair-verify
+- Carryover from Day 1: visual fidelity verdict (Day 4 audit)
+
+### Notes
+
+- Branch on track: 4 commits (Day 0 `c0c79829` + Day 1 B1b-d `19c30990` + B1e-f `a361455c` + pending B1g)
+- 0 backend changes ✅
+- 0 features layer touched ✅
+- 14 active pages prop interface backward compat preserved (`pageTitle` / `headerActions` / `userMenu` all still work)
+- Anti-stop rule continued validation: 5+ Bash + 8+ Playwright tool calls within aligned scope, 0 user-blocking interruptions
+- 1 NEW carryover opened: **AD-Geist-Font-Asset-Bundling** Phase 58+ (self-host via `@fontsource/geist-sans` for offline + perf; currently CDN Noto Sans TC + system Geist fallback works for online dev)

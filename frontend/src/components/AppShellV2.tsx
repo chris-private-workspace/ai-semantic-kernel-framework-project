@@ -60,7 +60,7 @@ interface AppShellV2Props {
   children: ReactNode;
   pageTitle?: string;
   headerActions?: ReactNode;
-  /** Kept for backward compat; Topbar always renders canonical <UserMenu /> internally. */
+  /** Override slot for the topbar avatar/menu area; defaults to canonical <UserMenu /> in Topbar. */
   userMenu?: ReactNode;
 }
 
@@ -71,6 +71,7 @@ export const AppShellV2: FC<AppShellV2Props> = ({
   children,
   pageTitle,
   headerActions,
+  userMenu,
 }) => {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -97,6 +98,7 @@ export const AppShellV2: FC<AppShellV2Props> = ({
         <Topbar
           pageTitle={pageTitle}
           headerActions={headerActions}
+          userMenu={userMenu}
           onOpenPalette={() => setPaletteOpen(true)}
           onToggleNotifs={() => setNotifOpen((p) => !p)}
           unreadCount={FIXTURE_UNREAD_COUNT}

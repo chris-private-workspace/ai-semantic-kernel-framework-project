@@ -51,7 +51,7 @@
   - `screenshots/shell/prod-shell-pre.png` (102 KB)
   - `screenshots/overview/prod-overview-pre.png` (176 KB)
   - `screenshots/chat-v2/prod-chat-v2-pre.png` (91 KB)
-- [ ] Commit Day 0 artifacts: `chore(sprint-57-20, Day 0): plan pivot + 三-prong + Playwright reference captures`
+- [x] Commit Day 0 artifacts: `chore(sprint-57-20, Day 0): plan pivot Option Y→W + 三-prong + Playwright MCP reference captures` (commit landed)
 
 ---
 
@@ -94,16 +94,17 @@
 - [ ] Commit: `feat(theme, sprint-57-20, Day 1): [data-variant] + [data-density] mechanism + dark default + indigo theme baseline`
 
 ### 1.4 Day 1 closeout
-- [ ] `npm run build` succeeds (< 4s)
-- [ ] `npm run test` (Vitest) 277 baseline preserved (some failures expected from Sidebar/AppShellV2 selector changes → fix in 1.5 or document for Day 4)
-- [ ] `npm run lint` silent (1 autoFocus suppressed allowed)
-- [ ] Playwright MCP capture POST-Day-1 shell at 1440×900 → `screenshots/shell/prod-shell-post-day1.png`
-- [ ] Pair-verify: side-by-side `prod-shell-post-day1.png` vs `mockup-shell-{light,dark}.png` → parity verdict (cosmetic / structural / parity) in `progress.md` Day 1 entry
+- [x] `npm run build` succeeds (2.79s, main bundle 320.76 kB unchanged from Sprint 57.19 baseline)
+- [x] `npm run test` (Vitest) 277 baseline preserved — initial 275/277 with 2 fails in AppShellV2.test.tsx, fixed in 1.5
+- [x] `npm run lint` silent (no output = 0 warnings, --max-warnings 0 enforced)
+- [x] Playwright MCP capture POST-Day-1 shell at 1440×900 → `screenshots/shell/prod-shell-post-day1.png` + 3 smoke pages (overview/cost-dashboard/governance)
+- [ ] Pair-verify side-by-side parity verdict (deferred to Day 4 US-E1 inheritance check per D-DAY1-3; Day 1 baseline screenshots saved)
 
 ### 1.5 Vitest cascade fix (if needed)
-- [ ] Fix Sidebar.test.tsx selectors per new DOM (brand block "IPA Platform V2" instead of "IPA"; tenant switcher pill present; bottom user identity card present)
-- [ ] Fix AppShellV2.test.tsx if any (rare — most tests use children prop)
-- [ ] Confirm 277 / 277 ALL PASS before Day 2 starts
+- [x] AppShellV2.test.tsx L52 `<h1>` test — fixed by changing Topbar title `<span>` → `<h1>` (preserves pre-Sprint-57.20 a11y contract; visual identical)
+- [x] AppShellV2.test.tsx L63 `userMenu` slot test — fixed by threading `userMenu` prop through AppShellV2 → Topbar override slot
+- [x] Sidebar.test.tsx selectors — no fix needed (existing assertions on `aria-label="Primary navigation"` + NavLink structure preserved through rewrite)
+- [x] Confirm 277 / 277 ALL PASS — ✅ verified before Day 2 starts
 
 ---
 
