@@ -305,3 +305,86 @@ Two commits per Day 1.7:
 - Cumulative Day 0+1+2: ~205 min (~3.4 hr) of ~18.5 hr committed
 - US-B4 came in **much faster** (~25 min vs plan's ~60 min) due to honest "stub + carryover" decision instead of forcing persistence design in-scope (Sprint 57.5 reality-check methodology applied — no Potemkin endpoint with fake data)
 - US-B3 came in faster than expected (~30 min vs plan's ~45 min) — `infrastructure/db/models/state.py` ORM was clean + StateSnapshot append-only semantics meant "latest version" = single `ORDER BY version DESC LIMIT 1` query (no joins / no version walk needed)
+
+---
+
+## Day 3 — 2026-05-17 (planned) / actually executed 2026-05-17 — US-C1 OverviewPage + US-C2 OrchestratorPage frontend port
+
+### Accomplished — US-C1 OverviewPage (3.1)
+
+- NEW `frontend/src/features/loops/types.ts` — `Loop` + `LoopsPage` TS contracts matching Pydantic shape in Sprint 57.19 `backend/src/api/v1/loops.py:73-93`. Documented backend gap (Session ORM lacks `agent_name`/`max_turns`/`model`) → AD-Loop-Session-Enrich-Phase58.
+- NEW `frontend/src/features/loops/services/loopsService.ts` — `fetchLoops({status, cursor, limit}, signal)` wrapper using `fetchWithAuth` (Sprint 57.7 IAM JWT injection per costService pattern).
+- NEW `frontend/src/features/loops/hooks/useActiveLoops.ts` — TanStack Query hook with `refetchInterval: 10_000` + `staleTime: 5_000`; queryKey `["loops","list","running",limit]`.
+- NEW `frontend/src/pages/overview/OverviewPage.tsx` (~580 lines) — 1:1 port of `reference/design-mockups/page-overview.jsx`:
+  - 4-KPI row (Active sessions / HITL pending / Cost MTD / SLA p95) inline `<Stat>` primitive
+  - `ActiveLoopsCard` — **real US-B1 backend** wired via `useActiveLoops`; loading / error / empty states; per-row progress bar (turns/max=50 placeholder); status badge with Sprint 57.18 `success`/`warning`/`thinking`/`danger` tones
+  - `HITLQueueCard` / `IncidentsCard` / `ProvidersCard` — fixtures matching mockup data shape; Sprint 57.20+ retrofit per AD-Overview-Backend-Wire
+  - `CostBurnChart` + `ErrorTrendChart` — inline SVG charts ported from mockup (svg gradients use `hsl(var(--primary) / 0.32)` instead of mockup's `oklch` — Sprint 57.18 token system uses HSL approximation, see CLAUDE.md `Sprint 57.18` token-coverage row)
+  - 4 quick-action strip (New chat / Review approvals / Tenants console / Verification log) → `useNavigate()` routes
+  - **Mockup-fidelity**: zero shadcn substitution; padding/radius/font-mono follow page-overview.jsx exactly; 2 escape-hatch inline `style=` (per-row progress `transform: scaleX()` + per-state traffic-dot `boxShadow`) flagged with `eslint-disable-next-line no-restricted-syntax -- STYLE.md §1` per Sprint 57.15+ convention
+- NEW `frontend/tests/unit/pages/overview/OverviewPage.test.tsx` — 6 cases (pageTitle prop / 4 KPI cards / empty state / error banner / happy-path loop row truncation + token count format / 4 quick-action buttons)
+- Edit `frontend/src/pages/overview/index.tsx` — swap ComingSoonPlaceholder re-export to `OverviewPage` default
+- Edit `frontend/src/routes.config.ts` — remove `proposed: true` from `/overview` entry (sidebar PROP badge auto-clears)
+- Edit `frontend/src/i18n/locales/{en,zh-TW}/common.json` — +43 `overview.*` keys each lang (+pre-staged 36 `orchestrator.*` keys for 3.2)
+
+### Accomplished — US-C2 OrchestratorPage (3.2)
+
+- NEW `frontend/src/components/ui/tabs.tsx` (~75 lines) — minimal controlled Tabs primitive (`items[{id,label,count?}]` + `value` + `onChange` + `ariaLabel`). Pure React; no Radix import (sufficient for read-only / form-step tab UI; defer to Radix only when keyboard arrow-nav becomes required).
+- NEW `frontend/src/pages/orchestrator/OrchestratorPage.tsx` (~570 lines) — 1:1 port of `reference/design-mockups/page-agents.jsx` Orchestrator component + 6 sub-tabs:
+  - **ConfigTab**: Core settings card (Display name / Primary model / Fallback model / Temperature / Top P / Max thinking tokens / Termination policy) + Memory access card (5 scopes × {none/read/write}) + Verification card (3 switches)
+  - **PromptTab**: System prompt textarea (read-only, 480px height, full mockup verbatim text incl. role/goal/subagents/tool-policy/output-discipline/constraints) + Variables sidebar (4 mockup variables)
+  - **ToolsTab**: 10-row tool registry table (Sprint 51.1 Cat 2 fixture; mode/risk/sandbox badges with SANDBOX_TONE map `NONE→success`/`RESTRICTED→warning`/`FULL_SANDBOX→danger`)
+  - **SubagentsTab**: 6-row subagent table; mode badges use Sprint 57.18 token tones `fork→thinking`/`as_tool→tool`/`handoff→info`/`teammate→memory` matching mockup color semantics exactly
+  - **BudgetsTab**: 6 loop budgets + 6 termination condition switches
+  - **PoliciesTab**: HITL policy + off-platform notifications (Teams/Email/PagerDuty) + risk escalation badge matrix (low→auto / medium→ask_once / high→always_ask / critical→always_ask+L2) + 3 always-on tripwire badges (Cross-tenant / PII / Provider key exposure)
+  - **Page chrome**: `orchestrator-main` + v3.4.1 badge + live dot + 3 action buttons (Test in Chat / View in repo / Deploy); 4-KPI row (Sessions·24h / Avg loop turns / Subagent spawns·24h / p95 session)
+  - **Mockup-fidelity**: zero inline `style=` (Tabs primitive Tailwind-only); shadcn substitution avoided where mockup specifies distinct padding/radius
+- NEW `frontend/tests/unit/pages/orchestrator/OrchestratorPage.test.tsx` — 7 cases (pageTitle / 6 tab labels in tablist / 4 KPI cards / Config default tab + aria-selected / Budgets tab switch reveals body / Tools tab shows registry table / Header chrome name+version+live badge)
+- Edit `frontend/src/pages/orchestrator/index.tsx` — swap re-export
+- Edit `frontend/src/routes.config.ts` — remove `proposed: true` from `/orchestrator` entry
+
+### Sanity (Day 3 cumulative)
+
+- **Vitest: 59 files / 249 PASS** (Sprint 57.18 baseline 236 + 6 US-C1 + 7 US-C2 = 249 NEW; **0 regression**)
+- **tsc --noEmit: 0 errors** (after adding `@testing-library/jest-dom/vitest` import + fixing inline-style violations + SVG `<text>` attr migration)
+- **ESLint scoped to src/pages/overview + src/features/loops + src/pages/orchestrator + src/components/ui/tabs.tsx: silent** (6 initial inline-style violations fixed: 4 SVG `<text style={{fontSize, fill}}>` → SVG attrs `fontSize={9} fill="..."`; 2 dynamic style flagged with eslint-disable + STYLE.md §1 reason per Sprint 57.15 escape-hatch convention)
+- Backend: untouched this Day; pytest baseline preserved (29/29 from Day 2 — loops 7 + memory baseline 13 + memory ext 3 + state_snapshot 3 + subagent_registry 3)
+- LLM SDK leak: still 0 (no `import openai` / `import anthropic` in any new frontend code)
+
+### Drift findings — Day 3
+
+| ID | Finding | Severity | Action |
+|----|---------|----------|--------|
+| D-DAY3-1 | `LoopItem` backend schema lacks `agent_name`/`max_turns`/`model`/`tenant_id` — mockup ACTIVE_LOOPS row layout shows all 4. Frontend renders truncated `session_id.slice(0,8)…` + `token_usage` + `total_cost_usd` instead of agent name; max_turns hardcoded `50` placeholder. | Plan / backend gap | Documented in types.ts header → **AD-Loop-Session-Enrich-Phase58** (NEW carryover; pair with Sprint 57.20+ port group) |
+| D-DAY3-2 | Test files initially placed at `src/pages/<page>/__tests__/` — Vitest config only picks up `tests/unit/**`. Moved to `tests/unit/pages/<page>/` matching existing convention (admin-tenants/auth/components/etc.) | Lint / convention | Resolved — first-draft path-finding cost ~5 min; canonical convention recorded for Day 4+5 |
+| D-DAY3-3 | ESLint flagged 6 inline `style=` violations in OverviewPage: 4 SVG `<text style={{fontSize, fill}}>` (SVG natively supports both as attributes — converted), 1 dynamic progress fill `transform: scaleX()` (real dynamic — eslint-disable + reason), 1 per-state traffic-dot `boxShadow` (real dynamic — eslint-disable + reason). Sprint 57.15+ no-restricted-syntax guard caught these immediately on first lint pass. | Lint convention | Resolved in 1 retry; eslint-disable comments use Sprint 57.15 STYLE.md §1 escape-hatch wording |
+| D-DAY3-4 | `@testing-library/jest-dom` matcher types not auto-imported by tsconfig — `toBeInTheDocument` / `toHaveAttribute` / `toHaveTextContent` showed `TS2339`. Added `import "@testing-library/jest-dom/vitest"` to top of both test files. Idempotent if already wired in setup. | tsc | Resolved |
+| D-DAY3-5 | Playwright MCP screenshot parity check (per checklist 3.1 + 3.2 DoD) **NOT performed this Day** — would require: (a) start frontend dev server `:3007`, (b) start mockup `python -m http.server :8080` from `reference/design-mockups/`, (c) Playwright MCP browser navigate to both, screenshot 1440×900, side-by-side compare. Code-level visual review confirms mockup-fidelity (tokens / layout / padding 1:1); browser-rendered photo proof deferred. | Sprint scope (DoD partial) | 🚧 Deferred to Sprint 57.19 Day 5 (US-F1 existing 8-page audit will naturally re-screenshot all live pages); NEW soft AD `AD-Day3-Playwright-Parity-Defer` (close upon Day 5 capture) |
+
+### NEW carryover AD (Day 3)
+
+- **AD-Loop-Session-Enrich-Phase58** (NEW): add `agent_name` + `max_turns` + `model` columns to `sessions` table; Alembic migration; update `Session` ORM + `LoopItem` Pydantic + frontend `Loop` type; remove placeholder `max_turns=50` from `ActiveLoopsCard`. ~3-4 hr standalone or fold into Sprint 57.20 Operations retrofit.
+- **AD-Overview-Backend-Wire** (NEW): wire OverviewPage fixtures (HITL_QUEUE / RECENT_INCIDENTS / PROVIDERS / CostBurnChart-real-data / ErrorTrendChart-real-data) to actual backends (governance / incidents-NEW / telemetry / cost-summary / errors-by-hour). ~6-10 hr; pair with Sprint 57.20 Operations group.
+- **AD-Orchestrator-Backend-Wire** (NEW): wire OrchestratorConfig form to a future Cat 1 `GET/PUT /api/v1/orchestrators/main/config` endpoint (covers Core settings + Memory access + Verification + Budgets + Policies; ToolsTab and SubagentsTab read from existing Cat 2 + Cat 11 registries). ~8-12 hr; Phase 58+ candidate.
+- **AD-Day3-Playwright-Parity-Defer** (NEW soft): perform mockup-vs-production screenshot pair for `/overview` + `/orchestrator` (all 6 tabs); document parity verdict in Sprint 57.19 Day 5 audit. Closes when Day 5 captures land.
+
+### Commits (Day 3)
+
+2 commits:
+- `f8949504` (Day 3 commit A) — `feat(frontend-port, sprint-57-19): /overview page real content from mockup page-overview.jsx (US-C1)` (9 files; +1218 / -2)
+- `2c6bb608` (Day 3 commit B) — `feat(frontend-port, sprint-57-19): /orchestrator page real content from mockup page-agents.jsx (US-C2)` (5 files; +813 / -2)
+- Day 3 commit C (about to land) — `docs(sprint-57-19, Day 3): progress.md update — US-C1+US-C2 + 5 drift + 4 NEW AD + checklist`
+
+### Branch status
+
+Branch `feature/sprint-57-19-mockup-operations-port` now **10 commits ahead of main** (`a3d7d954`).
+Pre-Day-3: 8 commits (Day 0-2). Day 3 added US-C1 + US-C2 = 2 commits. Day 3 progress/checklist commit will make 11.
+
+### Calibration update (Day 3 partial)
+
+- Day 3 elapsed: ~95 min (US-C1 ~55 min incl. test path mv + lint fixes + jest-dom import / US-C2 ~35 min / sanity ~5 min)
+- Cumulative Day 0+1+2+3: ~300 min (~5.0 hr) of ~18.5 hr committed = **~27% spent / 60% of US shipped (B1-B4 + C1-C2 = 6 of 10)**
+- US-C1 came in slightly **over** mockup's per-task estimate (plan budgeted ~60 min, actual ~55 min only because the lint+test-path drift cost ~10 min recovery work) — net on-pace
+- US-C2 came in **well under** plan (~35 min vs plan's ~75 min) — tabs primitive being a tiny pure-React component (vs Radix install + setup) saved ~15-20 min; mockup port being mostly fixture-driven and shape-faithful meant zero re-iteration
+- Day 4 (US-C3 + US-C4) projected ~60-80 min given same pattern; Day 5 audit projected ~60-90 min — sprint likely lands ~70-80% of calibrated 0.60-multiplier commit (`mockup-page-port-with-backend-pairing-and-audit` 0.60 1st app)
+
