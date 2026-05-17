@@ -146,6 +146,83 @@ Add to plan §Risks (in subsequent commit or progress.md inline):
 
 ---
 
-## Day 1 — pending (US-A1 brand color + US-B1 Cat 1 loops API)
+## Day 1 — 2026-05-17 (US-A1 brand color + US-B1 Cat 1 loops API)
 
-(to be filled at Day 1 close)
+### Today's accomplishments
+
+- ✅ **US-A1 brand color HSL update**:
+  - `frontend/src/index.css` :root block: `--primary 222.2 47.4% 11.2%` (dark slate) → `234 89% 60%` (indigo); added `--accent: 234 89% 60%` + `--accent-foreground: 234 89% 40%`
+  - `frontend/src/index.css` .dark block: `--primary 210 40% 98%` → `234 84% 70%` (lighter indigo for dark bg); `--primary-foreground 222.2 47.4% 11.2%` → `234 30% 12%`; added `--accent: 234 84% 70%` + `--accent-foreground: 234 50% 90%`
+  - Header MHist append: `- 2026-05-17: Sprint 57.19 — brand color HSL update (closes AD-Brand-Primary-Color-Decision + AD-Accent-Token-Gap)`
+  - **Closes**: AD-Brand-Primary-Color-Decision + AD-Accent-Token-Gap
+
+- ✅ **US-A1 STYLE.md §2 brand vocabulary**:
+  - Updated §2 prelude note: replaced Sprint 57.18 token-coverage note with Sprint 57.19 indigo + accent note (still cites Sprint 57.18 as historical)
+  - Rewrote `primary` row: `oklch(0.62 0.16 250)` (mockup canonical) ≈ `hsl(234 89% 60%)` light / `hsl(234 84% 70%)` dark
+  - Added `accent` row with full hex + class + usage (closes AD-Accent-Token-Gap)
+  - Removed duplicate accent row from shadcn-semantic-tokens sub-table (was: `accent` `bg-accent/text-accent-foreground` with no hex)
+  - Header MHist append: `- 2026-05-17: Sprint 57.19 — §2 indigo primary + accent (closes AD-Brand-Primary-Color-Decision + AD-Accent-Token-Gap)`
+
+- ✅ **US-A1 visual eyeball PASS** (Playwright MCP at 1440×900, post-HMR auto-reload):
+  - `/auth/login` "Login with WorkOS" button: indigo ✅ (was dark slate at Day 0 baseline)
+  - `/chat-v2` (post Dev Login click) avatar circle "D": indigo ✅
+  - `/chat-v2` "echo_demo" mode pill: indigo ✅
+  - Send button: grey (disabled state — no input typed; will be indigo when enabled per `bg-primary`)
+  - Sidebar "Chat (V2)" active highlight: visually subtle (`bg-accent` resolves to indigo but may need opacity modifier per mockup `bg-accent/16` pattern — logged D-DAY1-1)
+  - Screenshots: `claudedocs/4-changes/sprint-57-19-day-1-post-brand-screenshots/{01-auth-login,02-chat-v2-redirect,03-chat-v2-authed}.png`
+  - **NEW**: dev-login flow now scripted via Playwright MCP `browser_click` on "Dev Login" button — fixture usable for US-F1 Day 5 audit
+
+- ✅ **US-A1 axe a11y scan PASS** (`npm run e2e -- a11y/a11y-scan.spec.ts`):
+  - 2 tests PASS in 15.2s; 0 critical/serious violations
+  - Pre-existing moderate/minor unchanged (AD-A11y-Structural-Nits carryover): `/chat-v2` 4 (heading-order + landmark-* × 3), `/auth/callback?error` 1 (page-has-heading-one) — structural NOT color-contrast
+  - Brand change introduced **zero** new color-contrast violations ✅
+  - AC met
+
+- ✅ **US-B1 Cat 1 loops list endpoint**:
+  - Created `backend/src/api/v1/loops.py` (190 lines) — GET `/api/v1/loops` with cursor pagination
+  - Per **D-PRE-SCHEMA-1 pivot**: queries `Session` ORM (sessions.py:73), NOT `LoopState` (state.py:113 is current-version pointer cache only)
+  - Per **D-PRE-SCHEMA-2 alias**: response `turn_count` ← `Session.total_turns`; `token_usage` ← `Session.total_tokens`
+  - Per **D-PRE-5 pivot**: direct ORM via `select(Session)` without repository.py (matches api/v1/memory.py pattern)
+  - Cursor format: base64-url-safe JSON `{"started_at": ISO8601, "session_id": uuid}`; tiebreak by session_id when started_at equal
+  - Filters: `?status=` (enum string), `?since=` (ISO datetime), `?limit=` (default 50, max 200)
+  - Multi-tenant: RLS via `Depends(get_db_session_with_tenant)` + redundant app-layer `Session.tenant_id == current_tenant` filter for defence-in-depth
+  - Registered in `backend/src/api/main.py` L66 (import) + L117 (include_router) — NOT `api/v1/__init__.py` per D-PRE-13 drift
+  - 17.md §1 Cat 1: no new ABC method needed (read facade only)
+
+- ✅ **US-B1 integration tests** (`backend/tests/integration/api/test_loops.py`, 7 tests all PASS in 1.13s):
+  1. `test_list_loops_happy_path` — 2 sessions for tenant + field aliasing verification
+  2. `test_list_loops_tenant_isolation` — tenant A invisible to tenant B
+  3. `test_list_loops_cursor_pagination` — 5 sessions with limit=2 → 3 pages (2+2+1, last has no next_cursor)
+  4. `test_list_loops_status_filter` — 3 sessions (2 active + 1 ended), `?status=active` returns 2
+  5. `test_list_loops_since_filter` — 3 sessions at different timestamps, `?since=cutoff` returns 2 (uses URL-encoded `+` for tz offset)
+  6. `test_list_loops_empty` — 0 sessions → `items=[]`, `next_cursor=None`
+  7. `test_list_loops_invalid_cursor` — malformed base64 → 400 "invalid cursor"
+
+- ✅ **Sanity**:
+  - black + isort: auto-reformatted 2 files
+  - flake8: silent (after fixing 4 E501 in loops.py + 1 F401 in test_loops.py)
+  - mypy: 0 errors on loops.py
+  - V2 lints: 9/9 green (2.77s)
+  - pytest US-B1 only: 7/7 PASS
+
+### Drift findings — Day 1
+
+| ID | Finding | Severity | Action |
+|----|---------|----------|--------|
+| D-DAY1-1 | `/chat-v2` Sidebar "Chat (V2)" active highlight using `bg-accent` rendered visually subtle (no opacity modifier observed despite mockup `bg-accent/16` pattern). Brand applied correctly elsewhere (avatar / mode pill / login button). | Cosmetic | Log for Sprint 57.20 retrofit if mockup-fidelity audit (US-F1 Day 5) confirms drift; not blocking Sprint 57.19 |
+| D-DAY1-2 | URL parsing of `?since=2026-05-17T01:42:30+00:00` failed without URL-encoding `+` → fixed test with `urllib.parse.quote(..., safe="")` | Test infra | Resolved |
+| D-DAY1-3 | flake8 caught 4 E501 in loops.py header + cursor comment + 1 F401 unused `uuid4` import → fixed | Lint | Resolved |
+| D-DAY1-4 | `since_filter` test first run: response was non-200 because of D-DAY1-2 → added `assert resp.status_code == 200, resp.text` for safer debug | Test infra | Resolved |
+
+### Commit plan
+
+Two commits per Day 1.7:
+- `feat(sprint-57-19, US-A1): indigo brand color + STYLE.md §2 + AD-Accent-Token-Gap close` (4 files: index.css, STYLE.md, 3 post-brand screenshots PNG)
+- `feat(sprint-57-19, US-B1): Cat 1 loops list endpoint + 7 integration tests (Session ORM pivot)` (3 files: loops.py, main.py, test_loops.py)
+- Plus `progress.md` update (in second commit OR separate `docs(sprint-57-19, Day 1): progress.md` commit)
+
+### Calibration update (Day 1 partial)
+
+- Day 1 elapsed: ~70 min (US-A1 ~25 min + US-B1 ~40 min + closeout ~5 min)
+- Within `mockup-page-port-with-backend-pairing-and-audit` 0.60 budget for Day 1 (~3-4 hr allocated for both USs)
+- Pattern reuse from Sprint 57.12 memory.py accelerated US-B1 by ~20% (direct copy of `_to_ms`, `_validate_page_size` style, FastAPI Depends pattern)
