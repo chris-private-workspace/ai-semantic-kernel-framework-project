@@ -108,55 +108,93 @@
 
 ---
 
-## Day 2 — Turn renderer + Block components (US-C1 + US-C2 + US-C3)
+## Day 2 — Turn renderer + Block components (US-C1 + US-C2 + US-C3) — **Option C cp+convert workflow**
 
-### 2.1 US-C1 TurnList + 3 Turn role components (~2 hr)
-- [ ] **NEW** `frontend/src/features/chat_v2/components/turns/UserTurn.tsx` (~40 lines per mockup L165-176)
-- [ ] **NEW** `frontend/src/features/chat_v2/components/turns/AgentTurn.tsx` (~80 lines per mockup L178-197)
-- [ ] **NEW** `frontend/src/features/chat_v2/components/turns/HITLTurn.tsx` (~120 lines per mockup L270-313) — wraps existing ApprovalCard.tsx (preserve 2-action decide() wiring; visual rewrite only)
-- [ ] **NEW** `frontend/src/features/chat_v2/components/TurnList.tsx` (~120 lines):
+**Workflow pivot (2026-05-17 Day 1 EOD per user directive)**: Option C copy-then-convert per plan §Day 1 EOD strategy pivot section.
+
+### 2.0 Copy mockup baseline + scaffold target directories (~30 min)
+- [ ] Create directories: `frontend/src/features/chat_v2/components/{turns,blocks,inspector}/` + ensure `fixtures/` ready for Day 3
+- [ ] cp `reference/design-mockups/page-chat.jsx` → `frontend/src/features/chat_v2/components/_mockup-source.jsx.bak` (per-section reference; .bak extension keeps tsc/eslint from scanning; deleted Day 4 closeout)
+- [ ] Identify per-section line ranges in mockup (record in DRIFT-REPORT-PHASE1.md §Section Mapping):
+  - L73-91 ChatV2 shell (Day 3 target)
+  - L93-121 ChatHeader (Day 3 target, inside ChatLayout)
+  - L123-156 SessionList (Day 3 target)
+  - L153-156 DomainDot helper (Day 3 fixture)
+  - L159-163 TurnRender dispatcher (Day 2 — TurnList.tsx)
+  - L165-176 UserTurn (Day 2)
+  - L178-197 AgentTurn (Day 2)
+  - L199-267 Block switch (Day 2 — split into 4 block files)
+  - L270-313 HITLTurn + HITL approval card (Day 2 — ApprovalCard visual rewrite)
+  - L316-368 Composer (Day 4 skeleton — full Phase-2+)
+  - L371-390 ChatInspector (Day 4)
+  - L392-417 InspectorTurn (Day 4)
+  - L419-432 KV + EventLine helpers (Day 4)
+  - L434-466 InspectorTrace (Day 4 — coming-soon)
+  - L468-487 InspectorMemory (Day 4 — coming-soon)
+  - L489-531 InspectorTree (Day 4 — coming-soon)
+
+### 2.1 US-C1 TurnList + 3 Turn role components (cp+convert; ~2.5-3 hr)
+- [ ] **EXTRACT + CONVERT** mockup L165-176 → `frontend/src/features/chat_v2/components/turns/UserTurn.tsx`:
+  - useCs/useEcs imports → standard react
+  - Inline `style={{...}}` → Tailwind utility classes (turn-rail / turn-marker / turn-head / turn-body equivalents via flex + border tokens)
+  - `<span className="role">Jamie Liu</span>` → consume `authStore.user.name`
+  - File-header w/ mockup line range cited
+- [ ] **EXTRACT + CONVERT** mockup L178-197 → `frontend/src/features/chat_v2/components/turns/AgentTurn.tsx`:
+  - Same conversion pattern
+  - `<Badge tone="primary">turn {turn.id.replace("t", "")}</Badge>` → shadcn Badge variant
+  - `<span className="live-dot">` → small `bg-warning rounded-full animate-pulse` element
+  - Block dispatcher: `turn.blocks.map(b => <Block key={...} b={b} />)` referencing Day 2.2 block components
+- [ ] **EXTRACT + CONVERT** mockup L270-313 → `frontend/src/features/chat_v2/components/turns/HITLTurn.tsx`:
+  - Wraps existing ApprovalCard.tsx (preserves 2-action decide() wiring; visual rewrite handled by 2.3)
+  - Pass `severity` / `payload` / `rationale` / `tool` etc. props from HITLTurn type
+- [ ] **NEW** `frontend/src/features/chat_v2/components/TurnList.tsx` (~80 lines):
+  - Consume `chatStore.turns`
   - Role dispatcher: turn.role === "user" → `<UserTurn>`; "agent" → `<AgentTurn>`; "hitl" → `<HITLTurn>`
-  - Replaces `MessageList.tsx`; thin compat re-export if MessageList used externally
-- [ ] All NEW files have file-header per `.claude/rules/file-header-convention.md`
-- [ ] Commit: `feat(chat-v2, sprint-57-21, Day 2): TurnList + 3 Turn role components per mockup`
+  - Auto-scroll to bottom (preserve Sprint 57.20 baseline behavior)
+  - Replaces `MessageList.tsx` consumers Day 3 (MessageList.tsx becomes thin re-export Day 2 EOD)
+- [ ] All NEW files have file-header per `.claude/rules/file-header-convention.md` w/ mockup line range cited
+- [ ] Commit: `feat(chat-v2, sprint-57-21, Day 2): TurnList + 3 Turn role components per mockup (cp+convert)`
 
-### 2.2 US-C2 4 Block components (~2-3 hr)
-- [ ] **NEW** `frontend/src/features/chat_v2/components/blocks/ThinkingBlock.tsx` (~30 lines per mockup L200-207)
-  - Use `bg-thinking/16 text-thinking` tokens (Sprint 57.18) or `bg-bg-2 text-fg-muted` (Sprint 57.20)
-- [ ] **NEW** `frontend/src/features/chat_v2/components/blocks/ToolBlock.tsx` (~70 lines per mockup L208-223)
-  - Head: tool icon + name + status badge (success/danger) + duration
-  - Body: input pre-block (JSON) + output pre-block (result)
-  - Replaces `ToolCallCard.tsx`; thin compat re-export if used externally
-- [ ] **NEW** `frontend/src/features/chat_v2/components/blocks/VerificationBlock.tsx` (~50 lines per mockup L234-244)
-  - check/x icon + claim + evidence
-  - Failed variant: `border-danger` tone
-- [ ] **NEW** `frontend/src/features/chat_v2/components/blocks/SubagentForkBlock.tsx` (~60 lines per mockup L245-264)
-  - Head: fork icon + "Fork · concurrent" + spawned N count
-  - Rows: chevron + agent name + task + status badge + turns count
-- [ ] Each block component has Vitest spec (~3-5 cases each: render + props + status variants)
-- [ ] Wire blocks into `AgentTurn.tsx`: `turn.blocks.map(b => <Block key={b.id} b={b} />)` where `<Block>` dispatches per `b.type`
-- [ ] Commit: `feat(chat-v2, sprint-57-21, Day 2): 4 block components (thinking/tool/verification/subagent_fork) per mockup`
+### 2.2 US-C2 4 Block components (cp+convert; ~3-4 hr)
+- [ ] **EXTRACT + CONVERT** mockup L200-207 → `frontend/src/features/chat_v2/components/blocks/ThinkingBlock.tsx`:
+  - `bg-thinking/16 text-thinking` (Sprint 57.18 token) for label + body container
+- [ ] **EXTRACT + CONVERT** mockup L208-223 → `frontend/src/features/chat_v2/components/blocks/ToolBlock.tsx`:
+  - Head + body + result sections; `bg-tool/16 text-tool` for icon + name; status badge variant per ok/error
+  - Replaces `ToolCallCard.tsx` consumers Day 3 (ToolCallCard.tsx becomes thin re-export Day 2 EOD)
+- [ ] **EXTRACT + CONVERT** mockup L234-244 → `frontend/src/features/chat_v2/components/blocks/VerificationBlock.tsx`:
+  - check/x icon + claim + evidence; success/danger token; failed → border-danger
+- [ ] **EXTRACT + CONVERT** mockup L245-264 → `frontend/src/features/chat_v2/components/blocks/SubagentForkBlock.tsx`:
+  - Head + agent rows; chevron + name + task + status badge + turns count
+- [ ] **NEW** `frontend/src/features/chat_v2/components/blocks/Block.tsx` dispatcher (~30 lines):
+  - Discriminated union switch on block.type → render matching block component
+- [ ] Vitest specs (~3-5 cases each block; total ~15-20 NEW cases)
+- [ ] Commit: `feat(chat-v2, sprint-57-21, Day 2): 4 block components (thinking/tool/verification/subagent_fork) per mockup (cp+convert)`
 
-### 2.3 US-C3 ApprovalCard visual rewrite (preserve 2-action backend wiring) (~1 hr)
-- [ ] **REWRITE in-place** `frontend/src/features/chat_v2/components/ApprovalCard.tsx`:
-  - Visual: severity badge (`risk-low/medium/high/critical`) + tool name + policy badge + scope badge + rationale + payload pre-block + 4-button bar (Approve & continue / Approve with edits [disabled coming-soon] / Reject / Escalate to L2 [disabled coming-soon]) + audit_id footer per mockup L280-309
-  - Preserve: existing `governanceService.decide(APPROVED | REJECTED)` wiring on Approve / Reject buttons
-  - Disabled coming-soon buttons: `disabled` + tooltip "Sprint 57.22+ (AD-ChatV2-HITL-FourAction-Phase2)"
-- [ ] Update existing ApprovalCard Vitest spec + Playwright e2e selectors (preserve behavioral assertions)
+### 2.3 US-C3 ApprovalCard visual rewrite (cp+convert; preserve 2-action backend) (~1.5 hr)
+- [ ] **EXTRACT + CONVERT** mockup L280-309 (HITL approval card body) → REWRITE in-place `frontend/src/features/chat_v2/components/ApprovalCard.tsx`:
+  - `hitl-card` CSS → Tailwind: `relative rounded-xl border border-warning/40 bg-bg-1 p-4 shadow-warning/10`
+  - `hitl-card-bar` (left rail color) → `absolute left-0 top-0 bottom-0 w-0.5 bg-warning` (severity-tinted via Sprint 57.18 `risk-*` tokens)
+  - severity → `<RiskBadge level={severity} />` (D-PRE-3: create `frontend/src/components/ui/RiskBadge.tsx` ~30 lines per STYLE.md §3 pattern OR inline within ApprovalCard for now; decide Day 2 start)
+  - 4-button bar: Approve & continue (real wire) / Approve with edits (disabled coming-soon) / Reject (real wire) / Escalate to L2 (disabled coming-soon)
+  - Preserve: existing `governanceService.decide(APPROVED | REJECTED)` wiring
+  - Disabled coming-soon buttons: tooltip "Sprint 57.22+ AD-ChatV2-HITL-FourAction-Phase2"
+- [ ] Update existing ApprovalCard Vitest spec + Playwright e2e selectors (D-PRE-1: `approval-card.spec.ts` sentinel `#b71c1c` — decide token vs hex literal at Day 2 time)
 - [ ] Commit: `feat(chat-v2, sprint-57-21, Day 2): ApprovalCard visual rewrite per mockup HITLTurn (preserve 2-action backend)`
 
 ### 2.4 Day 2 closeout
 - [ ] `npm run tsc` 0 errors
-- [ ] `npm run test` Vitest 277+N PASS
-- [ ] `npm run lint` silent
-- [ ] `npm run build` succeeds
-- [ ] Playwright MCP capture POST-Day-2 chat-v2 at 1440×900 → `screenshots/blocks/prod-chat-v2-day2.png` + sub-zooms
-- [ ] Pair-verify vs `screenshots/mockup-chat-v2.png` — DRIFT verdict for Turn renderer + 4 blocks (parity / cosmetic / structural)
-- [ ] Progress.md Day 2 entry + cosmetic gaps logged for Day 4 closeout
+- [ ] `npm run test` Vitest 299+N PASS
+- [ ] `npm run lint` silent (note: NEW components must have NO inline style — Sprint 57.16 guard remains active codebase-wide)
+- [ ] `npm run build` succeeds; main bundle within +30 KB of Sprint 57.20 baseline
+- [ ] Playwright MCP capture POST-Day-2 chat-v2 at 1440×900 → `screenshots/blocks/prod-chat-v2-day2.png` + per-block sub-zooms
+- [ ] Pair-verify each block vs mockup section — DRIFT verdict per component (parity / cosmetic / structural) recorded in DRIFT-REPORT-PHASE1.md §Verification
+- [ ] Progress.md Day 2 entry + cosmetic gaps logged for Day 4 retrospective
 
 ---
 
 ## Day 3 — SessionList sidebar + ChatLayout 3-column rewrite (US-D1 + US-D2 + US-D3)
+
+**Workflow**: continues Day 2 Option C cp+convert. Source baseline: `_mockup-source.jsx.bak` (per §2.0). Each component file's MHist cites mockup line range.
 
 ### 3.1 US-D1 SessionList + fixtures (~2 hr)
 - [ ] **NEW** `frontend/src/features/chat_v2/fixtures/sessions.ts` (~50 lines):
@@ -202,6 +240,8 @@
 ---
 
 ## Day 4 — Inspector Turn tab + Composer skeleton + closeout (US-E1 + US-E2 + US-E3)
+
+**Workflow**: continues Day 2 Option C cp+convert. Source baseline: `_mockup-source.jsx.bak`. Day 4 final closeout deletes the `.bak` file.
 
 ### 4.1 US-E1 ChatInspector + InspectorTurn tab (~2-3 hr)
 - [ ] **NEW** `frontend/src/features/chat_v2/components/inspector/ChatInspector.tsx` (~80 lines per mockup L371-390):

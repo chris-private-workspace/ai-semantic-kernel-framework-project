@@ -132,6 +132,23 @@ The mockup screenshot is the canonical visual target for Day 1-4 fidelity verifi
 - Actual: ~2.5 hr (types + chatStore + adapter + 22 Vitest cases ran continuously without backtracking)
 - Delta: ~50% under estimate. Reason: Day 0 三-prong already discovered chatStore.ts mergeEvent structure (L120-340) + types.ts contract was clear from mockup capture; design decisions (dual-emit / adapter pattern) crystallized during draft. No churn.
 
+### Day 1 EOD strategy pivot — Option C: copy-mockup-then-convert
+
+User 2026-05-17 directive post-Day-1 closeout: Day 2-4 workflow pivots from **"write fresh TS reading mockup as spec"** (Sprint 57.20 pattern that produced 16 R2 drift findings DRIFT-REPORT-ROUND-2) to **"copy mockup JSX + mechanical conversion + Tailwind utility conversion"** (Option C). Rationale: visual fidelity at first paint approaches 1:1 by removing the manual-mapping step that introduced 57.20's drift.
+
+**Pivot scope**: Day 2-4 only. Day 1 (data-layer rewrite) and Day 0 (setup) unaffected.
+
+**Workflow changes** (plan §Day 1 EOD strategy pivot + checklist Day 2 §2.0):
+
+1. cp `reference/design-mockups/page-chat.jsx` → `_mockup-source.jsx.bak` (per-section reference)
+2. Mechanical conversion: useCs→useState / Object.assign→export / hardcoded TURNS→chatStore.turns / Icon/Button→shadcn + lucide-react
+3. **Inline `style={{...}}` → Tailwind utility classes** using Sprint 57.18 semantic tokens + Sprint 57.20 layout tokens (NOT taking ESLint guard relaxation shortcut)
+4. Per-component Playwright MCP pair-verify; record DRIFT verdict in DRIFT-REPORT-PHASE1.md
+
+**Cost impact**: Option C conversion overhead ~30-50% above original Option A budget. Day 1 came in 50% under estimate (~2.5 hr actual vs 4-5 hr est = ~2 hr buffer saved). Saved buffer absorbs Day 2-4 extension; sprint envelope (5 days / ~9-11 hr calibrated commit) holds.
+
+**Audit trail**: each NEW component file-header MHist cites source mockup line range (e.g. "extracted from page-chat.jsx L165-176 + tailwind convert"). DRIFT-REPORT-PHASE1.md §Section Mapping pre-records per-section line ranges (checklist §2.0).
+
 ## Day 2 — _pending_
 
 ## Day 3 — _pending_

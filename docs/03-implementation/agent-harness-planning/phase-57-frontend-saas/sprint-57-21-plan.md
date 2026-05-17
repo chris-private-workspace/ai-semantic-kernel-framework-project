@@ -226,6 +226,26 @@ Current flat `Message` shape → Turn-with-blocks shape:
 
 Every NEW or REWRITTEN file requires standard TypeScript header per `.claude/rules/file-header-convention.md` (Purpose / Category / Scope / Created / Modification History 1-line max ≤100 chars including blockquote prefix).
 
+### Day 1 EOD strategy pivot — Option C: copy-mockup-then-convert (2026-05-17)
+
+Per Sprint 57.20 retrospective DRIFT-REPORT-ROUND-2 (16 R2 findings using "write fresh reading mockup as spec" approach), user 2026-05-17 directive after Day 1 closeout: **Day 2-4 pivot to Option C copy-then-convert workflow** to maximize visual fidelity:
+
+1. `cp reference/design-mockups/page-chat.jsx → frontend/src/features/chat_v2/<target>.tsx` (per-section split into turns/blocks/inspector/composer files)
+2. **Mechanical conversion pass** (per section):
+   - `const { useState: useCs } = React` → standard `import { useState } from "react"`
+   - `Object.assign(window, { X })` → `export default X` / `export const X`
+   - Hardcoded `TURNS` / `SESSIONS` fixture arrays → consume `useChatStore.turns` / `chatStore.sessions`
+   - `<Icon name="...">` → `lucide-react` import per existing chat_v2 pattern
+   - `<Button variant="..."/>` + `<Badge tone="..."/>` → shadcn primitives where API maps cleanly OR thin adapter
+   - **Inline `style={{...}}` → Tailwind utility classes** using Sprint 57.18 semantic tokens + Sprint 57.20 layout tokens (`bg-bg-1` / `text-fg-muted` / `border-strong` / `bg-thinking/16` / `text-risk-critical` etc.)
+   - Mockup CSS classes (`chat-shell` / `chat-list` / `block thinking` / `hitl-card` / etc.) → Tailwind grid/flex utilities OR scoped element classes
+3. **Playwright MCP pair-verify per component** at 1440×900; if drift > cosmetic → iterate Tailwind until parity
+4. STYLE.md inline-style guard maintained (Option B's eslint-disable shortcut NOT taken)
+
+**Workload adjustment**: Option C conversion overhead ~30-50% above Option A baseline. Day 1 came in 50% under estimate (~2.5 hr actual vs 4-5 hr est), so the saved buffer absorbs Option C's Day 2-4 extension. Sprint envelope (5 days / ~9-11 hr calibrated commit) remains achievable.
+
+**Audit trail**: each conversion step logs source mockup section line range in component file-header `Modification History`; per-component DRIFT verdict (parity / cosmetic / structural) recorded in progress.md Day 2/3/4 entries.
+
 ### Backend impact
 
 **0 backend changes this sprint** (Option W mode preserved). All wiring uses existing 14 SSE event types + existing `/loops` list endpoint (Sprint 57.19 US-B1). Backend wire ADs remain Sprint 57.22+ deferred:
