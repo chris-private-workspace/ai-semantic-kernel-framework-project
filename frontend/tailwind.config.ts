@@ -75,6 +75,21 @@ const config: Config = {
           high: "hsl(var(--risk-high))",
           critical: "hsl(var(--risk-critical))",
         },
+        // NEW Sprint 57.20 — mockup layout token tree (US-B3)
+        bg: {
+          DEFAULT: "hsl(var(--bg))",
+          1: "hsl(var(--bg-1))",
+          2: "hsl(var(--bg-2))",
+          3: "hsl(var(--bg-3))",
+          hover: "hsl(var(--bg-hover))",
+        },
+        fg: {
+          DEFAULT: "hsl(var(--fg))",
+          muted: "hsl(var(--fg-muted))",
+          subtle: "hsl(var(--fg-subtle))",
+        },
+        "border-strong": "hsl(var(--border-strong))",
+        "primary-soft": "hsl(var(--primary-soft))",
       },
       borderRadius: {
         lg: "var(--radius)",
