@@ -8,10 +8,11 @@
 > [`docs/03-implementation/agent-harness-planning/16-frontend-design.md`](../docs/03-implementation/agent-harness-planning/16-frontend-design.md).
 
 **Created**: 2026-05-09 (Sprint 57.10 codified from Sprint 53.5+57.7+57.8+57.9 emergent palette + UX patterns)
-**Last Modified**: 2026-05-11
+**Last Modified**: 2026-05-17
 **Status**: Active
 
 > **Modification History (newest-first)**
+> - 2026-05-17: Sprint 57.19 — §2 indigo primary + accent (closes AD-Brand-Primary-Color-Decision + AD-Accent-Token-Gap)
 > - 2026-05-11: Sprint 57.16 — escape-hatch sub-§ no longer references ChatLayout (migrated; frontend/src now inline-style-clean) (AD-Inline-Style-Cleanup-Sweep-Round2)
 > - 2026-05-11: Sprint 57.15 — §1 no-inline-style is now lint-enforced (`no-restricted-syntax`); add "Inline-style escape hatches" sub-section (AD-Inline-Style-Cleanup-Sweep)
 > - 2026-05-09: Initial creation (Sprint 57.10 — closes style/UX drift identified by user 2026-05-09 reality check)
@@ -102,11 +103,14 @@ For a whole legacy file that hasn't been migrated yet, a top-of-file `/* eslint-
 
 Canonical color tokens per `16-frontend-design.md §245-262` + tailwind.config.ts theme.
 
-> **Sprint 57.18 update (2026-05-16)**: 7 semantic tokens + 4 risk levels NOW defined in `tailwind.config.ts` + `src/index.css` :root + .dark (closes AD-Style-Token-Config-Audit token-coverage portion). Note: production `primary` token is actually shadcn dark slate `hsl(222.2 47.4% 11.2%)` NOT `#3B82F6` blue; documented value preserved here for design vocabulary reference, but actual rendering uses shadcn primary. Contrast-ratio audit of components using new tokens deferred to Sprint 57.19+ first real port (AD-Post-Hotfix-Token-Audit contrast portion).
+> **Sprint 57.19 update (2026-05-17)**: production `primary` brand color moved from dark-slate `hsl(222.2 47.4% 11.2%)` → indigo `hsl(234 89% 60%)` (light) / `hsl(234 84% 70%)` (dark), HSL approximation of mockup's canonical `oklch(0.62 0.16 250)` cool indigo (closes AD-Brand-Primary-Color-Decision). `--accent` + `--accent-foreground` NOW defined in `src/index.css` :root + .dark (closes AD-Accent-Token-Gap; Sidebar `bg-accent`/`text-accent-foreground` now resolve to real tokens). Contrast-ratio audit of components consuming new indigo + accent tokens still scheduled for Sprint 57.19+ ongoing ports (AD-Post-Hotfix-Token-Audit contrast portion).
+>
+> **Sprint 57.18 update (2026-05-16)**: 7 semantic tokens + 4 risk levels NOW defined in `tailwind.config.ts` + `src/index.css` :root + .dark (closes AD-Style-Token-Config-Audit token-coverage portion).
 
 | Token | Hex (reference) | Tailwind class | Usage |
 |-------|-----------------|----------------|-------|
-| `primary` | `#3B82F6` (mockup) / `hsl(222.2 47.4% 11.2%)` (production shadcn slate) | `text-primary` / `bg-primary` / `border-primary` | Main actions (submit / nav active); production uses shadcn slate not blue |
+| `primary` | `oklch(0.62 0.16 250)` (mockup canonical) ≈ `hsl(234 89% 60%)` light / `hsl(234 84% 70%)` dark | `text-primary` / `bg-primary` / `border-primary` | Main actions (submit / nav active); cool indigo brand (Sprint 57.19+) |
+| `accent` | `hsl(234 89% 60%)` light / `hsl(234 84% 70%)` dark (same hue as primary, used with /opacity modifier per mockup) | `bg-accent` / `text-accent-foreground` | Hover / focus emphasis / Sidebar active highlight (Sprint 57.19+) |
 | `success` | `#10B981` ≈ `hsl(150 60% 45%)` | `text-success` / `bg-success` / `border-success` | Verified / approved / passed |
 | `warning` | `#F59E0B` ≈ `hsl(38 92% 50%)` | `text-warning` / `bg-warning` | HITL pending / attention / DRAFT badge |
 | `danger` | `#EF4444` ≈ `hsl(0 84% 60%)` | `text-danger` / `bg-danger` | Errors / tripwire / blocked |
@@ -137,7 +141,6 @@ shadcn theme provides semantic tokens used widely in components:
 | `background` | `bg-background` | Page background |
 | `muted` | `bg-muted` | Subtle background (cards / sections) |
 | `border` | `border-border` | Default border color |
-| `accent` | `bg-accent` / `text-accent-foreground` | Hover / focus emphasis |
 
 ### Preferred over arbitrary values
 

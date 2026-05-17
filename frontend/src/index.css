@@ -4,6 +4,7 @@
  * toggles html.dark. shadcn slate base color scheme per components.json.
  *
  * Modification History:
+ *   - 2026-05-17: Sprint 57.19 — brand color HSL update (closes AD-Brand-Primary-Color-Decision + AD-Accent-Token-Gap)
  *   - 2026-05-16: Sprint 57.18 — +18 CSS vars (7 semantic + 4 risk) in :root + .dark (closes AD-Style-Token-Config-Audit)
  *   - 2026-05-15: Sprint 57.17 — v3 @tailwind directives → v4 @import + @config (closes AD-Tailwind-v4-Directive-Hotfix)
  */
@@ -14,8 +15,10 @@
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 234 89% 60%;
     --primary-foreground: 210 40% 98%;
+    --accent: 234 89% 60%;
+    --accent-foreground: 234 89% 40%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
@@ -50,8 +53,10 @@
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 234 84% 70%;
+    --primary-foreground: 234 30% 12%;
+    --accent: 234 84% 70%;
+    --accent-foreground: 234 50% 90%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
