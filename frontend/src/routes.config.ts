@@ -160,7 +160,6 @@ export const ROUTES: RouteEntry[] = [
     icon: GitFork,
     category: "operations",
     active: true,
-    proposed: true,
     component: lazy(() => import("./pages/subagents")),
   },
   {
@@ -188,7 +187,6 @@ export const ROUTES: RouteEntry[] = [
     icon: Database,
     category: "operations",
     active: true,
-    proposed: true,
     component: lazy(() => import("./pages/state-inspector")),
   },
   {

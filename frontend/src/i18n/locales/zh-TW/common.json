@@ -181,5 +181,87 @@
     "policies": {
       "title": "HITL + 風險政策"
     }
+  },
+  "subagents": {
+    "title": "子代理",
+    "subtitle": "範疇 11 · AgentSpec 定義 · 4 種派遣模式 (fork / teammate / handoff / as_tool)",
+    "registered": "個已註冊",
+    "syncFromRepo": "從儲存庫同步",
+    "newSubagent": "新增子代理",
+    "carryoverHeading": "後端缺口",
+    "mode": {
+      "forkDesc": "並行展開 · 父代理合併結果",
+      "asToolDesc": "LLM 將子代理當工具呼叫 · 同步",
+      "teammateDesc": "點對點郵箱 · 非同步協調",
+      "handoffDesc": "控制權轉移 · 共享對話歷史"
+    },
+    "list": {
+      "title": "子代理列表",
+      "subtitle": "點擊查看 / 編輯"
+    },
+    "col": {
+      "role": "角色",
+      "model": "模型",
+      "modes": "模式",
+      "status": "狀態",
+      "calls24h": "呼叫 · 24h",
+      "p95": "p95"
+    },
+    "detail": {
+      "tabsLabel": "子代理詳細頁分頁",
+      "spec": "AgentSpec",
+      "budget": "預算",
+      "tools": "工具",
+      "stats": "統計",
+      "testInvoke": "測試呼叫",
+      "role": "角色 (不可變 id)",
+      "model": "模型",
+      "systemPrompt": "系統提示詞",
+      "allowedModes": "允許的派遣模式",
+      "maxTokens": "最大 tokens",
+      "maxDuration": "最大時長 (秒)",
+      "maxConcurrent": "最大並行呼叫數",
+      "maxDepth": "最大子代理深度 (由此延伸)",
+      "worktreeAbsent": "V2 刻意不採用 worktree 模式 —— IPA 為 server-side，採用 mailbox + handoff 隔離機制取代 git worktrees。",
+      "toolsAttached": "此子代理可用工具",
+      "attachTool": "附加工具",
+      "calls24h": "呼叫 · 24h",
+      "p95": "p95 時長",
+      "successRate": "成功率",
+      "avgTokens": "平均 tokens / 次",
+      "topOrchestrator": "最常呼叫之編排器"
+    }
+  },
+  "stateInspector": {
+    "title": "狀態檢視器",
+    "subtitle": "範疇 7 · LoopState 時光旅行 · Reducer 是唯一寫入者",
+    "versions": "個版本",
+    "checkpoints": "個檢查點",
+    "diffVsParent": "與父版本差異",
+    "restore": "由版本還原",
+    "exportCheckpoint": "匯出檢查點",
+    "carryoverHeading": "後端缺口",
+    "carryoverBody": "版本鏈 (10 個項目) 為 mockup 固定資料 —— Cat 7 list-by-session 端點尚未實作 (追蹤代號 AD-State-VersionChain-Phase58)。當 URL 帶有 ?session_id=<uuid> 時，會透過 US-B3 取得最新單一版本的即時資料。",
+    "liveFetchError": "即時快照取得失敗",
+    "kpi": {
+      "currentVersion": "目前版本",
+      "transientSize": "暫態大小",
+      "durableBytes": "持久化位元組",
+      "pendingApprovals": "待批准"
+    },
+    "chain": {
+      "title": "版本鏈",
+      "subtitle": "Reducer 寫入 · 單調遞增"
+    },
+    "transient": {
+      "heading": "暫態 · 記憶體"
+    },
+    "durable": {
+      "heading": "持久化 · 資料庫"
+    },
+    "diff": {
+      "title": "與父版本差異",
+      "noParent": "無父版本"
+    }
   }
 }

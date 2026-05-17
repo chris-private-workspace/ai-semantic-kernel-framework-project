@@ -181,5 +181,87 @@
     "policies": {
       "title": "HITL + risk policies"
     }
+  },
+  "subagents": {
+    "title": "Subagents",
+    "subtitle": "Range 11 · AgentSpec definitions · 4 dispatch modes (fork / teammate / handoff / as_tool)",
+    "registered": "registered",
+    "syncFromRepo": "Sync from repo",
+    "newSubagent": "New subagent",
+    "carryoverHeading": "Backend gap",
+    "mode": {
+      "forkDesc": "Concurrent fan-out · parent merges results",
+      "asToolDesc": "LLM calls subagent as a tool · synchronous",
+      "teammateDesc": "Peer-to-peer mailbox · async coordination",
+      "handoffDesc": "Transfer control · shared conversation history"
+    },
+    "list": {
+      "title": "Subagents",
+      "subtitle": "Click to inspect / edit"
+    },
+    "col": {
+      "role": "Role",
+      "model": "Model",
+      "modes": "Modes",
+      "status": "Status",
+      "calls24h": "Calls · 24h",
+      "p95": "p95"
+    },
+    "detail": {
+      "tabsLabel": "Subagent detail tabs",
+      "spec": "AgentSpec",
+      "budget": "Budget",
+      "tools": "Tools",
+      "stats": "Stats",
+      "testInvoke": "Test invoke",
+      "role": "Role (immutable id)",
+      "model": "Model",
+      "systemPrompt": "System prompt",
+      "allowedModes": "Allowed dispatch modes",
+      "maxTokens": "Max tokens",
+      "maxDuration": "Max duration (s)",
+      "maxConcurrent": "Max concurrent invocations",
+      "maxDepth": "Max subagent depth (from this)",
+      "worktreeAbsent": "Worktree mode is intentionally absent from V2 — IPA runs server-side, so we use mailbox + handoff for isolation instead of git worktrees.",
+      "toolsAttached": "Tools available to this subagent",
+      "attachTool": "Attach tool",
+      "calls24h": "Calls · 24h",
+      "p95": "p95 duration",
+      "successRate": "Success rate",
+      "avgTokens": "Avg tokens / call",
+      "topOrchestrator": "Most-used orchestrator"
+    }
+  },
+  "stateInspector": {
+    "title": "State Inspector",
+    "subtitle": "Range 7 · LoopState time-travel · Reducer is the only mutator",
+    "versions": "versions",
+    "checkpoints": "checkpoints",
+    "diffVsParent": "Diff vs parent",
+    "restore": "Restore from version",
+    "exportCheckpoint": "Export checkpoint",
+    "carryoverHeading": "Backend gap",
+    "carryoverBody": "Version chain (10 entries) shown from mockup fixture — Cat 7 list-by-session endpoint not yet implemented (tracked as AD-State-VersionChain-Phase58). When ?session_id=<uuid> is provided in URL, the latest single version is fetched live via US-B3.",
+    "liveFetchError": "Live snapshot fetch failed",
+    "kpi": {
+      "currentVersion": "Current version",
+      "transientSize": "Transient size",
+      "durableBytes": "Durable bytes",
+      "pendingApprovals": "Pending approvals"
+    },
+    "chain": {
+      "title": "Version chain",
+      "subtitle": "Reducer-authored · monotonic"
+    },
+    "transient": {
+      "heading": "Transient state · in-memory"
+    },
+    "durable": {
+      "heading": "Durable state · DB-persisted"
+    },
+    "diff": {
+      "title": "Diff vs parent",
+      "noParent": "no parent"
+    }
   }
 }

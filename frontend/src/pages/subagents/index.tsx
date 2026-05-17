@@ -1,1 +1,1 @@
-export { default } from "../../components/ComingSoonPlaceholder";
+export { SubagentsPage as default } from "./SubagentsPage";
