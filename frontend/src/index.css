@@ -1,13 +1,29 @@
-/* Tailwind v4 import + v3 config bridge + shadcn CSS variables (Sprint 57.7 US-B1; v4 directive fix Sprint 57.17).
+/* Tailwind v4 import + v3 config bridge + shadcn CSS variables + mockup tokens (Sprint 57.20 Day 1 US-B3).
  *
- * Light/dark theme via :root + .dark CSS class. ThemeProvider US-B2 Day 3
- * toggles html.dark. shadcn slate base color scheme per components.json.
+ * Light/dark theme via :root + .dark CSS class. ThemeProvider toggles html.dark.
+ * Sprint 57.20: index.html sets class="dark" + data-variant + data-density defaults
+ * so first paint matches mockup. ThemeProvider can still override per localStorage.
+ *
+ * Token tree:
+ *   - shadcn-style (existing 14 pages):   --background --foreground --primary --secondary --destructive --muted --border --input --ring --accent (+ Sprint 57.18 semantic + risk)
+ *   - mockup-style (NEW Sprint 57.20):     --bg --bg-1 --bg-2 --bg-3 --bg-hover --fg --fg-muted --fg-subtle --border-strong --primary-soft --shadow
+ *   - density (NEW Sprint 57.20):          --row-h --pad --gap (responsive to [data-density])
+ *
+ * Variant mechanism: [data-variant="linear"] is the default (no-op stub); future
+ * [data-variant="strict"/"refined"/"shadcn"] variants land in Sprint 57.21+
+ * AD-Theme-Variant-Mechanism. Density [data-density="compact"|"comfortable"] active.
+ *
+ * Font: Noto Sans TC pulled via Google Fonts CDN (covers CJK); Geist falls back to
+ * system ui-sans-serif (Inter / Segoe UI). AD-Geist-Font-Asset-Bundling deferred
+ * to Phase 58+ for self-hosted Geist via @fontsource.
  *
  * Modification History:
+ *   - 2026-05-17: Sprint 57.20 Day 1 — add mockup token tree + density mechanism + Geist/Noto Sans TC wire + body font-family
  *   - 2026-05-17: Sprint 57.19 — brand color HSL update (closes AD-Brand-Primary-Color-Decision + AD-Accent-Token-Gap)
  *   - 2026-05-16: Sprint 57.18 — +18 CSS vars (7 semantic + 4 risk) in :root + .dark (closes AD-Style-Token-Config-Audit)
  *   - 2026-05-15: Sprint 57.17 — v3 @tailwind directives → v4 @import + @config (closes AD-Tailwind-v4-Directive-Hotfix)
  */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 @config "../tailwind.config.ts";
 
@@ -29,7 +45,7 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
-    /* NEW Sprint 57.18 — mockup semantic + risk tokens (US-B2) */
+    /* Sprint 57.18 — mockup semantic + risk tokens */
     --success: 150 60% 45%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
@@ -48,6 +64,22 @@
     --risk-medium: 38 92% 50%;
     --risk-high: 20 90% 55%;
     --risk-critical: 0 70% 40%;
+    /* Sprint 57.20 — mockup layout token tree (light) */
+    --bg: 220 13% 98%;
+    --bg-1: 0 0% 100%;
+    --bg-2: 220 13% 96%;
+    --bg-3: 220 13% 91%;
+    --bg-hover: 220 13% 94%;
+    --fg: 222.2 84% 5%;
+    --fg-muted: 220 9% 46%;
+    --fg-subtle: 220 9% 60%;
+    --border-strong: 220 13% 85%;
+    --primary-soft: 234 89% 95%;
+    --shadow: 0 1px 2px hsl(0 0% 0% / 0.05);
+    /* Sprint 57.20 — density (default = medium) */
+    --row-h: 36px;
+    --pad: 14px;
+    --gap: 10px;
   }
 
   .dark {
@@ -66,7 +98,7 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
-    /* NEW Sprint 57.18 — mockup semantic + risk tokens (US-B2) */
+    /* Sprint 57.18 — dark variants */
     --success: 150 50% 55%;
     --success-foreground: 0 0% 100%;
     --warning: 38 80% 60%;
@@ -85,6 +117,30 @@
     --risk-medium: 38 80% 60%;
     --risk-high: 20 80% 60%;
     --risk-critical: 0 60% 50%;
+    /* Sprint 57.20 — mockup layout token tree (dark; oklch→HSL approximation per mockup linear variant) */
+    --bg: 225 5% 13%;
+    --bg-1: 225 5% 16%;
+    --bg-2: 225 6% 19%;
+    --bg-3: 225 6% 22%;
+    --bg-hover: 225 6% 22%;
+    --fg: 225 5% 97%;
+    --fg-muted: 225 7% 70%;
+    --fg-subtle: 225 8% 52%;
+    --border-strong: 225 7% 34%;
+    --primary-soft: 234 84% 22%;
+    --shadow: 0 1px 0 0 hsl(0 0% 100% / 0.05) inset, 0 1px 2px hsl(0 0% 0% / 0.5);
+  }
+
+  /* Sprint 57.20 — density overrides (data attribute on <html>) */
+  [data-density="compact"] {
+    --row-h: 30px;
+    --pad: 10px;
+    --gap: 8px;
+  }
+  [data-density="comfortable"] {
+    --row-h: 44px;
+    --pad: 18px;
+    --gap: 14px;
   }
 }
 
@@ -95,5 +151,7 @@
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
+    font-family: "Geist", "Noto Sans TC", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
 }

@@ -16,6 +16,7 @@
  * Last Modified: 2026-05-11
  *
  * Modification History (newest-first):
+ *   - 2026-05-17: Sprint 57.20 Day 3 US-D1 — token migration bg-card/text-muted-foreground→bg-bg-1/text-fg-muted for new shell mockup consistency
  *   - 2026-05-11: Sprint 57.15 — inline styles → Tailwind utility classes (AD-Inline-Style-Cleanup-Sweep)
  *   - 2026-04-30: Initial creation (Sprint 50.2 Day 4.1)
  *
@@ -45,9 +46,9 @@ function MessageRow({ msg }: { msg: Message }): JSX.Element {
   // assistant
   return (
     <div className="max-w-[min(720px,90%)] w-[min(720px,90%)] self-start">
-      <div className={`${BUBBLE_BASE} rounded-bl border border-border bg-card text-foreground`}>
+      <div className={`${BUBBLE_BASE} rounded-bl border border-border bg-bg-1 text-foreground`}>
         {msg.thinking !== null && msg.thinking !== "" && (
-          <div className="mb-1.5 text-xs italic text-muted-foreground">
+          <div className="mb-1.5 text-xs italic text-fg-muted">
             thinking: {msg.thinking}
           </div>
         )}
@@ -82,7 +83,7 @@ export default function MessageList(): JSX.Element {
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6" ref={scrollRef}>
       {messages.length === 0 && approvalEntries.length === 0 ? (
-        <div className="p-8 text-center text-sm text-muted-foreground">
+        <div className="p-8 text-center text-sm text-fg-muted">
           Type a message below to start. Try <code>echo hello</code> in echo_demo
           mode.
         </div>

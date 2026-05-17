@@ -27,6 +27,7 @@
  * Created: 2026-05-17 (Sprint 57.19 Day 3 / US-C1)
  *
  * Modification History (newest-first):
+ *   - 2026-05-17: Sprint 57.20 Day 2 US-C1 — token migration shadcn→mockup tree (bg-card→bg-bg-1; text-muted-foreground→text-fg-muted; hover:bg-muted/40→hover:bg-bg-hover) + shadow-sm on Stat cards for mockup parity
  *   - 2026-05-17: Initial creation (Sprint 57.19 Day 3 / US-C1)
  *
  * Related:
@@ -56,12 +57,12 @@ interface CardProps {
 }
 
 const Card: FC<CardProps> = ({ title, subtitle, actions, bodyClassName, children }) => (
-  <div className="rounded-[12px] border border-border bg-card text-card-foreground">
+  <div className="rounded-[12px] border border-border bg-bg-1 text-foreground">
     {(title || actions) && (
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div>
           {title && <div className="text-sm font-semibold">{title}</div>}
-          {subtitle && <div className="text-[11px] text-muted-foreground">{subtitle}</div>}
+          {subtitle && <div className="text-[11px] text-fg-muted">{subtitle}</div>}
         </div>
         {actions}
       </div>
@@ -79,7 +80,7 @@ const TONE_CLASS: Record<Tone, string> = {
   thinking: "bg-thinking/16 text-thinking",
   info: "bg-info/16 text-info",
   primary: "bg-primary/16 text-primary",
-  muted: "bg-muted text-muted-foreground",
+  muted: "bg-bg-2 text-fg-muted",
 };
 
 const Badge: FC<{ tone?: Tone; dot?: boolean; children: ReactNode }> = ({
@@ -115,8 +116,8 @@ interface StatProps {
 }
 
 const Stat: FC<StatProps> = ({ label, value, unit, delta, deltaDir = "up" }) => (
-  <div className="rounded-[12px] border border-border bg-card p-4">
-    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+  <div className="rounded-[12px] border border-border bg-bg-1 p-4 shadow-sm">
+    <div className="flex items-center justify-between text-[11px] text-fg-muted">
       <span>{label}</span>
       {delta && (
         <span
@@ -130,7 +131,7 @@ const Stat: FC<StatProps> = ({ label, value, unit, delta, deltaDir = "up" }) => 
     </div>
     <div className="mt-1 font-mono text-[22px] font-semibold tabular-nums">
       {value}
-      {unit && <span className="ml-1 text-[11px] font-normal text-muted-foreground">{unit}</span>}
+      {unit && <span className="ml-1 text-[11px] font-normal text-fg-muted">{unit}</span>}
     </div>
   </div>
 );
@@ -228,18 +229,18 @@ const CostBurnChart: FC = () => {
               x={padding.l - 4}
               y={yAt(v) + 3}
               textAnchor="end"
-              fontSize={9} fill="hsl(var(--muted-foreground))"
+              fontSize={9} fill="hsl(var(--fg-subtle))"
             >
               ${v}
             </text>
           </g>
         ))}
-        <path d={budgetLine} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 3" strokeWidth="1" fill="none" />
+        <path d={budgetLine} stroke="hsl(var(--fg-subtle))" strokeDasharray="4 3" strokeWidth="1" fill="none" />
         <path d={burnArea} fill="url(#overview-burn-grad)" />
         <path d={burnPath} stroke="hsl(var(--primary))" strokeWidth="1.5" fill="none" />
         <circle cx={xAt(today - 1)} cy={yAt(mtd)} r="3" fill="hsl(var(--primary))" />
       </svg>
-      <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+      <div className="flex items-center gap-3 text-[11px] text-fg-muted">
         <span>
           <span className="font-mono text-primary">${mtd.toFixed(0)}</span> MTD
         </span>
@@ -285,7 +286,7 @@ const ErrorTrendChart: FC = () => {
               x={padding.l - 4}
               y={yAt(v) + 3}
               textAnchor="end"
-              fontSize={9} fill="hsl(var(--muted-foreground))"
+              fontSize={9} fill="hsl(var(--fg-subtle))"
             >
               {v}
             </text>
@@ -308,7 +309,7 @@ const ErrorTrendChart: FC = () => {
           );
         })}
       </svg>
-      <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+      <div className="flex items-center gap-3 text-[11px] text-fg-muted">
         <span>
           <span className="font-mono text-danger">{total}</span> errors · 24h
         </span>
@@ -352,7 +353,7 @@ const ActiveLoopsCard: FC = () => {
         <button
           type="button"
           onClick={() => navigate("/loop-debug")}
-          className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+          className="flex items-center gap-1 text-[11px] text-fg-muted hover:text-foreground"
         >
           {t("overview.activeLoops.openDebug")} <ArrowRight className="h-3 w-3" />
         </button>
@@ -365,7 +366,7 @@ const ActiveLoopsCard: FC = () => {
         </div>
       )}
       {!error && !isLoading && items.length === 0 && (
-        <div className="px-4 py-6 text-center text-[12px] text-muted-foreground">
+        <div className="px-4 py-6 text-center text-[12px] text-fg-muted">
           {t("overview.activeLoops.empty")}
         </div>
       )}
@@ -380,7 +381,7 @@ const ActiveLoopsCard: FC = () => {
                 key={loop.session_id}
                 type="button"
                 onClick={() => navigate("/loop-debug")}
-                className="grid w-full cursor-pointer grid-cols-[auto_1fr_auto_auto_auto] items-center gap-[10px] border-b border-border px-[10px] py-2 text-left text-[12.5px] last:border-0 hover:bg-muted/40"
+                className="grid w-full cursor-pointer grid-cols-[auto_1fr_auto_auto_auto] items-center gap-[10px] border-b border-border px-[10px] py-2 text-left text-[12.5px] last:border-0 hover:bg-bg-hover"
               >
                 <Badge tone={tone} dot>
                   {loop.status}
@@ -389,15 +390,15 @@ const ActiveLoopsCard: FC = () => {
                   <span className="font-mono text-[11.5px]">
                     {loop.session_id.slice(0, 8)}…
                   </span>
-                  <span className="font-mono text-[10.5px] text-muted-foreground">
+                  <span className="font-mono text-[10.5px] text-fg-muted">
                     {loop.token_usage.toLocaleString()} tok · ${loop.total_cost_usd}
                   </span>
                 </div>
                 <div className="flex w-20 flex-col gap-[3px]">
-                  <span className="font-mono text-[10.5px] text-muted-foreground">
+                  <span className="font-mono text-[10.5px] text-fg-muted">
                     turn {loop.turn_count}/{maxTurns}
                   </span>
-                  <div className="relative h-[6px] overflow-hidden rounded-[3px] bg-muted">
+                  <div className="relative h-[6px] overflow-hidden rounded-[3px] bg-bg-2">
                     <div
                       className={`absolute inset-0 origin-left ${pct > 80 ? "bg-warning" : "bg-primary"}`}
                       // eslint-disable-next-line no-restricted-syntax -- dynamic per-row progress fill per mockup parity (STYLE.md §1 escape hatch)
@@ -405,10 +406,10 @@ const ActiveLoopsCard: FC = () => {
                     />
                   </div>
                 </div>
-                <span className="w-[60px] text-right font-mono text-[11px] text-muted-foreground">
+                <span className="w-[60px] text-right font-mono text-[11px] text-fg-muted">
                   {loop.turn_count}t
                 </span>
-                <span className="w-[40px] text-right font-mono text-[11px] text-muted-foreground">
+                <span className="w-[40px] text-right font-mono text-[11px] text-fg-muted">
                   {new Date(loop.started_at_ms).toLocaleTimeString("en-US", { hour12: false }).slice(0, 5)}
                 </span>
               </button>
@@ -431,7 +432,7 @@ const HITLQueueCard: FC = () => {
         <button
           type="button"
           onClick={() => navigate("/governance")}
-          className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+          className="flex items-center gap-1 text-[11px] text-fg-muted hover:text-foreground"
         >
           {t("overview.hitlQueue.review")} <ArrowRight className="h-3 w-3" />
         </button>
@@ -446,17 +447,17 @@ const HITLQueueCard: FC = () => {
             className={`flex flex-col gap-[6px] rounded-[8px] border p-[10px] text-left ${
               req.risk === "critical"
                 ? "border-danger/40 bg-danger/8"
-                : "border-border bg-muted/30"
+                : "border-border bg-bg-2"
             }`}
           >
             <div className="flex items-center justify-between gap-[6px]">
               <RiskBadge level={req.risk} />
-              <span className="font-mono text-[10.5px] text-muted-foreground">
+              <span className="font-mono text-[10.5px] text-fg-muted">
                 SLA · {req.sla}
               </span>
             </div>
             <div className="text-[12.5px] font-medium leading-[1.4]">{req.title}</div>
-            <div className="font-mono text-[10.5px] text-muted-foreground">
+            <div className="font-mono text-[10.5px] text-fg-muted">
               {req.id} · from {req.requester}
             </div>
           </button>
@@ -477,7 +478,7 @@ const ProvidersCard: FC = () => {
         <button
           type="button"
           onClick={() => navigate("/sla-dashboard")}
-          className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+          className="flex items-center gap-1 text-[11px] text-fg-muted hover:text-foreground"
         >
           {t("overview.providers.details")} <ArrowRight className="h-3 w-3" />
         </button>
@@ -504,8 +505,8 @@ const ProvidersCard: FC = () => {
               }}
             />
             <span className="flex-1 font-mono text-[12px]">{p.name}</span>
-            <span className="font-mono text-[11px] text-muted-foreground">p95 {p.p95}s</span>
-            <span className="w-[60px] text-right font-mono text-[11px] text-muted-foreground">
+            <span className="font-mono text-[11px] text-fg-muted">p95 {p.p95}s</span>
+            <span className="w-[60px] text-right font-mono text-[11px] text-fg-muted">
               {p.calls}
             </span>
           </div>
@@ -527,7 +528,7 @@ const IncidentsCard: FC = () => {
         <button
           type="button"
           onClick={() => navigate("/incidents")}
-          className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+          className="flex items-center gap-1 text-[11px] text-fg-muted hover:text-foreground"
         >
           {t("overview.incidents.all")} <ArrowRight className="h-3 w-3" />
         </button>
@@ -540,7 +541,7 @@ const IncidentsCard: FC = () => {
             key={inc.id}
             type="button"
             onClick={() => navigate("/incidents")}
-            className={`flex w-full cursor-pointer items-center gap-[10px] px-[14px] py-[10px] text-left text-[12.5px] hover:bg-muted/40 ${i < RECENT_INCIDENTS.length - 1 ? "border-b border-border" : ""}`}
+            className={`flex w-full cursor-pointer items-center gap-[10px] px-[14px] py-[10px] text-left text-[12.5px] hover:bg-bg-hover ${i < RECENT_INCIDENTS.length - 1 ? "border-b border-border" : ""}`}
           >
             <RiskBadge level={inc.sev} />
             <span className="w-[64px] font-mono text-[11.5px]">{inc.id}</span>
@@ -556,7 +557,7 @@ const IncidentsCard: FC = () => {
             >
               {inc.status}
             </Badge>
-            <span className="w-[40px] text-right font-mono text-[11px] text-muted-foreground">
+            <span className="w-[40px] text-right font-mono text-[11px] text-fg-muted">
               {inc.since}
             </span>
           </button>
@@ -576,16 +577,16 @@ function OverviewPageInner(): JSX.Element {
     <div className="flex flex-col gap-[14px] p-[18px]">
       {/* page head: subtitle + route pill (AppShellV2 already renders pageTitle in header) */}
       <header className="flex items-start justify-between">
-        <div className="text-[12.5px] text-muted-foreground">
+        <div className="text-[12.5px] text-fg-muted">
           {t("overview.subtitle")}
-          <span className="ml-2 rounded-[4px] bg-muted px-[6px] py-[1px] font-mono text-[11px]">
+          <span className="ml-2 rounded-[4px] bg-bg-2 px-[6px] py-[1px] font-mono text-[11px]">
             /overview
           </span>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
-            className="flex items-center gap-1 rounded-[6px] border border-border bg-card px-3 py-[6px] text-[12px] hover:bg-muted/40"
+            className="flex items-center gap-1 rounded-[6px] border border-border bg-bg-1 px-3 py-[6px] text-[12px] hover:bg-bg-hover"
           >
             <Download className="h-3.5 w-3.5" /> {t("overview.export")}
           </button>
@@ -628,7 +629,7 @@ function OverviewPageInner(): JSX.Element {
             <button
               type="button"
               onClick={() => navigate("/cost-dashboard")}
-              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+              className="flex items-center gap-1 text-[11px] text-fg-muted hover:text-foreground"
             >
               {t("overview.costBurn.details")} <ArrowRight className="h-3 w-3" />
             </button>
@@ -649,7 +650,7 @@ function OverviewPageInner(): JSX.Element {
             <button
               type="button"
               onClick={() => navigate("/error-policy")}
-              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+              className="flex items-center gap-1 text-[11px] text-fg-muted hover:text-foreground"
             >
               {t("overview.errors.policy")} <ArrowRight className="h-3 w-3" />
             </button>
@@ -664,46 +665,46 @@ function OverviewPageInner(): JSX.Element {
         <button
           type="button"
           onClick={() => navigate("/chat-v2")}
-          className="flex flex-1 flex-col items-start gap-[6px] rounded-[8px] border border-border bg-card p-3 text-left hover:bg-muted/40"
+          className="flex flex-1 flex-col items-start gap-[6px] rounded-[8px] border border-border bg-bg-1 p-3 text-left hover:bg-bg-hover"
         >
           <span className="flex items-center gap-[6px]">
             <MessageSquare className="h-3.5 w-3.5 text-primary" />
             <span className="text-[12.5px] font-medium">{t("overview.quick.newChat")}</span>
           </span>
-          <span className="text-[11px] text-muted-foreground">{t("overview.quick.newChatSub")}</span>
+          <span className="text-[11px] text-fg-muted">{t("overview.quick.newChatSub")}</span>
         </button>
         <button
           type="button"
           onClick={() => navigate("/governance")}
-          className="flex flex-1 flex-col items-start gap-[6px] rounded-[8px] border border-border bg-card p-3 text-left hover:bg-muted/40"
+          className="flex flex-1 flex-col items-start gap-[6px] rounded-[8px] border border-border bg-bg-1 p-3 text-left hover:bg-bg-hover"
         >
           <span className="flex items-center gap-[6px]">
             <Shield className="h-3.5 w-3.5 text-warning" />
             <span className="text-[12.5px] font-medium">{t("overview.quick.review")}</span>
           </span>
-          <span className="text-[11px] text-muted-foreground">{t("overview.quick.reviewSub")}</span>
+          <span className="text-[11px] text-fg-muted">{t("overview.quick.reviewSub")}</span>
         </button>
         <button
           type="button"
           onClick={() => navigate("/admin/tenants")}
-          className="flex flex-1 flex-col items-start gap-[6px] rounded-[8px] border border-border bg-card p-3 text-left hover:bg-muted/40"
+          className="flex flex-1 flex-col items-start gap-[6px] rounded-[8px] border border-border bg-bg-1 p-3 text-left hover:bg-bg-hover"
         >
           <span className="flex items-center gap-[6px]">
             <Users className="h-3.5 w-3.5 text-info" />
             <span className="text-[12.5px] font-medium">{t("overview.quick.tenants")}</span>
           </span>
-          <span className="text-[11px] text-muted-foreground">{t("overview.quick.tenantsSub")}</span>
+          <span className="text-[11px] text-fg-muted">{t("overview.quick.tenantsSub")}</span>
         </button>
         <button
           type="button"
           onClick={() => navigate("/verification")}
-          className="flex flex-1 flex-col items-start gap-[6px] rounded-[8px] border border-border bg-card p-3 text-left hover:bg-muted/40"
+          className="flex flex-1 flex-col items-start gap-[6px] rounded-[8px] border border-border bg-bg-1 p-3 text-left hover:bg-bg-hover"
         >
           <span className="flex items-center gap-[6px]">
             <CheckCheck className="h-3.5 w-3.5 text-success" />
             <span className="text-[12.5px] font-medium">{t("overview.quick.verification")}</span>
           </span>
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-[11px] text-fg-muted">
             {t("overview.quick.verificationSub")}
           </span>
         </button>

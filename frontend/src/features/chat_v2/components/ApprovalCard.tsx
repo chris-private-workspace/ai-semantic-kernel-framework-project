@@ -17,6 +17,7 @@
  * Last Modified: 2026-05-11
  *
  * Modification History:
+ *   - 2026-05-17: Sprint 57.20 Day 3 US-D1 — token migration text-muted-foreground→text-fg-muted; bg-muted-foreground→bg-fg-muted for new shell mockup consistency
  *   - 2026-05-11: Sprint 57.15 — inline styles → Tailwind utility classes; risk colours per STYLE.md §3 (AD-Inline-Style-Cleanup-Sweep)
  *   - 2026-05-04: Initial creation (Sprint 53.5 Day 4 US-2)
  *
@@ -85,10 +86,10 @@ export function ApprovalCard({ approvalRequestId }: Props) {
     }
   };
 
-  const riskTextClass = RISK_TEXT_CLASS[entry.riskLevel] ?? "text-muted-foreground";
+  const riskTextClass = RISK_TEXT_CLASS[entry.riskLevel] ?? "text-fg-muted";
   const isPending = entry.decision === null;
   const decisionBadgeClass =
-    DECISION_BADGE_CLASS[entry.decision ?? ""] ?? "bg-muted-foreground";
+    DECISION_BADGE_CLASS[entry.decision ?? ""] ?? "bg-fg-muted";
 
   return (
     <div
@@ -100,7 +101,7 @@ export function ApprovalCard({ approvalRequestId }: Props) {
         🔔 Approval requested —{" "}
         <span className={cn("font-bold", riskTextClass)}>{entry.riskLevel}</span> risk
       </div>
-      <div className="text-sm text-muted-foreground">
+      <div className="text-sm text-fg-muted">
         Request ID: <code>{approvalRequestId}</code>
       </div>
 

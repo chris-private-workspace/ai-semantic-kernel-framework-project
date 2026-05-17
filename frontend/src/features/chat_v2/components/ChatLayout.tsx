@@ -26,6 +26,7 @@
  * Last Modified: 2026-05-11
  *
  * Modification History (newest-first):
+ *   - 2026-05-17: Sprint 57.20 Day 3 US-D1 — token migration bg-muted→bg-bg-1 for new shell mockup consistency
  *   - 2026-05-11: Sprint 57.16 — inline styles → Tailwind utility classes (AD-Inline-Style-Cleanup-Sweep-Round2)
  *   - 2026-05-09: Sprint 57.8 D11 — drop internal header + 100vh adjustment for AppShellV2 wrap
  *   - 2026-04-30: Initial creation (Sprint 50.2 Day 3.6)
@@ -46,7 +47,7 @@ type Props = {
 export default function ChatLayout({ children }: Props): JSX.Element {
   return (
     <div className="grid h-[calc(100vh_-_6.5rem)] grid-cols-[240px_1fr_280px]">
-      <aside className="overflow-y-auto border-r border-border bg-muted p-4 text-sm text-foreground">
+      <aside className="overflow-y-auto border-r border-border bg-bg-1 p-4 text-sm text-foreground">
         <h3 className="mt-0 text-[13px] text-foreground/80">Sessions</h3>
         <p className="text-[13px] leading-relaxed text-foreground/80">
           Session list lands in Phase 51.x (when DB-backed session storage is wired).
@@ -56,7 +57,7 @@ export default function ChatLayout({ children }: Props): JSX.Element {
 
       <main className="flex flex-col overflow-hidden">{children}</main>
 
-      <aside className="overflow-y-auto border-l border-border bg-muted p-4 text-[13px] text-foreground">
+      <aside className="overflow-y-auto border-l border-border bg-bg-1 p-4 text-[13px] text-foreground">
         <h3 className="mt-0 text-[13px] text-foreground/80">Inspector</h3>
         <p className="text-[13px] leading-relaxed text-foreground/80">
           Token / cost tracker (52.1+), memory layer inspector (51.2),
