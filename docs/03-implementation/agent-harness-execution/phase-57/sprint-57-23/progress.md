@@ -182,3 +182,64 @@
 - AP-4 mockup-fidelity gain pair-verify — Playwright MCP batch capture deferred to Day 4 closeout
 
 ---
+
+## Day 2 — 2026-05-18
+
+### Today's Accomplishments
+
+- ✅ **US-C1 /auth/callback timed 3-step progress rewrite** complete
+  - REWRITE `frontend/src/pages/auth/callback/index.tsx` per mockup `page-extras.jsx:59-107`
+  - Conic-gradient spinning ring (48×48 outer with `animation: spin 1.2s linear infinite` + inline `style` escape hatch per STYLE.md §3 — Tailwind `animate-spin` default is 2s; mockup needs 1.2s)
+  - "Completing sign-in…" title 15px + `callback=acme.workos.com` mono 11.5px subtitle (i18n keys `callback.callbackUrlPrefix` + `callback.callbackUrlHost` for future tenant-specific override)
+  - 3-step progress list with timed `setTimeout` transitions (800ms / 1800ms / 2800ms) per mockup AuthCallback effect (L60-65)
+  - Steps show success-token-tinted check icon when `step > index`; else bg-bg-3 outline placeholder
+  - **Parallel bootstrap + min 2800ms enforce**: `await bootstrap()` runs in parallel; navigate dispatched after `Math.max(0, MIN_DURATION_MS - elapsed)` ms so all 3 steps render
+  - Error case preserved: `?error=` → EmptyState + Back to login (Sprint 57.13 behavior intact)
+  - Carryover: AD-Auth-Callback-Loading-UX-Phase58 (backend SSE per-step real status emission — current 3-step is frontend-only simulation)
+- ✅ **US-C2 /auth/register 4-step wizard NEW** complete
+  - NEW FILE `frontend/src/pages/auth/register/index.tsx` (~370L — slightly larger than planned ~280L due to per-step Field wrappers + inline confirm summary)
+  - 4-step wizard per mockup `page-auth-extras.jsx:31-188`: Identity → Organization → Plan → Confirm
+  - Stepper bar (4 circles + connector lines; active = primary bg / completed = primary + check icon / future = bg-3 border + fg-subtle text)
+  - **Step 0 Identity**: Work email input + Full name input + SAML hint (ShieldCheck icon)
+  - **Step 1 Organization**: Company name + Tenant slug (with `.ipa.platform` mono suffix) + Region dropdown (4 fixture options: ap-east-1 default / us-east-1 / eu-west-1 / ap-northeast-1) + Size dropdown (4 fixture options: 1-50 / 51-500 / 500-2000 default / 2000+)
+  - **Step 2 Plan**: 3 radio cards (Trial 14 days / Pro $1,200/mo defaultChecked / Enterprise Custom); `aria-label` per label (jsx-a11y/label-has-associated-control fix); `htmlFor`+`id` association per card
+  - **Step 3 Confirm**: hitl-card-style summary (success-token border + Check icon "Almost done — confirm your details") with KV rows for email/company/tenant slug/region/Plan badge + terms checkbox (default checked) + verification email hint (AlertTriangle warning icon)
+  - **Navigation**: Back button (steps 1-3) + Continue button (steps 0-2) / Create workspace primary button (step 3 → POST `/api/v1/tenants/register` → expect 501 → `errorStubbed` banner)
+  - **AP-2 demo banner** above stepper: "Backend wire pending Phase 58+ IAM Block B — register submit will return 501."
+  - File-header MHist
+- ✅ **App.tsx wiring**: + `RegisterPage = lazy(...)` + `<Route path="/auth/register" element={<RegisterPage />} />`
+- ✅ **i18n keys**: 5 `callback.*` keys + 25 `register.*` keys × 2 locales (en/auth.json + zh-TW/auth.json)
+- ✅ **NEW Vitest spec** `register.test.tsx` (5 cases): initial render step 0 + demo banner / Continue 0→1 / Back 1→0 / advances all 4 steps to Create button / 501 stub error surface
+
+### Day 2 Quality Gates
+
+| Gate | Status | Detail |
+|------|--------|--------|
+| `npx tsc --noEmit` | ✅ 0 errors | |
+| `npx vitest run` | ✅ **355/355 PASS** | Day 1 baseline 350 + 5 NEW register cases; 0 regression |
+| `npm run lint` | ✅ silent | Required `aria-label` on plan radio labels for jsx-a11y/label-has-associated-control rule (nested div text not recognized) |
+| `npx vite build` | ✅ 3.48s | Main bundle 325.48 kB (+2.24 KB vs Day 1 / +3.56 KB vs 321.92 kB Sprint 57.22 baseline; within +15 KB Day 2 target ✅) |
+| backend changes | ✅ 0 | git diff frontend + i18n + docs only |
+| LLM SDK leak | ✅ 0 | |
+
+### Day 2 D-DAY Drift Findings
+
+- **D-DAY2-1** (lint cascade): jsx-a11y/label-has-associated-control rule doesn't recognize text inside nested `<div>` children of `<label>` → needed `aria-label` workaround on plan radio cards (rule false-positive for visually-correct mockup pattern). Resolved same commit.
+
+### Remaining for Day 3
+
+- US-D1 /auth/invite/:token NEW (~120L)
+- US-D2 /auth/mfa NEW (~200L; TOTP 6-digit grid + WebAuthn ring)
+- US-D3 /auth/expired NEW (~90L)
+- Day 3 closeout: Vitest 355+~11-14 PASS + bundle within +30 KB
+
+### Notes
+
+- Day 2 actual hours: ~4-5 hr (vs informal target ~8 hr) → ~40-50% under early-bird. Reasons:
+  - Callback rewrite was small (3-step progress UI is ~50 lines net change)
+  - Register 4-step wizard was largest deliverable (~370L) but stepper + per-step body pattern lifted directly from mockup with mechanical conversion
+  - i18n key volume (30 keys × 2 locales = 60 strings) absorbed without slowdown
+- AP-2 demo banner discipline activated for /auth/register (first stub-501 page); pattern reusable for invite + mfa Day 3
+- Cumulative Day 0+1+2 actual: ~10-11 hr (sprint commit budget ~28 hr); ~37% of budget used; 2 days remain (Day 3-4 ~6-9 hr/day)
+
+---
