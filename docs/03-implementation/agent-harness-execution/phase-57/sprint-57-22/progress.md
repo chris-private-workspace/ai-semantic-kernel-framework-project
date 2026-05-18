@@ -55,8 +55,31 @@
 - Chat-v2 page-level 1: /chat-v2 (Phase-1 baseline confirmation)
 - Per-unit: Playwright MCP mockup capture + prod capture + diff matrix + severity + Strict 1:1 score + rebuild hour estimate
 
-### Day 1 Actuals
-- Time: _TBD_ (target ~5-6 hr)
+### Day 1 Actuals (2026-05-18)
+- Time: ~2.5 hr actual (vs target 5-6 hr) — significantly under estimate
+- Reason: most Auth pages (3-6) are missing routes in production = quick batched FAIL entries; Operations dashboards (cost/sla) returned HTTP 500 = simple severity assessment + carryover AD; /overview detailed audit (most thorough); /chat-v2 leverages Sprint 57.21 known Phase-1 baseline
+- Units completed: 1 /auth/login, 2 /auth/callback, 3 /auth/register, 4 /auth/invite, 5 /auth/mfa, 6 /auth/expired, 7 /overview, 8 /cost-dashboard, 9 /sla-dashboard, 10 /memory, 11 /verification, 12 /chat-v2 (page-level)
+- Key findings:
+  - **3 ZERO routes in production** (auth/register + auth/invite + auth/mfa + auth/expired = 4 actually) — entire self-serve onboarding + MFA + invitation flow missing
+  - **3 HTTP 500 routes** (cost-dashboard + sla-dashboard) — backend missing/broken for dev tenant; Sprint 56.3 Cost Ledger + Sprint 56.3 SLAMetricRecorder need debug
+  - **/overview Sprint 57.19 1:1 port preserved at layout 95%**, but typography (16px vs mockup 13px) + card chrome (shadcn Card vs mockup `.card` 12px) + missing micro-typography = ~60% Strict score
+  - **/auth/login 100% legacy Sprint 57.7 architecture** — totally different from mockup (no card chrome / wrong button count / different IdP flow)
+  - **/chat-v2 Phase-1 baseline ~75% score** — Sprint 57.21 D-DAY4-6/7/8 in-sprint fixes + 3-col shell + Inspector frame correct; Phase-2 widget gaps separately scored Day 2
+
+- 12 NEW carryover ADs surfaced Day 1:
+  - 🔴 AD-Auth-Page-Full-Rebuild-Round-2 (Phase 57.23+ TOP)
+  - AD-AuthShell-Mockup-Refactor
+  - AD-WorkOS-Multi-IdP-Phase58
+  - AD-Auth-Register-Full-Build-Phase58
+  - AD-Auth-Invite-Full-Build-Phase58
+  - AD-Auth-MFA-Full-Build-Phase58
+  - AD-Auth-Expired-Full-Build-Phase58
+  - AD-Auth-Callback-Loading-UX-Phase58
+  - AD-Mockup-Card-Primitive-Phase58
+  - AD-Mockup-Typography-Scale-Phase58
+  - AD-Cost-Dashboard-Full-Rebuild-Phase58 + AD-Cost-Ledger-Backend-Dev-Tenant-500
+  - AD-SLA-Dashboard-Full-Rebuild-Phase58 + AD-SLA-Backend-Dev-Tenant-500
+  - AD-Memory-Page-Full-Rebuild-Phase58 + AD-Memory-Scope-Role-Session-Phase58 + AD-Memory-Time-Travel-Phase58
 
 ---
 
