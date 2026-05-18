@@ -118,14 +118,36 @@
 
 ---
 
-## Day 3 — TBD (Admin + Misc; 17 sub-units)
+## Day 3 — 2026-05-18 (Admin + Misc; 17 sub-units)
 
-### Tasks
+### Tasks (planned)
 - Admin 10: tenants list / tenant-settings / feature-flags / quotas / hitl-policies / members / danger-zone / tenant-onboarding / pricing / domain-detail
 - Misc 7: models / tools / sse / devui (+ matrix + cat12 + sse sub-tabs) / a11y-audit / incidents / subagent-tree / jit-retrieval / cache-manager
 
-### Day 3 Actuals
-- Time: _TBD_ (target ~5-6 hr)
+### Day 3 Actuals (2026-05-18)
+- **Time**: ~2.5 hr actual (vs target 5-6 hr) — significantly under estimate (consistent with Day 2 ~3.5 hr; code-level audit ~2-2.5x faster than Day 1 Playwright-screenshot method)
+- **Units completed**: 30 (/admin/tenants) / 31 (/tenant-settings 6-tab) / 32-39 grouped (8 admin sub-routes) / 40 (/models) / 41 (/tools) / 42-46 grouped (7 misc routes + 2 bonus JIT/cache)
+- **CRITICAL architectural finding (Unit 31)**: mockup `page-admin.jsx` L427-438 reveals `/admin/feature-flags + quotas + hitl-policies + members + danger-zone` are NOT separate routes — they are **6 tabs within /admin/tenant-settings single page** (TenantSettings component with Tabs nav). Session-init prompt Day 3 listed them as separate audit items (incorrect interpretation). Audit reorganizes:
+  - **Unit 31 covers all 6 tabs** (General + FeatureFlags + Quotas + HITLPolicies + Members + DangerZone) as single audit entry with 7 NEW carryover ADs for per-tab rebuild
+  - **Unit 32-39 simplified** to 4 actual routes (tenant-onboarding + pricing + feature-flags-route-level + domain-detail) + 4 cross-references to Unit 31 tabs
+- **Key findings**:
+  - **2 real ships** (Sprint 57.x baselines): /admin/tenants (Sprint 57.4 83L AdminTenantsContent + Sprint 57.13 platform-admin role gate) + /tenant-settings (Sprint 57.3 29L wrapper + TenantSettingsView feature component; **only General tab; 5 of 6 mockup tabs absent**)
+  - **PROP stub epidemic continues**: 10 of 17 Day 3 units = 1-line ComingSoonPlaceholder re-exports (tenant-onboarding + pricing + 8 misc routes)
+  - **Routes not even in config (7 routes)**: /quotas + /hitl-policies + /members + /danger-zone (collapse to tenant-settings tabs per architectural finding) + /admin/domain-detail + /a11y-audit + /feature-flags (route registered but `active: false` + no page dir = dead route stub)
+  - **Architectural cleanup needed**: routes.config.ts has 1 dead route (/feature-flags `active: false`); top-level `/audit-log` (Day 2 Unit 22) + `/feature-flags` are both stub paths competing with their canonical nested locations
+  - **2 routes with no mockup designed**: /admin/domain-detail + /a11y-audit — scope-question carryover ADs needed before any rebuild
+  - **3-mockup-pages bonus**: /jit-retrieval + /cache-manager are in mockup page-platform2.jsx and were not originally in placeholder Unit 42-46 list — included as Bonus Units for completeness
+
+- **20+ NEW carryover ADs surfaced Day 3** (cumulative w/ Day 1+2: ~52 total):
+  - **Admin section (15 NEW)**: AD-Admin-Tenants-Full-Rebuild-Phase58 + AD-Admin-Tenants-Stats-Endpoint-Phase58 + AD-Admin-Tenants-Filter-Sort-Phase58 + 🔴 AD-Tenant-Settings-6-Tab-Full-Rebuild-Phase58 + AD-Tenant-Feature-Flags-Tab-Phase58 + AD-Tenant-Quotas-Tab-Phase58 + AD-Tenant-HITL-Policies-Tab-Phase58 + AD-Tenant-Members-Tab-Phase58 + AD-Tenant-Danger-Zone-Tab-Phase58 + AD-Tenant-Identity-SSO-Config-Phase58 + AD-Admin-Tenant-Onboarding-Wizard-Phase58 + AD-Tenant-Provisioning-Backend-Phase58 + AD-Admin-Pricing-Page-Full-Build-Phase58 + AD-Pricing-Stripe-Lago-Integration-Phase58 + AD-Pricing-WORM-Audit-Phase58
+  - **Architecture cleanup (2 NEW)**: AD-FeatureFlags-Route-Disambiguation-Phase58 + AD-Admin-Domain-Detail-Scope-Definition-Phase58
+  - **Misc section (12 NEW)**: AD-LLM-Models-Page-Full-Build-Phase58 + AD-Models-Provider-Endpoint-Phase58 + AD-Models-Fallback-Chain-Config-Phase58 + AD-Models-Cost-Aggregation-Phase58 + AD-Tools-Page-Full-Build-Phase58 + AD-Tools-Detail-Endpoint-Phase58 + AD-Tools-Register-Wizard-Phase58 + AD-Tools-OpenAPI-Export-Phase58 + AD-SSE-Inspector-Page-Phase58 + AD-Observability-SSE-Proxy-Endpoint-Phase58 + AD-DevUI-Page-Multi-Tab-Phase58 (subsumes 4 sub-tab ADs) + AD-Incidents-Page-Business-Domain-Phase58 + AD-Business-Domains-Matrix-Phase58 + AD-Subagent-Tree-Page-Phase58 + AD-JIT-Retrieval-Page-Phase58 + AD-Cache-Manager-Page-Phase58
+  - **Cross-cutting reaffirmed**: AD-Tool-Registry-Endpoint-Phase58 (Unit 15 shared) + AD-Cat11-Subagent-Tree-Endpoint-Phase58 (Unit 18 shared) + AD-Subagent-RealList-Phase58 (Sprint 57.12 carryover)
+
+- **Bottom-up rebuild hour estimate (Day 3 17 units)**: ~75-105 hr total
+  - Admin group: ~28-37 hr (Unit 30: 5-7 / Unit 31: 12-16 / Unit 32-39: ~14-19 from Unit 32 6-8 + Unit 33 5-7 + Unit 34 3-4 + Unit 39 TBD)
+  - Misc group: ~38-50 hr (Unit 40: 8-10 / Unit 41: 6-8 / Unit 42 SSE: 4-5 / Unit 43 DevUI: 6-8 / Unit 44 a11y: TBD / Unit 45 Incidents: 8-10 / Unit 46 SubagentTree: 5-6 / Bonus JIT: 5-7 / Bonus Cache: 4-6)
+  - **Day 1+2+3 cumulative**: ~200-265 hr Phase 57.23+ rebuild epic (Day 1 ~40-55 + Day 2 ~85-105 + Day 3 ~75-105)
 
 ---
 

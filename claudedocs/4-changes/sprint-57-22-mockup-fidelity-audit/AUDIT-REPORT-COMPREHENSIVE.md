@@ -1634,33 +1634,440 @@ export { default } from "../../components/ComingSoonPlaceholder";
 
 ## Group: Admin (10 units)
 
-### Unit 30: /admin/tenants
+### Unit 30: /admin/tenants (Multi-tenant lifecycle list)
 
-(Day 3 in-progress)
+**Audit method**: Code-level diff of mockup `page-admin.jsx` L335-409 `Tenants` component + Sprint 57.4 production `admin-tenants/index.tsx` (83L) + `AdminTenantsContent` data children (in feature components).
 
-### Unit 31: /tenant-settings
+**Last ported**: Sprint 57.4 US-4 → Sprint 57.8 US-4 (AppShellV2 wrap) → Sprint 57.9 US-6 → Sprint 57.13 US-A2 (platform-admin role gate). Pre-Sprint 57.18 mockup-integration foundation — no mockup-direct port done.
 
-(Day 3 in-progress)
+**Mockup source**: `reference/design-mockups/page-admin.jsx` L335-409 — `Tenants` component:
+- page-head: "Tenants" + sub "Multi-tenant lifecycle · RLS-isolated · feature flags + quotas per tenant" + route-pill `/admin/tenants` + actions [Export, New tenant]
+- grid-stats 4-card: Active tenants 48 (+3 up) / Total seats 284 (+18 up) / Agents deployed 612 (+24 up) / Anomalies 1 (+1 down)
+- "All tenants" card with table + filter toolbar (cmdk-style search "Filter by name, id, region…" + Plan: all filter + Sort: runs (24h)):
+  - Table cols: [Tenant (avatar circle + mono name + mono id subtle), Plan (Badge primary=Enterprise/info=Pro), Region (mono subtle), Seats (right tnum), Agents (right tnum), Runs · 24h (right tnum), Status (Badge dot: success=active/danger=anomaly/warning=other), Created (subtle), dots-menu]
 
-### Unit 32-39: /admin/feature-flags + quotas + hitl-policies + members + danger-zone + tenant-onboarding + pricing + domain-detail
+**Production**: `frontend/src/pages/admin-tenants/index.tsx` (83L) Sprint 57.4 + 57.13 polish:
+- RequireAuth + platform-admin role gate (Sprint 57.13 US-A2 — non-admin users see "needs permission" notice instead of mounting data hook)
+- AppShellV2 wrap
+- `<AdminTenantsContent>` data children (in feature components — not read in this audit pass)
+- Expected to fetch `GET /api/v1/admin/tenants` (platform-admin-only, no tenant scope) and render list
 
-(Day 3 in-progress)
+Inferred production state:
+- Likely shows tenant list with basic cols (name/id/plan); missing: 4-card KPI grid, advanced filter toolbar (search/plan-filter/sort), avatar circle, anomaly dot indicators, dots-menu actions
+- Visual chrome: Sprint 57.4 pre-mockup (16px / shadcn defaults)
+
+**Diff matrix**:
+
+| Field | Status | Detail |
+|-------|--------|--------|
+| Layout | ⚠️ PARTIAL | Production likely has tenant list table; missing 4-KPI grid, cmdk-style filter toolbar, advanced sort |
+| Typography | ❌ FAIL | Sprint 57.4 pre-mockup; 14-16px shadcn vs mockup 11.5-13px micro |
+| Spacing | ❌ FAIL | Pre-mockup |
+| Shadow / Radius | ❌ FAIL | shadcn Card vs mockup `.card` 12px |
+| Color | ⚠️ PARTIAL | Both dark theme; not Sprint 57.20 token-migrated |
+| Interactivity | ⚠️ PARTIAL | Production likely has list display + maybe row action; missing: search filter, plan-filter, sort, "New tenant" wizard, "Export" CSV |
+
+**Severity**: **STRUCTURAL** (key features missing: 4-KPI grid, filter toolbar, anomaly indicators)
+
+**Strict 1:1 score**: **30%** (Sprint 57.4 baseline preserves list semantic but visual chrome + advanced filtering all missing)
+
+**Estimated rebuild cost**: **5-7 hr**
+- Backend: KPI aggregation endpoint `GET /api/v1/admin/tenants/stats` (active count / total seats / agents deployed / anomalies) (1 hr)
+- Backend: tenant filter + sort query params (1 hr)
+- Backend: "Export" CSV endpoint (45 min)
+- Backend: "New tenant" wizard endpoint (uses Sprint 56.1 tenant lifecycle + onboarding — coordinate with Unit 32-39 tenant-onboarding) (1 hr)
+- Frontend rewrite AdminTenantsContent from mockup `page-admin.jsx` L335-409: 4-KPI grid + cmdk-style filter toolbar + advanced table cols (avatar + status dots + Plan badges) + dots-menu actions (2-3 hr)
+- Tests: filter + sort + role gate enforcement + KPI render (1-2 hr)
+
+**Action items** (Sprint 57.23+):
+1. Backend KPI + filter + export + tenant CRUD wizard endpoints
+2. Frontend AdminTenants rewrite from mockup
+3. **Coordinate with Unit 32 /admin/tenant-onboarding** — "New tenant" wizard same backend flow
+
+**Carryover ADs**:
+- 🆕 **AD-Admin-Tenants-Full-Rebuild-Phase58** (Sprint 57.4 → mockup-fidelity rebuild)
+- 🆕 **AD-Admin-Tenants-Stats-Endpoint-Phase58** (KPI aggregation)
+- 🆕 **AD-Admin-Tenants-Filter-Sort-Phase58** (backend query params)
+- AD-Mockup-Existing-Pages-Retrofit Tier 1 (Sprint 57.19 carryover — reaffirmed)
+
+### Unit 31: /tenant-settings (= /admin/tenant-settings mockup; 6-tab single page)
+
+**Audit method**: Code-level. **Critical architectural finding**: mockup organizes /admin/feature-flags + quotas + hitl-policies + members + danger-zone as **6 TABS within /admin/tenant-settings page**, NOT separate routes. Session-init prompt listed them as separate Day 3 routes (incorrect interpretation of mockup structure).
+
+**Last ported**: Sprint 57.3 US-5 → Sprint 57.8 US-4 (AppShellV2 wrap) → Sprint 57.13 US-A2 (RequireAuth gate).
+
+**Mockup source**: `reference/design-mockups/page-admin.jsx` L411-onwards — `TenantSettings` component:
+- page-head: "Tenant Settings" + sub showing `acme-prod` mono + tenant_id pill `tenant_01h9a2` + Badge "Pro · 8 seats" — **NO actions row** (no export / new — settings are inline editable)
+- **6-tab nav** (Tabs component):
+  - **General** — Display name input + Tenant id readonly + Default region select (3 options ap-east-1/us-east-1/eu-west-1) + Default locale select (zh-TW/en-US/ja-JP) + Data retention input (365 days)
+  - **Feature Flags** (count 14) — `<FeatureFlags />` sub-component
+  - **Quotas** — `<Quotas />` sub-component
+  - **HITL Policies** — `<HITLPolicies />` sub-component
+  - **Members** (count 8) — `<Members />` sub-component
+  - **Danger Zone** — `<DangerZone />` sub-component
+- General tab also has 2-col `grid-main`: General card (left) + Identity & SSO card (right):
+  - Identity & SSO card: Provider (Badge "SAML 2.0 · WorkOS") + SCIM (Badge dot success "enabled") + Allowed domains (mono "acme.com, acme.io") + MFA (Badge dot success "required") + Configure button
+
+**Production**: `frontend/src/pages/tenant-settings/index.tsx` (29L) — Sprint 57.3 baseline:
+- RequireAuth + AppShellV2 wrap with pageTitle="Tenant Settings"
+- Nested Routes with `<Route index element={<TenantSettingsView />} />` — single index route only
+- TenantSettingsView from `features/tenant-settings/components/` — NOT read this audit pass
+
+Inferred production state:
+- Likely Sprint 57.3 baseline has General tab content (display name / tenant id / region / locale / retention) but probably **flat single-tab UI**, NOT 6-tab structure
+- Missing: 5 of 6 tabs (Feature Flags / Quotas / HITL Policies / Members / Danger Zone) likely all absent
+- Visual chrome: Sprint 57.3 pre-mockup
+
+**Diff matrix**:
+
+| Field | Status | Detail |
+|-------|--------|--------|
+| Layout | ❌ FAIL | Mockup 6-tab nav vs production likely single-tab flat layout |
+| Typography | ❌ FAIL | Sprint 57.3 pre-mockup; 14-16px vs mockup 11.5-13px |
+| Spacing | ❌ FAIL | Pre-mockup |
+| Shadow / Radius | ❌ FAIL | shadcn vs mockup `.card` 12px |
+| Color | ⚠️ PARTIAL | Both dark theme; not Sprint 57.20 token-migrated |
+| Interactivity | ❌ FAIL | 5 of 6 tab content panels absent (Feature Flags / Quotas / HITL Policies / Members / Danger Zone); SCIM toggle / MFA gate / Allowed domains / Configure SAML SSO all missing |
+
+**Severity**: **STRUCTURAL** (5 of 6 tabs absent; critical SaaS Stage 2 self-serve admin UX gap)
+
+**Strict 1:1 score**: **15%** (Sprint 57.3 General tab baseline ~30% + 5 missing tabs heavy weight)
+
+**Estimated rebuild cost**: **12-16 hr** (largest single audit unit Day 3 due to 6-tab scope):
+- **General tab polish (1-2 hr)**: typography + card chrome + add Identity & SSO card (right column) with SCIM/MFA/domain badges + Configure SAML SSO button
+- **Feature Flags tab (3-4 hr)**: NEW backend `GET /api/v1/admin/tenants/{id}/flags` + `PATCH /flag/{key}` + frontend matrix with Switch per flag × 14 flags
+- **Quotas tab (2-3 hr)**: NEW backend `GET /api/v1/admin/tenants/{id}/quotas` + edit dialog for token/run/seat limits + Stripe billing tier coordination
+- **HITL Policies tab (3-4 hr)**: NEW backend `GET /api/v1/admin/tenants/{id}/hitl-policies` (per-tool risk policy: auto / ask_once / always_ask) + matrix editor; coordinate with Sprint 53.4 §HITL Centralization
+- **Members tab (2-3 hr)**: NEW backend `GET /api/v1/admin/tenants/{id}/members` + invite flow (uses Unit 4 /auth/invite from Day 1) + role assignment (uses Unit 29 RBAC from Day 2)
+- **Danger Zone tab (1-2 hr)**: NEW backend `DELETE /api/v1/admin/tenants/{id}` (tombstone + GDPR erasure) + `POST /api/v1/admin/tenants/{id}/suspend` + confirmation dialog with typed-name check
+- Tests: backend per-tab endpoints + frontend tab navigation + per-tab edit flows (2-3 hr)
+
+**Action items** (Sprint 57.23+; **largest Phase 57.23+ epic component**):
+1. Backend: 5 NEW endpoint groups (flags / quotas / hitl-policies / members / danger-zone) — coordinate Cat 9 + Cat 12 + Sprint 56.1 tenant lifecycle
+2. Frontend: 6-tab refactor of TenantSettingsView with per-tab sub-component
+3. **Coordinate with Unit 29 RBAC** — Members tab uses RBAC role assignment
+4. **Coordinate with /auth/invite Unit 4 from Day 1** — Members tab uses invite flow
+5. Decision: Quotas tab Stripe billing integration vs internal-only (Phase 56+ Stripe + Lago decision)
+
+**Carryover ADs** (largest single-unit AD cluster — 7 NEW ADs):
+- 🔴 **AD-Tenant-Settings-6-Tab-Full-Rebuild-Phase58** (largest Day 3 audit AD)
+- 🆕 **AD-Tenant-Feature-Flags-Tab-Phase58** (backend + frontend Switch matrix; **closes session-init prompt /admin/feature-flags single-route confusion**)
+- 🆕 **AD-Tenant-Quotas-Tab-Phase58** (backend + frontend editor)
+- 🆕 **AD-Tenant-HITL-Policies-Tab-Phase58** (backend per-tool policy + frontend matrix; coordinate Sprint 53.4)
+- 🆕 **AD-Tenant-Members-Tab-Phase58** (uses Unit 4 invite + Unit 29 RBAC)
+- 🆕 **AD-Tenant-Danger-Zone-Tab-Phase58** (tombstone + suspend + GDPR erasure)
+- 🆕 **AD-Tenant-Identity-SSO-Config-Phase58** (General tab right card: SAML/SCIM/MFA/Configure)
+
+### Unit 32-39: Remaining admin sub-routes (8 sub-units; **architectural reorganization required**)
+
+**Audit method**: Code-level + routes.config.ts grep + mockup file existence check.
+
+**Architectural finding** (from Unit 31 analysis): 5 of 8 session-init-prompt-listed admin sub-routes are actually **TABS within /admin/tenant-settings page** (Unit 31), NOT separate routes. Day 3 audit reorganizes:
+
+#### Unit 32: /admin/tenant-onboarding (separate route — wizard)
+
+**Production**: 1-line PROP stub:
+```typescript
+// frontend/src/pages/tenant-onboarding/index.tsx
+export { default } from "../../components/ComingSoonPlaceholder";
+```
+
+**Mockup**: `reference/design-mockups/page-platform2.jsx` L328-499 — `TenantOnboardingPage` 6-step wizard:
+- page-head: "Onboard Tenant" + sub "6-step wizard · provisioning audited end-to-end" + route-pill `/admin/tenant-onboarding` + actions [Cancel, Save draft]
+- **6-step stepper** with progress bar + clickable steps:
+  - Identity (Tenant name, slug, region)
+  - Plan (Pick capacity tier — coordinate with Unit 33 Pricing)
+  - SSO (SAML / OIDC config)
+  - Admin (First member invite)
+  - Agent (First agent template)
+  - Review & ship (Confirm & provision)
+- Per-step body: Field-based form with backend-validated input
+
+**Severity**: **FUNCTIONAL** (entire self-serve B2B SaaS Stage 2 onboarding absent — same severity as Unit 3 /auth/register Day 1)
+**Strict 1:1 score**: **0%**
+**Estimated rebuild cost**: **6-8 hr** (wizard component + 6 step forms + backend tenant provisioning endpoint — coordinate with Sprint 56.1 tenant lifecycle; backend likely partial)
+
+**Carryover ADs**:
+- 🆕 **AD-Admin-Tenant-Onboarding-Wizard-Phase58** (6-step wizard real ship)
+- 🆕 **AD-Tenant-Provisioning-Backend-Phase58** (coordinate Sprint 56.1)
+
+---
+
+#### Unit 33: /admin/pricing (separate route — pricing model editor)
+
+**Production**: 1-line PROP stub (`pages/pricing/index.tsx` → ComingSoonPlaceholder).
+
+**Mockup**: `page-platform2.jsx` L501-onwards — `PricingPage`:
+- page-head: "Pricing Model" + sub "Plan tiers + per-resource overage rates · WORM-audited on change" + route-pill `/admin/pricing` + Badge "platform admin" warning + actions [Versions, Publish new pricing]
+- **3-card plan grid** (PLANS array — Starter / Pro / Enterprise likely) with:
+  - "most picked" Badge (top-right per-card flag)
+  - Plan name + Price (28px / 700 / -0.02em letter-spacing) + period
+  - HR separator + KV list (Tokens / mo, etc.)
+  - Left-border tinted per plan (different colors)
+
+**Severity**: **FUNCTIONAL** (entire pricing config UI absent; blocks SaaS Stage 2 plan management)
+**Strict 1:1 score**: **0%**
+**Estimated rebuild cost**: **5-7 hr** (plan grid + version history + "Publish new pricing" wizard with WORM audit + Stripe billing coordination)
+
+**Carryover ADs**:
+- 🆕 **AD-Admin-Pricing-Page-Full-Build-Phase58**
+- 🆕 **AD-Pricing-Stripe-Lago-Integration-Phase58** (per Sprint 57.6 buy-vs-build decision Stripe + Lago)
+- 🆕 **AD-Pricing-WORM-Audit-Phase58** (Cat 12 audit log on each pricing change)
+
+---
+
+#### Unit 34: /feature-flags (route-level — separate from /admin/tenant-settings flags tab)
+
+**Production state**: Route registered in `routes.config.ts` with `active: false`; **no page directory** (`pages/feature-flags/` does not exist). This is **dead route stub**.
+
+**Mockup**: `reference/design-mockups/page-extras.jsx` contains a `/feature-flags` route-pill (per grep earlier) — likely a global/cross-tenant feature flags admin distinct from per-tenant flags tab in Unit 31.
+
+**Severity**: **FUNCTIONAL** (route declared but unwired; global feature-flag admin UI absent)
+**Strict 1:1 score**: **0%**
+**Estimated rebuild cost**: **3-4 hr** (CREATE pages/feature-flags/ + activate route + frontend cross-tenant feature flags table) — **OR** decision: remove dead route if /admin/tenant-settings flags tab is the canonical surface (and tenant-level flags only, no global flags)
+
+**Carryover ADs**:
+- 🆕 **AD-FeatureFlags-Route-Disambiguation-Phase58** (global cross-tenant flags vs tenant-level only — decision before building)
+
+---
+
+#### Unit 35-38 cross-reference: /admin/quotas + /hitl-policies + /members + /danger-zone (TABS within Unit 31)
+
+**Architectural finding**: These are NOT separate routes per mockup `page-admin.jsx` L427-438 — they are 4 of 6 tabs within `/admin/tenant-settings` (Unit 31). Production reality matches:
+- `/admin/tenant-settings` index Route does NOT have nested `/quotas` / `/members` / `/hitl-policies` / `/danger-zone` sub-routes
+- routes.config.ts has NO `path: "/quotas"` or `path: "/hitl-policies"` or `path: "/members"` or `path: "/danger-zone"` entries (confirmed via grep)
+
+**Action**: Day 3 audit collapses these into Unit 31. Full rebuild + 4 NEW tab components live under **AD-Tenant-Settings-6-Tab-Full-Rebuild-Phase58** (Unit 31 carryover AD).
+
+Cumulative carryover ADs (already opened in Unit 31):
+- AD-Tenant-Feature-Flags-Tab-Phase58
+- AD-Tenant-Quotas-Tab-Phase58
+- AD-Tenant-HITL-Policies-Tab-Phase58
+- AD-Tenant-Members-Tab-Phase58
+- AD-Tenant-Danger-Zone-Tab-Phase58
+
+---
+
+#### Unit 39: /admin/domain-detail (route does not exist; no mockup designed)
+
+**Production**: NOT in routes.config.ts; NO page directory.
+**Mockup**: NOT designed (no route-pill `/admin/domain-detail` found in any mockup file).
+
+**Severity**: **FUNCTIONAL** (route conceptually planned per Sprint 57.18 PROP/DRAFT placeholder; no mockup spec, no implementation)
+**Strict 1:1 score**: N/A — pure greenfield
+
+**Estimated rebuild cost**: **TBD until mockup designed** (range 4-8 hr depending on scope; domain = "tenant SSO domain detail page"? "DNS / WhoIs admin"? "internationalization domain"? — unclear semantic)
+
+**Action items**:
+1. **First**: design mockup for /admin/domain-detail OR clarify scope (or remove from Phase 57.23+ priority list)
+2. If kept: add to mockup tree + route + page
+
+**Carryover ADs**:
+- 🆕 **AD-Admin-Domain-Detail-Scope-Definition-Phase58** (clarify or drop)
+
+---
+
+#### Unit 32-39 group totals
+
+- **Real audit units done**: 4 (Unit 32 /admin/tenant-onboarding + Unit 33 /admin/pricing + Unit 34 /feature-flags + Unit 39 /admin/domain-detail scope-question)
+- **Cross-reference to Unit 31**: 4 (Unit 35-38 = tenant-settings tabs)
+- **Group rebuild cost**: ~14-19 hr (sum of Unit 32 6-8 + Unit 33 5-7 + Unit 34 3-4 + Unit 39 TBD)
+- **NEW carryover ADs (group-level)**: 6 + 1 disambiguation + 1 scope-definition
 
 ---
 
 ## Group: Misc (7 units)
 
-### Unit 40: /models
+### Unit 40: /models (LLM Models — Provider-neutral adapter registry)
 
-(Day 3 in-progress)
+**Audit method**: Code-level.
 
-### Unit 41: /tools
+**Production**: 1-line PROP stub (`pages/models/index.tsx` → ComingSoonPlaceholder).
 
-(Day 3 in-progress)
+**Mockup source**: `reference/design-mockups/page-models.jsx` (534L) L55-onwards — `LLMModels` (or similar) component:
+- page-head: "LLM Models" + sub "Range 6 · Provider-neutral adapters · 13 models across 6 providers" + route-pill `/models` + Badge "platform admin" warning + actions [Sync from adapters/, Register model]
+- grid-stats 4-KPI: Active providers (X/Y) / Registered models (count + delta) / Avg cost / 1M tok ($1.84 -$0.12) / Spend · MTD ($2,847 +8.4%)
+- Tab nav: Models(count) / Providers(count) / Fallback chains / (+ likely Health + Budgets per typical mockup pattern)
 
-### Unit 42-46: /sse + /devui + /a11y-audit + /incidents + /subagent-tree + /jit-retrieval + /cache-manager
+**Severity**: **FUNCTIONAL** (entire Range 6 LLM provider-neutral admin UI absent; provider switching / model registration / fallback chain config / cost tracking per model all missing)
 
-(Day 3 in-progress)
+**Strict 1:1 score**: **0%**
+
+**Estimated rebuild cost**: **8-10 hr**
+- Backend Cat 6 / adapters layer: `GET /api/v1/models` returning registered models with `{ id, provider, type (chat/embed), input_cost / output_cost, status (live/draft), capabilities }` (1 hr — likely some baseline via adapters/_base/)
+- Backend: `GET /api/v1/providers` returning provider connections + health (1 hr)
+- Backend: `GET /api/v1/models/fallback-chains` for chain config (45 min)
+- Backend: `POST /api/v1/models` register endpoint with adapter validation (1.5 hr)
+- Backend: cost aggregation `GET /api/v1/models/spend?window=mtd` (45 min)
+- Frontend NEW `LLMModelsPage` (534L mockup); tab-based with 3-5 tabs (2.5-3 hr)
+- Tests (1 hr)
+
+**Action items** (Sprint 57.23+):
+1. Verify Cat 6 adapter registry exists (likely yes; Sprint 53.2+ adapter-base + 7 adapters wired)
+2. Backend endpoints (models / providers / fallback / spend)
+3. Frontend page rewrite
+
+**Carryover ADs**:
+- 🆕 **AD-LLM-Models-Page-Full-Build-Phase58** (Cat 6 admin UI greenfield)
+- 🆕 **AD-Models-Provider-Endpoint-Phase58** (Cat 6 backend list)
+- 🆕 **AD-Models-Fallback-Chain-Config-Phase58** (Cat 6 chain editor)
+- 🆕 **AD-Models-Cost-Aggregation-Phase58** (Cat 12 + Cat 6 cross-cutting)
+
+### Unit 41: /tools (Tool Registry — 24 ToolSpecs)
+
+**Audit method**: Code-level.
+
+**Production**: 1-line PROP stub (`pages/tools/index.tsx` → ComingSoonPlaceholder).
+
+**Mockup source**: `reference/design-mockups/page-tools.jsx` (371L) L65-onwards — `Tools` (or similar) component:
+- page-head: "Tool Registry" + sub "24 ToolSpecs · LLM-neutral schema · sandbox + HITL bound per tool" + route-pill `/tools` + Badge "platform admin" warning + actions [Open registry repo, Export OpenAPI, Register tool]
+- **Domain filter row**: chip-style filter buttons (All N · per-domain counts) with primary-soft highlight on active filter
+- Main: tool list table + selected tool detail panel (likely with ToolSpec schema viewer + sandbox config + HITL policy binding)
+
+**Severity**: **FUNCTIONAL** (Cat 2 Tool Layer admin UI absent; critical observability gap — operators cannot inspect tool registry / sandbox bindings / per-tool HITL policy)
+
+**Strict 1:1 score**: **0%**
+
+**Estimated rebuild cost**: **6-8 hr** (shares backend with Unit 15 Composer Tools (24) picker — `AD-Tool-Registry-Endpoint-Phase58`):
+- Backend Cat 2: `GET /api/v1/tools` (reused from Unit 15 — 0 hr if Unit 15 done first; 1 hr if standalone)
+- Backend Cat 2: `GET /api/v1/tools/{name}` for tool detail with full ToolSpec + sandbox config + HITL binding (1 hr)
+- Backend Cat 2: `POST /api/v1/tools` register endpoint with sandbox-spec validation (1.5 hr)
+- Backend: `GET /api/v1/tools/export-openapi` (45 min)
+- Frontend NEW `ToolsPage` from mockup `page-tools.jsx`:
+  - Domain filter chip row (45 min)
+  - Tool list table with selected detail panel (2 hr)
+  - "Register tool" wizard (1.5 hr)
+- Tests (1 hr)
+
+**Action items** (Sprint 57.23+):
+1. **Coordinate with Unit 15 Composer Tools (24) picker** — same backend `AD-Tool-Registry-Endpoint-Phase58`
+2. Backend tool detail + register + export endpoints
+3. Frontend rewrite
+
+**Carryover ADs**:
+- 🆕 **AD-Tools-Page-Full-Build-Phase58** (Cat 2 admin UI greenfield)
+- AD-Tool-Registry-Endpoint-Phase58 (Unit 15 carryover — reaffirmed; shared backend)
+- 🆕 **AD-Tools-Detail-Endpoint-Phase58** (per-tool ToolSpec + sandbox + HITL)
+- 🆕 **AD-Tools-Register-Wizard-Phase58** (sandbox-spec validation flow)
+- 🆕 **AD-Tools-OpenAPI-Export-Phase58**
+
+### Unit 42-46: 7 misc routes grouped (sse / devui / a11y-audit / incidents / subagent-tree / jit-retrieval / cache-manager)
+
+**Audit method**: Code-level + routes.config.ts grep + mockup file existence check.
+
+#### Unit 42: /sse (SSE Inspector)
+
+**Production**: 1-line PROP stub.
+
+**Mockup**: `page-sse.jsx` (257L) L119-onwards — `SSE Inspector`:
+- page-head: "SSE Inspector" + observability sub-tab of /devui likely (per page-extras.jsx /devui route-pill mapping too)
+- Main: live SSE event stream viewer with filter + replay
+
+**Severity**: **STRUCTURAL** (Cat 12 observability gap — operators cannot inspect SSE streams)
+**Strict 1:1 score**: **0%**
+**Estimated rebuild cost**: **4-5 hr** (live SSE stream viewer + filter + replay; backend `GET /api/v1/observability/sse-stream` SSE proxy)
+**Carryover ADs**: 🆕 AD-SSE-Inspector-Page-Phase58 + AD-Observability-SSE-Proxy-Endpoint-Phase58
+
+---
+
+#### Unit 43: /devui (Developer UI — multi-tab observability hub)
+
+**Production**: 1-line PROP stub.
+
+**Mockup**: `page-extras.jsx` L394-onwards — `Developer UI`:
+- Multi-tab hub for developer-focused observability (likely matrix + cat12 + sse sub-tabs per session-init prompt "/devui (+ matrix + cat12 + sse sub-tabs)")
+
+**Severity**: **STRUCTURAL** (Cat 12 cross-cutting dev observability UI absent)
+**Strict 1:1 score**: **0%**
+**Estimated rebuild cost**: **6-8 hr** (multi-tab dev hub with matrix + Cat 12 traces + SSE live + per-sub-tab content)
+**Carryover ADs**: 🆕 AD-DevUI-Page-Multi-Tab-Phase58 + AD-DevUI-Matrix-Sub-Tab + AD-DevUI-Cat12-Sub-Tab + AD-DevUI-SSE-Sub-Tab (subsumes Unit 42)
+
+---
+
+#### Unit 44: /a11y-audit (Accessibility audit)
+
+**Production state**: Route NOT in routes.config.ts (per grep); no page directory.
+**Mockup**: NOT designed (no route-pill `/a11y-audit` found in mockup grep earlier).
+
+**Severity**: **FUNCTIONAL** (route conceptually planned per Sprint 57.18 PROP/DRAFT placeholder; no mockup, no implementation; **Sprint 57.13/57.14 jsx-a11y + axe + visual-regression are CI-tier infrastructure**, NOT a route-level audit page)
+
+**Strict 1:1 score**: N/A — pure greenfield + no spec
+
+**Estimated rebuild cost**: **TBD** (range 3-6 hr; depends on scope — operator-facing a11y audit run trigger? Cumulative results dashboard? Per-route axe report archive?)
+
+**Action**: Same as Unit 39 /admin/domain-detail — design mockup OR drop from priority list.
+
+**Carryover ADs**: 🆕 AD-A11y-Audit-Page-Scope-Definition-Phase58
+
+---
+
+#### Unit 45: /incidents (Business Domains / Incident management)
+
+**Production**: 1-line PROP stub.
+
+**Mockup**: TWO mockup locations:
+1. `page-extras.jsx` L708 "Business Domains" with /incidents route-pill — likely incident management business domain UI (Sprint 56 business domains coordinate)
+2. `page-platform2.jsx` /incidents route-pill (separate context)
+
+**Severity**: **FUNCTIONAL** (Business domain UI absent; one of 5 business domains per Sprint 51-55 business-services baseline; backend Sprint 55.1 shipped 5 domain services + 24 tools)
+
+**Strict 1:1 score**: **0%**
+
+**Estimated rebuild cost**: **8-10 hr** (incident list + detail + RCA timeline + correlation graph + 5-domain matrix; coordinates with Sprint 51-55 business-services backend + 24 tools)
+
+**Carryover ADs**:
+- 🆕 **AD-Incidents-Page-Business-Domain-Phase58** (incident management UI)
+- 🆕 **AD-Business-Domains-Matrix-Phase58** (cross-domain summary)
+- Sprint 55.1 business services coordinate (5 domains × 24 tools)
+
+---
+
+#### Unit 46: /subagent-tree (Standalone subagent tree visualization)
+
+**Production**: 1-line PROP stub.
+
+**Mockup**: `page-extras.jsx` L186-onwards — `Subagent Tree`:
+- Standalone full-page tree visualization (page-level variant of Unit 18 Inspector Tree tab)
+
+**Severity**: **STRUCTURAL** (page-level subagent tree absent; Cat 11 cross-session subtree visualization)
+
+**Strict 1:1 score**: **0%**
+
+**Estimated rebuild cost**: **5-6 hr** (page-level wrapper around Cat 11 tree component; shares backend with Unit 18 Inspector Tree)
+- **Coordinate with Unit 18 Inspector Tree tab + AD-Subagent-RealList-Phase58 (Sprint 57.12 carryover)** — shared component primitive `<SubagentTreeNode />`
+
+**Carryover ADs**:
+- 🆕 **AD-Subagent-Tree-Page-Phase58** (page-level variant)
+- AD-Cat11-Subagent-Tree-Endpoint-Phase58 (Unit 18 carryover — reaffirmed; shared backend)
+- AD-Subagent-RealList-Phase58 (Sprint 57.12 carryover — reaffirmed)
+
+---
+
+#### Bonus Unit: /jit-retrieval + /cache-manager
+
+These 2 routes are in mockup `page-platform2.jsx` per earlier grep but not in current Unit 42-46 placeholder. Listed in Day 3 session-init prompt scope.
+
+**/jit-retrieval** (page-platform2.jsx L29 "JIT Retrieval"):
+- Production: 1-line PROP stub
+- Mockup: JIT (Just-In-Time) memory/context retrieval admin page
+- **Severity**: STRUCTURAL (Cat 3 + Cat 4 cross-cutting; deferred backend)
+- **Estimated rebuild cost**: 5-7 hr
+- **AD**: 🆕 AD-JIT-Retrieval-Page-Phase58
+
+**/cache-manager** (page-platform2.jsx L146 "Cache Manager"):
+- Production: 1-line PROP stub
+- Mockup: Prompt cache + LLM response cache admin
+- **Severity**: STRUCTURAL (Cat 4 Context Mgmt + cache invalidation UX absent)
+- **Estimated rebuild cost**: 4-6 hr
+- **AD**: 🆕 AD-Cache-Manager-Page-Phase58 (coordinate Cat 4 + Sprint 52.1 prompt caching baseline)
+
+---
+
+#### Unit 42-46 + Bonus group totals
+
+- **Real audit units done**: 7 (Unit 42 SSE + Unit 43 DevUI + Unit 44 A11y-audit scope-question + Unit 45 Incidents + Unit 46 SubagentTree + Bonus JIT + Bonus Cache)
+- **Group rebuild cost**: ~35-46 hr (sum: 4-5 + 6-8 + TBD + 8-10 + 5-6 + 5-7 + 4-6)
+- **NEW carryover ADs (group-level)**: 11 + 1 disambiguation
 
 ---
 
