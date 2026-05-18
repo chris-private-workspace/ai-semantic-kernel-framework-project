@@ -140,7 +140,9 @@ test.describe("Sprint 57.13 US-B6 — accessibility scan", () => {
     await mockApi(page, null);
 
     await page.goto("/auth/login");
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    // Sprint 57.23 US-B2 rewrite intentionally removed the <h1>"IPA Platform V2 — Sign In"</h1>
+    // per mockup `page-extras.jsx:27-57` (heading-less card design). Anchor via AuthShell instead.
+    await expect(page.getByTestId("auth-shell")).toBeVisible();
     await page.waitForLoadState("networkidle");
     await scan(page, "/auth/login");
 

@@ -1,19 +1,20 @@
 /**
  * File: frontend/tests/unit/components/AuthShell.test.tsx
- * Purpose: Unit tests for Sprint 57.7 US-B2 (now AuthShell per Sprint 57.8 B1) + ThemeProvider + AppErrorBoundary.
+ * Purpose: Unit tests for AuthShell + ThemeProvider + AppErrorBoundary.
  * Category: Frontend / tests / unit / components
- * Scope: Phase 57 / Sprint 57.7 Day 3 Tier 3 → Sprint 57.8 US-4 (renamed AppShell → AuthShell per Day 0 Decision B1)
+ * Scope: Phase 57 / Sprint 57.7 Day 3 Tier 3 → Sprint 57.8 US-4 (renamed) → Sprint 57.23 US-B1 (mockup rewrite cascade)
  *
  * Description:
- *   4 tests covering Sprint 57.7 US-B2 components (renamed AppShell → AuthShell in 57.8):
- *   1. AuthShell renders children inside main + brand link
- *   2. AuthShell renders headerActions when provided
+ *   Tests covering Sprint 57.23 US-B1 AuthShell rewrite to mockup full-screen centered:
+ *   1. AuthShell renders children inside the data-testid="auth-shell" container + brand text
+ *   2. AuthShell renders footer slot when provided (Sprint 57.23 renamed from headerActions)
  *   3. ThemeProvider toggles html.dark class + persists to localStorage
  *   4. AppErrorBoundary catches thrown error + renders fallback + reset works
  *
  * Created: 2026-05-10 (Sprint 57.7 Day 3 Tier 3 — initial as AppShell.test.tsx)
  *
  * Modification History:
+ *   - 2026-05-18: Sprint 57.23 US-B1 — adapt AuthShell selectors for mockup rewrite (brand link → text; headerActions → footer)
  *   - 2026-05-10: Sprint 57.8 US-4 — rename test file + symbol references AppShell → AuthShell
  */
 
@@ -26,7 +27,7 @@ import { AuthShell } from "../../../src/components/AuthShell";
 import { ThemeProvider, useTheme } from "../../../src/components/ThemeProvider";
 
 describe("AuthShell", () => {
-  it("renders children inside the main slot + brand link", () => {
+  it("renders children inside the auth-shell container + brand text + subtitle", () => {
     render(
       <MemoryRouter>
         <AuthShell>
@@ -35,18 +36,20 @@ describe("AuthShell", () => {
       </MemoryRouter>,
     );
     expect(screen.getByText("hello cost dashboard")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "IPA Platform" })).toBeInTheDocument();
+    expect(screen.getByTestId("auth-shell")).toBeInTheDocument();
+    expect(screen.getByText("IPA Platform")).toBeInTheDocument();
+    expect(screen.getByText("V2 · loop-first")).toBeInTheDocument();
   });
 
-  it("renders headerActions when provided", () => {
+  it("renders footer slot when provided", () => {
     render(
       <MemoryRouter>
-        <AuthShell headerActions={<button>Refresh</button>}>
+        <AuthShell footer={<span>By signing in you agree to the Terms</span>}>
           <p>body</p>
         </AuthShell>
       </MemoryRouter>,
     );
-    expect(screen.getByRole("button", { name: "Refresh" })).toBeInTheDocument();
+    expect(screen.getByText(/By signing in you agree to the Terms/)).toBeInTheDocument();
   });
 });
 

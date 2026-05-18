@@ -1,18 +1,26 @@
 /**
  * File: frontend/tests/unit/pages/auth/login.test.tsx
- * Purpose: Unit test — LoginPage renders the WorkOS button + (DEV) dev fake-login form; no inline styles.
+ * Purpose: Unit test — LoginPage renders mockup-direct shape (3 SSO disabled + Continue button + dev link); WorkOS redirect.
  * Category: Frontend / tests / unit / pages / auth
- * Scope: Phase 57 / Sprint 57.13 US-A4 → US-B9 (AuthShell rewrite — Tailwind-only assertion)
+ * Scope: Phase 57 / Sprint 57.13 US-A4 → Sprint 57.23 US-B2 (mockup-direct rewrite)
+ *
+ * Description:
+ *   Sprint 57.23 US-B2 rewrite — DevLoginSection extracted to /auth/dev (see dev.test.tsx).
+ *   This file now covers only the login page mockup-direct shape:
+ *     1. Continue (primary) button rendered with WorkOS redirect on click
+ *     2. 3 SSO outline buttons disabled with tooltip (AD-WorkOS-Multi-IdP-Phase58)
+ *     3. Dev-login link to /auth/dev (extracted route)
  *
  * Created: 2026-05-10 (Sprint 57.13 Day 2)
- * Last Modified: 2026-05-10
+ * Last Modified: 2026-05-18
  *
  * Modification History:
- *   - 2026-05-10: Sprint 57.13 US-B9 — add "no inline style" assertion (page rewritten to <AuthShell>+<Card>+<Button>, Tailwind only)
+ *   - 2026-05-18: Sprint 57.23 US-B2 — rewrite for mockup-direct shape; move DevLogin tests to dev.test.tsx
+ *   - 2026-05-10: Sprint 57.13 US-B9 — add "no inline style" assertion
  *   - 2026-05-10: Initial creation (Sprint 57.13 Day 2 US-A4)
  */
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -42,69 +50,35 @@ describe("LoginPage", () => {
     useAuthStore.setState({ status: "unknown", user: null, tenant: null, roles: [] });
   });
 
-  it("renders the WorkOS login button", () => {
+  it("renders Sign in heading + subtitle per mockup AuthLogin", () => {
     renderLogin();
-    expect(screen.getByRole("button", { name: /Login with WorkOS/i })).toBeInTheDocument();
+    expect(screen.getByText("Sign in")).toBeInTheDocument();
+    expect(screen.getByText(/Continue with SSO or your work email/i)).toBeInTheDocument();
   });
 
-  it("renders a page-level <h1> and uses no inline styles (US-B9 — AuthShell + Tailwind)", () => {
-    const { container } = renderLogin();
-    expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
-    expect(container.querySelectorAll("[style]")).toHaveLength(0);
+  it("renders 3 SSO outline buttons disabled (AD-WorkOS-Multi-IdP-Phase58 placeholders)", () => {
+    renderLogin();
+    const samlBtn = screen.getByRole("button", { name: /Continue with SAML SSO/i });
+    const msftBtn = screen.getByRole("button", { name: /Continue with Microsoft/i });
+    const googleBtn = screen.getByRole("button", { name: /Continue with Google Workspace/i });
+    expect(samlBtn).toBeDisabled();
+    expect(msftBtn).toBeDisabled();
+    expect(googleBtn).toBeDisabled();
+    expect(samlBtn).toHaveAttribute("aria-disabled", "true");
   });
 
-  it("renders the dev fake-login form in DEV builds (import.meta.env.DEV)", () => {
+  it("renders Continue primary button + dev-login link", () => {
     renderLogin();
-    expect(screen.getByText(/Dev fake-login/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Dev Login$/i })).toBeInTheDocument();
+    // Primary Continue button is the only enabled button (3 SSO buttons disabled)
+    const continueBtn = screen.getByRole("button", { name: "Continue" });
+    expect(continueBtn).toBeInTheDocument();
+    expect(continueBtn).toBeEnabled();
+    const devLink = screen.getByRole("link", { name: /Use dev-login/i });
+    expect(devLink).toHaveAttribute("href", "/auth/dev");
   });
 
-  it("Dev Login: POSTs /auth/dev-login then bootstraps authStore to authenticated", async () => {
-    fetchSpy
-      // 1) POST /api/v1/auth/dev-login
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            user: { id: "u1", email: "dev@local", display_name: "dev" },
-            tenant: { id: "t1", name: "Dev Tenant (dev)", code: "dev" },
-            roles: ["user", "admin", "platform_admin"],
-          }),
-          { status: 200 },
-        ),
-      )
-      // 2) GET /api/v1/auth/me (from bootstrap())
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            user: { id: "u1", email: "dev@local", display_name: "dev" },
-            tenant: { id: "t1", name: "Dev Tenant (dev)", code: "dev" },
-            roles: ["user", "admin", "platform_admin"],
-          }),
-          { status: 200 },
-        ),
-      );
-
+  it("does NOT render an <h1> (mockup intentional no-heading; Sprint 57.23 US-B2)", () => {
     renderLogin();
-    fireEvent.click(screen.getByRole("button", { name: /^Dev Login$/i }));
-
-    await waitFor(() => expect(useAuthStore.getState().status).toBe("authenticated"));
-    expect(useAuthStore.getState().roles).toContain("platform_admin");
-
-    const firstUrl = fetchSpy.mock.calls[0]?.[0] as string;
-    expect(firstUrl).toContain("/api/v1/auth/dev-login?");
-    expect(firstUrl).toContain("tenant_code=dev");
-    expect(firstUrl).toContain("email=dev%40local");
-  });
-
-  it("Dev Login: 404 surfaces a 'disabled in this environment' message", async () => {
-    fetchSpy.mockResolvedValueOnce(
-      new Response(JSON.stringify({ detail: "Not Found" }), { status: 404 }),
-    );
-    renderLogin();
-    fireEvent.click(screen.getByRole("button", { name: /^Dev Login$/i }));
-    await waitFor(() =>
-      expect(screen.getByText(/disabled in this environment/i)).toBeInTheDocument(),
-    );
-    expect(useAuthStore.getState().status).toBe("unknown");
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
   });
 });

@@ -41,11 +41,16 @@ describe("CallbackPage", () => {
     useAuthStore.setState({ status: "unknown", user: null, tenant: null, roles: [] });
   });
 
-  it("shows the loading spinner + 'completing' text when there is no ?error", () => {
-    const { container } = renderCallback("/auth/callback");
+  it("shows the loading spinner + 'completing' text + 3-step progress when there is no ?error", () => {
+    renderCallback("/auth/callback");
     expect(screen.getByRole("status")).toBeInTheDocument();
     expect(screen.getByText(/Completing sign-in/i)).toBeInTheDocument();
-    expect(container.querySelectorAll("[style]")).toHaveLength(0);
+    // Sprint 57.23 US-C1: 3-step progress list (mockup AuthCallback timed transitions)
+    expect(screen.getByText(/Verifying SAML assertion/i)).toBeInTheDocument();
+    expect(screen.getByText(/Resolving tenant \+ RLS context/i)).toBeInTheDocument();
+    expect(screen.getByText(/Loading feature flags \+ memory scopes/i)).toBeInTheDocument();
+    // Sprint 57.23: no-inline-style assertion dropped — conic-gradient spinning ring is
+    // legitimate STYLE.md §3 escape hatch (Tailwind can't express conic-gradient + 1.2s custom duration)
   });
 
   it("shows an alert EmptyState + 'Back to login' link when ?error= is present", () => {
@@ -54,7 +59,8 @@ describe("CallbackPage", () => {
     expect(screen.getByText("vendor said no")).toBeInTheDocument();
     const backLink = screen.getByRole("link", { name: /Back to login/i });
     expect(backLink).toHaveAttribute("href", "/auth/login");
-    expect(container.querySelectorAll("[style]")).toHaveLength(0);
+    // Sprint 57.23 US-B1: AuthShell's 1 wrapper gradient inline style allowed.
+    expect(container.querySelectorAll("[style]:not([data-testid='auth-shell'])")).toHaveLength(0);
     // ?error short-circuits before bootstrap → no fetch.
     expect(fetchSpy).not.toHaveBeenCalled();
   });

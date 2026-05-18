@@ -61,16 +61,18 @@ describe("i18n bundle", () => {
   it("changeLanguage switches resolved translations", async () => {
     await i18n.changeLanguage("en");
     expect(i18n.t("nav.costDashboard", { ns: "common" })).toBe("Cost Dashboard");
-    expect(i18n.t("loginWithWorkOS", { ns: "auth" })).toBe("Login with WorkOS");
+    // Sprint 57.23 US-B2: loginWithWorkOS removed → login.continue per mockup
+    expect(i18n.t("login.continue", { ns: "auth" })).toBe("Continue");
 
     await i18n.changeLanguage("zh-TW");
     expect(i18n.t("nav.costDashboard", { ns: "common" })).toBe("成本儀表板");
-    expect(i18n.t("loginWithWorkOS", { ns: "auth" })).toBe("使用 WorkOS 登入");
+    expect(i18n.t("login.continue", { ns: "auth" })).toBe("繼續");
   });
 
   it("interpolates the dev-login error template", async () => {
     await i18n.changeLanguage("en");
-    expect(i18n.t("devSection.errorFailed", { ns: "auth", status: 503 })).toBe("dev-login failed (503)");
+    // Sprint 57.23 US-B3: devSection.* → dev.* per /auth/dev extraction
+    expect(i18n.t("dev.errorFailed", { ns: "auth", status: 503 })).toBe("dev-login failed (503)");
   });
 
   it("falls back to en for an unknown locale", async () => {
