@@ -101,42 +101,46 @@
 ## Day 2 — Governance + Chat-v2 Phase-2 + Remaining Mockup Pages (18 sub-units)
 
 ### 2.1 Governance Pages Audit (4 sub-units from `page-governance.jsx`)
-- [ ] **governance/approvals**:
-  - Mockup capture: `http://localhost:8080/#governance-approvals` → `screenshots/mockup/governance-approvals.png`
-  - Prod capture: `http://localhost:3007/governance` → `screenshots/prod/governance.png`
-  - AUDIT-REPORT entry; last ported Sprint 57.9 (pre-mockup) + Sprint 57.20 token migrate
-- [ ] **governance/redaction**:
-  - Mockup + prod (PROP stub) + AUDIT-REPORT entry
-- [ ] **governance/error-policy**:
-  - Mockup + prod (PROP stub) + AUDIT-REPORT entry
-- [ ] **governance/audit-log**:
-  - Mockup + prod (PROP stub) + AUDIT-REPORT entry
+- [x] **governance/approvals** (= Unit 19 /governance):
+  - Code-level audit: mockup `page-governance.jsx` L283-407 `Approvals` component spec extraction + prod `frontend/src/pages/governance/index.tsx` 75L Sprint 57.9 baseline state
+  - AUDIT-REPORT entry: STRUCTURAL severity, 25% score, 6-8 hr rebuild; carryover AD-Governance-Approvals-Full-Rebuild-Phase58 + AD-Approvals-Metrics-Endpoint-Phase58 + AD-Approvals-Status-Filter-Queries-Phase58
+- [x] **governance/redaction** (= Unit 20 /redaction PROP stub):
+  - Code-level audit: production 1-line ComingSoonPlaceholder re-export; mockup spec from `page-platform2.jsx` L254-313 RedactionPage
+  - AUDIT-REPORT entry: FUNCTIONAL severity, 0% score, 6-8 hr rebuild; 🆕 AD-Redaction-Page-Full-Build-Phase58 + AD-Redaction-Engine-Wire-Phase58 + AD-Redaction-Pattern-CRUD-Endpoints-Phase58
+- [x] **governance/error-policy** (= Unit 28 /error-policy; recategorized to operations platform group per Day 2 session-init prompt):
+  - Code-level audit: production 1-line ComingSoonPlaceholder; mockup spec from `page-platform.jsx` L426-554 ErrorPolicyPage
+  - AUDIT-REPORT entry: FUNCTIONAL severity, 0% score, 5-7 hr rebuild; 🆕 AD-Error-Policy-Page-Full-Build-Phase58 + AD-Errors-Backend-Endpoints-Phase58 + AD-Error-Policy-Editor-HITL-Gate-Phase58
+- [x] **governance/audit-log** (= Unit 22):
+  - Code-level audit: top-level `/audit-log` route in routes.config.ts but **no component directory** = dead PROP stub; actual AuditLogViewer at nested `/governance/audit-log` Sprint 57.9 US-4; mockup `page-governance.jsx` L658-771 AuditPage
+  - AUDIT-REPORT entry: STRUCTURAL severity, 20% score, 8-10 hr rebuild; carryover AD-Audit-Page-Full-Rebuild-Phase58 + AD-AuditLog-Route-Disambiguation-Phase58 + AD-Audit-Merkle-Endpoints-Phase58 + AD-Tripwires-Monitor-Endpoints-Phase58
 
 ### 2.2 Chat-v2 Phase-2 Widget Gap Audit (1 page-level + N widget-level sub-units)
-- [ ] **chat-v2 page-level**:
-  - Mockup capture: `http://localhost:8080/#chat-v2` → `screenshots/mockup/chat-v2.png`
-  - Prod capture: `http://localhost:3007/chat-v2/` → `screenshots/prod/chat-v2.png`
-  - AUDIT-REPORT entry; last ported Sprint 57.21 PR #152 (Phase-1 structural; Phase-2 widgets ComingSoon)
-- [ ] **Chat-v2 Phase-2 widget gap inventory** (sub-section in AUDIT-REPORT):
-  - Memory Block (Block type 5; mockup has READ/WRITE inline) → AD-ChatV2-Memory-Block-Phase2
-  - HITL FourAction (Approve-with-edits / Escalate-to-L2 + payload edit textarea + SLA countdown timer + audit_id footer) → AD-ChatV2-HITL-FourAction-Phase2
-  - Composer richness (attach + memory hint + tool select wired) → AD-ChatV2-Composer-Richness-Phase2
-  - Composer wire decision (replace InputBar / hybrid / revert) → AD-ChatV2-Composer-Wire-Phase2
-  - Inspector Trace tab content (Cat 12 OTel spans waterfall) → AD-ChatV2-Inspector-Trace-Phase2
-  - Inspector Memory tab content (Cat 3 memory ops feed) → AD-ChatV2-Inspector-Memory-Phase2
-  - Inspector SubagentTree tab content (Cat 11 live feed) → AD-ChatV2-Inspector-SubagentTree-Phase2
-  - SessionList backend wire (Cat 1 GET /api/v1/sessions) → AD-ChatV2-SessionList-Backend
-  - Cat 12 SSE trace_id propagation → AD-Cat12-SSE-Trace-Id-Phase2
+- [x] **chat-v2 page-level** (= Day 1 Unit 12):
+  - Code-level audit: Sprint 57.21 PR #152 ship; 3-col shell preserved + 4-block-type dispatcher + Inspector frame; mockup `page-chat.jsx` L73-92 ChatV2 + L93-121 ChatHeader
+  - AUDIT-REPORT entry: COSMETIC for shipped Phase-1; FUNCTIONAL for Phase-2 widget gaps; 75% page-level score; typography polish 2-3 hr
+- [x] **Chat-v2 Phase-2 widget gap inventory** (sub-section in AUDIT-REPORT — Day 2 Unit 13-18):
+  - [x] Memory Block (Unit 13): types.ts L194-239 Block union explicitly excludes Memory (4 of 5 mockup types ship); STRUCTURAL 0% score, 4-6 hr rebuild; coordinate w/ Unit 17 (shared Cat 3 SSE event); 🔴 AD-ChatV2-Memory-Block-Phase2 + 🆕 AD-Cat3-Memory-Op-SSE-Event-Phase58
+  - [x] HITL FourAction (Unit 14): HITLTurn.tsx L177-204 ships 2-action subset (Approve & continue + Reject); mockup 4-action (+Approve-with-edits + Escalate-to-L2 + scope badge + real audit_id); FUNCTIONAL 70% score, 3-4 hr rebuild; 🔴 AD-ChatV2-HITL-FourAction-Phase2 + 🆕 AD-Governance-Approved-With-Edits-Variant-Phase58 + AD-Governance-Escalation-L2-Routing-Phase58 + AD-HITL-AuditId-SSE-Emit-Phase58
+  - [x] Composer richness + wire (Unit 15 combined): Composer.tsx visual scaffolding 100% disabled NOT consumed; InputBar.tsx 5-state pill remains production send path; FUNCTIONAL 30% score, 6-8 hr rebuild; 🔴 AD-ChatV2-Composer-Richness-Phase2 + AD-ChatV2-Composer-Wire-Phase2 + 🆕 AD-Tool-Registry-Endpoint-Phase58 + AD-Memory-Scopes-Endpoint-Phase58 + AD-Attachments-Upload-Endpoint-Phase58
+  - [x] Inspector Trace tab content (Unit 16): ComingSoonInspectorTab placeholder vs mockup Cat 12 OTel 14-row gantt waterfall; STRUCTURAL 5% score, 5-7 hr rebuild; 🔴 AD-ChatV2-Inspector-Trace-Phase2 + 🆕 AD-Cat12-Span-SSE-Event-Phase58
+  - [x] Inspector Memory tab content (Unit 17): ComingSoonInspectorTab vs mockup Memory ops 4-row table; STRUCTURAL 5% score, 4-5 hr rebuild (shared backend Unit 13); 🔴 AD-ChatV2-Inspector-Memory-Phase2
+  - [x] Inspector SubagentTree tab content (Unit 18): ComingSoonInspectorTab vs mockup Subagent tree hierarchical with footer stats panel (Mode/Depth/Concurrency/Tokens); STRUCTURAL 5% score, 6-8 hr rebuild; 🔴 AD-ChatV2-Inspector-SubagentTree-Phase2 + 🆕 AD-Cat11-Subagent-Tree-Endpoint-Phase58 + AD-Cat11-Subagent-Status-SSE-Event-Phase58
+  - [ ] SessionList backend wire (Cat 1 GET /api/v1/sessions) → AD-ChatV2-SessionList-Backend — _deferred to Phase 57.23+; not a Day 2 audit unit (backend gap not visual gap)_
+  - [ ] Cat 12 SSE trace_id propagation → AD-Cat12-SSE-Trace-Id-Phase2 — _deferred to Phase 57.23+; backend wire not audit unit_
 
 ### 2.3 Remaining Mockup Pages Audit (9 sub-units)
-- [ ] **orchestrator** (from `page-platform.jsx`): mockup + prod + AUDIT-REPORT entry; last ported Sprint 57.19
-- [ ] **subagents** (from `page-platform2.jsx`): mockup + prod + AUDIT-REPORT entry; Sprint 57.19
-- [ ] **state-inspector** (from `page-platform.jsx`): mockup + prod + AUDIT-REPORT entry; Sprint 57.19
-- [ ] **admin-tenants** (from `page-admin.jsx`): mockup + prod + AUDIT-REPORT entry; Sprint 57.4 (pre-mockup)
-- [ ] **tenant-settings**: mockup + prod + AUDIT-REPORT entry; Sprint 57.3 (pre-mockup)
-- [ ] **verification** (from `page-extras.jsx`): mockup + prod + AUDIT-REPORT entry; Sprint 57.11 (pre-mockup)
-- [ ] **incidents** (from `page-extras.jsx`): mockup capture + prod (PROP stub) + AUDIT-REPORT entry
-- [ ] **tools / agents / models / sse** (4 PROP stubs): mockup capture each + prod PROP note + AUDIT-REPORT entry header-level only (depth-audit deferred to first sprint promoting stub to active)
+- [x] **orchestrator** (= Unit 23; from `page-agents.jsx` L8-310 not page-platform.jsx): COSMETIC 70% score, 3-5 hr polish; Sprint 57.19 644L baseline; carryover AD-Mockup-Existing-Pages-Retrofit Tier 1 + 🆕 AD-Orchestrator-Backend-Wires-Phase58
+- [x] **subagents** (= Unit 24; from `page-agents.jsx` L311+ SubagentsRegistry, not page-platform2.jsx): COSMETIC 70% score, 3-4 hr polish; Sprint 57.19 397L baseline; 🆕 AD-Subagent-Registry-CRUD-Phase58 + AD-Subagent-Repo-Sync-Phase58
+- [x] **state-inspector** (= Unit 25; from `page-platform.jsx` L21-167 ✓): COSMETIC 70% score, 3-5 hr polish; Sprint 57.19 366L baseline; 🆕 AD-State-Inspector-Diff-Restore-Phase58 + AD-State-Restore-HITL-Gate-Phase58
+- [ ] **admin-tenants** (from `page-admin.jsx`): mockup + prod + AUDIT-REPORT entry; Sprint 57.4 (pre-mockup) — _Day 3_
+- [ ] **tenant-settings**: mockup + prod + AUDIT-REPORT entry; Sprint 57.3 (pre-mockup) — _Day 3_
+- [x] **verification** (= Day 1 Unit 11): Sprint 57.11 pre-mockup; COSMETIC 40%, 3-4 hr token migrate + chrome rewrite
+- [ ] **incidents** (from `page-extras.jsx`): mockup capture + prod (PROP stub) + AUDIT-REPORT entry — _Day 3_
+- [ ] **tools / agents / models / sse** (4 PROP stubs): mockup capture each + prod PROP note + AUDIT-REPORT entry header-level only (depth-audit deferred to first sprint promoting stub to active) — _Day 3_
+- [x] **compaction** (= Unit 26 — NEW unit not in original checklist; from `page-platform.jsx` L168-270 Compaction): PROP stub FUNCTIONAL 0% score, 5-7 hr rebuild; 🆕 AD-Compaction-Page-Full-Build-Phase58 + AD-Compaction-Backend-Endpoints-Phase58 + AD-Design-System-Spark-Primitive-Phase58
+- [x] **workflows** (= Unit 27 — NEW unit; route does NOT exist in routes.config.ts; mockup `page-platform.jsx` L271-425 Workflows): FUNCTIONAL 0% score, 6-8 hr greenfield; 🆕 AD-Workflows-Page-Greenfield-Phase58 + AD-MAF-Workflow-Adapter-Endpoint-Phase58 + AD-Workflow-Step-Visualization-React-Flow-Phase58
+- [x] **loop-debug** (= Unit 21 — recategorized from operations group to governance per Day 2 prompt; from `page-governance.jsx` L4-263 LoopDebug): Sprint 57.12 STRUCTURAL 20% score, 8-10 hr rebuild (2-col layout + inspector + scrubber); 🆕 AD-LoopDebug-Full-Rebuild-Phase58 + AD-LoopEvent-Persistence-Endpoint-Phase58 + AD-LoopDebug-Replay-State-Machine-Phase58
+- [x] **rbac** (= Unit 29 — NEW unit; from `page-platform.jsx` L555-672 RBACPage): PROP stub FUNCTIONAL 0% score, 6-8 hr + IAM Block B backend coord; 🔴 AD-RBAC-Page-Full-Build-Phase58 + 🔴 AD-IAM-Block-B-RBAC-Backend-Phase58 + AD-RBAC-Permission-Matrix-CRUD-Endpoints-Phase58 + AD-RBAC-Audit-Log-Policy-Changes-Phase58
 
 ### 2.4 Priority Matrix + Sprint 57.23+ Recommendation
 - [ ] **AUDIT-REPORT Priority Matrix section**:
@@ -151,8 +155,8 @@
 - [ ] **AUDIT-REPORT total length ≥ 800 lines verified**
 
 ### 2.5 Day 2 Wrap
-- [ ] **progress.md Day 2 entry**: actual hour vs estimate (~4-5 hr target)
-- [ ] **Commit `feat(audit, sprint-57-22, Day 2): Governance + Chat-v2 Phase-2 + Remaining 18 sub-units + Priority Matrix`**
+- [x] **progress.md Day 2 entry**: actual ~3.5 hr vs target 5-6 hr (significantly under — code-level audit faster than screenshot-based); 17 sub-units complete; ~20+ NEW carryover ADs; bottom-up rebuild ~85-105 hr (Day 2 alone)
+- [ ] **Commit `feat(audit, sprint-57-22, Day 2): Unit 13-29 — Chat-v2 Phase-2 widgets + Governance + Operations Platform (17 sub-units)`** — _pending; PriorityMatrix per session-init prompt re-scoped to Day 4 (not Day 2 as original checklist drafted)_
 
 ---
 

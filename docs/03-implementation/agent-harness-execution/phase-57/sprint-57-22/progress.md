@@ -83,15 +83,38 @@
 
 ---
 
-## Day 2 — TBD (Chat-v2 Phase-2 widgets + Governance + Platform; 17 sub-units)
+## Day 2 — 2026-05-18 (Chat-v2 Phase-2 widgets + Governance + Platform; 17 sub-units)
 
-### Tasks
+### Tasks (planned)
 - Chat-v2 Phase-2 widgets 6: Memory Block / HITL FourAction / Composer richness / Inspector Trace+Memory+Tree
 - Governance 4: approvals / redaction / loop-debug / audit-log
 - Operations (platform) 7: orchestrator / subagents / state-inspector / compaction / workflows / error-policy / rbac
 
-### Day 2 Actuals
-- Time: _TBD_ (target ~5-6 hr)
+### Day 2 Actuals (2026-05-18)
+- **Time**: ~3.5 hr actual (vs target 5-6 hr) — significantly under estimate
+- **Reason for under-estimate**:
+  - Chat-v2 widgets 6 = code-level audit (read mockup `page-chat.jsx` 533L + 4 prod component files) — fast spec extraction without Playwright screenshots
+  - Governance 4 = 3 PROP-stub-or-pre-mockup pages + 1 missing top-level route quickly classified; mockup `page-governance.jsx` 773L read once for all 4 unit specs
+  - Operations Platform 7 = 3 Sprint 57.19 mockup-ports (COSMETIC, drift-catalog deferred to Sprint 57.19 DRIFT-REPORT) + 3 PROP stubs + 1 route-missing all classifiable in <30 min each via wc/cat + targeted mockup page-platform.jsx Read
+  - Audit methodology shift Day 1→Day 2: Day 1 used full mockup-vs-prod screenshot comparison for Group A; Day 2 leverages code-level diff + mockup excerpt Reads since severity classification + rebuild hour estimate is the deliverable (screenshots can be captured during Sprint 57.23+ retrofit execution)
+- **Units completed**: 13 (Memory Block) / 14 (HITL FourAction) / 15 (Composer Richness+Wire) / 16 (Inspector Trace) / 17 (Inspector Memory) / 18 (Inspector SubagentTree) / 19 (/governance approvals) / 20 (/redaction PROP stub) / 21 (/loop-debug) / 22 (/audit-log route ambiguity) / 23 (/orchestrator) / 24 (/subagents) / 25 (/state-inspector) / 26 (/compaction PROP stub) / 27 (/workflows route missing) / 28 (/error-policy PROP stub) / 29 (/rbac PROP stub)
+- **Key findings**:
+  - **6 chat-v2 widget gaps confirmed**: Memory Block missing from `types.ts` Block union (L239 — 4 of 5 mockup types ship); HITLTurn 2-action vs mockup 4-action (Approve-with-edits + Escalate-to-L2 deferred); Composer.tsx visual scaffolding NOT consumed (InputBar.tsx still the production send path); 3 Inspector tabs (Trace/Memory/Tree) = ComingSoonInspectorTab placeholder
+  - **4 governance results**: /governance approvals Sprint 57.9 pre-mockup STRUCTURAL (missing 4-KPI + 5-tab nav + 2-col with detail panel + 4-action UX); /redaction = **1-line PROP stub** (entire Cat 9 PII/secret redaction UI absent — GDPR + SOC 2 compliance gap); /loop-debug Sprint 57.12 STRUCTURAL (missing 2-col layout + inspector panel + 6-filter + scrubber + speed selector); /audit-log = **dead top-level PROP stub** while actual AuditLogViewer is at nested `/governance/audit-log` Sprint 57.9 US-4 (route disambiguation needed)
+  - **7 operations platform results**: /orchestrator + /subagents + /state-inspector = Sprint 57.19 mockup-port baseline COSMETIC (~70% Strict score; drift in DRIFT-REPORT.md); /compaction + /error-policy + /rbac = **1-line PROP stubs** FUNCTIONAL (each is a critical observability/governance gap); /workflows = **route does not exist in routes.config.ts** (entire MAF workflow management UI absent)
+  - **PROP stub epidemic detected**: 6 of 17 Day 2 units = 1-line PROP stubs (redaction, compaction, error-policy, rbac, plus admin pages from Day 3 likely follow pattern) — production has more routes registered than implemented; consistent with Sprint 57.18 PROP/DRAFT/SOON badge matrix design
+
+- **20+ NEW carryover ADs surfaced Day 2** (cumulative w/ Day 1: ~32 total):
+  - **Chat-v2 Phase-2** (6 reaffirmed from Sprint 57.21 + 4 NEW backend): AD-ChatV2-Memory-Block-Phase2 / AD-Cat3-Memory-Op-SSE-Event-Phase58 (shared widget+inspector) / AD-ChatV2-HITL-FourAction-Phase2 / AD-Governance-Approved-With-Edits-Variant-Phase58 / AD-Governance-Escalation-L2-Routing-Phase58 / AD-HITL-AuditId-SSE-Emit-Phase58 / AD-ChatV2-Composer-Richness-Phase2 + Wire-Phase2 / AD-Tool-Registry-Endpoint-Phase58 / AD-Memory-Scopes-Endpoint-Phase58 / AD-Attachments-Upload-Endpoint-Phase58 / AD-ChatV2-Inspector-Trace+Memory+Tree-Phase2 / AD-Cat12-Span-SSE-Event-Phase58 / AD-Cat11-Subagent-Tree-Endpoint-Phase58 / AD-Cat11-Subagent-Status-SSE-Event-Phase58
+  - **Governance Phase58 epic**: AD-Governance-Approvals-Full-Rebuild-Phase58 / AD-Approvals-Metrics-Endpoint-Phase58 / AD-Approvals-Status-Filter-Queries-Phase58 / AD-Redaction-Page-Full-Build-Phase58 / AD-Redaction-Engine-Wire-Phase58 / AD-Redaction-Pattern-CRUD-Endpoints-Phase58 / AD-LoopDebug-Full-Rebuild-Phase58 / AD-LoopEvent-Persistence-Endpoint-Phase58 / AD-LoopDebug-Replay-State-Machine-Phase58 / AD-Audit-Page-Full-Rebuild-Phase58 / AD-AuditLog-Route-Disambiguation-Phase58 / AD-Audit-Merkle-Endpoints-Phase58 / AD-Tripwires-Monitor-Endpoints-Phase58
+  - **Operations Platform Phase58 epic**: AD-Orchestrator-Backend-Wires-Phase58 / AD-Subagent-Registry-CRUD-Phase58 / AD-Subagent-Repo-Sync-Phase58 / AD-State-Inspector-Diff-Restore-Phase58 / AD-State-Restore-HITL-Gate-Phase58 / AD-Compaction-Page-Full-Build-Phase58 / AD-Compaction-Backend-Endpoints-Phase58 / AD-Design-System-Spark-Primitive-Phase58 / AD-Workflows-Page-Greenfield-Phase58 / AD-MAF-Workflow-Adapter-Endpoint-Phase58 / AD-Workflow-Step-Visualization-React-Flow-Phase58 / AD-Error-Policy-Page-Full-Build-Phase58 / AD-Errors-Backend-Endpoints-Phase58 / AD-Error-Policy-Editor-HITL-Gate-Phase58 / 🔴 **AD-RBAC-Page-Full-Build-Phase58** / 🔴 **AD-IAM-Block-B-RBAC-Backend-Phase58** (critical SaaS Stage 2 IAM Block B coordination)
+  - Cross-cutting: AD-Mockup-Card-Primitive-Phase58 + AD-Mockup-Typography-Scale-Phase58 (Day 1 carryover — reaffirmed by 17 Day 2 units)
+
+- **Bottom-up rebuild hour estimate (Day 2 17 units)**: ~85-105 hr total
+  - Chat-v2 Phase-2 widgets 6: ~28-38 hr (Unit 13: 4-6 / Unit 14: 3-4 / Unit 15: 6-8 / Unit 16: 5-7 / Unit 17: 4-5 / Unit 18: 6-8)
+  - Governance 4: ~28-34 hr (Unit 19: 6-8 / Unit 20: 6-8 / Unit 21: 8-10 / Unit 22: 8-10)
+  - Operations Platform 7: ~30-44 hr (Units 23-25 cosmetic polish: 9-14 / Unit 26: 5-7 / Unit 27: 6-8 / Unit 28: 5-7 / Unit 29: 6-8 + IAM Block B backend coord)
+  - Day 1 + Day 2 cumulative: ~125-160 hr Phase 57.23+ rebuild epic (Day 1 ~40-55 + Day 2 ~85-105)
 
 ---
 
