@@ -324,5 +324,32 @@
       "title": "與父版本差異",
       "noParent": "無父版本"
     }
+  },
+  "chat": {
+    "session": {
+      "title": "工作階段",
+      "newSession": "新增工作階段",
+      "filter": "篩選",
+      "status": {
+        "running": "進行中",
+        "hitl": "待審",
+        "done": "已完成"
+      },
+      "meta": {
+        "turns": "{{count}} 輪"
+      },
+      "demoBanner": "示範資料 — 後端 list 端點待 Sprint 57.22+ 接通（AD-ChatV2-SessionList-Backend）"
+    },
+    "header": {
+      "toggleList": "切換工作階段列表",
+      "toggleInspector": "切換 Inspector",
+      "providerNeutral": "provider: neutral",
+      "streaming": "串流中",
+      "loopButton": "Loop",
+      "auditButton": "稽核"
+    },
+    "inspector": {
+      "comingSoon": "Inspector 內容於 Sprint 57.21 Day 4（Turn 分頁）與 Sprint 57.22+（Trace / Memory / Tree 分頁）落地。"
+    }
   }
 }

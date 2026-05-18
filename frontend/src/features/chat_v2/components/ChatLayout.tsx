@@ -1,69 +1,103 @@
 /**
  * File: frontend/src/features/chat_v2/components/ChatLayout.tsx
- * Purpose: 3-column body — sessions sidebar / conversation / inspector sidebar.
+ * Purpose: 3-column chat shell — sessions sidebar / conversation center / inspector sidebar.
  * Category: Frontend / chat_v2 / components
- * Scope: Phase 50 / Sprint 50.2 (Day 3.6) → Sprint 57.8 D11 surgical fix → Sprint 57.16 Tailwind migration
+ * Scope: Phase 50 / Sprint 50.2 (Day 3.6) → 57.8 D11 surgical → 57.16 Tailwind → 57.20 token migration → 57.21 Day 3 §3.2 3-col rewrite
  *
  * Description:
- *   Minimal version of the layout sketched in 16-frontend-design.md Chat 頁面設計.
- *   Sprint 50.2 fills only the conversation column; sidebar + inspector are
- *   placeholders until 51.x (sessions list) and 52.x (inspector with token /
- *   memory layers / verifier state).
+ *   Mockup L73-91 `chat-shell` — three-column grid with collapsible side rails:
+ *     [SessionList 280px | ChatHeader + body + Composer 1fr | ChatInspector 360px]
  *
- *   Sprint 57.8 D11 surgical fix (preserved):
- *     - No internal <header> (AppShellV2 sticky header provides page title h1)
+ *   `listOpen` + `inspOpen` local state controls rail visibility. When a rail
+ *   collapses, the grid column width drops to 0 and the rail unmounts (zero
+ *   layout cost; preserves keyboard tab order). Mobile (<768px) hides both
+ *   rails permanently per Sprint 57.13 a11y standards (rails only meaningful
+ *   on operator desktops).
+ *
+ *   Center column composition:
+ *     - <ChatHeader> at top (sticky-feel via flex; no `position: sticky` —
+ *       avoids interaction with AppShellV2's own sticky header)
+ *     - children (TurnList + side panels + InputBar from chat-v2/index.tsx)
+ *
+ *   Sprint 57.21 Day 3 §3.2 preserves:
  *     - height = calc(100vh - 6.5rem) to fit inside AppShellV2 main column
- *       (subtracts AppShellV2 header 3.5rem + main p-6 vertical 3rem)
- *     - No own background colour (AppShellV2 provides bg-background)
- *     - No own fontFamily (inherits from AppShellV2 body)
- *
- *   Sprint 57.16 (AD-Inline-Style-Cleanup-Sweep-Round2): migrated to Tailwind
- *   utility classes; placeholder + h3 text use text-muted-foreground
- *   (≈ 4.6:1 on bg-muted — AA-compliant; prerequisite for re-enabling
- *   color-contrast on /chat-v2 in a11y-scan.spec.ts).
+ *     - No internal page-title <h1> (AppShellV2 sticky header provides h1)
+ *     - No own background (AppShellV2 provides bg-background)
  *
  * Created: 2026-04-30 (Sprint 50.2 Day 3.6)
- * Last Modified: 2026-05-11
+ * Last Modified: 2026-05-17
  *
  * Modification History (newest-first):
- *   - 2026-05-17: Sprint 57.20 Day 3 US-D1 — token migration bg-muted→bg-bg-1 for new shell mockup consistency
- *   - 2026-05-11: Sprint 57.16 — inline styles → Tailwind utility classes (AD-Inline-Style-Cleanup-Sweep-Round2)
+ *   - 2026-05-18: Sprint 57.21 Day 4 D-DAY4-7 — column widths align to mockup `chat-shell` (240/minmax(480,1fr)/320 vs Day 3 280/1fr/360); h-full (fullBleed parent fills viewport) instead of calc(100vh - 6.5rem)
+ *   - 2026-05-17: Sprint 57.21 Day 3 §3.2 — 2-col placeholder → 3-col with collapsible rails + ChatHeader + SessionList + ChatInspector
+ *   - 2026-05-17: Sprint 57.20 Day 3 US-D1 — token migration bg-muted→bg-bg-1
+ *   - 2026-05-11: Sprint 57.16 — inline styles → Tailwind utility classes
  *   - 2026-05-09: Sprint 57.8 D11 — drop internal header + 100vh adjustment for AppShellV2 wrap
  *   - 2026-04-30: Initial creation (Sprint 50.2 Day 3.6)
  *
  * Related:
- *   - 16-frontend-design.md §Chat 頁面設計
+ *   - reference/design-mockups/page-chat.jsx L73-91 (ChatV2 shell) + L93-121 (ChatHeader)
+ *   - ./SessionList.tsx (left rail mount)
+ *   - ./ChatHeader.tsx (top of center)
+ *   - ./inspector/ChatInspector.tsx (right rail mount — Day 3 stub, Day 4 full)
  *   - frontend/src/components/AppShellV2.tsx (page-level shell consumer)
- *   - MessageList / InputBar (Day 4)
- *   - frontend/STYLE.md §2 (verified tokens: bg-muted / text-muted-foreground / text-foreground / border-border)
+ *   - frontend/STYLE.md §2 (verified tokens: bg-bg-1 / text-fg / border-border)
  */
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+
+import { cn } from "@/lib/utils";
+
+import { ChatHeader } from "./ChatHeader";
+import { ChatInspector } from "./inspector/ChatInspector";
+import { SessionList } from "./SessionList";
 
 type Props = {
   children: ReactNode;
 };
 
 export default function ChatLayout({ children }: Props): JSX.Element {
+  const [listOpen, setListOpen] = useState(true);
+  const [inspOpen, setInspOpen] = useState(true);
+
   return (
-    <div className="grid h-[calc(100vh_-_6.5rem)] grid-cols-[240px_1fr_280px]">
-      <aside className="overflow-y-auto border-r border-border bg-bg-1 p-4 text-sm text-foreground">
-        <h3 className="mt-0 text-[13px] text-foreground/80">Sessions</h3>
-        <p className="text-[13px] leading-relaxed text-foreground/80">
-          Session list lands in Phase 51.x (when DB-backed session storage is wired).
-          For now, each page reload starts a new in-memory session.
-        </p>
-      </aside>
+    <div
+      data-testid="chat-shell"
+      data-list={listOpen ? "open" : "hidden"}
+      data-insp={inspOpen ? "open" : "hidden"}
+      className={cn(
+        "grid h-full w-full",
+        // Mobile: hide both rails.
+        "grid-cols-[1fr]",
+        // ≥768px: render rails based on open state (md-and-up).
+        // Column widths mirror mockup `chat-shell` exactly (styles.css §669-678).
+        listOpen && inspOpen && "md:grid-cols-[240px_minmax(480px,1fr)_320px]",
+        listOpen && !inspOpen && "md:grid-cols-[240px_minmax(480px,1fr)]",
+        !listOpen && inspOpen && "md:grid-cols-[minmax(480px,1fr)_320px]",
+        !listOpen && !inspOpen && "md:grid-cols-[minmax(0,1fr)]",
+      )}
+    >
+      {listOpen && (
+        <aside className="hidden border-r border-border md:block">
+          <SessionList />
+        </aside>
+      )}
 
-      <main className="flex flex-col overflow-hidden">{children}</main>
+      <main className="flex min-w-0 flex-col overflow-hidden">
+        <ChatHeader
+          listOpen={listOpen}
+          inspOpen={inspOpen}
+          onToggleList={() => setListOpen((o) => !o)}
+          onToggleInsp={() => setInspOpen((o) => !o)}
+        />
+        <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
+      </main>
 
-      <aside className="overflow-y-auto border-l border-border bg-bg-1 p-4 text-[13px] text-foreground">
-        <h3 className="mt-0 text-[13px] text-foreground/80">Inspector</h3>
-        <p className="text-[13px] leading-relaxed text-foreground/80">
-          Token / cost tracker (52.1+), memory layer inspector (51.2),
-          verification status (54.1) — coming in later sprints.
-        </p>
-      </aside>
+      {inspOpen && (
+        <div className="hidden md:block">
+          <ChatInspector />
+        </div>
+      )}
     </div>
   );
 }

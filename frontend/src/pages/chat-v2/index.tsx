@@ -21,6 +21,7 @@
  * Last Modified: 2026-05-09
  *
  * Modification History (newest-first):
+ *   - 2026-05-17: Sprint 57.21 Day 3 §3.2 — swap MessageList → TurnList (AD-ChatV2-Full-Mockup-Fidelity Phase-1)
  *   - 2026-05-10: Sprint 57.13 US-A1 — gate via <RequireAuth> (was inline isAuthenticated() check)
  *   - 2026-05-10: Sprint 57.12 US-6 §3.8 — mount inline LoopVisualizer + SubagentTree panels
  *   - 2026-05-09: Sprint 57.8 US-5 Day 3 — auth gate + AppShellV2 wrap (real ship)
@@ -39,7 +40,7 @@ import { AppShellV2 } from "@/components/AppShellV2";
 import { RequireAuth } from "@/features/auth/components/RequireAuth";
 import ChatLayout from "@/features/chat_v2/components/ChatLayout";
 import InputBar from "@/features/chat_v2/components/InputBar";
-import MessageList from "@/features/chat_v2/components/MessageList";
+import { TurnList } from "@/features/chat_v2/components/TurnList";
 import { LoopVisualizer } from "@/features/orchestrator-loop/components/LoopVisualizer";
 import { SubagentTree } from "@/features/subagent/components/SubagentTree";
 import { VerificationPanel } from "@/features/verification/components/VerificationPanel";
@@ -47,11 +48,11 @@ import { VerificationPanel } from "@/features/verification/components/Verificati
 export default function ChatV2Page(): JSX.Element {
   return (
     <RequireAuth>
-      <AppShellV2 pageTitle="Chat (V2)">
+      <AppShellV2 pageTitle="Chat (V2)" fullBleed>
         <ChatLayout>
-          <MessageList />
+          <TurnList />
           {/* Inline panels — each renders null when no events; mounted between
-              the message stream and input. Sprint 57.11 US-5 (verification) +
+              the turn stream and input. Sprint 57.11 US-5 (verification) +
               Sprint 57.12 US-4 (loop) + US-6 (subagent). */}
           <VerificationPanel />
           <SubagentTree />

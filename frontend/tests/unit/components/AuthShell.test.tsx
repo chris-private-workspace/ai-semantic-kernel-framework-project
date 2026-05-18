@@ -76,15 +76,17 @@ describe("ThemeProvider", () => {
         <Toggler />
       </ThemeProvider>,
     );
-    // Initial state: light (matchMedia jsdom default does not match prefers-dark)
-    expect(screen.getByText(/theme=light/)).toBeInTheDocument();
-    expect(document.documentElement.classList.contains("dark")).toBe(false);
-
-    // Toggle once → dark
-    fireEvent.click(screen.getByRole("button", { name: "toggle" }));
+    // Sprint 57.21 Day 4 D-DAY4-6: dark is now the default (Sprint 57.20 mockup
+    // dark-default intent — no matchMedia OS-preference path).
     expect(screen.getByText(/theme=dark/)).toBeInTheDocument();
     expect(document.documentElement.classList.contains("dark")).toBe(true);
     expect(window.localStorage.getItem("ipa-theme")).toBe("dark");
+
+    // Toggle once → light (user opt-out)
+    fireEvent.click(screen.getByRole("button", { name: "toggle" }));
+    expect(screen.getByText(/theme=light/)).toBeInTheDocument();
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+    expect(window.localStorage.getItem("ipa-theme")).toBe("light");
   });
 });
 

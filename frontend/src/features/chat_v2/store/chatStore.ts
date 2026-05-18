@@ -1,37 +1,46 @@
 /**
  * File: frontend/src/features/chat_v2/store/chatStore.ts
- * Purpose: Zustand store for chat-v2 — accumulates messages from SSE events.
+ * Purpose: Zustand store for chat-v2 — Turn-based reducer for SSE LoopEvent stream.
  * Category: Frontend / chat_v2 / store
- * Scope: Phase 50 / Sprint 50.2 (Day 3.3)
+ * Scope: Phase 50 / Sprint 50.2 + Phase 57.21 (Day 1 — Turn block sequence rewrite)
  *
  * Description:
- *   Single Zustand store holding session state + rendered messages list.
- *   Action `mergeEvent(ev)` is the canonical reducer that transforms raw
- *   LoopEvent stream into UI-friendly Message[] and tool-call card state.
+ *   Single Zustand store holding session metadata + Turn[] + SessionList sidebar
+ *   state + Sprint 57.x cross-cutting slices (rawEvents / approvals / verifications
+ *   / subagents) that are still consumed by non-chat components.
  *
- *   Folding rules:
- *     - loop_start         → reset state, set sessionId
- *     - turn_start         → no-op (UI doesn't render turn boundaries directly)
- *     - llm_request        → no-op (covered by next llm_response)
- *     - llm_response       → push assistant Message; carry tool_calls into card array
- *     - tool_call_request  → ensure toolCallEntry exists on current assistant message
- *     - tool_call_result   → merge result/is_error/duration into matching toolCallEntry
- *     - loop_end           → set status=completed + total_turns + stop_reason
+ *   Sprint 57.21 mergeEvent rewrite — folds 14 SSE event types into Turn blocks:
+ *     - loop_start         → set sessionId + status=running (preserve turns)
+ *     - turn_start         → push new AgentTurn with empty blocks + null metadata
+ *     - llm_request        → update active AgentTurn.tokensIn
+ *     - llm_response       → append ThinkingBlock (if thinking) + ToolBlock per tool_call
+ *     - tool_call_request  → defensive append ToolBlock if missing (rare path)
+ *     - tool_call_result   → update matching ToolBlock status/output/durationMs
+ *     - loop_end           → set status=completed + active turn stopReason
+ *     - approval_requested → push HITLTurn + update approvals dict (dual-emit)
+ *     - approval_received  → update HITLTurn decision + approvals dict (dual-emit)
+ *     - guardrail_triggered → rawEvents only (Phase-2+ may render warning)
+ *     - verification_*     → append VerificationBlock + verifications slice (dual-emit)
+ *     - subagent_spawned   → append/extend SubagentForkBlock + subagents slice (dual-emit)
+ *     - subagent_completed → update SubagentEntry.status + subagents slice (dual-emit)
  *
- *   Each ChatRequest the user sends must be preceded by `pushUserMessage` to
- *   record their input in the rendered list before the SSE stream starts.
+ *   Dual-emit pattern preserves Sprint 57.11 inline VerificationPanel + Sprint 57.12
+ *   SubagentTree behavior (they consume verifications + subagents slices) while
+ *   ALSO feeding the new Turn block render path for /chat-v2 mockup-fidelity.
  *
  * Created: 2026-04-30 (Sprint 50.2 Day 3.3)
- * Last Modified: 2026-04-30
+ * Last Modified: 2026-05-17
  *
  * Modification History:
- *   - 2026-05-10: Sprint 57.12 US-6 — add subagents slice + reducers + mergeEvent SSE branch (closes AD-Cat11-SSEEvents)
+ *   - 2026-05-17: Sprint 57.21 Day 1 — mergeEvent SSE → Turn block sequence; dual-emit
+ *   - 2026-05-10: Sprint 57.12 US-6 — subagents slice + reducers (AD-Cat11-SSEEvents)
  *   - 2026-04-30: Initial creation (Sprint 50.2 Day 3.3)
  *
  * Related:
- *   - ../types.ts (LoopEvent + Message + ToolCallEntry)
+ *   - ../types.ts (LoopEvent + Turn + Block + Session)
  *   - ../hooks/useLoopEventStream.ts (calls mergeEvent per SSE chunk)
- *   - ../../subagent/types.ts (SubagentNode UI tree node)
+ *   - ../../subagent/types.ts (SubagentNode UI tree node — Sprint 57.12)
+ *   - reference/design-mockups/page-chat.jsx (Turn block visual target)
  */
 
 import { create } from "zustand";
@@ -39,35 +48,48 @@ import { create } from "zustand";
 import type { SubagentNode } from "../../subagent/types";
 import type { VerificationEvent } from "../../verification/types";
 import type {
+  AgentTurn,
   ApprovalEntry,
+  Block,
   ChatMode,
   ChatStatus,
+  HITLTurn,
   LoopEvent,
-  Message,
-  ToolCallEntry,
+  RiskSeverity,
+  Session,
+  SubagentEntry,
+  SubagentForkBlock,
+  Turn,
 } from "../types";
 
 type ChatStoreState = {
+  // Session metadata (preserved)
   sessionId: string | null;
   status: ChatStatus;
   totalTurns: number;
   stopReason: string | null;
   errorMessage: string | null;
   mode: ChatMode;
-  messages: Message[];
+
+  // Sprint 57.21: Turn-based rendering replaces messages: Message[]
+  turns: Turn[];
+
+  // Sprint 57.21: SessionList sidebar state (Day 3 populates from fixture)
+  sessions: Session[];
+  activeSessionId: string | null;
+
+  // Preserved cross-cutting slices (Sprint 57.x components still use these)
   rawEvents: LoopEvent[];
-  // Sprint 53.5 US-2: HITL approval cards keyed by request_id (dedup-safe).
   approvals: Record<string, ApprovalEntry>;
-  // Sprint 57.11 US-5: Cat 10 verification events for inline VerificationPanel
-  // (chronological append; cleared on reset / new session).
   verifications: VerificationEvent[];
-  // Sprint 57.12 US-6: Cat 11 subagent tree nodes for inline SubagentTree
-  // (keyed-update by subagent_id; cleared on reset / new session).
   subagents: SubagentNode[];
-  // actions
+
+  // Actions
   setMode: (m: ChatMode) => void;
   setStatus: (s: ChatStatus) => void;
   setError: (msg: string | null) => void;
+  setSessions: (sessions: Session[]) => void;
+  setActiveSessionId: (id: string | null) => void;
   pushUserMessage: (content: string) => void;
   mergeEvent: (ev: LoopEvent) => void;
   appendVerification: (event: VerificationEvent) => void;
@@ -83,7 +105,9 @@ const _initial = (): Pick<
   | "totalTurns"
   | "stopReason"
   | "errorMessage"
-  | "messages"
+  | "turns"
+  | "sessions"
+  | "activeSessionId"
   | "rawEvents"
   | "approvals"
   | "verifications"
@@ -94,15 +118,50 @@ const _initial = (): Pick<
   totalTurns: 0,
   stopReason: null,
   errorMessage: null,
-  messages: [],
+  turns: [],
+  sessions: [],
+  activeSessionId: null,
   rawEvents: [],
   approvals: {},
   verifications: [],
   subagents: [],
 });
 
-let _msgCounter = 0;
-const nextMsgId = (): string => `m_${++_msgCounter}`;
+let _turnCounter = 0;
+const nextTurnId = (): string => `t_${++_turnCounter}`;
+
+const nowIso = (): string => new Date().toISOString();
+
+/**
+ * Map backend risk_level string (e.g. "HIGH" / "high" / "Critical") to the
+ * frontend RiskSeverity token. Defensive default = "risk-medium".
+ */
+const mapRiskLevel = (s: string): RiskSeverity => {
+  const k = s.toLowerCase();
+  if (k.includes("critical")) return "risk-critical";
+  if (k.includes("low")) return "risk-low";
+  if (k.includes("high")) return "risk-high";
+  return "risk-medium";
+};
+
+/**
+ * Replace the last AgentTurn in `turns` via a pure updater. Returns the same
+ * array reference if no agent turn exists yet (defensive: caller may receive
+ * SSE events before turn_start has fired).
+ */
+const updateLastAgentTurn = (
+  turns: Turn[],
+  updater: (t: AgentTurn) => AgentTurn,
+): Turn[] => {
+  for (let i = turns.length - 1; i >= 0; i--) {
+    if (turns[i].role === "agent") {
+      const next = turns.slice();
+      next[i] = updater(turns[i] as AgentTurn);
+      return next;
+    }
+  }
+  return turns;
+};
 
 export const useChatStore = create<ChatStoreState>((set) => ({
   ..._initial(),
@@ -111,10 +170,15 @@ export const useChatStore = create<ChatStoreState>((set) => ({
   setMode: (m) => set({ mode: m }),
   setStatus: (s) => set({ status: s }),
   setError: (msg) => set({ errorMessage: msg }),
+  setSessions: (sessions) => set({ sessions }),
+  setActiveSessionId: (id) => set({ activeSessionId: id }),
 
   pushUserMessage: (content) =>
     set((s) => ({
-      messages: [...s.messages, { kind: "user", id: nextMsgId(), content }],
+      turns: [
+        ...s.turns,
+        { role: "user", id: nextTurnId(), at: nowIso(), text: content },
+      ],
     })),
 
   mergeEvent: (ev) =>
@@ -132,74 +196,112 @@ export const useChatStore = create<ChatStoreState>((set) => ({
           };
         }
 
-        case "turn_start":
-        case "llm_request":
-          // Frame markers — recorded in rawEvents, no UI fold.
-          return { ...s, rawEvents };
-
-        case "llm_response": {
-          const toolCalls: ToolCallEntry[] = ev.data.tool_calls.map((tc) => ({
-            toolCallId: tc.id,
-            toolName: tc.name,
-            args: tc.arguments,
-          }));
-          const assistantMsg: Message = {
-            kind: "assistant",
-            id: nextMsgId(),
-            content: ev.data.content,
-            thinking: ev.data.thinking,
-            toolCalls,
+        case "turn_start": {
+          const newAgentTurn: AgentTurn = {
+            role: "agent",
+            id: nextTurnId(),
+            at: nowIso(),
+            stopReason: null,
+            durationMs: null,
+            blocks: [],
+            tokensIn: null,
+            tokensOut: null,
+            tokensThinking: null,
+            costUsd: null,
+            traceId: null,
+            spanId: null,
           };
+          return { ...s, rawEvents, turns: [...s.turns, newAgentTurn] };
+        }
+
+        case "llm_request": {
           return {
             ...s,
             rawEvents,
-            messages: [...s.messages, assistantMsg],
+            turns: updateLastAgentTurn(s.turns, (t) => ({
+              ...t,
+              tokensIn: ev.data.tokens_in,
+            })),
+          };
+        }
+
+        case "llm_response": {
+          // Append ThinkingBlock (if thinking) + ToolBlock per tool_call.
+          // Visual order matches mockup (thinking before tools in same turn).
+          return {
+            ...s,
+            rawEvents,
+            turns: updateLastAgentTurn(s.turns, (t) => {
+              const newBlocks: Block[] = [...t.blocks];
+              if (ev.data.thinking) {
+                newBlocks.push({ type: "thinking", text: ev.data.thinking });
+              }
+              for (const tc of ev.data.tool_calls) {
+                newBlocks.push({
+                  type: "tool",
+                  toolCallId: tc.id,
+                  name: tc.name,
+                  status: "pending",
+                  input: JSON.stringify(tc.arguments, null, 2),
+                  output: null,
+                  durationMs: null,
+                  isError: false,
+                });
+              }
+              return { ...t, blocks: newBlocks };
+            }),
           };
         }
 
         case "tool_call_request": {
-          // Ensure the most recent assistant Message has this card.
-          // (Llm_response carries tool_calls already; this branch covers
-          // the rare case where Loop yields ToolCallRequested without a
-          // preceding LLMResponded — defensive.)
-          const updated = [...s.messages];
-          for (let i = updated.length - 1; i >= 0; i--) {
-            const m = updated[i];
-            if (m.kind !== "assistant") continue;
-            if (m.toolCalls.some((c) => c.toolCallId === ev.data.tool_call_id)) break;
-            updated[i] = {
-              ...m,
-              toolCalls: [
-                ...m.toolCalls,
-                {
-                  toolCallId: ev.data.tool_call_id,
-                  toolName: ev.data.tool_name,
-                  args: ev.data.args,
-                },
-              ],
-            };
-            break;
-          }
-          return { ...s, rawEvents, messages: updated };
+          // Defensive: if active agent turn lacks ToolBlock for this id, append.
+          return {
+            ...s,
+            rawEvents,
+            turns: updateLastAgentTurn(s.turns, (t) => {
+              const exists = t.blocks.some(
+                (b) => b.type === "tool" && b.toolCallId === ev.data.tool_call_id,
+              );
+              if (exists) return t;
+              return {
+                ...t,
+                blocks: [
+                  ...t.blocks,
+                  {
+                    type: "tool",
+                    toolCallId: ev.data.tool_call_id,
+                    name: ev.data.tool_name,
+                    status: "pending",
+                    input: JSON.stringify(ev.data.args, null, 2),
+                    output: null,
+                    durationMs: null,
+                    isError: false,
+                  },
+                ],
+              };
+            }),
+          };
         }
 
         case "tool_call_result": {
-          const updated = s.messages.map((m) => {
-            if (m.kind !== "assistant") return m;
-            const idx = m.toolCalls.findIndex(
-              (c) => c.toolCallId === ev.data.tool_call_id,
-            );
-            if (idx === -1) return m;
-            const newCalls = m.toolCalls.slice();
-            newCalls[idx] = {
-              ...newCalls[idx],
-              result: ev.data.result,
-              isError: ev.data.is_error,
-              durationMs: ev.data.duration_ms,
-            };
-            return { ...m, toolCalls: newCalls };
-          });
-          return { ...s, rawEvents, messages: updated };
+          return {
+            ...s,
+            rawEvents,
+            turns: updateLastAgentTurn(s.turns, (t) => ({
+              ...t,
+              blocks: t.blocks.map((b) =>
+                b.type === "tool" && b.toolCallId === ev.data.tool_call_id
+                  ? {
+                      ...b,
+                      status: ev.data.is_error ? "error" : "ok",
+                      output: ev.data.result,
+                      durationMs: ev.data.duration_ms,
+                      isError: ev.data.is_error,
+                    }
+                  : b,
+              ),
+            })),
+          };
         }
 
         case "loop_end": {
@@ -209,14 +311,34 @@ export const useChatStore = create<ChatStoreState>((set) => ({
             status: "completed",
             totalTurns: ev.data.total_turns,
             stopReason: ev.data.stop_reason,
+            turns: updateLastAgentTurn(s.turns, (t) => ({
+              ...t,
+              stopReason: ev.data.stop_reason,
+              waiting: ev.data.stop_reason !== "end_turn",
+            })),
           };
         }
 
         case "approval_requested": {
-          // 53.5 US-2: render inline ApprovalCard. Dedup by request_id.
+          // Dual-emit: (1) populate approvals dict (preserve existing
+          // ApprovalCard workflow); (2) push HITLTurn into turns (new mockup
+          // inline render). Dedup by request_id on both paths.
           const id = ev.data.approval_request_id;
           if (!id) return { ...s, rawEvents };
           if (s.approvals[id]) return { ...s, rawEvents };
+          const hitlTurn: HITLTurn = {
+            role: "hitl",
+            id: nextTurnId(),
+            at: nowIso(),
+            title: `Approval required: ${ev.data.risk_level}`,
+            severity: mapRiskLevel(ev.data.risk_level),
+            tool: "—",
+            payload: "—",
+            rationale: "—",
+            approvalRequestId: id,
+            decision: null,
+            countdownSec: null,
+          };
           return {
             ...s,
             rawEvents,
@@ -229,20 +351,21 @@ export const useChatStore = create<ChatStoreState>((set) => ({
                 receivedAt: Date.now(),
               },
             },
+            turns: [...s.turns, hitlTurn],
           };
         }
 
         case "approval_received": {
-          // 53.5 US-2: update card to show reviewer outcome.
+          // Dual-emit: update approvals dict + matching HITLTurn decision.
           const id = ev.data.approval_request_id;
           if (!id) return { ...s, rawEvents };
           const existing = s.approvals[id];
-          if (!existing) {
-            // Decision arrived without prior request — defensive create
-            return {
-              ...s,
-              rawEvents,
-              approvals: {
+          const updatedApprovals = existing
+            ? {
+                ...s.approvals,
+                [id]: { ...existing, decision: ev.data.decision },
+              }
+            : {
                 ...s.approvals,
                 [id]: {
                   approvalRequestId: id,
@@ -250,89 +373,167 @@ export const useChatStore = create<ChatStoreState>((set) => ({
                   decision: ev.data.decision,
                   receivedAt: Date.now(),
                 },
-              },
-            };
-          }
+              };
+          const updatedTurns = s.turns.map((t) =>
+            t.role === "hitl" && t.approvalRequestId === id
+              ? { ...t, decision: ev.data.decision }
+              : t,
+          );
           return {
             ...s,
             rawEvents,
-            approvals: {
-              ...s.approvals,
-              [id]: { ...existing, decision: ev.data.decision },
-            },
+            approvals: updatedApprovals,
+            turns: updatedTurns,
           };
         }
 
-        // Sprint 53.6 D2: GuardrailTriggered routes to rawEvents only.
-        // No UI surface in 53.6 — future sprint may render warning banner.
         case "guardrail_triggered": {
+          // Sprint 53.6 D2: rawEvents only — Phase-2+ may render warning banner.
           return { ...s, rawEvents };
         }
 
-        // Sprint 57.11 US-5: Cat 10 verification events. Append to verifications
-        // array for inline VerificationPanel + raw event audit trail (rawEvents).
-        // AD-Frontend-SSE-Silent-Drop-Fix bundle: type+set listed in types.ts
-        // per CONVENTION.md §7 3-edit checklist.
         case "verification_passed":
         case "verification_failed": {
+          // Dual-emit: verifications slice (Sprint 57.11 VerificationPanel) +
+          // VerificationBlock into active agent turn (Sprint 57.21 inline).
+          const claim =
+            ev.type === "verification_passed"
+              ? "Verification passed"
+              : ev.data.reason ?? "Verification failed";
+          const evidence =
+            ev.type === "verification_passed"
+              ? `score: ${ev.data.score ?? "—"}`
+              : ev.data.suggested_correction ?? "";
           return {
             ...s,
             rawEvents,
             verifications: [...s.verifications, ev as VerificationEvent],
+            turns: updateLastAgentTurn(s.turns, (t) => ({
+              ...t,
+              blocks: [
+                ...t.blocks,
+                {
+                  type: "verification",
+                  verifier: ev.data.verifier,
+                  ok: ev.type === "verification_passed",
+                  claim,
+                  evidence,
+                },
+              ],
+            })),
           };
         }
 
-        // Sprint 57.12 US-6: Cat 11 subagent lifecycle events. Spawned → push
-        // a "running" node; Completed → update the matching node to "completed"
-        // + summary + tokens (defensive create if Completed arrives without a
-        // prior Spawned). UI status derived from event ordering per Day 1 D1-005.
-        // AD-Cat11-SSEEvents: type+set listed in types.ts per CONVENTION.md §7.
         case "subagent_spawned": {
+          // Dual-emit: subagents slice (Sprint 57.12 SubagentTree) + extend
+          // SubagentForkBlock in active agent turn (Sprint 57.21 inline).
           const sid = ev.data.subagent_id;
           if (!sid) return { ...s, rawEvents };
-          if (s.subagents.some((n) => n.subagentId === sid)) return { ...s, rawEvents };
-          const node: SubagentNode = {
-            subagentId: sid,
-            parentId: ev.data.parent_session_id,
-            mode: ev.data.mode,
+          // (a) subagents slice — preserve Sprint 57.12 behavior
+          const sliceHas = s.subagents.some((n) => n.subagentId === sid);
+          const newSubagents = sliceHas
+            ? s.subagents
+            : [
+                ...s.subagents,
+                {
+                  subagentId: sid,
+                  parentId: ev.data.parent_session_id,
+                  mode: ev.data.mode,
+                  status: "running" as const,
+                  summary: null,
+                  tokensUsed: null,
+                  spawnedAt: Date.now(),
+                },
+              ];
+          // (b) SubagentForkBlock in active turn — find-or-create then append agent
+          const newEntry: SubagentEntry = {
+            id: sid,
+            name: sid,
+            task: ev.data.mode,
             status: "running",
-            summary: null,
-            tokensUsed: null,
-            spawnedAt: Date.now(),
+            turns: 0,
           };
-          return { ...s, rawEvents, subagents: [...s.subagents, node] };
+          const newTurns = updateLastAgentTurn(s.turns, (t) => {
+            const forkIdx = t.blocks.findIndex((b) => b.type === "subagent_fork");
+            if (forkIdx === -1) {
+              return {
+                ...t,
+                blocks: [
+                  ...t.blocks,
+                  { type: "subagent_fork", agents: [newEntry] },
+                ],
+              };
+            }
+            const fork = t.blocks[forkIdx] as SubagentForkBlock;
+            if (fork.agents.some((a) => a.id === sid)) return t;
+            const newBlocks = t.blocks.slice();
+            newBlocks[forkIdx] = {
+              ...fork,
+              agents: [...fork.agents, newEntry],
+            };
+            return { ...t, blocks: newBlocks };
+          });
+          return {
+            ...s,
+            rawEvents,
+            subagents: newSubagents,
+            turns: newTurns,
+          };
         }
 
         case "subagent_completed": {
+          // Dual-emit: subagents slice update + active turn's fork block entry.
           const sid = ev.data.subagent_id;
           if (!sid) return { ...s, rawEvents };
+          // (a) subagents slice — preserve defensive-create
           const idx = s.subagents.findIndex((n) => n.subagentId === sid);
+          let newSubagents: SubagentNode[];
           if (idx === -1) {
-            // Defensive create — Completed arrived without prior Spawned.
-            const node: SubagentNode = {
-              subagentId: sid,
-              parentId: null,
-              mode: "unknown",
+            newSubagents = [
+              ...s.subagents,
+              {
+                subagentId: sid,
+                parentId: null,
+                mode: "unknown",
+                status: "completed",
+                summary: ev.data.summary,
+                tokensUsed: ev.data.tokens_used,
+                spawnedAt: Date.now(),
+              },
+            ];
+          } else {
+            newSubagents = s.subagents.slice();
+            newSubagents[idx] = {
+              ...newSubagents[idx],
               status: "completed",
               summary: ev.data.summary,
               tokensUsed: ev.data.tokens_used,
-              spawnedAt: Date.now(),
             };
-            return { ...s, rawEvents, subagents: [...s.subagents, node] };
           }
-          const updated = s.subagents.slice();
-          updated[idx] = {
-            ...updated[idx],
-            status: "completed",
-            summary: ev.data.summary,
-            tokensUsed: ev.data.tokens_used,
+          // (b) update agent entry in active turn's fork block
+          const newTurns = updateLastAgentTurn(s.turns, (t) => {
+            const forkIdx = t.blocks.findIndex((b) => b.type === "subagent_fork");
+            if (forkIdx === -1) return t;
+            const fork = t.blocks[forkIdx] as SubagentForkBlock;
+            const newBlocks = t.blocks.slice();
+            newBlocks[forkIdx] = {
+              ...fork,
+              agents: fork.agents.map((a) =>
+                a.id === sid ? { ...a, status: "done" } : a,
+              ),
+            };
+            return { ...t, blocks: newBlocks };
+          });
+          return {
+            ...s,
+            rawEvents,
+            subagents: newSubagents,
+            turns: newTurns,
           };
-          return { ...s, rawEvents, subagents: updated };
         }
 
         default: {
-          // Unreachable: parser filters unknown event types upstream.
-          // Defensive return to keep TypeScript exhaustive-check happy.
+          // Exhaustive switch — parser filters unknown upstream.
           const _exhaustive: never = ev;
           return { ...s, rawEvents: [...s.rawEvents, _exhaustive] };
         }

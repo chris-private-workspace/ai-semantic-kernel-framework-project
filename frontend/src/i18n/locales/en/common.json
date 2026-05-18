@@ -324,5 +324,32 @@
       "title": "Diff vs parent",
       "noParent": "no parent"
     }
+  },
+  "chat": {
+    "session": {
+      "title": "Sessions",
+      "newSession": "New session",
+      "filter": "Filter",
+      "status": {
+        "running": "running",
+        "hitl": "HITL",
+        "done": "done"
+      },
+      "meta": {
+        "turns": "{{count}} turns"
+      },
+      "demoBanner": "Demo data — backend list endpoint pending Sprint 57.22+ (AD-ChatV2-SessionList-Backend)"
+    },
+    "header": {
+      "toggleList": "Toggle session list",
+      "toggleInspector": "Toggle inspector",
+      "providerNeutral": "provider: neutral",
+      "streaming": "streaming",
+      "loopButton": "Loop",
+      "auditButton": "Audit"
+    },
+    "inspector": {
+      "comingSoon": "Inspector content lands Sprint 57.21 Day 4 (Turn tab) + Sprint 57.22+ (Trace / Memory / Tree tabs)."
+    }
   }
 }

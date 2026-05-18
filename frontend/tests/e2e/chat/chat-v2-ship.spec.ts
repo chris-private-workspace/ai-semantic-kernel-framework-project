@@ -51,17 +51,19 @@ test.describe("Sprint 57.8 US-5 — chat-v2 real ship", () => {
 
     await page.goto("/chat-v2/");
 
-    // AppShellV2 page-level title (sticky header h1).
+    // AppShellV2 page-level title (Topbar h1 — Sprint 57.20 V3 grid rewrite
+    // extracted Topbar component; h1 contract preserved via Topbar L107).
     const pageTitle = page.getByRole("heading", { level: 1, name: "Chat (V2)" });
     await expect(pageTitle).toBeVisible();
 
-    // ChatLayout body — sessions placeholder visible (Phase 51.x carryover label).
-    await expect(page.getByRole("heading", { level: 3, name: "Sessions" })).toBeVisible();
+    // Sprint 57.21 Day 3 §3.2 — ChatLayout 2-col placeholder ("Sessions" h3 +
+    // "Inspector" h3) rewritten to 3-col mockup-fidelity components. Assert via
+    // stable testid anchors (SessionList sidebar + ChatInspector right rail).
+    await expect(page.getByTestId("session-list")).toBeVisible();
+    await expect(page.getByTestId("chat-inspector")).toBeVisible();
 
-    // ChatLayout body — inspector placeholder visible.
-    await expect(page.getByRole("heading", { level: 3, name: "Inspector" })).toBeVisible();
-
-    // InputBar present (Sprint 50.2 component) — placeholder text "Ask the agent…".
+    // InputBar present (Sprint 50.2 component; preserved unchanged in Sprint 57.21
+    // Phase-1 per Option C scope — Composer.tsx visual-only NOT wired).
     await expect(page.getByPlaceholder(/Ask the agent/i)).toBeVisible();
   });
 

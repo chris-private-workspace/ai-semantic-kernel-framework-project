@@ -13,9 +13,10 @@
  * [data-variant="strict"/"refined"/"shadcn"] variants land in Sprint 57.21+
  * AD-Theme-Variant-Mechanism. Density [data-density="compact"|"comfortable"] active.
  *
- * Font: Noto Sans TC pulled via Google Fonts CDN (covers CJK); Geist falls back to
- * system ui-sans-serif (Inter / Segoe UI). AD-Geist-Font-Asset-Bundling deferred
- * to Phase 58+ for self-hosted Geist via @fontsource.
+ * Font: Geist Sans + Geist Mono + Noto Sans TC ALL self-hosted via @fontsource
+ * (closes Sprint 57.20 AD-Geist-Font-Asset-Bundling carryover in Sprint 57.21
+ * Day 4 D-DAY4-8). Weights bundled: Geist Sans 400/500/600/700, Geist Mono 400,
+ * Noto Sans TC 400/500/600/700. Imports live in `src/main.tsx`.
  *
  * Modification History:
  *   - 2026-05-17: Sprint 57.20 Day 1 — add mockup token tree + density mechanism + Geist/Noto Sans TC wire + body font-family
@@ -23,7 +24,10 @@
  *   - 2026-05-16: Sprint 57.18 — +18 CSS vars (7 semantic + 4 risk) in :root + .dark (closes AD-Style-Token-Config-Audit)
  *   - 2026-05-15: Sprint 57.17 — v3 @tailwind directives → v4 @import + @config (closes AD-Tailwind-v4-Directive-Hotfix)
  */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap');
+/* Sprint 57.21 Day 4 D-DAY4-8: Google Fonts CDN @import for Noto Sans TC dropped;
+   fonts now bundled via @fontsource in main.tsx (Geist Sans + Geist Mono + Noto Sans TC).
+   Self-hosting closes Sprint 57.20 AD-Geist-Font-Asset-Bundling carryover (offline
+   robustness + first-paint perf + perfect ligatures). */
 @import "tailwindcss";
 @config "../tailwind.config.ts";
 

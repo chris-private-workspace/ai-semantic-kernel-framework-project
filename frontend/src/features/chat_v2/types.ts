@@ -1,41 +1,45 @@
 /**
  * File: frontend/src/features/chat_v2/types.ts
- * Purpose: SSE LoopEvent types — 1:1 alignment with 02-architecture-design.md §SSE.
+ * Purpose: SSE LoopEvent types (14) + Turn/Block/Session UI aggregate types (Sprint 57.21).
  * Category: Frontend / chat_v2
- * Scope: Phase 50 / Sprint 50.2 (Day 3.2)
+ * Scope: Phase 50 / Sprint 50.2 + Phase 57.21 (Day 1 — Turn block model rewrite per mockup)
  *
  * Description:
- *   Discriminated union mirroring the backend SSE wire format. Sprint 50.2
- *   wires 8 event types end-to-end (loop_start / turn_start / llm_request /
- *   llm_response / tool_call_request / tool_call_result / loop_end +
- *   error / unknown fallback). Other 02.md §SSE event types
- *   (guardrail_check / tripwire_fired / compaction_triggered / hitl_required /
- *   verification_*) are reserved for later phases — frontend ignores them
- *   gracefully via the `unknown` arm.
+ *   Three discriminated unions:
+ *   1. LoopEvent — 14 SSE wire types (Sprint 50.2 + 53.5 + 53.6 + 57.11 + 57.12);
+ *      1:1 backend serialize_loop_event output. Preserved EXACTLY in Sprint 57.21.
+ *   2. Turn — UI aggregate per-turn model (user / agent / hitl) per mockup
+ *      reference/design-mockups/page-chat.jsx L17-70 + L159-313. NEW in Sprint 57.21.
+ *   3. Block — UI per-event presentation unit within an agent Turn (thinking /
+ *      tool / verification / subagent_fork) per mockup L199-267. 4 of 5 mockup
+ *      types ship Sprint 57.21; memory block DEFERRED to Phase-2+
+ *      (AD-ChatV2-Memory-Block-Phase2 — requires NEW Cat 3 SSE event).
+ *   4. Session — fixture-driven session list entry per mockup L5-12.
+ *      Backend wire deferred (AD-ChatV2-SessionList-Backend Sprint 57.22+).
  *
- *   Plus UI-side aggregate types: Message (rendered list item), ToolCallEntry
- *   (paired request+result), ChatSession, ChatMode.
+ *   ToolCallEntry preserved as chatStore.mergeEvent internal pairing helper.
+ *   ApprovalEntry preserved (HITL workflow Phase-1 keeps existing 2-action wire).
+ *   Message removed — replaced by Turn. tsc compile gate surfaces consumer updates.
  *
  * Created: 2026-04-30 (Sprint 50.2 Day 3.2)
- * Last Modified: 2026-04-30
+ * Last Modified: 2026-05-17
  *
  * Modification History:
- *   - 2026-05-10: Sprint 57.12 US-6 — add Subagent{Spawned,Completed}Event + KNOWN set entries (closes AD-Cat11-SSEEvents frontend half)
- *   - 2026-05-04: Add GuardrailTriggeredEvent type (Sprint 53.6 D2 — Day 0 探勘 finding)
- *     — backend yields GuardrailTriggered 7× in loop.py (Cat 9 Stage 1/2/3); frontend
- *     defensive type so KNOWN_LOOP_EVENT_TYPES includes the wire type and
- *     LoopEvent union recognises it (no UI surface yet — events route to chatStore.rawEvents).
- *   - 2026-05-04: Add ApprovalRequested + ApprovalReceived events (Sprint 53.5 US-2)
+ *   - 2026-05-17: Sprint 57.21 Day 1 — Turn/Block/Session unions; remove Message
+ *   - 2026-05-10: Sprint 57.12 US-6 — Subagent{Spawned,Completed}Event + KNOWN set
+ *   - 2026-05-04: Sprint 53.6 D2 — GuardrailTriggeredEvent defensive type
+ *   - 2026-05-04: Sprint 53.5 US-2 — ApprovalRequested + ApprovalReceived events
  *   - 2026-04-30: Initial creation (Sprint 50.2 Day 3.2)
  *
  * Related:
  *   - backend/src/api/v1/chat/sse.py (server-side serializer)
+ *   - reference/design-mockups/page-chat.jsx (Turn/Block visual target)
  *   - 02-architecture-design.md §SSE 事件規範
+ *   - 17-cross-category-interfaces.md §SSE LoopEvent contracts
  */
 
-// === LoopEvent SSE wire types ===============================================
-// Each variant has a `type` discriminator + `data` payload matching the
-// backend's serialize_loop_event() output.
+// === LoopEvent SSE wire types ============================================
+// PRESERVE EXACTLY from Sprint 50.2-57.12 — 1:1 backend contract.
 
 export type LoopStartEvent = {
   type: "loop_start";
@@ -92,10 +96,6 @@ export type LoopEndEvent = {
   data: { stop_reason: string; total_turns: number };
 };
 
-// Sprint 53.5 US-2: HITL approval events. Loop emits ApprovalRequested when
-// Cat 9 ESCALATE → HITLManager.request_approval persists; ApprovalReceived
-// when wait_for_decision returns. Frontend renders inline ApprovalCard.
-
 export type ApprovalRequestedEvent = {
   type: "approval_requested";
   data: {
@@ -108,30 +108,18 @@ export type ApprovalReceivedEvent = {
   type: "approval_received";
   data: {
     approval_request_id: string | null;
-    decision: string; // APPROVED / REJECTED / ESCALATED
+    decision: string;
   };
 };
-
-// Sprint 53.6 D2: GuardrailTriggered defensive type. Backend yields this 7×
-// in loop.py (Cat 9 Stage 1 input / Stage 2 output / Stage 3 tool escalate
-// reject/timeout block paths). No UI surface in 53.6 — event routes to
-// chatStore.rawEvents only; future sprint may render warning banner.
 
 export type GuardrailTriggeredEvent = {
   type: "guardrail_triggered";
   data: {
-    guardrail_type: string; // input / output / tool
-    action: string; // block / sanitize / escalate / reroll
+    guardrail_type: string;
+    action: string;
     reason: string;
   };
 };
-
-// Sprint 57.11 US-5: Cat 10 Verification SSE events.
-// Backend yields these from correction_loop.run_with_verification per verifier;
-// SSE schema sourced from api/v1/chat/sse.py:243-265. AD-Frontend-SSE-Silent-
-// Drop-Fix bundle (Sprint 57.10 D-PRE-13 codified): both type union AND
-// KNOWN_LOOP_EVENT_TYPES set must list these so parseSSEFrame doesn't silently
-// drop them per CONVENTION.md §7 3-edit checklist.
 
 export type VerificationPassedEvent = {
   type: "verification_passed";
@@ -152,18 +140,11 @@ export type VerificationFailedEvent = {
   };
 };
 
-// Sprint 57.12 US-6: Cat 11 subagent lifecycle SSE events.
-// Backend yields these from DefaultSubagentDispatcher.spawn (Spawned at start,
-// Completed when the subagent's asyncio.Task resolves). SSE schema sourced from
-// api/v1/chat/sse.py. AD-Cat11-SSEEvents (54.2 carryover) — both type union AND
-// KNOWN_LOOP_EVENT_TYPES set must list these so parseSSEFrame doesn't silently
-// drop them per CONVENTION.md §7 3-edit checklist.
-
 export type SubagentSpawnedEvent = {
   type: "subagent_spawned";
   data: {
     subagent_id: string | null;
-    mode: string; // fork / teammate / handoff / as_tool
+    mode: string;
     parent_session_id: string | null;
   };
 };
@@ -177,14 +158,6 @@ export type SubagentCompletedEvent = {
   };
 };
 
-/**
- * Sprint 50.2 wired 7 known event types; Sprint 53.5 adds 2 (approval_*);
- * Sprint 53.6 adds 1 (guardrail_triggered); Sprint 57.11 adds 2 (verification_*);
- * Sprint 57.12 adds 2 (subagent_*). Unknown event types from later phases are
- * filtered at the SSE parser (chatService.parseSSEFrame returns null) so the
- * store never sees them — preserving discriminated-union narrowing inside
- * mergeEvent's switch.
- */
 export type LoopEvent =
   | LoopStartEvent
   | TurnStartEvent
@@ -201,7 +174,6 @@ export type LoopEvent =
   | SubagentSpawnedEvent
   | SubagentCompletedEvent;
 
-/** Set of SSE event type names recognized by Sprint 50.2 + 53.5 + 53.6 + 57.11 + 57.12 frontend. */
 export const KNOWN_LOOP_EVENT_TYPES = new Set<string>([
   "loop_start",
   "turn_start",
@@ -213,48 +185,142 @@ export const KNOWN_LOOP_EVENT_TYPES = new Set<string>([
   "approval_requested",
   "approval_received",
   "guardrail_triggered",
-  // Sprint 57.11 US-5: Cat 10 verification SSE events (AD-Frontend-SSE-Silent-Drop-Fix)
   "verification_passed",
   "verification_failed",
-  // Sprint 57.12 US-6: Cat 11 subagent SSE events (AD-Cat11-SSEEvents)
   "subagent_spawned",
   "subagent_completed",
 ]);
 
-// === UI aggregate types =====================================================
+// === Sprint 57.21: Block discriminated union ==============================
+// 4 of 5 mockup block types ship Phase-1. Memory block (mockup L224-232)
+// DEFERRED to Phase-2+ — requires NEW Cat 3 SSE event (AD-ChatV2-Memory-Block-Phase2).
+// Why discriminated union: render dispatcher in TurnList/AgentTurn can narrow
+// by block.type without runtime instanceof; tsc enforces exhaustive cases.
 
-/**
- * Rendered message in the conversation. Built by chatStore.mergeEvent from
- * raw LoopEvents. ToolCallCards are folded into the assistant turn that
- * triggered them via the `tool_calls` array.
- */
-export type Message =
-  | { kind: "user"; id: string; content: string }
-  | {
-      kind: "assistant";
-      id: string;
-      content: string;
-      thinking: string | null;
-      toolCalls: ToolCallEntry[];
-    };
+export type ToolBlockStatus = "pending" | "ok" | "error";
+
+export type SubagentEntry = {
+  id: string;
+  name: string;
+  task: string;
+  status: "running" | "done";
+  turns: number;
+};
+
+export type ThinkingBlock = {
+  type: "thinking";
+  text: string;
+};
+
+export type ToolBlock = {
+  type: "tool";
+  toolCallId: string;
+  name: string;
+  status: ToolBlockStatus;
+  input: string;
+  output: string | null;
+  durationMs: number | null;
+  isError: boolean;
+};
+
+export type VerificationBlock = {
+  type: "verification";
+  verifier: string;
+  ok: boolean;
+  claim: string;
+  evidence: string;
+};
+
+export type SubagentForkBlock = {
+  type: "subagent_fork";
+  agents: SubagentEntry[];
+};
+
+export type Block = ThinkingBlock | ToolBlock | VerificationBlock | SubagentForkBlock;
+
+// === Sprint 57.21: Turn discriminated union ===============================
+// Per mockup L17-70 (TURNS data shape) + L159-313 (render dispatch).
+// Inspector Turn tab metadata aggregated best-effort from existing SSE events;
+// fields nullable when SSE source absent (placeholder "—" at render time).
+
+export type RiskSeverity = "risk-low" | "risk-medium" | "risk-high" | "risk-critical";
+
+export type UserTurn = {
+  role: "user";
+  id: string;
+  at: string;
+  text: string;
+};
+
+export type AgentTurn = {
+  role: "agent";
+  id: string;
+  at: string;
+  stopReason: string | null;
+  durationMs: number | null;
+  blocks: Block[];
+  waiting?: boolean;
+  // Inspector Turn tab metadata (Phase-1 best-effort; null placeholders allowed)
+  tokensIn: number | null;
+  tokensOut: number | null;
+  tokensThinking: number | null;
+  costUsd: number | null;
+  traceId: string | null;
+  spanId: string | null;
+};
+
+export type HITLTurn = {
+  role: "hitl";
+  id: string;
+  at: string;
+  title: string;
+  severity: RiskSeverity;
+  tool: string;
+  payload: string;
+  rationale: string;
+  approvalRequestId: string;
+  decision: string | null;
+  countdownSec: number | null;
+};
+
+export type Turn = UserTurn | AgentTurn | HITLTurn;
+
+// === Sprint 57.21: Session fixture type ===================================
+// Per mockup L5-12. Backend wire deferred (AD-ChatV2-SessionList-Backend).
+
+export type SessionDomain = "incident" | "audit" | "patrol" | "rca";
+export type SessionStatusUI = "running" | "hitl" | "done";
+
+export type Session = {
+  id: string;
+  title: string;
+  agent: string;
+  turns: number;
+  status: SessionStatusUI;
+  time: string;
+  domain: SessionDomain;
+};
+
+// === UI aggregate types (preserved from Sprint 50.2 + 53.5) ===============
+// ToolCallEntry: chatStore.mergeEvent internal pairing helper. Tool flow:
+//   tool_call_request → enqueue ToolCallEntry; tool_call_result → finalize.
+// On finalize, mergeEvent emits a ToolBlock into the active agent turn.
 
 export type ToolCallEntry = {
   toolCallId: string;
   toolName: string;
   args: Record<string, unknown>;
-  // populated when the matching tool_call_result event arrives
   result?: string;
   isError?: boolean;
   durationMs?: number;
 };
 
-/** Sprint 53.5 US-2: in-chat HITL approval card state. */
+/** Sprint 53.5 US-2: HITL approval card state. Phase-1 preserved (2-action backend wire). */
 export type ApprovalEntry = {
   approvalRequestId: string;
   riskLevel: string;
-  // updated when approval_received arrives; null while pending
   decision: string | null;
-  receivedAt: number; // epoch ms when ApprovalRequested arrived
+  receivedAt: number;
 };
 
 export type ChatStatus = "idle" | "running" | "completed" | "cancelled" | "error";
