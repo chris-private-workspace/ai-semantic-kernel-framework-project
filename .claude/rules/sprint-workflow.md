@@ -4,10 +4,11 @@
 
 **Category**: Development Process
 **Created**: 2026-04-28
-**Last Modified**: 2026-05-06
+**Last Modified**: 2026-05-18
 **Status**: Active
 
 > **Modification History**
+> - 2026-05-18: Sprint 57.22 — add §Sprint Closeout CLAUDE.md+MEMORY.md update policy (closes REFACTOR-001 Step 2)
 > - 2026-05-06: Sprint 57.1 — fold-in §Step 2.5 Prong 3 Schema Verify (closes AD-Plan-4 promotion)
 > - 2026-05-05: Sprint 55.6 — promote AD-Plan-3 (Prong 2 content verify + ROI + grep patterns)
 > - 2026-05-04: Sprint 55.3 — add §Step 2.5 Day-0 plan-vs-repo grep verify (closes AD-Plan-1) + drop per-day "Estimated X hours" headers from checklist template (closes AD-Lint-2)
@@ -94,8 +95,10 @@ Per AD-Sprint-Plan-4 (logged Sprint 55.3) + 4-sprint window evidence,one-multipl
 | **`mockup-integration-foundation` (NEW Sprint 57.18)** | **0.55** (HYBRID weighted blend: design-ref/mockup-cp × 0.40 ~15% + tailwind-tokens/HSL × 0.55 ~20% + routes-refactor 6-cat × 0.50 ~25% + stub-pages × 0.50 ~15% + sidebar-refactor × 0.65 ~15% + closeout × 0.80 ~10% = ~0.55 mid-band) | **57.18=1.10 (1)** | **n/a 1-data-point** | **NEW class baseline opens (closes Sprint 57.18 retrospective Q2 calibration);1st app ratio 1.10 ✅ bullseye in [0.85, 1.20] band;ratio actual/bottom-up = 0.58 (0.55 multiplier validated within ±5%);KEEP 0.55 baseline per `When to adjust` 3-sprint window rule;next data point likely Sprint 57.19+ if rolling port work uses same HYBRID blend shape (mockup design ref + new tokens + new routes + new components + sidebar updates)** |
 | **`mockup-page-port-with-backend-pairing-and-audit` (NEW Sprint 57.19)** | **0.60** (HYBRID weighted blend: backend Cat 1/3/7/11 ABC stubs × 0.55 ~25% + frontend mockup-port pages × 0.55 ~50% + audit pass × 0.85 ~15% + closeout × 0.80 ~10%) | **57.19=0.56 (1)** | **n/a 1-data-point** | **NEW class baseline opens (closes Sprint 57.19 retrospective Q2 calibration);1st app ratio actual/committed 0.56 BELOW [0.85, 1.20] band by 0.29 (ratio actual/bottom-up = 0.34 → bottom-up 2× too generous, 0.60 haircut insufficient);KEEP 0.60 baseline per `When to adjust` 3-sprint window rule;next data point likely Sprint 57.21+ if Round 3 (Auth 4 paired with IAM Block B) uses same class blend;if ratio < 0.7 pattern recurs 2-3× → AD-Sprint-Plan-NEW propose 0.60 → 0.40** |
 | **`frontend-mockup-direct-port` (NEW Sprint 57.20)** | **0.55** (HYBRID weighted blend: shell rewrite × 0.55 ~35% + per-page mockup-direct port × 0.50 ~50% + closeout × 0.80 ~15%) | 57.20=0.50 / **57.21=1.20** (2) | 2-data-point mean **0.85** at lower band edge — **bimodal pattern** | **2nd app (Sprint 57.21) ratio 1.20 ✅ top of [0.85, 1.20] band — validates Sprint 57.20 retro footer prediction "if 57.21+ hits structural rewrite → ratio swings back into band". Bimodal pattern confirmed**: token-sweep apps (57.20) ratio ~0.50 below band; structural-rewrite apps (57.21 — types.ts + chatStore.ts mergeEvent + 9 NEW Day 2 components + Inspector 4-tab) ratio ~1.20 top of band. `actual/bottom-up` ratios: 57.20=0.27 vs 57.21=0.67 (bottom-up systematically 1.5-2× generous regardless of sub-mode). **KEEP 0.55 baseline** per `When to adjust` 3-sprint window rule (2 data points insufficient for split). **If 3rd app continues bimodal** → AD-Sprint-Plan-NEW propose split into `frontend-mockup-direct-port-token-sweep` (0.40) vs `frontend-mockup-direct-port-structural` (0.85, near top of band like `medium-backend` 0.80 + Sprint 57.16 AD-Sprint-Plan-13 mechanical-class rule). Next data point: Sprint 57.22+ AD-Mockup-Direct-Port-Round-2 (token-sweep predicted) or AD-ChatV2-Full-Mockup-Fidelity Phase-2 (structural predicted). |
+| **`frontend-mockup-fidelity-audit` (NEW Sprint 57.22)** | **0.85** (single-class audit-only sprint — code-level diff + mockup excerpt Read + per-unit severity + score + rebuild estimate; no production code changes) | **57.22=0.51 (1)** | **n/a 1-data-point** | **NEW class baseline opens (closes Sprint 57.22 retrospective Q2 calibration);1st app ratio actual/committed 0.51 SIGNIFICANTLY BELOW [0.85, 1.20] band by 0.34;ratio actual/bottom-up = 0.44 (bottom-up was 2× generous, 0.85 haircut insufficient);KEEP 0.85 baseline per `When to adjust` 3-sprint window rule (1-data-point insufficient for adjustment);if pattern recurs 2-3× propose 0.85 → 0.45-0.55 to reflect methodology speedup (Day 1 Playwright screenshot vs Day 2-3 code-level audit + PROP stub triage 2-2.5× faster per unit);Phase 57.23+ rebuild sprints proposed NEW class `frontend-mockup-strict-rebuild` 0.55-0.65 (distinct from audit class) per Sprint 57.22 AUDIT-REPORT §Sprint 57.23+ Recommendation |
 
 **Modification History**:
+- 2026-05-18: Sprint 57.22 Day 4 — +1 NEW row `frontend-mockup-fidelity-audit` 0.85 HYBRID single-class audit-only 1-data-point ratio 0.51 SIGNIFICANTLY BELOW [0.85, 1.20] band by 0.34 (ratio actual/bottom-up = 0.44 — bottom-up 2× too generous, 0.85 haircut insufficient); methodology shift Day 1→Day 2 explains speedup (Playwright screenshot ~30 min/unit → code-level audit + PROP stub triage ~10-15 min/unit); KEEP 0.85 baseline per `When to adjust` 3-sprint window rule; if pattern recurs 2-3× propose 0.85 → 0.45-0.55; Phase 57.23+ rebuild sprints proposed distinct NEW class `frontend-mockup-strict-rebuild` 0.55-0.65 per AUDIT-REPORT §Sprint 57.23+ Recommendation
 - 2026-05-18: Sprint 57.21 Day 4 — `frontend-mockup-direct-port` 2nd data point 57.21=1.20 ✅ top of band (validates Sprint 57.20 retro footer); 2-data-point bimodal pattern (57.20=0.50 token-sweep / 57.21=1.20 structural-rewrite); KEEP 0.55 baseline; if 3rd app continues bimodal → AD-Sprint-Plan-NEW split into `-token-sweep` (0.40) vs `-structural` (0.85)
 - 2026-05-17: Sprint 57.19 Day 5 — +1 NEW row `mockup-page-port-with-backend-pairing-and-audit` 0.60 HYBRID weighted blend 1-data-point ratio 0.56 BELOW [0.85, 1.20] band by 0.29 (ratio actual/bottom-up = 0.34 — bottom-up 2× too generous, 0.60 haircut insufficient); KEEP 0.60 baseline per `When to adjust` 3-sprint window rule; if pattern recurs 2-3× propose 0.60 → 0.40
 - 2026-05-16: Sprint 57.18 Day 3 — +1 NEW row `mockup-integration-foundation` 0.55 HYBRID weighted blend 1-data-point ratio 1.10 ✅ bullseye in [0.85, 1.20] band (ratio actual/bottom-up = 0.58 validates 0.55 multiplier within ±5%); KEEP 0.55 baseline per `When to adjust` 3-sprint window rule
@@ -449,6 +452,119 @@ retrospective.md 必須記錄：
 - "We'll update docs after the sprint" → too late, details lost
 - Skip retrospective → patterns repeat
 - Generic notes ("worked on stuff") → no data for future planning
+
+---
+
+## Sprint Closeout: CLAUDE.md + MEMORY.md Update Policy (Sprint 57.22+ — closes REFACTOR-001 Step 2)
+
+**Trigger**: After Day N retrospective.md written, before opening next sprint plan. The 5-step workflow (§Mandatory 5-Step Workflow above) writes sprint execution artifacts (plan / checklist / progress / retrospective / memory subfile); this policy governs the **navigator files** (CLAUDE.md / MEMORY.md) — keep them lean, never archive sprint records inside them.
+
+### Core Principle
+
+| File | Role | What belongs |
+|------|------|-------------|
+| **CLAUDE.md** | Navigator / Principle / Rule | Timeless statements (mission / 11+1 範疇 / 5 大約束 / Mockup-Fidelity rule / Sprint Workflow rules / Karpathy / file-header convention); navigators to authoritative sources (V2 規劃文件導航 21 份 / ClaudeDocs structure / V1 reference table); current-phase milestone (1 line, principle-level) |
+| **MEMORY.md** | Quality Pointer Index | Per-topic 1 pointer entry: subfile link + 1-sentence topic + keywords for future retrieval |
+| **Memory subfile** (`memory/project_phase57_XX_*.md`) | Per-sprint detail | Full retro highlights / calibration / carryover ADs / file change list |
+| **Retrospective** (`docs/03-implementation/agent-harness-execution/phase-XX/sprint-XX-Y/retrospective.md`) | Authoritative full Q1-Q7 retro | Sprint-level truth source |
+| **Sprint plan §Workload** | Calibration source-of-truth | Multiplier / ratio per scope class |
+| **`claudedocs/1-planning/next-phase-candidates.md`** | Open items / pending decisions | Next Phase 候選 / carryover AD list |
+| **Git log + PR description** | Commit-level + sprint-level ground truth | Authoritative |
+
+**Single-source rule**: Sprint detail lives in **memory subfile + retrospective.md** only. CLAUDE.md / MEMORY.md are pointers, NOT archive.
+
+### CLAUDE.md Update at Sprint Closeout — Minimal Touch
+
+**Allowed** ✅:
+- Update `Current Sprint` row (next sprint id + branch name) — 1 line
+- Update `Last Updated` footer line — 1 line: `**Last Updated**: YYYY-MM-DD (Sprint XX.YY — short goal); see memory/ for sprint history`
+- Update `Phase` / `Roadmap` row IF milestone reached (e.g. V2 22/22 → SaaS Stage 1 1/3, Phase 57+ Frontend N/N+1)
+- Update `Tech Stack` / `Architecture` / `Branch Protection` rows IF actually changed (rare; e.g. CI policy change)
+- Add new principle / rule sections (e.g. Sprint 57.19's new "Frontend Mockup-Fidelity Hard Constraint" — that's a timeless rule, belongs here)
+
+**Forbidden** ❌:
+- Add `Latest Sprint` / `Prev Sprint` / `Prev-Prev Sprint` / `Prev³` / `Prev⁴` rows packed with retro detail
+- Pack carryover ADs / calibration ratios / commit SHAs / PR numbers / Vitest counts / bundle KB sizes / file change lists into any table cell
+- Add multi-paragraph history blocks to `Last Updated` footer
+- Add `[Sprint XX historical row preserved below]` archive blocks at end of CLAUDE.md
+- Inline `Next Phase 候選` 20-bullet pending lists into a table cell
+
+**Violation Pattern** ❌ (pre-cleanup state captured by REFACTOR-001 audit 2026-05-18): CLAUDE.md grew from ~30 KB foundation to **77 KB** over 20+ Phase 57+ sprints; ~58 KB was duplicate sprint records (table cells × 6 sprints + footer multi-paragraph history + `[historical row preserved]` blocks + 20-bullet `Next Phase 候選`).
+
+### MEMORY.md Update at Sprint Closeout — Quality Pointer
+
+**Allowed** ✅ — Add 1 entry of this shape (~250-300 char total, 3-4 lines):
+```markdown
+- [project_phase57_XX_<topic>.md](project_phase57_XX_<topic>.md) — Sprint XX.YY closed YYYY-MM-DD; <1-sentence what>; <1 phrase distinguishing feature or anomaly>.
+  Keywords: <feature/AD/class/anomaly names for future retrieval>
+```
+
+Example (good pointer):
+```markdown
+- [project_phase57_21_chatv2_mockup_fidelity_phase_1.md](project_phase57_21_chatv2_mockup_fidelity_phase_1.md) — Sprint 57.21 closed 2026-05-18; Chat-v2 Turn Block Model + 3-col shell + Inspector 4-tab + Composer scaffolding; bimodal calibration pattern emerging.
+  Keywords: chatv2, mockup-fidelity Phase-1, Turn Block, Inspector 4-tab, frontend-mockup-direct-port class, bimodal ratio
+```
+
+**Forbidden** ❌:
+- Dump retro Q1-Q7 content into the entry
+- List specific calibration ratio numbers (those live in subfile + `.claude/rules/sprint-workflow.md §Scope-class multiplier matrix`)
+- List commit SHAs / PR numbers / Vitest counts / bundle KB sizes (in subfile + retrospective)
+- Make entry >500 char (~300 is comfortable ceiling; quality matters more than rigid limit per user 2026-05-18 — but >500 signals you're packing summary instead of pointing)
+
+**Quality Criteria** — Does the pointer let future AI / dev find this sprint when they search by keyword?
+
+| Quality | Example |
+|---------|---------|
+| ✅ Good keywords | feature name (`chatv2`, `mockup-fidelity`) / AD ID (`AD-Tailwind-v4`) / class name (`frontend-mockup-direct-port`) / anomaly pattern (`bimodal`, `silent CSS no-op`) |
+| ❌ Bad keywords | generic terms ("frontend", "refactor") / date-only / sprint-id-only / numbers without context |
+
+**Header rule statement** (in MEMORY.md opening): the prior「每行 ≤ 200 字符」hard limit is updated to「**quality pointer principle**: topic + keywords + subfile path; detail single-source in subfile; ~300 char comfortable ceiling, but quality matters more than character count」per user clarification 2026-05-18.
+
+### Open Items / Pending Decisions Destination
+
+**Forbidden** ❌:
+- `Next Phase 候選` 20-bullet lists in CLAUDE.md table cells (was pre-cleanup case)
+- Pending AD candidates / unresolved issues in CLAUDE.md table cells
+- Time-bound TODOs / schedule notes in CLAUDE.md
+
+**Allowed** ✅:
+- Maintain `claudedocs/1-planning/next-phase-candidates.md` as **single-source** for open / pending items
+- Sprint plan §Carryover section (in `docs/03-implementation/agent-harness-planning/phase-XX-*/sprint-XX-Y-plan.md`) lists carryover ADs for next sprint pickup
+- Sprint retrospective.md §Carryover section accumulates per-sprint additions to the candidate pool
+- `.claude/rules/sprint-workflow.md §Scope-class multiplier matrix` tracks cross-sprint calibration trends
+
+### Self-Check at Sprint Closeout (Pre-Commit)
+
+Before commit closeout MHist, verify:
+
+- [ ] **CLAUDE.md changes**: Only navigator / principle / rule level? (NO sprint-by-sprint history record additions)
+- [ ] **MEMORY.md new entry**: ~250-300 char quality pointer (topic + keywords + subfile link)? (NOT a packed retro summary)
+- [ ] **Sprint detail preserved**: Memory subfile + retrospective.md updated with full content? (YES — single-source preserved elsewhere)
+- [ ] **Carryover / open items**: Documented in next sprint plan §Carryover or `claudedocs/1-planning/next-phase-candidates.md`? (NOT in CLAUDE.md table cell)
+- [ ] **Calibration ratio**: Tracked in `sprint-workflow.md §Scope-class multiplier matrix`? (NOT in CLAUDE.md / MEMORY.md prose)
+
+### Why This Policy Exists (REFACTOR-001 root cause analysis 2026-05-18)
+
+V2 evolved organic CLAUDE.md + MEMORY.md bloat pattern over Phase 57+ ship sprints (20+ sprints accumulated):
+- **CLAUDE.md** grew from ~30 KB foundation to **77 KB**; ~58 KB ≈ duplicate sprint records
+- **MEMORY.md** exceeded its own ≤24.4 KB system limit (actual 28 KB); 12 entries violated own ≤200 char rule (worst: 57.17 entry at ~3000 char = 15× over)
+- ~9-12% session context window consumed by duplicates at session start
+- **Triple-source for same sprint detail**: CLAUDE.md table cell + CLAUDE.md footer + MEMORY.md entry + memory subfile + retrospective.md (5 copies of overlapping content)
+
+**Root cause**:
+1. AI sprint-closeout pattern dumped full retro Q1-Q7 highlights into "index" entries (forgot single-source principle)
+2. Sprint table cells accumulated history without archive cutoff or policy
+3. No enforcement (no lint, no review checkpoint)
+4. "捨不得刪" mentality: each prev sprint row felt "still useful" → kept indefinitely
+
+**Fix**: This policy (§Sprint Closeout) + REFACTOR-001 Step 3 cleanup execution.
+
+### Cross-References
+
+- `claudedocs/4-changes/refactoring/REFACTOR-001-claude-md-memory-md-bloat-audit.md` — initial trigger audit (Step 1/4)
+- `.claude/rules/file-header-convention.md` §Modification History char-budget rules — sibling philosophy (MHist 1-line max, detail in commit body / 4-changes record)
+- MEMORY.md header rule statement — quality pointer principle (post-2026-05-18 rewording)
+- `claudedocs/1-planning/next-phase-candidates.md` — open items / Next Phase 候選 single-source (created in REFACTOR-001 Step 3)
 
 ---
 
