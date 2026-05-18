@@ -70,7 +70,7 @@ Build enterprise AI agent teams that work like **human professional teams** — 
 | Attribute | Value |
 |-----------|-------|
 | **Phase** | V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend ongoing (Phase 57+) |
-| **Current Sprint** | Sprint 57.22 closed 2026-05-18 (PR pending) — comprehensive mockup-fidelity audit; see `memory/project_phase57_22_mockup_fidelity_audit.md` for detail. Next: Sprint 57.23 Auth Page Full Rebuild Round 2 |
+| **Current Sprint** | Sprint 57.23 closed 2026-05-18 (PR pending) — Auth Page Full Rebuild Round 2 (Frontend-Only Spike per Option W); see `memory/project_phase57_23_auth_page_full_rebuild_round_2.md` for detail. Next: Sprint 57.24 candidate per Sprint 57.22 audit Priority Matrix (Ops follow-on / Chat-v2 Phase-2 / IAM Block B / next AskUserQuestion at kickoff) |
 | **Sprint History** | See [`memory/MEMORY.md`](memory/MEMORY.md) §Recent Sprints + per-sprint subfile `memory/project_phase57_XX_*.md` + retrospective.md under `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-XX/` |
 | **Pending / Next Phase** | See [`claudedocs/1-planning/next-phase-candidates.md`](claudedocs/1-planning/next-phase-candidates.md) |
 | **Roadmap** | Phase 49-55 V2 ✅ / Phase 56-58 SaaS Stage 1 3/3 ✅ / Phase 57+ Frontend ongoing |
@@ -617,7 +617,7 @@ V1 完整 CLAUDE.md 已保留於 `CLAUDE.backup.md`。如需查閱 V1 架構（M
 
 ---
 
-**Last Updated**: 2026-05-18 (Sprint 57.22 closed — comprehensive mockup-fidelity audit; see git log + `memory/` + retrospective.md for sprint history)
+**Last Updated**: 2026-05-18 (Sprint 57.23 — Auth Page Full Rebuild Round 2); see `memory/` for sprint history
 **Project Start**: 2025-11-14
 **V2 Authority**: `docs/03-implementation/agent-harness-planning/` (21 docs — 20 規劃 + 1 review)
 **V1 Reference**: `CLAUDE.backup.md` + `docs/07-analysis/V9/00-index.md`
