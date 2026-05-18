@@ -1,0 +1,218 @@
+# Sprint 57.22 — Checklist
+
+[Plan: `sprint-57-22-plan.md`]
+
+**Sprint**: 57.22 — AD-Mockup-Fidelity-Comprehensive-Audit
+**Days**: 3 (Day 0/1/2 + Day 2 closeout — pure audit sprint)
+**Branch**: `feature/sprint-57-22-mockup-fidelity-audit`
+
+---
+
+## Day 0 — Setup + Three-Prong Verify
+
+### 0.1 Plan + Checklist + Branch
+- [x] **Branch created**: `feature/sprint-57-22-mockup-fidelity-audit` (from main `e99ad7c9` post-PR-#154 merge)
+  - DoD: `git branch --show-current` returns branch name
+  - Verify: `git log --oneline -1` shows `e99ad7c9 chore(closeout-57-21)...`
+- [x] **Plan exists**: `docs/03-implementation/agent-harness-planning/phase-57-frontend-saas/sprint-57-22-plan.md` ≥ 200 lines
+- [x] **Checklist exists**: this file
+- [ ] **Progress.md skeleton**: `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-22/progress.md` with Day 0/1/2 section headers + Drift findings header
+
+### 0.2 Three-Prong Verify (per AD-Plan-1 + AD-Plan-3 + AD-Plan-4)
+- [ ] **Prong 1 Path Verify**:
+  - `reference/design-mockups/page-*.jsx` files exist (12 files expected: auth-extras / overview / chat / platform / platform2 / governance / tools / agents / models / sse / admin / extras)
+  - `reference/design-mockups/shell.jsx` + `topbar-overlays.jsx` + `styles.css` + `index.html` exist
+  - `frontend/src/pages/` dirs match production routes (29 dirs expected)
+  - `claudedocs/4-changes/sprint-57-22-mockup-fidelity-audit/` directory does NOT exist yet (will create Day 1)
+- [ ] **Prong 2 Content Verify**:
+  - mockup `page-auth-extras.jsx` contains LoginPage + RegisterPage + InvitePage + MfaPage + ExpiredPage components (or routes)
+  - mockup `page-extras.jsx` contains CostDashboard + SlaDashboard + Memory + Verification + Incidents components
+  - Sprint 57.21 PR #152 main HEAD `678222d2` reflected in CLAUDE.md V2 status table
+  - 24 chat.* i18n keys in `frontend/src/locales/{en,zh-TW}/common.json` post-Sprint 57.21
+- [ ] **Prong 3 Schema Verify** (audit sprint = N/A; no DB schema changes)
+  - Confirm: audit sprint has zero ORM / migration / DB schema work in scope
+- [ ] **Drift findings catalogued** in `progress.md` Day 0 section with D-PRE-N IDs
+
+### 0.3 Dev Environment Setup
+- [ ] **Mockup http server running**: `cd reference/design-mockups && python -m http.server 8080` (background)
+  - Verify: `curl -s http://localhost:8080/ | head -5` returns HTML
+- [ ] **Dev server running**: `cd frontend && npm run dev` (background)
+  - Verify: `curl -s http://localhost:3007/ | head -5` returns HTML
+- [ ] **Playwright MCP available**: confirm `mcp__plugin_playwright_playwright__browser_navigate` listed in deferred tools
+- [ ] **Dark theme + Geist font verified runtime**: Playwright MCP navigate `http://localhost:3007/` + `browser_evaluate "document.documentElement.className"` returns `"dark"` + `browser_evaluate "document.fonts.check('14px Geist')"` returns `true`
+
+### 0.4 Plan Workload Verify
+- [ ] **Calibration multiplier doc**: `.claude/rules/sprint-workflow.md` calibration matrix row for `frontend-mockup-fidelity-audit` NOT yet added (Sprint 57.22 Day 2 closeout adds first row)
+- [ ] **Bottom-up estimate ~12-14 hr → calibrated ~10-12 hr** documented in plan §Workload
+
+---
+
+## Day 1 — Auth + Operations Audit (9 sub-units)
+
+### 1.1 Audit Infrastructure Setup
+- [ ] **NEW dir**: `claudedocs/4-changes/sprint-57-22-mockup-fidelity-audit/`
+- [ ] **NEW dir**: `claudedocs/4-changes/sprint-57-22-mockup-fidelity-audit/screenshots/mockup/`
+- [ ] **NEW dir**: `claudedocs/4-changes/sprint-57-22-mockup-fidelity-audit/screenshots/prod/`
+- [ ] **NEW file**: `AUDIT-REPORT-COMPREHENSIVE.md` skeleton with:
+  - Header (methodology + scope + bar definition)
+  - Section per group: Auth (5) / Operations (9) / Governance (4) / Chat-v2 Phase-2 (1+N) / Remaining (9)
+  - Final priority matrix template
+  - Sprint 57.23+ recommendation template
+
+### 1.2 Auth Pages Audit (5 sub-units from `page-auth-extras.jsx`)
+- [ ] **auth/login**:
+  - Mockup capture: `http://localhost:8080/#auth-login` → `screenshots/mockup/auth-login.png` (1440×900)
+  - Prod capture: `http://localhost:3007/auth/login` → `screenshots/prod/auth-login.png` (1440×900)
+  - AUDIT-REPORT entry: diff matrix + severity + Strict 1:1 score + rebuild hour estimate + action items
+  - Last ported: **NEVER** (Sprint 57.7 pre-mockup; predates Sprint 57.18 mockup-integration)
+- [ ] **auth/register**:
+  - Mockup capture: `http://localhost:8080/#auth-register` → `screenshots/mockup/auth-register.png`
+  - Prod: NO production /auth/register route (PROP only) — capture mockup only + note "production = PROP stub"
+- [ ] **auth/invite**:
+  - Mockup capture + prod PROP note
+- [ ] **auth/mfa**:
+  - Mockup capture + prod PROP note
+- [ ] **auth/expired**:
+  - Mockup capture + prod PROP note
+- [ ] **auth/callback** (extra — production exists from Sprint 57.7):
+  - Prod capture: `http://localhost:3007/auth/callback?error=test` → `screenshots/prod/auth-callback.png`
+  - AUDIT-REPORT entry: note "NO mockup counterpart in `page-auth-extras.jsx` — production-specific OIDC callback handler"
+
+### 1.3 Operations Dashboard Audit (4 sub-units)
+- [ ] **overview**:
+  - Mockup capture: `http://localhost:8080/#overview` → `screenshots/mockup/overview.png`
+  - Prod capture: `http://localhost:3007/overview` → `screenshots/prod/overview.png`
+  - AUDIT-REPORT entry: last ported Sprint 57.19 commit `f8949504` (1:1 layout) + Sprint 57.20 commit `d6cc70bd` (token migrate only)
+- [ ] **cost-dashboard**:
+  - Mockup capture: `http://localhost:8080/#cost-dashboard` (sub-page of `page-extras.jsx`) → `screenshots/mockup/cost-dashboard.png`
+  - Prod capture + AUDIT-REPORT entry; last ported Sprint 57.1 (pre-mockup)
+- [ ] **sla-dashboard**:
+  - Mockup + prod + AUDIT-REPORT entry; last ported Sprint 57.1 (pre-mockup)
+- [ ] **memory**:
+  - Mockup + prod + AUDIT-REPORT entry; last ported Sprint 57.12 (pre-mockup)
+
+### 1.4 Day 1 Wrap
+- [ ] **AUDIT-REPORT entries populated**: 5 Auth + 4 Operations = 9 sections
+- [ ] **progress.md Day 1 entry**: actual hour vs estimate (~4-5 hr target)
+- [ ] **Commit `feat(audit, sprint-57-22, Day 1): Auth + Operations audit 9 sub-units`**
+
+---
+
+## Day 2 — Governance + Chat-v2 Phase-2 + Remaining Mockup Pages (18 sub-units)
+
+### 2.1 Governance Pages Audit (4 sub-units from `page-governance.jsx`)
+- [ ] **governance/approvals**:
+  - Mockup capture: `http://localhost:8080/#governance-approvals` → `screenshots/mockup/governance-approvals.png`
+  - Prod capture: `http://localhost:3007/governance` → `screenshots/prod/governance.png`
+  - AUDIT-REPORT entry; last ported Sprint 57.9 (pre-mockup) + Sprint 57.20 token migrate
+- [ ] **governance/redaction**:
+  - Mockup + prod (PROP stub) + AUDIT-REPORT entry
+- [ ] **governance/error-policy**:
+  - Mockup + prod (PROP stub) + AUDIT-REPORT entry
+- [ ] **governance/audit-log**:
+  - Mockup + prod (PROP stub) + AUDIT-REPORT entry
+
+### 2.2 Chat-v2 Phase-2 Widget Gap Audit (1 page-level + N widget-level sub-units)
+- [ ] **chat-v2 page-level**:
+  - Mockup capture: `http://localhost:8080/#chat-v2` → `screenshots/mockup/chat-v2.png`
+  - Prod capture: `http://localhost:3007/chat-v2/` → `screenshots/prod/chat-v2.png`
+  - AUDIT-REPORT entry; last ported Sprint 57.21 PR #152 (Phase-1 structural; Phase-2 widgets ComingSoon)
+- [ ] **Chat-v2 Phase-2 widget gap inventory** (sub-section in AUDIT-REPORT):
+  - Memory Block (Block type 5; mockup has READ/WRITE inline) → AD-ChatV2-Memory-Block-Phase2
+  - HITL FourAction (Approve-with-edits / Escalate-to-L2 + payload edit textarea + SLA countdown timer + audit_id footer) → AD-ChatV2-HITL-FourAction-Phase2
+  - Composer richness (attach + memory hint + tool select wired) → AD-ChatV2-Composer-Richness-Phase2
+  - Composer wire decision (replace InputBar / hybrid / revert) → AD-ChatV2-Composer-Wire-Phase2
+  - Inspector Trace tab content (Cat 12 OTel spans waterfall) → AD-ChatV2-Inspector-Trace-Phase2
+  - Inspector Memory tab content (Cat 3 memory ops feed) → AD-ChatV2-Inspector-Memory-Phase2
+  - Inspector SubagentTree tab content (Cat 11 live feed) → AD-ChatV2-Inspector-SubagentTree-Phase2
+  - SessionList backend wire (Cat 1 GET /api/v1/sessions) → AD-ChatV2-SessionList-Backend
+  - Cat 12 SSE trace_id propagation → AD-Cat12-SSE-Trace-Id-Phase2
+
+### 2.3 Remaining Mockup Pages Audit (9 sub-units)
+- [ ] **orchestrator** (from `page-platform.jsx`): mockup + prod + AUDIT-REPORT entry; last ported Sprint 57.19
+- [ ] **subagents** (from `page-platform2.jsx`): mockup + prod + AUDIT-REPORT entry; Sprint 57.19
+- [ ] **state-inspector** (from `page-platform.jsx`): mockup + prod + AUDIT-REPORT entry; Sprint 57.19
+- [ ] **admin-tenants** (from `page-admin.jsx`): mockup + prod + AUDIT-REPORT entry; Sprint 57.4 (pre-mockup)
+- [ ] **tenant-settings**: mockup + prod + AUDIT-REPORT entry; Sprint 57.3 (pre-mockup)
+- [ ] **verification** (from `page-extras.jsx`): mockup + prod + AUDIT-REPORT entry; Sprint 57.11 (pre-mockup)
+- [ ] **incidents** (from `page-extras.jsx`): mockup capture + prod (PROP stub) + AUDIT-REPORT entry
+- [ ] **tools / agents / models / sse** (4 PROP stubs): mockup capture each + prod PROP note + AUDIT-REPORT entry header-level only (depth-audit deferred to first sprint promoting stub to active)
+
+### 2.4 Priority Matrix + Sprint 57.23+ Recommendation
+- [ ] **AUDIT-REPORT Priority Matrix section**:
+  - P0 (severity = functional or Strict 1:1 score < 40%) — must-fix in Sprint 57.23
+  - P1 (severity = structural or score 40-70%) — Sprint 57.24+
+  - P2 (severity = cosmetic or score 70-90%) — Sprint 57.25+
+  - P3 (score ≥ 90%) — defer / no-action
+- [ ] **AUDIT-REPORT Sprint 57.23+ Recommendation section**:
+  - NEW calibration class `frontend-mockup-strict-rebuild` 0.55-0.65 proposal (HYBRID weighted blend; 1st app baseline)
+  - First-execution-sprint scope candidate (depends on P0 page count + group dependencies)
+  - Estimated total epic hours (Σ P0 + P1 rebuild hours)
+- [ ] **AUDIT-REPORT total length ≥ 800 lines verified**
+
+### 2.5 Day 2 Wrap
+- [ ] **progress.md Day 2 entry**: actual hour vs estimate (~4-5 hr target)
+- [ ] **Commit `feat(audit, sprint-57-22, Day 2): Governance + Chat-v2 Phase-2 + Remaining 18 sub-units + Priority Matrix`**
+
+---
+
+## Day 2 Closeout — Retrospective + Doc Sync + PR
+
+### Closeout.1 Retrospective + Memory
+- [ ] **NEW**: `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-22/retrospective.md` Q1-Q7
+  - Q1: Sprint Goal achieved? (yes if AUDIT-REPORT ≥ 800L + 27 screenshots + priority matrix complete)
+  - Q2: Workload actual vs estimate (calibration validation)
+  - Q3: Drift findings count (Day 0 D-PRE + Day 1/2 D-DAY findings)
+  - Q4: Surprises (what was bigger / smaller than expected)
+  - Q5: CI behavior (visual-regression unchanged since 0 production code changes)
+  - Q6: Carryovers Phase 57.23+
+  - Q7: Anti-Pattern 11/11 self-check (all PASS since pure audit sprint)
+- [ ] **NEW**: `memory/project_phase57_22_mockup_fidelity_audit.md`
+- [ ] **EDIT**: `memory/MEMORY.md` +1 line
+
+### Closeout.2 Calibration Matrix Update
+- [ ] **EDIT**: `.claude/rules/sprint-workflow.md` calibration matrix +1 row
+  - Class: `frontend-mockup-fidelity-audit` 0.85
+  - 1st app: 57.22 = ? (actual ratio per Q2)
+  - Status: 1-data-point baseline opens; KEEP 0.85 per `When to adjust` 3-sprint window rule
+  - + MHist line
+
+### Closeout.3 CLAUDE.md V2 Status Sync
+- [ ] **EDIT**: `CLAUDE.md` V2 Refactor Status table 5-row shift
+  - Latest Sprint: 57.22 audit summary
+  - Prev Sprint: 57.21 (was Latest)
+  - Prev-Prev: 57.20 (was Prev)
+  - Prev-Prev-Prev: 57.19 (was Prev-Prev)
+  - Prev⁴: 57.18 (was Prev-Prev-Prev); 57.17 dropped from table (preserved in footer history rows)
+  - Phase row: 18/N → 19/N
+  - Roadmap row: + `57.22 Mockup-Fidelity-Audit`
+  - main HEAD: pending (Sprint 57.22 PR not yet open at this checklist item)
+  - Next Phase 候選 row: Update to 57.23+ candidates (TOP = AD-Mockup-Full-Rebuild-Round-2 multi-sprint epic per audit priority matrix output)
+  - 3 footer line prepends with Sprint 57.22 summary
+
+### Closeout.4 SITUATION Sync
+- [ ] **EDIT**: `claudedocs/6-ai-assistant/prompts/SITUATION-V2-SESSION-START.md`
+  - §第八部分: prepend Sprint 57.22 closeout summary (PR pending state)
+  - Add `#### Phase 57.22 carryover` section with 🔴 AD-Mockup-Full-Rebuild-Round-2 multi-sprint epic + per-page sub-ADs
+
+### Closeout.5 Push + PR
+- [ ] **Commit `docs(sprint-57-22, Day 2 closeout): AUDIT-REPORT + retrospective + calibration matrix + CLAUDE.md V2 status + SITUATION`**
+- [ ] **Push**: `git push -u origin feature/sprint-57-22-mockup-fidelity-audit`
+- [ ] **Open PR against main** with full description (Audit methodology + 27 audit units + priority matrix highlights + Sprint 57.23+ recommendation + ZERO production code change verification)
+- [ ] **CI gates expected GREEN** (visual-regression baselines unchanged since 0 production code changes; only `claudedocs/` + `docs/` + `memory/` + `CLAUDE.md` + `MEMORY.md` + `.claude/rules/sprint-workflow.md` + `SITUATION-V2-SESSION-START.md` touched)
+- [ ] **Anti-Pattern 11/11 self-check PASS**
+
+---
+
+## Quality Gates (final)
+
+- [ ] AUDIT-REPORT-COMPREHENSIVE.md ≥ 800 lines
+- [ ] ~27 mockup screenshots + ~27 production screenshots saved
+- [ ] Priority matrix P0/P1/P2/P3 classification covers all 4 user-selected page groups
+- [ ] Sprint 57.23+ first-execution-sprint scope-class proposal documented
+- [ ] ZERO production code change (`git diff --stat main..HEAD` shows only docs / memory / rules / situation / claudedocs)
+- [ ] Vitest 348/348 unchanged
+- [ ] pytest backend baseline unchanged
+- [ ] retrospective Q1-Q7 + memory snapshot + CLAUDE.md V2 status + sprint-workflow.md calibration matrix +1 + SITUATION update + MEMORY.md +1
+- [ ] PR opens against main + all CI checks green
+- [ ] Anti-Pattern 11/11 PASS
