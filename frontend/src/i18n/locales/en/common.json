@@ -177,10 +177,16 @@
         "quotaUsed": "Quota used"
       }
     },
+    "provider": {
+      "title": "Provider mix",
+      "subtitle": "Admin-only · UI shields from operators",
+      "llmNeutralityNotice": "Provider identity is redacted in operator views to enforce LLM-neutrality. Switching providers does not change tool semantics."
+    },
     "banner": {
       "areaChart30d": "Backend 30-day history API pending Phase 58+ AD-Cost-Dashboard-Backend-Extensions; chart shows fixture data.",
       "categoryTaxonomy": "Mockup 6-category taxonomy ≠ backend by_type 2-level shape; harmonization pending Phase 58+ AD-Cost-Backend-Category-Taxonomy. Chart shows fixture data.",
-      "crossTenant": "Backend cross-tenant aggregation API pending Phase 58+ AD-Cost-Dashboard-Backend-Extensions; table shows fixture data."
+      "crossTenant": "Backend cross-tenant aggregation API pending Phase 58+ AD-Cost-Dashboard-Backend-Extensions; table shows fixture data.",
+      "crossProvider": "Backend cross-provider aggregation API pending Phase 58+ AD-Cost-Dashboard-Backend-Extensions; card shows fixture data."
     }
   },
   "overview": {

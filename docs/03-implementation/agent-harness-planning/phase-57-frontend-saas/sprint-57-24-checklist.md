@@ -122,13 +122,13 @@
 - [x] **Vitest spec** `TenantTopTable.test.tsx` (6 cases: 8 rows render / title-subtitle / 1 anomaly Badge (alert=true) / pct>100 danger text class / 80<pct≤100 warning text class / cross-tenant banner present)
 
 ### 2.3 US-C3 `<ProviderMixCard>` admin-scope
-- [ ] **Component** at `frontend/src/features/cost-dashboard/components/ProviderMixCard.tsx`
-  - DoD: 4-provider rows (provider-A/B/C/self-hosted) × Tokens + Cost + Pct + bar
-  - Fixture: `__fixtures__/providerMix.ts` (4 provider rows matching mockup)
-- [ ] **LLM-neutrality redaction notice** ("Provider identity is redacted in operator views to enforce LLM-neutrality. Switching providers does not change tool semantics.") per mockup
-- [ ] **`<BackendGapBanner reason="Backend cross-provider API pending Phase 58+ AD-Cost-Dashboard-Backend-Extensions" />`**
-- [ ] **i18n**: `cost.provider.title` / `cost.provider.banner` / `cost.provider.llmNeutralityNotice` / `cost.banner.crossProvider`
-- [ ] **Vitest spec** `ProviderMixCard.test.tsx` (≥ 3 cases: rendering / LLM-neutrality notice / banner)
+- [x] **Component** at `frontend/src/features/cost-dashboard/components/ProviderMixCard.tsx` (~80 lines mockup-direct port of page-admin.jsx:295-317)
+  - DoD: ✅ 4 fixture rows × dot (toneClass) + mono label + $cost·tokens + BarTrack (color tone); admin-only subtitle with Shield icon (lucide-react); separator + LLM-neutrality notice + BackendGapBanner
+  - Fixture: ✅ `__fixtures__/providerMix.ts` (4 rows: provider-A/B/C/self-hosted; tones primary/thinking/tool/memory)
+- [x] **LLM-neutrality redaction notice** mockup-faithful copy: "Provider identity is redacted in operator views to enforce LLM-neutrality. Switching providers does not change tool semantics." — `data-testid="provider-llm-neutrality-notice"` for test
+- [x] **`<BackendGapBanner reason={t("cost.banner.crossProvider")} />`** AP-2 honesty marker; distinct from LLM-neutrality notice
+- [x] **i18n**: `cost.provider.{title, subtitle, llmNeutralityNotice}` + `cost.banner.crossProvider` × EN + zh-TW (4 keys × 2 locales)
+- [x] **Vitest spec** `ProviderMixCard.test.tsx` (5 cases: 4 BarTracks render / 4 provider labels / title + admin-only subtitle / LLM-neutrality notice / cross-provider banner)
 
 ### 2.4 CostOverview integration + Day 2 commit
 - [ ] **CostOverview.tsx assembled** with all 6 widget groups in mockup-faithful grid (`grid-cols-4` 4-stat row + `grid-cols-2` main grids)

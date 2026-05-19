@@ -8,11 +8,12 @@
  *   Sprint 57.24 v2 incremental rebuild from 68-line MVP toward 6-widget-group
  *   mockup-fidelity layout per reference/design-mockups/page-admin.jsx:200-321 (CostPage).
  *
- *   Day 2 US-C2 (this state): + §5 TenantTopTable admin-scope top-8 table
- *   (parent-gated via isPlatformAdmin; component itself admin-agnostic for
- *   testability). Fully-fixture per AP-2 honesty + BackendGapBanner
- *   declaring cross-tenant API gap (AD-Cost-Dashboard-Backend-Extensions-
- *   Phase58). US-C3 adds ProviderMixCard admin-scope next.
+ *   Day 2 US-C3 (this state): + §5 + §6 admin-scope 2-col grid combining
+ *   TenantTopTable (left) + ProviderMixCard (right) per mockup page-admin
+ *   .jsx:257-318 grid-main 2-col layout. ProviderMixCard adds LLM-neutrality
+ *   redaction notice (mockup-faithful copy explaining V2 §約束 3 architectural
+ *   rationale) + BackendGapBanner declaring cross-provider API gap. Group C
+ *   complete (3/3 USs); CostOverview now has all 6 mockup widget groups.
  *
  *   Backend reused: useCostSummary TanStack hook + GET /api/v1/cost-summary
  *   (Sprint 57.9 US-6 Day 4 stable).
@@ -21,6 +22,7 @@
  * Last Modified: 2026-05-19
  *
  * Modification History (newest-first):
+ *   - 2026-05-19: Sprint 57.24 Day 2 US-C3 — §6 ProviderMixCard admin-scope (+ §5/§6 wrap 2-col grid; Group C complete)
  *   - 2026-05-19: Sprint 57.24 Day 2 US-C2 — §5 TenantTopTable admin-scope top-8 (parent-gated; fixture + banner)
  *   - 2026-05-19: Sprint 57.24 Day 2 US-C1 — §4 CategoryBarsCard 6-bar breakdown (fully-fixture per R3)
  *   - 2026-05-19: Sprint 57.24 Day 1 US-B3 — §3 30d Spend over time card (CardShell + AreaChart + BackendGapBanner)
@@ -53,6 +55,7 @@ import { useCostSummary } from "../hooks/useCostSummary";
 import { useCostStore } from "../store/costStore";
 import { CategoryBarsCard } from "./CategoryBarsCard";
 import { CostBreakdownTable } from "./CostBreakdownTable";
+import { ProviderMixCard } from "./ProviderMixCard";
 import { TenantTopTable } from "./TenantTopTable";
 
 // Mirrors backend _ADMIN_PLATFORM_ROLES (platform_layer/identity/auth.py); same
@@ -198,12 +201,17 @@ export function CostOverview() {
         <CategoryBarsCard />
       </div>
 
-      {/* §5 Spend-by-tenant admin-scope top-8 table (US-C2). Mounted only
-          for platform admins (parent gate via isPlatformAdmin so the
-          component stays admin-agnostic for unit-test reuse). Fixture
-          data + BackendGapBanner per AP-2; cross-tenant API tracked
+      {/* §5 + §6 admin-scope 2-col grid (US-C2 + US-C3). Mounted only for
+          platform admins (parent gate via isPlatformAdmin; components are
+          admin-agnostic for unit-test reuse). Fixture data + BackendGapBanner
+          per AP-2; cross-tenant + cross-provider APIs tracked
           AD-Cost-Dashboard-Backend-Extensions-Phase58. */}
-      {isPlatformAdmin && <TenantTopTable />}
+      {isPlatformAdmin && (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <TenantTopTable />
+          <ProviderMixCard />
+        </div>
+      )}
 
       {!tenantId && (
         <p className="text-sm text-destructive">No tenant in your session.</p>

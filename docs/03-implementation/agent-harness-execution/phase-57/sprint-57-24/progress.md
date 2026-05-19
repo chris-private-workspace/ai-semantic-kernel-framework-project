@@ -321,6 +321,44 @@ view alongside raw data so reviewers can validate).
 - TenantTopTable + fixture + spec: ~15 min
 - CostOverview integration + i18n + verify: ~10 min
 
+### Day 2.3 US-C3 ProviderMixCard admin-scope (Group C complete)
+
+**Output**:
+- NEW `frontend/src/features/cost-dashboard/__fixtures__/providerMix.ts` (4-row fixture mirroring mockup page-admin.jsx:297-301; provider-A/B/C/self-hosted aliases)
+- NEW `frontend/src/features/cost-dashboard/components/ProviderMixCard.tsx` (~80 lines mockup-direct port):
+  - CardShell with Shield icon in subtitle (lucide-react) signaling admin-only scope
+  - 4 fixture rows × dot + mono label + $cost·tokens + BarTrack with mockup-faithful tones (primary/thinking/tool/memory)
+  - Visible separator + LLM-neutrality redaction notice (mockup-faithful copy explaining V2 §約束 3 architectural rationale)
+  - BackendGapBanner declaring cross-provider API gap (AP-2 honesty; distinct from neutrality notice)
+- NEW `frontend/tests/unit/cost-dashboard/ProviderMixCard.test.tsx` (5 cases: 4 rows / 4 labels / title-subtitle / LLM-neutrality notice / cross-provider banner)
+- UPDATE `frontend/src/features/cost-dashboard/components/CostOverview.tsx`:
+  - Imported `ProviderMixCard`
+  - Refactored §5 single-card admin gate → §5+§6 2-col grid `{isPlatformAdmin && <div className="grid lg:grid-cols-2"><TenantTopTable /><ProviderMixCard /></div>}` per mockup grid-main 2-col layout
+- UPDATE i18n EN + zh-TW (+ cost.provider.{title, subtitle, llmNeutralityNotice} 3 keys + cost.banner.crossProvider = 4 keys × 2 locales)
+
+**Verification**:
+- Vitest 412/412 全綠 (83 files; +5 from Day 2.2 baseline 407: 5 ProviderMixCard cases)
+- `npm run lint` exit 0
+- `npm run build` 3.28s; main bundle 331.96 kB (+0.59 from 331.37 Day 2.2 baseline)
+
+**DoD verified — Sprint 57.24 v2 acceptance criteria (Day 3 closeout will sign off)**:
+- ✅ All 6 mockup widget groups rendered at 1440×900 (page-head / 4-stat / 30d AreaChart / category bars / tenant table admin / provider mix admin)
+- ✅ Admin scope gate works (parent-mounted; non-admin sees only §1-§4)
+- ✅ Real backend data flows: 4-stat Spend MTD reads `data.total_cost_usd`
+- ✅ Backend-gap widgets ship with visible BackendGapBanner (AP-2)
+- ✅ 6 reusable chart primitives extracted (`<Spark>`, `<StatCard>`, `<AreaChart>`, `<BarTrack>`, `<CardShell>`, `<BackendGapBanner>`) + `<PageHead>` (UI primitive) = 7 reusable primitives total for Sprint 57.25-57.28
+- ✅ Vitest 412/412 (+43 from Sprint 57.23 close baseline 369; Group C alone adds 15 cases)
+- ✅ Bundle KB delta +2.85 KB vs 329.11 Sprint 57.23 close (well within +30 KB target)
+- ✅ i18n EN + zh-TW parity throughout
+
+**Day 2.3 hours ~25 min**:
+- ProviderMixCard + fixture + spec: ~15 min
+- CostOverview integration + i18n + verify: ~10 min
+
+**Group C complete: 3/3 USs done**
+
+**Day 1+2 cumulative ~5.0 hr** (vs ~4.2 hr original commit budget = ~19% over; effective in-scope ~4.2 hr after subtracting ~50 min Day 1.0 abort+redraft overhead = on budget exactly). Day 3 closeout adds ~0.5-1 hr for retro / memory / calibration matrix / PR.
+
 ---
 
 ---

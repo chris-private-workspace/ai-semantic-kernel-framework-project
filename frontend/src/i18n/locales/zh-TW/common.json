@@ -177,10 +177,16 @@
         "quotaUsed": "配額使用"
       }
     },
+    "provider": {
+      "title": "供應商組合",
+      "subtitle": "Admin-only · UI 對操作員遮蔽",
+      "llmNeutralityNotice": "操作員視圖中已遮蔽供應商身分,以實踐 LLM-neutrality。切換供應商不改變工具語意。"
+    },
     "banner": {
       "areaChart30d": "後端 30 天歷史 API 待 Phase 58+ AD-Cost-Dashboard-Backend-Extensions;圖表顯示 fixture 資料。",
       "categoryTaxonomy": "Mockup 6 分類 ≠ 後端 by_type 兩層結構;統合待 Phase 58+ AD-Cost-Backend-Category-Taxonomy。圖表顯示 fixture 資料。",
-      "crossTenant": "後端跨租戶彙整 API 待 Phase 58+ AD-Cost-Dashboard-Backend-Extensions;表格顯示 fixture 資料。"
+      "crossTenant": "後端跨租戶彙整 API 待 Phase 58+ AD-Cost-Dashboard-Backend-Extensions;表格顯示 fixture 資料。",
+      "crossProvider": "後端跨供應商彙整 API 待 Phase 58+ AD-Cost-Dashboard-Backend-Extensions;卡片顯示 fixture 資料。"
     }
   },
   "overview": {
