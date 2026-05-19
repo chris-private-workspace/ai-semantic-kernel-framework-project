@@ -195,9 +195,9 @@
 - [x] **MEMORY.md +1 quality pointer line** (~390 char with topic + keywords + subfile link; per quality-pointer principle slightly over 300 due to richer keywords for retrieval)
 - [x] **`.claude/rules/sprint-workflow.md` calibration matrix +1 row**: `frontend-mockup-strict-rebuild` row Data points `57.23=0.59 / 57.24=1.19 / 57.25=0.88 (3)` + Notes column updated with rich 2-pt mean + sub-class DEFER decision + MHist entry added
 - [x] **CLAUDE.md Current Sprint row + Last Updated footer** per REFACTOR-001 §Sprint Closeout policy minimal touch (NO history record additions; calibration detail in sprint-workflow.md matrix only)
-- [ ] **Day 3 commit** closeout (pending)
-  - Commit message: `feat(sla-dashboard, sprint-57-25, Day 3): closeout — i18n parity verify + retrospective + memory + calibration matrix + minimal CLAUDE.md touch + next-phase-candidates.md update (3rd app ratio 0.88 in-band; sub-class DEFER)`
-  - DoD: `git status` clean post-commit
+- [x] **Day 3 commit** closeout — commit `f417313a` (7 files; +284 / -53)
+  - Commit message: `feat(sla-dashboard, sprint-57-25, Day 3): closeout — retrospective + calibration matrix + minimal CLAUDE.md touch + next-phase-candidates update (3rd app ratio 0.88 in-band; sub-class DEFER)`
+  - DoD: `git status` clean post-commit ✅
 
 ### 3.6 PR open + CI + merge
 - [ ] **PR open** with comprehensive body (Sprint 57.25 scope + 6 widget groups + reuses Sprint 57.24 v2 7 primitives + 1 NEW feature-scoped LatencyChart + 3rd app calibration data point + carryover #32 closure + NEW backend extensions carryover)
