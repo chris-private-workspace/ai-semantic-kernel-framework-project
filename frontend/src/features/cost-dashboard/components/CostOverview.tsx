@@ -8,11 +8,11 @@
  *   Sprint 57.24 v2 incremental rebuild from 68-line MVP toward 6-widget-group
  *   mockup-fidelity layout per reference/design-mockups/page-admin.jsx:200-321 (CostPage).
  *
- *   Day 2 US-C1 (this state): + §4 CategoryBarsCard 6-bar breakdown (fully-
- *   fixture per D-Day2-1 drift finding — mockup 6 categories ≠ backend by_type
- *   2-level shape; AD-Cost-Backend-Category-Taxonomy-Phase58). Existing Total
- *   cost + CostBreakdownTable preserved below as raw-backend detail view;
- *   US-C2 + US-C3 add admin-scope widgets next.
+ *   Day 2 US-C2 (this state): + §5 TenantTopTable admin-scope top-8 table
+ *   (parent-gated via isPlatformAdmin; component itself admin-agnostic for
+ *   testability). Fully-fixture per AP-2 honesty + BackendGapBanner
+ *   declaring cross-tenant API gap (AD-Cost-Dashboard-Backend-Extensions-
+ *   Phase58). US-C3 adds ProviderMixCard admin-scope next.
  *
  *   Backend reused: useCostSummary TanStack hook + GET /api/v1/cost-summary
  *   (Sprint 57.9 US-6 Day 4 stable).
@@ -21,6 +21,7 @@
  * Last Modified: 2026-05-19
  *
  * Modification History (newest-first):
+ *   - 2026-05-19: Sprint 57.24 Day 2 US-C2 — §5 TenantTopTable admin-scope top-8 (parent-gated; fixture + banner)
  *   - 2026-05-19: Sprint 57.24 Day 2 US-C1 — §4 CategoryBarsCard 6-bar breakdown (fully-fixture per R3)
  *   - 2026-05-19: Sprint 57.24 Day 1 US-B3 — §3 30d Spend over time card (CardShell + AreaChart + BackendGapBanner)
  *   - 2026-05-19: Sprint 57.24 Day 1 US-B2 — 4-stat sparkline grid (Spark + StatCard) with real Spend MTD + 3 fixtures
@@ -52,6 +53,7 @@ import { useCostSummary } from "../hooks/useCostSummary";
 import { useCostStore } from "../store/costStore";
 import { CategoryBarsCard } from "./CategoryBarsCard";
 import { CostBreakdownTable } from "./CostBreakdownTable";
+import { TenantTopTable } from "./TenantTopTable";
 
 // Mirrors backend _ADMIN_PLATFORM_ROLES (platform_layer/identity/auth.py); same
 // pattern as AdminTenantsPage. Used to gate the admin-only scope Badge in the
@@ -195,6 +197,13 @@ export function CostOverview() {
             shape; AD-Cost-Backend-Category-Taxonomy-Phase58). */}
         <CategoryBarsCard />
       </div>
+
+      {/* §5 Spend-by-tenant admin-scope top-8 table (US-C2). Mounted only
+          for platform admins (parent gate via isPlatformAdmin so the
+          component stays admin-agnostic for unit-test reuse). Fixture
+          data + BackendGapBanner per AP-2; cross-tenant API tracked
+          AD-Cost-Dashboard-Backend-Extensions-Phase58. */}
+      {isPlatformAdmin && <TenantTopTable />}
 
       {!tenantId && (
         <p className="text-sm text-destructive">No tenant in your session.</p>

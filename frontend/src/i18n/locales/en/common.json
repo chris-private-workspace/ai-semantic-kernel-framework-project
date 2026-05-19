@@ -165,9 +165,22 @@
       "embeddings": "Embeddings",
       "sandboxCompute": "Sandbox compute"
     },
+    "tenant": {
+      "title": "Spend by tenant",
+      "subtitle": "MTD · top 8",
+      "anomaly": "anomaly",
+      "col": {
+        "tenant": "Tenant",
+        "plan": "Plan",
+        "tokens": "Tokens",
+        "cost": "Cost",
+        "quotaUsed": "Quota used"
+      }
+    },
     "banner": {
       "areaChart30d": "Backend 30-day history API pending Phase 58+ AD-Cost-Dashboard-Backend-Extensions; chart shows fixture data.",
-      "categoryTaxonomy": "Mockup 6-category taxonomy ≠ backend by_type 2-level shape; harmonization pending Phase 58+ AD-Cost-Backend-Category-Taxonomy. Chart shows fixture data."
+      "categoryTaxonomy": "Mockup 6-category taxonomy ≠ backend by_type 2-level shape; harmonization pending Phase 58+ AD-Cost-Backend-Category-Taxonomy. Chart shows fixture data.",
+      "crossTenant": "Backend cross-tenant aggregation API pending Phase 58+ AD-Cost-Dashboard-Backend-Extensions; table shows fixture data."
     }
   },
   "overview": {

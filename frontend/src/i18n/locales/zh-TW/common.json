@@ -165,9 +165,22 @@
       "embeddings": "Embeddings",
       "sandboxCompute": "Sandbox 運算"
     },
+    "tenant": {
+      "title": "依租戶花費",
+      "subtitle": "本月累計 · 前 8 名",
+      "anomaly": "異常",
+      "col": {
+        "tenant": "租戶",
+        "plan": "方案",
+        "tokens": "Tokens",
+        "cost": "花費",
+        "quotaUsed": "配額使用"
+      }
+    },
     "banner": {
       "areaChart30d": "後端 30 天歷史 API 待 Phase 58+ AD-Cost-Dashboard-Backend-Extensions;圖表顯示 fixture 資料。",
-      "categoryTaxonomy": "Mockup 6 分類 ≠ 後端 by_type 兩層結構;統合待 Phase 58+ AD-Cost-Backend-Category-Taxonomy。圖表顯示 fixture 資料。"
+      "categoryTaxonomy": "Mockup 6 分類 ≠ 後端 by_type 兩層結構;統合待 Phase 58+ AD-Cost-Backend-Category-Taxonomy。圖表顯示 fixture 資料。",
+      "crossTenant": "後端跨租戶彙整 API 待 Phase 58+ AD-Cost-Dashboard-Backend-Extensions;表格顯示 fixture 資料。"
     }
   },
   "overview": {

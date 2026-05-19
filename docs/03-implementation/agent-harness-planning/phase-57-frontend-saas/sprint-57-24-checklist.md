@@ -112,14 +112,14 @@
 - [x] **Prong 2 content verify on `data.by_type` shape**: COMPLETED — 2-level dict (cost_type → sub_type → AggregatedSlice); NO clean mapping to mockup 6-category taxonomy → fully-fixture path chosen per CLAUDE.md §Mockup-Fidelity backend-gap rule + AP-2 honesty banner
 
 ### 2.2 US-C2 `<TenantTopTable>` admin-scope
-- [ ] **Component** at `frontend/src/features/cost-dashboard/components/TenantTopTable.tsx`
-  - DoD: top-8 tenant rows with avatar + slug + Plan Badge + Tokens + Cost + Quota used % + quota bar
-  - Fixture: `__fixtures__/tenantTop8.ts` (8 tenant rows matching mockup data)
-- [ ] **Admin scope gate via parent `isPlatformAdmin` check in CostOverview** (component itself doesn't need to know)
-  - DoD: non-admin doesn't see component
-- [ ] **`<BackendGapBanner reason="Backend cross-tenant API pending Phase 58+ AD-Cost-Dashboard-Backend-Extensions" />`**
-- [ ] **i18n**: `cost.tenant.title` / `cost.tenant.col.*` (5 columns) / `cost.tenant.anomaly` / `cost.banner.crossTenant`
-- [ ] **Vitest spec** `TenantTopTable.test.tsx` (≥ 4 cases: rendering / anomaly Badge / over-quota color / banner)
+- [x] **Component** at `frontend/src/features/cost-dashboard/components/TenantTopTable.tsx` (~145 lines mockup-direct port of page-admin.jsx:258-293)
+  - DoD: ✅ top-8 rows × avatar (rounded primary/15 + first-letter cap) + mono slug + optional anomaly Badge (danger tone + dot) + Plan Badge (shadcn outline variant) + Tokens (mono tnum subtle right) + Cost ($X mono tnum right) + Quota % (color-coded by pct threshold) + quota BarTrack (color-coded tone)
+  - Fixture: ✅ `__fixtures__/tenantTop8.ts` (8 rows mirror mockup page-admin.jsx:263-270 data; 1 row alert=true `tenant_3kp9`)
+  - Quota color logic (mockup page-admin.jsx:282-287 mirror): pct>100→danger / pct>80→warning / else→muted+success bar
+- [x] **Admin scope gate via parent `isPlatformAdmin` check in CostOverview** — component itself is admin-agnostic for test reuse; CostOverview conditionally mounts `{isPlatformAdmin && <TenantTopTable />}`
+- [x] **`<BackendGapBanner reason={t("cost.banner.crossTenant")} />`** rendered below table; AP-2 honesty marker
+- [x] **i18n**: `cost.tenant.{title, subtitle, anomaly, col.tenant, col.plan, col.tokens, col.cost, col.quotaUsed}` + `cost.banner.crossTenant` × EN + zh-TW (9 keys × 2 locales)
+- [x] **Vitest spec** `TenantTopTable.test.tsx` (6 cases: 8 rows render / title-subtitle / 1 anomaly Badge (alert=true) / pct>100 danger text class / 80<pct≤100 warning text class / cross-tenant banner present)
 
 ### 2.3 US-C3 `<ProviderMixCard>` admin-scope
 - [ ] **Component** at `frontend/src/features/cost-dashboard/components/ProviderMixCard.tsx`

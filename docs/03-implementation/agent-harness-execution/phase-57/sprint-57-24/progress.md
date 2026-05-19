@@ -287,6 +287,40 @@ view alongside raw data so reviewers can validate).
 - BarTrack + CategoryBarsCard + fixture + spec: ~20 min
 - CostOverview integration + i18n + verify: ~10 min
 
+### Day 2.2 US-C2 TenantTopTable admin-scope
+
+**Output**:
+- NEW `frontend/src/features/cost-dashboard/__fixtures__/tenantTop8.ts` (8-row fixture mirroring mockup page-admin.jsx:263-270; 1 row `tenant_3kp9` alert=true + pct=320 over-quota)
+- NEW `frontend/src/features/cost-dashboard/components/TenantTopTable.tsx` (~145 lines mockup-direct port of page-admin.jsx:258-293):
+  - CardShell with `bodyClass=""` for flush table layout
+  - `TenantRow` sub-component renders each row: avatar + slug + optional anomaly Badge + Plan Badge (shadcn outline) + Tokens (mono tnum subtle) + Cost ($X mono) + Quota % (color-coded text) + BarTrack (color-coded tone)
+  - Helper functions `quotaBarTone(pct)` + `quotaTextClass(pct)` encapsulate per-pct color logic (>100 danger / >80 warning / else success+muted)
+- NEW `frontend/tests/unit/cost-dashboard/TenantTopTable.test.tsx` (6 cases)
+- UPDATE `frontend/src/features/cost-dashboard/components/CostOverview.tsx`:
+  - Imported `TenantTopTable`
+  - Added §5 admin-gated row: `{isPlatformAdmin && <TenantTopTable />}` BELOW the §3+§4 2-col grid
+  - Component admin-agnostic + parent-gated design (per checklist note) keeps unit-test simple
+- UPDATE i18n EN + zh-TW (+ cost.tenant.{title, subtitle, anomaly, col.*} 8 keys + cost.banner.crossTenant = 9 keys × 2 locales)
+
+**Verification**:
+- Vitest 407/407 全綠 (82 files; +6 from Day 2.1 baseline 401: 6 TenantTopTable cases)
+- `npm run lint` exit 0
+- `npm run build` 3.29s; main bundle 331.37 kB (+0.51 from 330.86 Day 2.1 baseline)
+
+**DoD verified**:
+- ✅ 8 fixture rows rendered with mockup-faithful tone palette
+- ✅ Anomaly Badge appears ONLY on row with alert=true (1 row → tenant_3kp9)
+- ✅ Over-quota (pct=320) uses danger text + danger bar tone
+- ✅ Near-limit (pct=92 wonka-apac) uses warning text + warning bar tone
+- ✅ Normal rows use muted text + success bar tone
+- ✅ Admin scope gate at parent level (CostOverview); component itself admin-agnostic
+- ✅ BackendGapBanner declares cross-tenant API gap (AP-2 honesty)
+- ✅ i18n EN + zh-TW parity
+
+**Day 2.2 hours ~25 min**:
+- TenantTopTable + fixture + spec: ~15 min
+- CostOverview integration + i18n + verify: ~10 min
+
 ---
 
 ---
