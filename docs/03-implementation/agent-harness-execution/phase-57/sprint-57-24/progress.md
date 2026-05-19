@@ -67,4 +67,55 @@ Default assumption: (a) until proven otherwise during Day 1 R1 check.
 
 ---
 
+## Day 1 — 2026-05-19 — 🛑 SPRINT ABORTED per §Step 2.5
+
+### What happened
+
+Day 1 first action: `browser_close` attempt → still browser-stuck (prior session lingering, same as Sprint 57.23 Day 4 evidence). Pivoted to R3 contingency (code-level audit + Tailwind iterate).
+
+Per `.claude/rules/sprint-workflow.md` §Step 2.5 Day-0 verify methodology, opened Day 1 with code-level inventory of all 5 retrofit targets' inner components vs mockup widget structure. Finding emerged on first 2 pages (cost-dashboard + sla-dashboard) that production state is **structurally far thinner** than mockup, not cosmetic-class drift.
+
+### D-STRUCTURAL findings (Day 1 reality check)
+
+**D-STRUCTURAL-1**: `/cost-dashboard` production (`CostOverview.tsx` 68 lines) renders only `<p>` description + total cost text + `<CostBreakdownTable>` (5-col cost_type × sub_type rows). Mockup `CostPage` (page-admin.jsx:200-321, 121 lines) requires: page-head with route-pill + admin Badge + 4-stat grid with sparklines (Spend MTD / Tokens MTD / Cost-run / Cache hit) + AreaChart "Spend over time" 30d + "Spend by category" 6-row bars + "Spend by tenant" top-8 table + "Provider mix" 4-provider card with admin scope notice. **5/6 mockup widget groups are missing** — not Tailwind class drift, but structural widget absence. Tier 1 cosmetic-feasible premise invalid.
+
+**D-STRUCTURAL-2**: `/sla-dashboard` production (`SLAOverview.tsx` 133 lines) has `MonthPicker` + violations badge + 6-card grid (Availability / API p99 / Loop simple/medium/complex / HITL queue notif). Mockup `SlaPage` (page-admin.jsx:31-199, 169 lines) requires: time-range btn-group (1h/24h/7d/30d) + Refresh + Export buttons + 4-stat grid with sparklines + LatencyChart 24h SVG (3-series p50/p95/p99) + 5-row SLO status card + Top slow operations table (6 ops × p50/p95/p99/calls) + Error rate by service card (6 services). **5/6 mockup widget groups missing**.
+
+**D-STRUCTURAL-3** (already known per Sprint 57.22 audit Unit 31): `/tenant-settings` production (`TenantSettingsView.tsx`) has 6-tab structure; mockup `TenantSettings` (page-admin.jsx:411+) plus mockup comment in `page-extras.jsx:928` indicates `/feature-flags` lifted OUT of `/tenant-settings` into standalone route — architectural finding requires lift refactor, not cosmetic.
+
+**D-STRUCTURAL-4 (verify deferred)**: `/admin/tenants` list production (`AdminTenantsPage.tsx`) has `TenantListFilters + TenantListTable + TenantListPagination` (role-gated). Mockup `AdminTenants` (page-admin.jsx:322-410, 88 lines) inner component verify pending.
+
+**D-STRUCTURAL-5 (verify deferred)**: `/verification` production has 2-tab navigation + `VerificationList + CorrectionTraceView`. Mockup `VerificationPage` (page-extras.jsx:817-927, 110 lines) inner component verify pending.
+
+### Pattern recognition
+
+All inspected production pages exhibit the SAME pattern: thin real-data MVP shipping core backend integration + 1-3 functional widgets, vs mockup which is a "rich widget showcase" with 6-8 widget groups per page (KPI sparklines + multi-series charts + 多 table + side-cards). This is NOT Tailwind padding/radius/shadow drift; it's structural widget absence.
+
+Sprint 57.22 audit (`AUDIT-REPORT.md`) had already classified Unit 1 (cost-dashboard) + Unit 2 (sla-dashboard) + Unit 31 (tenant-settings) as **P0 requiring full mockup-fidelity rebuild** in Phase 57.23+ epic. Sprint 57.24 plan's Tier 1 selection of these pages as "cosmetic retrofit" was an oversight against audit findings.
+
+### Abort decision
+
+Per `.claude/rules/sprint-workflow.md` §Step 2.5:
+> **Findings shift scope by > 50% → abort sprint; redraft plan with reality baseline**
+
+Day 1 finding shifts effective scope by **≈100%** (Tier 1 cosmetic-feasible premise → invalid for all 5 pages). User selected Option D (Abort + redraft) per Day 1 AskUserQuestion.
+
+### Preservation policy
+
+Per CLAUDE.md "Never Delete Docs" + V2 discipline:
+- ✅ Day 0 + Day 1 progress.md entries preserved as historical audit trail
+- ✅ DRIFT-REPORT skeleton updated with D-STRUCTURAL-1/2/3 confirmed findings
+- ✅ Day 0 commit `5eb7ac84` preserved (plan + checklist + 三-prong + AD-Memory-Structural-Rebuild-Phase58 carryover)
+- ⏳ Plan + checklist redraft pending user direction (audit-only / split-audit-first / pure-rebuild)
+- ⏳ Class calibration pivot pending: `mockup-fidelity-retrofit` 0.55 → likely `frontend-mockup-fidelity-audit-tier-1` 0.85 (parallel Sprint 57.22 audit class) OR `frontend-mockup-strict-rebuild` 0.60 (parallel Sprint 57.23 rebuild class)
+
+### Day 1 hours
+
+- Production inventory (5 pages × inner components read): ~30 min
+- AskUserQuestion + abort decision: ~10 min
+- Documentation (this progress entry + DRIFT-REPORT update + TaskUpdate): pending below
+- **Day 1 total ~45 min before redraft decision**
+
+---
+
 ---

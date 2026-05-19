@@ -56,10 +56,26 @@ This is the **Sprint 57.22 lesson learned**: retrofit cannot rescue structural-l
 
 - Methodology documented; verdicts TBD pending Day 0+ Playwright MCP captures or code-level audit (per R3 contingency).
 
-### Day 1 — TBD
+### Day 1 — 2026-05-19 — 🛑 SPRINT ABORTED (§Step 2.5)
+
+Day 1 code-level inventory of 5 retrofit targets confirmed: 3/5 pages have **STRUCTURAL** drift (cost-dashboard + sla-dashboard + tenant-settings), with pattern strongly indicating remaining 2 (admin/tenants + verification) follow same shape. Tier 1 cosmetic-feasible premise invalidated.
+
+Updated verdicts (preliminary, Day 1 reality check):
+
+| # | Page | Verdict | Evidence |
+|---|------|---------|----------|
+| 1 | `/cost-dashboard` | **STRUCTURAL** | Production renders only `<p>` + total + breakdown table; 5/6 mockup widget groups absent (4 stat sparklines / 30d AreaChart / category bars / tenant table / provider mix) |
+| 2 | `/sla-dashboard` | **STRUCTURAL** | Production: MonthPicker + violations + 6 SLAMetricsCard; missing time-range tabs / LatencyChart SVG 3-series / SLO status / Top slow ops / Error rate cards |
+| 3 | `/verification` | **VERIFY pending** | Production: 2-tab + VerificationList + CorrectionTraceView; inner components vs mockup `page-extras.jsx:817-927` not yet diffed |
+| 4 | `/admin/tenants` list | **VERIFY pending** | Production: TenantListFilters + Table + Pagination + role gate; inner vs mockup `page-admin.jsx:322-410` not yet diffed |
+| 5 | `/admin/tenants/settings` | **STRUCTURAL** (Sprint 57.22 Unit 31 prior finding) | 6-tab structure; mockup `page-extras.jsx:928` comment indicates `/feature-flags` lifted OUT — architectural refactor required |
+
+Sprint aborted per §Step 2.5. Plan + checklist redraft pending user direction. See `progress.md` Day 1 entry for full abort rationale + preservation policy.
+
+### Day 2 — TBD (depending on redraft direction)
 
 ### Day 2 — TBD
 
-### Day 3 — TBD (final closure verdicts + DRIFT-REPORT signed off)
+### Day 3 — TBD (pending redraft direction)
 
 ---

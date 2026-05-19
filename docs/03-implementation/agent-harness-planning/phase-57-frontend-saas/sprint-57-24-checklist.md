@@ -1,163 +1,208 @@
-# Sprint 57.24 — Checklist
+# Sprint 57.24 v2 — Checklist (AD-Cost-Dashboard-Full-Mockup-Fidelity-Rebuild)
 
-**Plan**: `sprint-57-24-plan.md`
-**Calibration**: `mockup-fidelity-retrofit` 0.55 (NEW class 1st application; HYBRID per `claudedocs/1-planning/next-phase-candidates.md §3`) — bottom-up ~10 hr → calibrated commit ~5.5 hr (3-sprint window rule: KEEP 0.55 regardless of ratio outcome; if recurs 2-3× → propose 0.55 → 0.40-0.45 or 0.65-0.70 per evidence)
-**Day count**: 4 (Day 0 三-prong + Day 1 cost+sla / Day 2 verification+admin / Day 3 closeout)
-**Branch**: `feature/sprint-57-24-mockup-fidelity-retrofit-tier-1`
+> **Scope Pivot (2026-05-19 Day 1)**: This checklist v2 supersedes v1 retrofit Tier 1 checklist. See `sprint-57-24-plan.md §0 Scope Pivot Notice` + `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-24/progress.md` Day 1 abort entry. v1 checklist items 1.1-3.x for retrofit work are DROPPED (replaced by rebuild scope below); Day 0 三-prong + DRIFT-REPORT skeleton items remain `[x]` completed.
 
----
+[Link to plan](./sprint-57-24-plan.md)
 
-## Day 0 — Setup + 三-prong + Playwright MCP reference captures
-
-### 0.1 Plan + checklist landed
-- [x] Plan drafted at `sprint-57-24-plan.md` (6-page retrofit Tier 1; Q1+Q2 decisions encoded)
-- [x] Checklist drafted at `sprint-57-24-checklist.md` (this file)
-- [x] User Q1 (6 pages) + Q2 (/memory defer) alignment (2026-05-19)
-
-### 0.2 Branch + initial doc files
-- [x] Verify main HEAD: `13663c8c` (PR #156 squash merge for Sprint 57.23)
-- [x] Switch from `main` (working tree clean post Sprint 57.23 closeout)
-- [x] Create feature branch `feature/sprint-57-24-mockup-fidelity-retrofit-tier-1` from main `13663c8c`
-- [x] Create `progress.md` at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-24/progress.md` (Day 0 entry + 4 D-PRE findings)
-- [x] Create `claudedocs/4-changes/sprint-57-24-mockup-fidelity-retrofit-tier-1/DRIFT-REPORT-RETROFIT-TIER-1.md` skeleton (screenshots dir auto-created Day 0 captures)
-- [x] Add NEW AD-Memory-Structural-Rebuild-Phase58 as #31 to `claudedocs/1-planning/next-phase-candidates.md` (Q2 carryover; new §🔵 Sprint 57.24 Decision Carryovers section)
-
-### 0.3 Day 0 三-prong scope verify (per sprint-workflow.md §Step 2.5)
-- [x] **Prong 1 (Path verify)** — confirmed each plan §File Change List entry:
-  - `frontend/src/pages/cost-dashboard/index.tsx` exists ✅
-  - `frontend/src/pages/sla-dashboard/index.tsx` exists ✅
-  - `frontend/src/pages/verification/index.tsx` exists ✅
-  - `frontend/src/pages/verification/recent.tsx` **DOES NOT EXIST** ❌ → D-PRE-1 collapse to 5-page scope
-  - `frontend/src/pages/admin-tenants/index.tsx` exists ✅
-  - `frontend/src/pages/tenant-settings/index.tsx` exists ✅
-  - Mockup source files identified ✅ (D-PRE-2: all 5 retrofit targets sourced from `page-admin.jsx` + `page-extras.jsx`; see progress.md D-PRE-2 for exact line ranges)
-- [x] **Prong 2 (Content verify)** — deferred to Day 1 per-page inventory (cosmetic retrofit's Tailwind class state IS the Day 1 retrofit work itself; not pre-Day-1 verify). Per-page catalog as drift findings during retrofit.
-  - (Per-page Tailwind class drift catalog deferred to Day 1-2 retrofit task itself per Prong 2 deferral above)
-  - **R1 mitigation flag**: D-PRE-3 confirmed Sprint 57.22 Unit 31 6-tab finding manifests as `/feature-flags (lifted out of /tenant-settings)` per mockup `page-extras.jsx:928`; Day 1 R1 escalation check required before US-D2 retrofit
-- [ ] **Prong 3 (Schema verify)**: N/A this sprint (pure frontend retrofit; 0 DB schema work)
-- [x] **Prong 4 (Test selector verify)** — completed; findings:
-  - ✅ a11y-scan uses `getByTestId("app-shell")` anchor (L127) for all 5 gated retrofit pages — **no drift risk**
-  - ⚠️ visual-regression has 2 baselines (`cost-dashboard.png` L107-116 + `admin-tenants.png` L133-137) — expected drift; Day 3 handles via workflow_dispatch + cherry-pick (per Sprint 57.23 PR #156 recovery pattern)
-  - ℹ️ Unit Vitest tests are component-level (`SLAMetricsCard.test.tsx` / `CorrectionTraceView.test.tsx` / `adminTenantsStore.test.ts` / `tenantSettingsStore.test.ts`) — **no h1 anchor dependencies**
-- [x] Catalog Day 0 drift findings: 4 entries (D-PRE-1 through D-PRE-4) in `progress.md`
-
-### 0.4 Playwright MCP baseline captures (Day 0; R3 mitigation first)
-- [ ] 🚧 Deferred to Day 1+ (prior Sprint 57.23 session browser-stuck state still lingering; attempt reset Day 1 first action)
-- [ ] If reset fails → defer Playwright MCP to AD-Sprint-57-24-Playwright-Visual-Verify-Followup; document in DRIFT-REPORT; continue closure via code-level audit + Sprint 57.22 baseline
-- [ ] If reset succeeds → capture all baselines:
-  - `screenshots/mockup/cost-dashboard.png` at 1440×900 (from `reference/design-mockups/` via `python -m http.server 8080`)
-  - `screenshots/mockup/sla-dashboard.png` at 1440×900
-  - `screenshots/mockup/verification.png` at 1440×900
-  - `screenshots/mockup/verification-recent.png` at 1440×900
-  - `screenshots/mockup/admin-tenants-list.png` at 1440×900
-  - `screenshots/mockup/admin-tenants-settings.png` at 1440×900
-  - `screenshots/pre-retrofit/cost-dashboard.png` at 1440×900 (production at port 3007)
-  - `screenshots/pre-retrofit/sla-dashboard.png` at 1440×900
-  - `screenshots/pre-retrofit/verification.png` at 1440×900
-  - `screenshots/pre-retrofit/verification-recent.png` at 1440×900
-  - `screenshots/pre-retrofit/admin-tenants-list.png` at 1440×900
-  - `screenshots/pre-retrofit/admin-tenants-settings.png` at 1440×900
-- [ ] Side-by-side compare per page → Day 0 drift severity catalog entries
-
-### 0.5 Day 0 closeout
-- [ ] Day 0 commit: `chore(sprint-57-24, Day 0): plan + checklist + progress + Day 0 三-prong (4 D-PRE findings) + DRIFT skeleton + Memory rebuild AD carryover`
+**Class**: `frontend-mockup-strict-rebuild` 0.60 (2nd application; Sprint 57.23 was 1st)
+**Workload**: Bottom-up ~7 hr → calibrated commit ~4.2 hr (multiplier 0.60)
+**Day count**: 4 (Day 0 preserved + Day 1 redraft + Group B / Day 2 Group C / Day 3 Group D + closeout)
 
 ---
 
-## Day 1 — cost-dashboard + sla-dashboard retrofit (US-B1 + US-B2)
+## Day 0 — PRESERVED (commit 5eb7ac84; 2026-05-19)
 
-### 1.1 US-B1 /cost-dashboard retrofit
-- [ ] Per Sprint 57.22 Unit 8 + Day 0 D-PRE drift findings:
-  - Page chrome: title 18px + sub 12.5px + path pill 11px + spacing per mockup
-  - 4 KPI cards: layout + token shade + radius + shadow per mockup
-  - admin-only provider breakdown widget: existing shadow handling preserved; token vocabulary swap
-  - Inline-style escape hatches: removed if Tailwind expresses; preserved with STYLE.md §3 reason if not
-- [ ] Per-page MHist update (1-line): `Sprint 57.24 — mockup-fidelity cosmetic retrofit (closes audit Unit 8)`
-- [ ] Day 1.1 commit: `feat(frontend, sprint-57-24, Day 1): /cost-dashboard cosmetic retrofit per mockup (US-B1)`
+### 0.1 Plan v1 + checklist v1 + Day 0 skeletons
+- [x] **Plan v1 + checklist v1 drafted** (cosmetic retrofit Tier 1 scope; ABORTED Day 1)
+  - DoD: 9-section structure mirror Sprint 57.23
+  - Commit: `5eb7ac84` `chore(sprint-57-24, Day 0)`
+- [x] **Branch creation from main `13663c8c`**
+  - DoD: `git branch --show-current` → `feature/sprint-57-24-mockup-fidelity-retrofit-tier-1`
+- [x] **DRIFT-REPORT skeleton** (5-page table; repurposed cost-dashboard-only Day 1)
+  - DoD: `claudedocs/4-changes/sprint-57-24-mockup-fidelity-retrofit-tier-1/DRIFT-REPORT-RETROFIT-TIER-1.md` exists
+- [x] **next-phase-candidates.md +1 entry #31** (AD-Memory-Structural-Rebuild-Phase58 carryover)
 
-### 1.2 US-B2 /sla-dashboard retrofit
-- [ ] Per Sprint 57.22 Unit 9 + Day 0 D-PRE drift findings:
-  - SLA monitor page chrome alignment
-  - KPI / chart styling per mockup
-  - Token vocabulary swap
-- [ ] Per-page MHist update (1-line): `Sprint 57.24 — mockup-fidelity cosmetic retrofit (closes audit Unit 9)`
-- [ ] Day 1.2 commit: `feat(frontend, sprint-57-24, Day 1): /sla-dashboard cosmetic retrofit per mockup (US-B2)`
-
-### 1.3 Day 1 closeout
-- [ ] `npx tsc --noEmit` 0 errors
-- [ ] `npx vitest run` 369/369 PASS preserved (or adapt selector if rewrite breaks anchor)
-- [ ] `npm run lint` silent
-- [ ] `npx vite build` succeeds; main bundle within +5 KB of post-Sprint-57-23 baseline (~329 KB)
-- [ ] Progress.md Day 1 entry recorded
+### 0.2 Day 0 三-prong (Path + Test Selector)
+- [x] **Prong 1 Path verify**: 5 retrofit targets confirmed existence
+  - DoD: 4 D-PRE findings catalogued in progress.md Day 0
+  - Verify: `Glob("frontend/src/pages/{cost-dashboard,sla-dashboard,verification,admin-tenants,tenant-settings}/**")`
+- [x] **Prong 4 Test selector verify**: a11y-scan getByTestId("app-shell") + visual-regression baselines inventory
+  - DoD: 2 baselines identified (cost-dashboard + admin-tenants) requiring Day 3 regenerate
+- [-] **Prong 2 Content verify deferred to Day 1 per-page inventory** (Day 1 outcome: reality check found STRUCTURAL drift; abort triggered)
 
 ---
 
-## Day 2 — verification + admin/tenants list + admin/tenants/settings retrofit (US-C1 + US-D1 + US-D2)
+## Day 1 — Plan/Checklist Redraft + Group B (2026-05-19)
 
-### 2.1 US-C1 /verification + /verification/recent retrofit
-- [ ] Per Sprint 57.22 Unit 11 + Day 0 D-PRE drift findings:
-  - Recent verifications list page chrome migrate (Sprint 57.11 pre-mockup)
-  - Card / row token vocabulary swap
-- [ ] Per-page MHist update both files
-- [ ] Day 2.1 commit: `feat(frontend, sprint-57-24, Day 2): /verification + /verification/recent visual-chrome retrofit per mockup (US-C1)`
+### 1.0 Plan v2 + checklist v2 + abort documentation (Day 1 first half)
+- [x] **Day 1 reality check inventory** (production CostOverview + SLAOverview + admin-tenants + tenant-settings + verification inner components vs mockup)
+  - DoD: D-STRUCTURAL-1 through D-STRUCTURAL-3 confirmed; D-STRUCTURAL-4 / D-STRUCTURAL-5 verify deferred (sufficient pattern signal)
+- [x] **AskUserQuestion Option D — Abort + redraft**
+  - Decision: D-3 Pure rebuild start; Sprint 57.24 v2 = `/cost-dashboard` rebuild only
+- [x] **progress.md Day 1 entry** (abort rationale + preservation policy + D-STRUCTURAL findings)
+- [x] **DRIFT-REPORT Day 1 entry** (preliminary verdicts: 3/5 STRUCTURAL; 2 pending)
+- [x] **Plan v2 redraft** (this sprint scope = cost-dashboard rebuild; §0 Scope Pivot Notice preserved)
+- [x] **Checklist v2 redraft** (this file)
+- [ ] **Day 1 commit** (plan v2 + checklist v2 + Day 1 progress + DRIFT-REPORT update + redraft TaskCreate entries)
+  - DoD: `git status` clean post-commit; commit message includes `Sprint 57.24 v2 redraft (D-Step 2.5 abort)`
 
-### 2.2 US-D1 /admin/tenants list retrofit
-- [ ] Per Sprint 57.22 admin/tenants list audit + Day 0 D-PRE drift findings:
-  - Filter pill / table / pagination / actions token vocabulary swap
-- [ ] Per-page MHist update
-- [ ] Day 2.2 commit: `feat(frontend, sprint-57-24, Day 2): /admin/tenants list cosmetic retrofit per mockup (US-D1)`
+### 1.1 US-B1 page-head + page-actions
+- [ ] **`<PageHead>` component or inline section** rendering title + subtitle + route-pill + admin Badge + page-actions
+  - File: `frontend/src/features/cost-dashboard/components/CostOverview.tsx` (or extracted `PageHead.tsx`)
+  - DoD: 1440×900 visual matches mockup `page-admin.jsx:202-216`
+  - i18n: `cost.pageTitle` / `cost.pageSub` / `cost.adminScope` / `cost.action.byTenant` / `cost.action.csv`
+- [ ] **Admin Badge gates on `isPlatformAdmin`** (PLATFORM_ADMIN_ROLES from authStore.roles)
+  - DoD: non-admin doesn't see admin Badge
+- [ ] **"By tenant" + "CSV" buttons stubs** (onClick toast "Backend filter API pending" for now)
+  - DoD: buttons render with icons + label per mockup
 
-### 2.3 US-D2 /admin/tenants/settings retrofit
-- [ ] **R1 escalation check first** — confirm Day 0 三-prong content-verify on 6-tab structure:
-  - If retrofit-only suffices (cosmetic-level drift only) → continue retrofit
-  - If escalates to STRUCTURAL (mockup intent shows materially different tab count / grouping) → downgrade US-D2 to AD-Tenant-Settings-Structural-Rebuild-Phase58 carryover; Sprint 57.24 scope shrinks to 5 pages
-- [ ] Per-page MHist update
-- [ ] Day 2.3 commit: `feat(frontend, sprint-57-24, Day 2): /admin/tenants/settings cosmetic retrofit per mockup (US-D2)`
+### 1.2 US-B2 4-stat sparkline grid
+- [ ] **`<Spark>` primitive** at `frontend/src/components/charts/Spark.tsx`
+  - Props: `points: number[]`, `tone?: string`, `width?: number=60`, `height?: number=24`
+  - DoD: pure SVG polyline; ≤ 30 lines
+- [ ] **`<StatCard>` primitive** at `frontend/src/components/charts/StatCard.tsx`
+  - Props: `label, value, unit?, delta?, deltaDir?: "up"|"down", spark?: ReactNode`
+  - DoD: ≤ 50 lines; Tailwind only (no inline styles)
+- [ ] **Charts barrel** `frontend/src/components/charts/index.ts` re-exports Spark + StatCard + AreaChart
+- [ ] **4 stat instances in CostOverview**:
+  - Spend MTD: `data.total_cost_usd` (real) + Spark fixture
+  - Tokens MTD: derive from `data.by_type` aggregation (if available) else fixture
+  - Cost / run: fixture (no backend run-count yet)
+  - Cache hit rate: fixture (no backend metric yet)
+  - DoD: 4 cards render in grid-cols-4 at 1440×900
+- [ ] **Vitest spec** `Spark.test.tsx` + `StatCard.test.tsx` (≥ 4 cases each: render / props / spark slot / delta direction)
 
-### 2.4 Day 2 closeout
-- [ ] tsc 0 errors / Vitest preserved / lint silent / build within budget
-- [ ] Progress.md Day 2 entry
+### 1.3 US-B3 `<AreaChart>` 30d Spend over time
+- [ ] **`<AreaChart>` primitive** at `frontend/src/components/charts/AreaChart.tsx`
+  - Props: `data: number[]`, `tone?: string`, `height?: number=200`
+  - DoD: pure SVG area path with optional fill gradient; ≤ 70 lines
+- [ ] **`<CardShell>` primitive** at `frontend/src/components/ui/CardShell.tsx`
+  - Props: `title, subtitle?, actions?, bodyClass?, children`
+  - DoD: ≤ 40 lines; reused by category / tenant / provider cards Day 2
+- [ ] **`<BackendGapBanner>` primitive** at `frontend/src/components/ui/BackendGapBanner.tsx`
+  - Props: `reason: string`
+  - DoD: warning-tone banner; ≤ 15 lines
+- [ ] **Spend over time card in CostOverview** (CardShell + AreaChart + BackendGapBanner)
+  - i18n: `cost.spendOverTime` / `cost.spendOverTimeSub` / `cost.banner.areaChart30d`
+- [ ] **Fixture** `frontend/src/features/cost-dashboard/__fixtures__/spendOverTime30d.ts` (30-day data array)
+- [ ] **Vitest spec** `AreaChart.test.tsx` + `CardShell.test.tsx` (≥ 3 cases each)
+
+### 1.4 Day 1 Playwright MCP retry + commit
+- [ ] **Playwright MCP `browser_close` reset attempt** (post Group B implementation)
+  - If success: capture 1440×900 mockup + production pair for §1 + §2 + §3 widgets
+  - If still stuck: log Day 1 finding + code-level diff substitute
+- [ ] **Day 1 commit** with Group B work
+  - Commit message: `feat(cost-dashboard, sprint-57-24, Day 1, Group B): page-head + 4-stat sparkline + AreaChart + reusable chart primitives`
 
 ---
 
-## Day 3 — Playwright post-captures + DRIFT-REPORT + Vitest + closeout (US-E1 + US-E2 + US-E3)
+## Day 2 — Group C (2026-05-20)
 
-### 3.1 US-E1 Vitest final preserve
-- [ ] Full Vitest run: `npx vitest run` → expect 369/369 PASS preserved
-- [ ] Full e2e Vitest if changed → expect baseline preserved
+### 2.1 US-C1 `<CategoryBarsCard>`
+- [ ] **Component** at `frontend/src/features/cost-dashboard/components/CategoryBarsCard.tsx`
+  - Props: `byType: CostSummaryResponse["by_type"]`
+  - DoD: 6 category bars (Inference input/output / Thinking tokens / Tool runs / Embeddings / Sandbox compute); real `data.by_type` for available categories + fixture rows for missing
+  - i18n: `cost.category.inferenceInput` / `cost.category.inferenceOutput` / etc (6 keys)
+- [ ] **`<BarTrack>` inline primitive in CategoryBarsCard** (or extract to charts if needed)
+  - DoD: percentage bar with per-row color token
+- [ ] **CostBreakdownTable decision**: embed body OR keep as separate detail row
+  - DoD: documented in progress.md Day 2
+- [ ] **Vitest spec** `CategoryBarsCard.test.tsx` (≥ 3 cases: rendering / real data / fixture fallback)
+- [ ] **Prong 2 content verify on `data.by_type` shape** before commit (per Risk R3 mitigation)
 
-### 3.2 US-E2 Playwright MCP post-retrofit captures + DRIFT-REPORT
-- [ ] If Playwright MCP available (per Day 0 R3 status):
-  - `screenshots/post-retrofit/cost-dashboard.png` at 1440×900
-  - `screenshots/post-retrofit/sla-dashboard.png` at 1440×900
-  - `screenshots/post-retrofit/verification.png` at 1440×900
-  - `screenshots/post-retrofit/verification-recent.png` at 1440×900
-  - `screenshots/post-retrofit/admin-tenants-list.png` at 1440×900
-  - `screenshots/post-retrofit/admin-tenants-settings.png` at 1440×900
-- [ ] Side-by-side compare mockup vs post-retrofit per page → DRIFT-REPORT verdicts (PARITY / COSMETIC / STRUCTURAL / FUNCTIONAL)
-- [ ] If Playwright MCP unavailable → code-level audit closure (per Sprint 57.23 Day 4 workaround)
-- [ ] If any STRUCTURAL/FUNCTIONAL drift identified → fix-then-commit in Day 3 OR escalate to defer AD
+### 2.2 US-C2 `<TenantTopTable>` admin-scope
+- [ ] **Component** at `frontend/src/features/cost-dashboard/components/TenantTopTable.tsx`
+  - DoD: top-8 tenant rows with avatar + slug + Plan Badge + Tokens + Cost + Quota used % + quota bar
+  - Fixture: `__fixtures__/tenantTop8.ts` (8 tenant rows matching mockup data)
+- [ ] **Admin scope gate via parent `isPlatformAdmin` check in CostOverview** (component itself doesn't need to know)
+  - DoD: non-admin doesn't see component
+- [ ] **`<BackendGapBanner reason="Backend cross-tenant API pending Phase 58+ AD-Cost-Dashboard-Backend-Extensions" />`**
+- [ ] **i18n**: `cost.tenant.title` / `cost.tenant.col.*` (5 columns) / `cost.tenant.anomaly` / `cost.banner.crossTenant`
+- [ ] **Vitest spec** `TenantTopTable.test.tsx` (≥ 4 cases: rendering / anomaly Badge / over-quota color / banner)
 
-### 3.3 US-E2.5 Visual-regression baseline regeneration (per Sprint 57.23 Day 4 pattern)
-- [ ] Trigger `gh workflow run playwright-e2e.yml --ref feature/sprint-57-24-...` (visual-baseline workflow_dispatch)
-- [ ] Wait for completion
-- [ ] If AD-CI-7-GHA-PR-Permission still blocks auto-PR-create → manual cherry-pick from `chore/visual-baselines-XXXX` branch (parallel to Sprint 57.23 PR #156 recovery)
-- [ ] Verify visual-regression CI passes on next push
+### 2.3 US-C3 `<ProviderMixCard>` admin-scope
+- [ ] **Component** at `frontend/src/features/cost-dashboard/components/ProviderMixCard.tsx`
+  - DoD: 4-provider rows (provider-A/B/C/self-hosted) × Tokens + Cost + Pct + bar
+  - Fixture: `__fixtures__/providerMix.ts` (4 provider rows matching mockup)
+- [ ] **LLM-neutrality redaction notice** ("Provider identity is redacted in operator views to enforce LLM-neutrality. Switching providers does not change tool semantics.") per mockup
+- [ ] **`<BackendGapBanner reason="Backend cross-provider API pending Phase 58+ AD-Cost-Dashboard-Backend-Extensions" />`**
+- [ ] **i18n**: `cost.provider.title` / `cost.provider.banner` / `cost.provider.llmNeutralityNotice` / `cost.banner.crossProvider`
+- [ ] **Vitest spec** `ProviderMixCard.test.tsx` (≥ 3 cases: rendering / LLM-neutrality notice / banner)
 
-### 3.4 US-E3 doc syncs (closeout — per REFACTOR-001 §Sprint Closeout policy minimal touch)
-- [ ] `retrospective.md` Q1-Q7 + Q8 NEW class calibration narrative (`mockup-fidelity-retrofit` 0.55 1st app data point)
-- [ ] `memory/project_phase57_24_mockup_fidelity_retrofit_tier_1.md` (auto-memory subfile; ~250-300 char quality pointer)
-- [ ] `memory/MEMORY.md` +1 quality-pointer line (subfile path + topic + keywords)
-- [ ] `.claude/rules/sprint-workflow.md` calibration matrix +1 row for `mockup-fidelity-retrofit` 0.55 1st app baseline + MHist
-- [ ] `CLAUDE.md` minimal-touch update:
-  - Current Sprint row: `Sprint 57.24 closed YYYY-MM-DD (PR pending) — mockup-fidelity retrofit Tier 1 (6 pages); see memory/project_phase57_24_*.md for detail. Next: Sprint 57.25 candidate`
-  - Last Updated footer: `**Last Updated**: YYYY-MM-DD (Sprint 57.24 — mockup-fidelity retrofit Tier 1); see memory/ for sprint history`
-  - NO additional `Latest Sprint` / `Prev Sprint` rows packed with retro detail (per REFACTOR-001 forbidden item)
-- [ ] `claudedocs/1-planning/next-phase-candidates.md` carryover ADs (e.g. AD-Memory-Structural-Rebuild-Phase58 + any newly-identified STRUCTURAL drift + AD-Sprint-57-24-Playwright-Visual-Verify-Followup if applicable)
+### 2.4 CostOverview integration + Day 2 commit
+- [ ] **CostOverview.tsx assembled** with all 6 widget groups in mockup-faithful grid (`grid-cols-4` 4-stat row + `grid-cols-2` main grids)
+  - DoD: matches mockup `page-admin.jsx:225-318` 1:1 at 1440×900
+- [ ] **Existing CostOverview.test.tsx adapted** for new layout selectors (preserve behavioral assertions: real data flows / admin scope gate)
+- [ ] **Day 2 commit**
+  - Commit message: `feat(cost-dashboard, sprint-57-24, Day 2, Group C): category bars + tenant top-8 + provider mix + admin scope gate`
 
-### 3.5 Day 3 commits + PR
-- [ ] Day 3 commit: `feat(frontend, sprint-57-24, Day 3): Playwright post-retrofit + DRIFT-REPORT + retrospective + memory + visual baseline cherry-pick`
-- [ ] Day 3 closeout commit: `chore(closeout-57-24): CLAUDE.md + MEMORY.md + sprint-workflow.md calibration matrix + carryover ADs`
-- [ ] `git push -u origin feature/sprint-57-24-mockup-fidelity-retrofit-tier-1`
-- [ ] `gh pr create --draft --title "..." --body "..."`
-- [ ] CI green: pytest baseline preserved + frontend-ci all checks
+---
+
+## Day 3 — Group D + closeout (2026-05-21 or 22)
+
+### 3.1 US-D1 i18n EN + zh-TW parity
+- [ ] **EN keys added** to `frontend/src/i18n/locales/en/common.json` (~25 keys covering all 6 widget groups + banners)
+- [ ] **zh-TW mirror** to `frontend/src/i18n/locales/zh-TW/common.json`
+  - DoD: no missing translation warnings on `npm run build`
+- [ ] **Verify**: `npm run lint` + render checks both locales
+
+### 3.2 US-D2 Final assembly + selector adapt
+- [ ] **Existing tests audit**: any spec depending on old CostOverview shape needs selector update
+  - DoD: all referencing tests pass post-rewrite
+- [ ] **a11y-scan**: confirm `/cost-dashboard` passes (getByTestId("app-shell") + new widgets WCAG compliant)
+  - Color contrast checks on widget tone colors (Sprint 57.18 tokens)
+- [ ] **Bundle size delta check**: `npm run build` + compare KB delta; target ≤ +30 KB
+
+### 3.3 US-D3 Vitest + Playwright + visual-regression
+- [ ] **Vitest 369+15 passing**
+  - DoD: `npm run test` exits 0; new spec count ≥ 15
+- [ ] **Playwright e2e cost-dashboard happy-path** passes (selector adapt for layout rewrite)
+- [ ] **Playwright MCP pair-verify** (Day 3 attempt; if browser still stuck → code-level diff substitute + AD-Playwright-MCP-Recovery-Phase58 carryover)
+  - Save screenshots to `claudedocs/4-changes/sprint-57-24-mockup-fidelity-retrofit-tier-1/screenshots/mockup/cost-dashboard.png` + `production/cost-dashboard.png`
+- [ ] **visual-regression baseline regenerated** via workflow_dispatch + cherry-pick from `chore/visual-baselines-*` PR (parallel Sprint 57.23 PR #156 recovery pattern)
+
+### 3.4 DRIFT-REPORT + verdict
+- [ ] **DRIFT-REPORT cost-dashboard verdict = PARITY** (or COSMETIC with documented residual drift if Playwright unavailable)
+- [ ] **Sprint 57.25-57.28 carryover**: 4 remaining pages (sla / tenants / verification / tenant-settings) catalog in next-phase-candidates.md as `AD-Mockup-Fidelity-Rebuild-Page-*-Phase58` (4 entries)
+
+### 3.5 Retrospective + memory + closeout
+- [ ] **retrospective.md Q1-Q7** at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-24/retrospective.md`
+  - Q1: Did sprint goal land?
+  - Q2: Workload calibration ratio (actual / committed); class `frontend-mockup-strict-rebuild` 0.60 2nd app data point
+  - Q3: What went well?
+  - Q4: What didn't go well (Day 1 abort lesson + Playwright MCP recovery + class calibration)?
+  - Q5: Carryover ADs
+  - Q6: Reusable chart primitives — were extracts right-sized?
+  - Q7: Sprint 57.25+ readiness check
+- [ ] **memory snapshot** `memory/project_phase57_24_cost_dashboard_rebuild.md` (Sprint scope + key decisions + Day 1 abort + V2 rebuild + reusable charts + 4 carryover pages)
+- [ ] **MEMORY.md +1 quality pointer line** (per REFACTOR-001 §MEMORY.md Update Policy)
+- [ ] **`.claude/rules/sprint-workflow.md` calibration matrix +1 row**:
+  - `frontend-mockup-strict-rebuild` 2nd application; data point Sprint 57.24=X.XX
+  - 3-sprint window status: Sprint 57.23=0.59 + 57.24=X.XX (2 of 3); if both below band → AD-Sprint-Plan propose 0.60 → 0.40-0.45 lift parallel Sprint 57.16 mechanical-class rule
+- [ ] **CLAUDE.md Current Sprint row + Last Updated footer** (per REFACTOR-001 §CLAUDE.md Update Policy minimal touch — NO new history record additions)
+- [ ] **next-phase-candidates.md update**: +4 entries for Sprint 57.25-57.28 carryover pages + 1 entry for AD-Cost-Dashboard-Backend-Extensions-Phase58
+- [ ] **Day 3 commit** closeout
+  - Commit message: `chore(sprint-57-24, Day 3, closeout): retrospective + memory + calibration matrix + CLAUDE.md sync`
+
+### 3.6 PR open + CI + merge
+- [ ] **PR open** with comprehensive body (Sprint 57.24 v2 redraft context + 6 widget groups + reusable charts + carryover)
+- [ ] **CI green**: backend-ci (paths-filter) / frontend lint / Vitest / Playwright / a11y / visual-regression
+- [ ] **Merge** (after CI green + user approval)
+- [ ] **Post-merge cleanup**: local + remote branch delete
+
+---
+
+## Key Decisions Required During Sprint
+
+| Decision Point | When | Default |
+|----------------|------|---------|
+| CostBreakdownTable embed vs keep | Day 2.1 mid | Embed into CategoryBarsCard body for tighter mockup parity |
+| Playwright MCP recovery | Day 1 + Day 3 | If still stuck Day 3 → AD-Playwright-MCP-Recovery-Phase58 + code-level diff verdict |
+| `data.by_type` category mapping | Day 2.1 start (Prong 2 content verify) | Real data where available + fixture for missing categories |
+| Reusable chart primitives over-engineering | Day 1.2-1.3 | Keep mockup-mirror minimal; defer abstractions to 57.25+ actual reuse demand |
+
+---
+
+**Plan + checklist v2 redrafted**: 2026-05-19 Day 1 (post-abort)
+**Class**: `frontend-mockup-strict-rebuild` 0.60 (2nd app; KEEP baseline per 3-sprint window rule)
+**Target close**: 2026-05-21 or 22 (3 working days from Day 1 redraft complete)
