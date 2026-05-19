@@ -70,7 +70,7 @@ Build enterprise AI agent teams that work like **human professional teams** — 
 | Attribute | Value |
 |-----------|-------|
 | **Phase** | V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend ongoing (Phase 57+) |
-| **Current Sprint** | Sprint 57.24 v2 closed 2026-05-19 (PR pending) — Cost Dashboard Full Mockup-Fidelity Rebuild (v1 ABORTED Day 1 §Step 2.5; v2 = 1-page strict rebuild scope pivot); see `memory/project_phase57_24_cost_dashboard_rebuild.md` for detail. Next: Sprint 57.25 candidate = `/sla-dashboard` rebuild (same `frontend-mockup-strict-rebuild` 0.60 class; 3rd app calibration data point) |
+| **Current Sprint** | Sprint 57.25 closed 2026-05-19 (PR pending) — SLA Dashboard Full Mockup-Fidelity Rebuild; reuses 7 Sprint 57.24 v2 primitives without API change + 1 NEW feature-scoped LatencyChart (Karpathy §2 inline); SLAMetricsCard Karpathy §3 orphan delete; class 3rd app ratio 0.88 in-band lower → rich-dashboard sub-class DEFER pending 4th data point; see `memory/project_phase57_25_sla_dashboard_rebuild.md` for detail. Next: Sprint 57.26 candidate = `/admin/tenants` list rebuild (same `frontend-mockup-strict-rebuild` 0.60 class; 4th app calibration data point — sub-classification decision-trigger sprint) |
 | **Sprint History** | See [`memory/MEMORY.md`](memory/MEMORY.md) §Recent Sprints + per-sprint subfile `memory/project_phase57_XX_*.md` + retrospective.md under `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-XX/` |
 | **Pending / Next Phase** | See [`claudedocs/1-planning/next-phase-candidates.md`](claudedocs/1-planning/next-phase-candidates.md) |
 | **Roadmap** | Phase 49-55 V2 ✅ / Phase 56-58 SaaS Stage 1 3/3 ✅ / Phase 57+ Frontend ongoing |
@@ -617,7 +617,7 @@ V1 完整 CLAUDE.md 已保留於 `CLAUDE.backup.md`。如需查閱 V1 架構（M
 
 ---
 
-**Last Updated**: 2026-05-19 (Sprint 57.24 v2 — Cost Dashboard Full Mockup-Fidelity Rebuild); see `memory/` for sprint history
+**Last Updated**: 2026-05-19 (Sprint 57.25 — SLA Dashboard Full Mockup-Fidelity Rebuild); see `memory/` for sprint history
 **Project Start**: 2025-11-14
 **V2 Authority**: `docs/03-implementation/agent-harness-planning/` (21 docs — 20 規劃 + 1 review)
 **V1 Reference**: `CLAUDE.backup.md` + `docs/07-analysis/V9/00-index.md`

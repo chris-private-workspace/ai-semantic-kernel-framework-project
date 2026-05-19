@@ -286,4 +286,40 @@ frontend-mockup-strict-rebuild class history:
 | Karpathy §3 orphan delete | ✅ SLAMetricsCard + spec deleted; 0 production importer |
 | All 6 widget groups SHIPPED | ✅ |
 
-## Day 3 — pending
+## Day 3 — 2026-05-19
+
+### Group D: i18n parity verify + closeout
+
+**Commit**: pending Day 3 closeout
+
+#### Activities
+
+1. ✅ i18n parity verify — 38 sla.* keys × 2 locales (EN + zh-TW); `npm run build` 0 missing translation warnings
+2. ✅ Vitest 430/430 maintained from Day 2 (no regression)
+3. ✅ Visual-regression check — `/sla-dashboard` NOT in `tests/e2e/visual/visual-regression.spec.ts` 6-route snapshot list; defer route add per Plan §Decisions (scope creep; carryover)
+4. 🚧 Playwright MCP pair-verify — deferred per Q4 4th-consecutive blocker policy; code-level diff vs mockup line-by-line audit serves verification gate (per Day 1 + Day 2 §Mockup-fidelity audit)
+5. ✅ DRIFT-REPORT.md Day 3 final verdict = PARITY (code-level audit)
+6. ✅ retrospective.md Q1-Q7 written at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-25/retrospective.md`
+   - Q2 ratio analysis: ~3.0 hr actual / ~3.4 hr committed = **0.88** (in-band lower edge); rich-dashboard 2-pt mean 1.04 (57.24 v2 + 57.25) in band middle
+   - Q4 sub-classification proposal: **DEFER** per `When to adjust` 3-sprint window rule (rich mean not outside band)
+7. ✅ Memory snapshot at `memory/project_phase57_25_sla_dashboard_rebuild.md` (full distinguishing features + acceptance + metrics + keywords)
+8. ✅ MEMORY.md +1 quality pointer line prepended to Phase 57+ section
+9. ✅ `.claude/rules/sprint-workflow.md §Scope-class multiplier matrix` updated: `frontend-mockup-strict-rebuild` row Data points `57.23=0.59 / 57.24=1.19 / 57.25=0.88 (3)` + Notes updated with sub-class DEFER decision + MHist entry added
+10. ✅ CLAUDE.md minimal touch per REFACTOR-001 §Sprint Closeout policy: Current Sprint row + Last Updated footer (NO history record additions; calibration detail in sprint-workflow.md matrix only)
+11. ✅ `claudedocs/1-planning/next-phase-candidates.md` updated: close #32 + add 3 NEW ADs (#39 backend extensions + #40 LatencyChart extraction trigger + #41 rich-dashboard sub-class DEFER) + MHist update
+
+#### Calibration ratio recap (3rd app data point)
+
+| Sprint | Shape | actual/committed |
+|--------|-------|-----------------:|
+| 57.23 (1st) | Auth-flow 7 small routes | 0.59 (below band) |
+| 57.24 v2 (2nd) | Cost-dashboard rich | 1.19 (top of band) |
+| **57.25 (3rd)** | **SLA-dashboard rich + primitive reuse** | **0.88 (in-band lower)** |
+
+**Decision**: KEEP 0.60 baseline + DEFER sub-classification (AD #41); rich-dashboard 2-pt mean 1.04 in-band middle — hypothesis NOT confirmed. 4th data point (Sprint 57.26 admin-tenants list rebuild) will resolve.
+
+#### Sprint 57.25 — COMPLETE ✅
+
+All 6 widget groups shipped; PARITY verdict (code-level audit). Branch ready for PR open + CI green + merge.
+
+Phase 57+ Frontend SaaS 21/N → **22/N** post-merge.
