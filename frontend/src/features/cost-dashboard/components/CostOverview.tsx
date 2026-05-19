@@ -8,13 +8,11 @@
  *   Sprint 57.24 v2 incremental rebuild from 68-line MVP toward 6-widget-group
  *   mockup-fidelity layout per reference/design-mockups/page-admin.jsx:200-321 (CostPage).
  *
- *   Day 1.3 US-B3 (this state): PageHead (US-B1) + 4-stat sparkline grid
- *   (US-B2) + §3 30-day Spend over time card using new <CardShell> +
- *   <AreaChart> + <BackendGapBanner> primitives. AreaChart uses SPEND_OVER_TIME_30D
- *   fixture data (backend 30-day daily history endpoint not yet shipped per
- *   AP-2 honesty + CLAUDE.md §Mockup-Fidelity backend-gap rule). Existing
- *   Total cost + CostBreakdownTable preserved below temporarily; Day 2 US-C1
- *   supersedes with CategoryBarsCard + remaining Day 2 widgets.
+ *   Day 2 US-C1 (this state): + §4 CategoryBarsCard 6-bar breakdown (fully-
+ *   fixture per D-Day2-1 drift finding — mockup 6 categories ≠ backend by_type
+ *   2-level shape; AD-Cost-Backend-Category-Taxonomy-Phase58). Existing Total
+ *   cost + CostBreakdownTable preserved below as raw-backend detail view;
+ *   US-C2 + US-C3 add admin-scope widgets next.
  *
  *   Backend reused: useCostSummary TanStack hook + GET /api/v1/cost-summary
  *   (Sprint 57.9 US-6 Day 4 stable).
@@ -23,6 +21,7 @@
  * Last Modified: 2026-05-19
  *
  * Modification History (newest-first):
+ *   - 2026-05-19: Sprint 57.24 Day 2 US-C1 — §4 CategoryBarsCard 6-bar breakdown (fully-fixture per R3)
  *   - 2026-05-19: Sprint 57.24 Day 1 US-B3 — §3 30d Spend over time card (CardShell + AreaChart + BackendGapBanner)
  *   - 2026-05-19: Sprint 57.24 Day 1 US-B2 — 4-stat sparkline grid (Spark + StatCard) with real Spend MTD + 3 fixtures
  *   - 2026-05-19: Sprint 57.24 Day 1 US-B1 — PageHead + admin scope gate + page-actions stubs (rebuild start)
@@ -51,6 +50,7 @@ import { useAuthStore } from "../../auth/store/authStore";
 import { SPEND_OVER_TIME_30D } from "../__fixtures__/spendOverTime30d";
 import { useCostSummary } from "../hooks/useCostSummary";
 import { useCostStore } from "../store/costStore";
+import { CategoryBarsCard } from "./CategoryBarsCard";
 import { CostBreakdownTable } from "./CostBreakdownTable";
 
 // Mirrors backend _ADMIN_PLATFORM_ROLES (platform_layer/identity/auth.py); same
@@ -175,16 +175,26 @@ export function CostOverview() {
         />
       </div>
 
-      {/* §3 Spend over time 30d AreaChart (US-B3). Fixture data pending
-          backend 30-day daily history endpoint (AD-Cost-Dashboard-Backend-
-          Extensions-Phase58). BackendGapBanner marks fixture state per AP-2. */}
-      <CardShell
-        title={t("cost.spendOverTime.title")}
-        subtitle={t("cost.spendOverTime.subtitle")}
-      >
-        <AreaChart data={SPEND_OVER_TIME_30D} tone="hsl(var(--memory))" />
-        <BackendGapBanner reason={t("cost.banner.areaChart30d")} />
-      </CardShell>
+      {/* §3 + §4 main grid (2 cols at lg breakpoint). US-B3 30d AreaChart left
+          + US-C1 CategoryBarsCard right per mockup page-admin.jsx:225-253
+          grid-main 2-col layout. */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        {/* §3 Spend over time 30d AreaChart (US-B3). Fixture data pending
+            backend 30-day daily history endpoint
+            (AD-Cost-Dashboard-Backend-Extensions-Phase58). */}
+        <CardShell
+          title={t("cost.spendOverTime.title")}
+          subtitle={t("cost.spendOverTime.subtitle")}
+        >
+          <AreaChart data={SPEND_OVER_TIME_30D} tone="hsl(var(--memory))" />
+          <BackendGapBanner reason={t("cost.banner.areaChart30d")} />
+        </CardShell>
+
+        {/* §4 Spend-by-category breakdown (US-C1). Fully-fixture per
+            D-Day2-1 (mockup 6-category taxonomy ≠ backend by_type 2-level
+            shape; AD-Cost-Backend-Category-Taxonomy-Phase58). */}
+        <CategoryBarsCard />
+      </div>
 
       {!tenantId && (
         <p className="text-sm text-destructive">No tenant in your session.</p>

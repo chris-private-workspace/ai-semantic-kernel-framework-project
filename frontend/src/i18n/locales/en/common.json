@@ -155,8 +155,19 @@
       "title": "Spend over time",
       "subtitle": "Daily · 30 days · stacked by category"
     },
+    "category": {
+      "title": "Spend by category",
+      "subtitle": "Last 7 days",
+      "inferenceInput": "Inference (input)",
+      "inferenceOutput": "Inference (output)",
+      "thinkingTokens": "Thinking tokens",
+      "toolRuns": "Tool runs",
+      "embeddings": "Embeddings",
+      "sandboxCompute": "Sandbox compute"
+    },
     "banner": {
-      "areaChart30d": "Backend 30-day history API pending Phase 58+ AD-Cost-Dashboard-Backend-Extensions; chart shows fixture data."
+      "areaChart30d": "Backend 30-day history API pending Phase 58+ AD-Cost-Dashboard-Backend-Extensions; chart shows fixture data.",
+      "categoryTaxonomy": "Mockup 6-category taxonomy ≠ backend by_type 2-level shape; harmonization pending Phase 58+ AD-Cost-Backend-Category-Taxonomy. Chart shows fixture data."
     }
   },
   "overview": {

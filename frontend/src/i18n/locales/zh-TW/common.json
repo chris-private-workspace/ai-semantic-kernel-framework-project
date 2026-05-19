@@ -155,8 +155,19 @@
       "title": "花費趨勢",
       "subtitle": "每日 · 30 天 · 依分類堆疊"
     },
+    "category": {
+      "title": "依分類花費",
+      "subtitle": "過去 7 天",
+      "inferenceInput": "推論（輸入）",
+      "inferenceOutput": "推論（輸出）",
+      "thinkingTokens": "思考 Tokens",
+      "toolRuns": "工具執行",
+      "embeddings": "Embeddings",
+      "sandboxCompute": "Sandbox 運算"
+    },
     "banner": {
-      "areaChart30d": "後端 30 天歷史 API 待 Phase 58+ AD-Cost-Dashboard-Backend-Extensions;圖表顯示 fixture 資料。"
+      "areaChart30d": "後端 30 天歷史 API 待 Phase 58+ AD-Cost-Dashboard-Backend-Extensions;圖表顯示 fixture 資料。",
+      "categoryTaxonomy": "Mockup 6 分類 ≠ 後端 by_type 兩層結構;統合待 Phase 58+ AD-Cost-Backend-Category-Taxonomy。圖表顯示 fixture 資料。"
     }
   },
   "overview": {

@@ -215,4 +215,78 @@ Per CLAUDE.md "Never Delete Docs" + V2 discipline:
 
 ---
 
+## Day 2 — 2026-05-19 — Group C kickoff (over-budget acknowledged)
+
+### Day 2 budget note
+
+Day 1 consumed ~4.1 hr of the ~4.2 hr commit budget. Day 2 + Day 3 work
+proceeds **over the planned commit ceiling**; calibration ratio will be
+captured at Day 3 retrospective Q2. This is acceptable — Group B (Day 1)
+included §1.0 abort + redraft overhead (~50 min) NOT in original plan
+scope; treating effective Day 1 = ~3.2 hr in-scope, leaves ~1.0 hr
+remaining for Group C+D.
+
+### Day 2.1 US-C1 CategoryBarsCard + BarTrack primitive
+
+**Prong 2 content verify (R3 mitigation, COMPLETED before US-C1 code)**:
+- Read `frontend/src/features/cost-dashboard/types.ts` confirmed
+  `by_type: Record<string, Record<string, AggregatedSlice>>` (2-level dict)
+- Read mockup page-admin.jsx:230-252 confirmed 6 FLAT categories with
+  fixed names + colors + percentages
+- **D-Day2-1 drift finding**: mockup 6-category taxonomy DOES NOT 1:1 map
+  to backend 2-level dict shape. Per CLAUDE.md §Mockup-Fidelity backend-
+  gap rule, chose fully-fixture path + BackendGapBanner declaring
+  taxonomy gap. Real backend `by_type` view continues to render below
+  via existing CostBreakdownTable (separate raw-detail view).
+- Logged AD-Cost-Backend-Category-Taxonomy-Phase58 for harmonization
+  follow-up (added to next-phase-candidates.md Day 3 closeout).
+
+**Output**:
+- NEW `frontend/src/components/charts/BarTrack.tsx` (~40 lines reusable
+  percentage-bar primitive; documented STYLE.md §3 escape hatch for
+  dynamic width% + tone color)
+- NEW `frontend/src/features/cost-dashboard/__fixtures__/categoryBreakdown.ts`
+  (6 fixture rows mirroring mockup page-admin.jsx:232-238 demo values)
+- NEW `frontend/src/features/cost-dashboard/components/CategoryBarsCard.tsx`
+  (~55 lines mockup-direct port; CardShell + 6 rows × dot + name + $value
+  + BarTrack + BackendGapBanner)
+- NEW `frontend/tests/unit/cost-dashboard/CategoryBarsCard.test.tsx` (4
+  cases: 6 BarTracks / title-subtitle / banner / toLocaleString format)
+- UPDATE `frontend/src/components/charts/index.ts` (add BarTrack export)
+- UPDATE `frontend/src/features/cost-dashboard/components/CostOverview.tsx`:
+  - Imported CategoryBarsCard
+  - Wrapped §3 (30d AreaChart) + §4 (CategoryBarsCard) into 2-col grid at
+    lg breakpoint (`grid grid-cols-1 gap-3 lg:grid-cols-2`) per mockup
+    page-admin.jsx:225 grid-main layout
+- UPDATE i18n EN + zh-TW (+ cost.category.* 8 keys + cost.banner.categoryTaxonomy = 9 keys × 2 locales)
+
+**CostBreakdownTable decision**: KEPT as separate detail row below the
+new grid. Rationale: CategoryBarsCard is mockup-fidelity summary view
+(6 flat categories); CostBreakdownTable is raw backend `by_type` 2-level
+detail view. Both serve different audiences (executive summary vs
+auditor / engineer detail). Keeping both honors AP-2 honesty (mockup
+view alongside raw data so reviewers can validate).
+
+**Verification**:
+- Vitest 401/401 全綠 (81 files; +4 from Day 1.3 baseline 397)
+- `npm run lint` exit 0 (BarTrack primitive uses 2 documented
+  `eslint-disable-next-line no-restricted-syntax` for dynamic style;
+  comments explain STYLE.md §3 rationale)
+- `npm run build` 3.26s; main bundle 330.86 kB (+0.72 from 330.14 Day 1.3)
+
+**DoD verified**:
+- ✅ 6 mockup categories rendered with mockup-faithful tone colors
+- ✅ BarTrack reusable primitive (3 consumers planned this sprint + ≥3
+  future per 57.25-57.28; extraction justified per Karpathy §2)
+- ✅ BackendGapBanner declares taxonomy gap (AP-2 honesty)
+- ✅ CostOverview §3 + §4 wrapped in 2-col grid per mockup grid-main
+- ✅ i18n EN + zh-TW parity (no missing translation warnings on build)
+
+**Day 2.1 hours ~35 min**:
+- Prong 2 content verify + D-Day2-1 logging: ~5 min
+- BarTrack + CategoryBarsCard + fixture + spec: ~20 min
+- CostOverview integration + i18n + verify: ~10 min
+
+---
+
 ---

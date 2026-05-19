@@ -100,16 +100,16 @@
 ## Day 2 — Group C (2026-05-20)
 
 ### 2.1 US-C1 `<CategoryBarsCard>`
-- [ ] **Component** at `frontend/src/features/cost-dashboard/components/CategoryBarsCard.tsx`
-  - Props: `byType: CostSummaryResponse["by_type"]`
-  - DoD: 6 category bars (Inference input/output / Thinking tokens / Tool runs / Embeddings / Sandbox compute); real `data.by_type` for available categories + fixture rows for missing
-  - i18n: `cost.category.inferenceInput` / `cost.category.inferenceOutput` / etc (6 keys)
-- [ ] **`<BarTrack>` inline primitive in CategoryBarsCard** (or extract to charts if needed)
-  - DoD: percentage bar with per-row color token
-- [ ] **CostBreakdownTable decision**: embed body OR keep as separate detail row
-  - DoD: documented in progress.md Day 2
-- [ ] **Vitest spec** `CategoryBarsCard.test.tsx` (≥ 3 cases: rendering / real data / fixture fallback)
-- [ ] **Prong 2 content verify on `data.by_type` shape** before commit (per Risk R3 mitigation)
+- [x] **Component** at `frontend/src/features/cost-dashboard/components/CategoryBarsCard.tsx` (~55 lines mockup-direct port of page-admin.jsx:230-252)
+  - Props: NONE — consumes inline fixture (R3 mitigation: mockup 6-category taxonomy ≠ backend by_type 2-level shape; AD-Cost-Backend-Category-Taxonomy-Phase58 carryover)
+  - DoD: ✅ 6 fixture rows (Inference input/output / Thinking tokens / Tool runs / Embeddings / Sandbox compute) × dot + name + $value + BarTrack; per-row tone color (thinking/primary/info/tool/memory/warning); BackendGapBanner declaring taxonomy gap
+  - i18n: ✅ `cost.category.{title, subtitle, inferenceInput, inferenceOutput, thinkingTokens, toolRuns, embeddings, sandboxCompute}` + `cost.banner.categoryTaxonomy` × EN + zh-TW
+- [x] **`<BarTrack>` primitive extracted** to `frontend/src/components/charts/BarTrack.tsx` (~40 lines) — NOT inline; shared with Day 2.2 + 2.3 + Sprint 57.25+ widgets per Karpathy §2 "extract on 2nd consumer" (3 confirmed consumers + ≥3 future)
+  - Props: `pct, tone?, height?`; clamps pct to [0,100]; documented STYLE.md §3 escape hatch for dynamic width % + tone color (no Tailwind utility expresses runtime values cleanly)
+- [x] **CostBreakdownTable decision**: KEEP as separate detail row below the new grid (raw backend `by_type` 2-level dict view; serves different audience than mockup-summary CategoryBarsCard)
+  - Rationale documented inline in CostOverview comments + Day 2 progress entry
+- [x] **Vitest spec** `CategoryBarsCard.test.tsx` (4 cases: 6 BarTracks render / title-subtitle / BackendGapBanner present / dollar values toLocaleString format)
+- [x] **Prong 2 content verify on `data.by_type` shape**: COMPLETED — 2-level dict (cost_type → sub_type → AggregatedSlice); NO clean mapping to mockup 6-category taxonomy → fully-fixture path chosen per CLAUDE.md §Mockup-Fidelity backend-gap rule + AP-2 honesty banner
 
 ### 2.2 US-C2 `<TenantTopTable>` admin-scope
 - [ ] **Component** at `frontend/src/features/cost-dashboard/components/TenantTopTable.tsx`
