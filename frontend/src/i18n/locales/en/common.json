@@ -150,6 +150,13 @@
       "tokensMtd": "Tokens · MTD",
       "costPerRun": "Cost / run",
       "cacheHit": "Cache hit rate"
+    },
+    "spendOverTime": {
+      "title": "Spend over time",
+      "subtitle": "Daily · 30 days · stacked by category"
+    },
+    "banner": {
+      "areaChart30d": "Backend 30-day history API pending Phase 58+ AD-Cost-Dashboard-Backend-Extensions; chart shows fixture data."
     }
   },
   "overview": {

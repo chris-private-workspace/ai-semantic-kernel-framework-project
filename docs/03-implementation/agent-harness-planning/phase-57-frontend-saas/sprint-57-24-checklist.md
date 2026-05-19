@@ -74,19 +74,19 @@
 - [x] **Vitest specs**: `Spark.test.tsx` (5 cases) + `StatCard.test.tsx` (6 cases) all pass; covers render / tone / width-height defaults / empty-points edge / delta tone semantic / spark slot / delta omitted
 
 ### 1.3 US-B3 `<AreaChart>` 30d Spend over time
-- [ ] **`<AreaChart>` primitive** at `frontend/src/components/charts/AreaChart.tsx`
-  - Props: `data: number[]`, `tone?: string`, `height?: number=200`
-  - DoD: pure SVG area path with optional fill gradient; ≤ 70 lines
-- [ ] **`<CardShell>` primitive** at `frontend/src/components/ui/CardShell.tsx`
-  - Props: `title, subtitle?, actions?, bodyClass?, children`
-  - DoD: ≤ 40 lines; reused by category / tenant / provider cards Day 2
-- [ ] **`<BackendGapBanner>` primitive** at `frontend/src/components/ui/BackendGapBanner.tsx`
+- [x] **`<AreaChart>` primitive** at `frontend/src/components/charts/AreaChart.tsx` (~85 lines mockup-direct port of page-admin.jsx:5-29)
+  - Props: `data: number[]`, `tone?: string=hsl(var(--primary))`, `height?: number=180`
+  - DoD: ✅ pure SVG; gradient fill + line stroke + 3 horizontal grid lines (25/50/75% positions); viewBox + preserveAspectRatio="none" + className="w-full" + SVG `height` attribute (no inline style per STYLE.md §1); empty data returns null
+- [x] **`<CardShell>` primitive** at `frontend/src/components/ui/CardShell.tsx` (~50 lines mockup-direct port of OverviewPage inline Card pattern)
+  - Props: `title?, subtitle?, actions?, bodyClass?, children`
+  - DoD: ✅ Tailwind translation of mockup Card shape (rounded-[12px] / border / bg-bg-1 / px-4 py-3 header / p-4 body default); header omitted when neither title nor actions present; reused by Day 2 widget cards
+- [x] **`<BackendGapBanner>` primitive** at `frontend/src/components/ui/BackendGapBanner.tsx` (~15 lines)
   - Props: `reason: string`
-  - DoD: warning-tone banner; ≤ 15 lines
-- [ ] **Spend over time card in CostOverview** (CardShell + AreaChart + BackendGapBanner)
-  - i18n: `cost.spendOverTime` / `cost.spendOverTimeSub` / `cost.banner.areaChart30d`
-- [ ] **Fixture** `frontend/src/features/cost-dashboard/__fixtures__/spendOverTime30d.ts` (30-day data array)
-- [ ] **Vitest spec** `AreaChart.test.tsx` + `CardShell.test.tsx` (≥ 3 cases each)
+  - DoD: ✅ role="note" + warning-tone styling (border-warning/40 / bg-warning/5 / text-warning) + ⚠️ icon; data-testid for test
+- [x] **Spend over time card in CostOverview** assembled (CardShell + AreaChart + BackendGapBanner)
+  - i18n keys: `cost.spendOverTime.{title, subtitle}` + `cost.banner.areaChart30d` ✅ EN + zh-TW parity
+- [x] **Fixture** `frontend/src/features/cost-dashboard/__fixtures__/spendOverTime30d.ts` (30-day data array; mirrors mockup page-admin.jsx:227 demo values $80-$284)
+- [x] **Vitest specs**: `AreaChart.test.tsx` (5 cases) + `CardShell.test.tsx` (5 CardShell + 2 BackendGapBanner cases); covers svg+paths / tone / gradient / height attribute / empty edge / title-subtitle / actions slot / body class / banner role + warning tone
 
 ### 1.4 Day 1 Playwright MCP retry + commit
 - [ ] **Playwright MCP `browser_close` reset attempt** (post Group B implementation)

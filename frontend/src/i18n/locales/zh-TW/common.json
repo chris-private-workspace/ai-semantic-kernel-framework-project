@@ -150,6 +150,13 @@
       "tokensMtd": "當月 Tokens",
       "costPerRun": "每次執行成本",
       "cacheHit": "快取命中率"
+    },
+    "spendOverTime": {
+      "title": "花費趨勢",
+      "subtitle": "每日 · 30 天 · 依分類堆疊"
+    },
+    "banner": {
+      "areaChart30d": "後端 30 天歷史 API 待 Phase 58+ AD-Cost-Dashboard-Backend-Extensions;圖表顯示 fixture 資料。"
     }
   },
   "overview": {

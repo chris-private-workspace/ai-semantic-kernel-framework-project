@@ -179,6 +179,40 @@ Per CLAUDE.md "Never Delete Docs" + V2 discipline:
 
 **Day 1 cumulative ~3.3 hr** (vs ~4.2 hr commit budget = ~79% consumed for ~50% Group B progress; on track; US-B3 next)
 
+### Day 1.3 US-B3 AreaChart + CardShell + BackendGapBanner + 30d Spend card (Group B complete)
+
+**Output**:
+- NEW `frontend/src/components/charts/AreaChart.tsx` (~85 lines mockup-direct port of page-admin.jsx:5-29 AreaChart helper)
+- NEW `frontend/src/components/ui/CardShell.tsx` (~50 lines reusable card shell; mockup-direct port of OverviewPage inline Card pattern)
+- NEW `frontend/src/components/ui/BackendGapBanner.tsx` (~15 lines warning-tone banner with role="note")
+- NEW `frontend/src/features/cost-dashboard/__fixtures__/spendOverTime30d.ts` (30-day fixture array; mirrors mockup demo values)
+- NEW `frontend/tests/unit/components/AreaChart.test.tsx` (5 cases)
+- NEW `frontend/tests/unit/components/CardShell.test.tsx` (5 CardShell + 2 BackendGapBanner = 7 cases)
+- UPDATE `frontend/src/components/charts/index.ts` (add AreaChart export)
+- UPDATE `frontend/src/features/cost-dashboard/components/CostOverview.tsx` (add §3 30d Spend over time card; new imports)
+- UPDATE `frontend/src/i18n/locales/{en,zh-TW}/common.json` (+ cost.spendOverTime.{title, subtitle} + cost.banner.areaChart30d = 3 keys × 2 locales)
+
+**Verification**:
+- Vitest 397/397 全綠 (80 files; +12 from Day 1.2 baseline 385: AreaChart 5 + CardShell 5 + BackendGapBanner 2)
+- `npm run lint` exit 0 (fixed 1 STYLE.md §1 violation: replaced inline `style={{ height }}` with SVG `height` attribute)
+- `npm run build` 3.41s; main bundle 330.14 kB (+0.38 from 329.76 Day 1.2 baseline)
+
+**DoD verified**:
+- ✅ AreaChart mockup-direct port (page-admin.jsx:5-29 spec): gradient fill + line stroke + 3 grid lines at 25/50/75% + viewBox + preserveAspectRatio="none"
+- ✅ AreaChart STYLE.md §1 compliant (SVG `height` attribute instead of inline style)
+- ✅ CardShell mockup-direct port (page-overview.jsx Card): rounded-[12px] + bg-bg-1 + border-b header + p-4 body; header omitted when no title/actions
+- ✅ BackendGapBanner role="note" + warning-tone + ⚠️ icon for AP-2 honesty marker
+- ✅ §3 30d Spend over time card assembled (CardShell wrapping AreaChart + BackendGapBanner)
+- ✅ Fixture `SPEND_OVER_TIME_30D` 30-element array matches mockup demo values
+- ✅ i18n EN + zh-TW parity (no missing translation warnings on build)
+
+**Day 1.3 hours ~45 min**:
+- AreaChart + CardShell + BackendGapBanner primitives + specs: ~25 min
+- CostOverview integration + i18n + fixture: ~10 min
+- Lint fix (inline style → SVG attribute) + re-verify: ~10 min
+
+**Day 1 cumulative ~4.1 hr** (vs ~4.2 hr commit budget = ~98% consumed; **Group B 100% complete** 3/3 USs done; on calibration band)
+
 ---
 
 ---

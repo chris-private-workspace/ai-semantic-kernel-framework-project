@@ -5,8 +5,10 @@
  * Scope: Phase 57 / Sprint 57.24 Day 1 US-B2 + US-B3 + US-B4
  *
  * Modification History:
+ *   - 2026-05-19: Sprint 57.24 Day 1 US-B3 — add AreaChart export
  *   - 2026-05-19: Initial creation — Spark + StatCard exports (Sprint 57.24 Day 1 US-B2)
  */
 
+export { AreaChart, type AreaChartProps } from "./AreaChart";
 export { Spark, type SparkProps } from "./Spark";
 export { StatCard, type StatCardProps } from "./StatCard";

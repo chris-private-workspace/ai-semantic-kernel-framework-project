@@ -8,13 +8,13 @@
  *   Sprint 57.24 v2 incremental rebuild from 68-line MVP toward 6-widget-group
  *   mockup-fidelity layout per reference/design-mockups/page-admin.jsx:200-321 (CostPage).
  *
- *   Day 1.2 US-B2 (this state): PageHead (Day 1.1) + 4-stat sparkline grid
- *   below (Spend MTD / Tokens MTD / Cost-run / Cache hit rate) using new
- *   <StatCard> + <Spark> primitives from components/charts/. Spend MTD value
- *   derives from data.total_cost_usd (real backend); other 3 stats render
- *   fixture data per CLAUDE.md §Frontend Mockup-Fidelity backend-gap
- *   placeholder rule + AP-2 honesty. Existing Total cost + CostBreakdownTable
- *   preserved below temporarily; Day 2 US-C1 supersedes with CategoryBarsCard.
+ *   Day 1.3 US-B3 (this state): PageHead (US-B1) + 4-stat sparkline grid
+ *   (US-B2) + §3 30-day Spend over time card using new <CardShell> +
+ *   <AreaChart> + <BackendGapBanner> primitives. AreaChart uses SPEND_OVER_TIME_30D
+ *   fixture data (backend 30-day daily history endpoint not yet shipped per
+ *   AP-2 honesty + CLAUDE.md §Mockup-Fidelity backend-gap rule). Existing
+ *   Total cost + CostBreakdownTable preserved below temporarily; Day 2 US-C1
+ *   supersedes with CategoryBarsCard + remaining Day 2 widgets.
  *
  *   Backend reused: useCostSummary TanStack hook + GET /api/v1/cost-summary
  *   (Sprint 57.9 US-6 Day 4 stable).
@@ -23,6 +23,7 @@
  * Last Modified: 2026-05-19
  *
  * Modification History (newest-first):
+ *   - 2026-05-19: Sprint 57.24 Day 1 US-B3 — §3 30d Spend over time card (CardShell + AreaChart + BackendGapBanner)
  *   - 2026-05-19: Sprint 57.24 Day 1 US-B2 — 4-stat sparkline grid (Spark + StatCard) with real Spend MTD + 3 fixtures
  *   - 2026-05-19: Sprint 57.24 Day 1 US-B1 — PageHead + admin scope gate + page-actions stubs (rebuild start)
  *   - 2026-05-11: Sprint 57.15 — inline styles → Tailwind utility classes (AD-Inline-Style-Cleanup-Sweep)
@@ -40,11 +41,14 @@
 
 import { useTranslation } from "react-i18next";
 
-import { Spark, StatCard } from "../../../components/charts";
+import { AreaChart, Spark, StatCard } from "../../../components/charts";
+import { BackendGapBanner } from "../../../components/ui/BackendGapBanner";
 import { Button } from "../../../components/ui/button";
+import { CardShell } from "../../../components/ui/CardShell";
 import { CardSkeleton, ErrorRetry } from "../../../components/ui";
 import { PageHead } from "../../../components/ui/PageHead";
 import { useAuthStore } from "../../auth/store/authStore";
+import { SPEND_OVER_TIME_30D } from "../__fixtures__/spendOverTime30d";
 import { useCostSummary } from "../hooks/useCostSummary";
 import { useCostStore } from "../store/costStore";
 import { CostBreakdownTable } from "./CostBreakdownTable";
@@ -170,6 +174,17 @@ export function CostOverview() {
           }
         />
       </div>
+
+      {/* §3 Spend over time 30d AreaChart (US-B3). Fixture data pending
+          backend 30-day daily history endpoint (AD-Cost-Dashboard-Backend-
+          Extensions-Phase58). BackendGapBanner marks fixture state per AP-2. */}
+      <CardShell
+        title={t("cost.spendOverTime.title")}
+        subtitle={t("cost.spendOverTime.subtitle")}
+      >
+        <AreaChart data={SPEND_OVER_TIME_30D} tone="hsl(var(--memory))" />
+        <BackendGapBanner reason={t("cost.banner.areaChart30d")} />
+      </CardShell>
 
       {!tenantId && (
         <p className="text-sm text-destructive">No tenant in your session.</p>
