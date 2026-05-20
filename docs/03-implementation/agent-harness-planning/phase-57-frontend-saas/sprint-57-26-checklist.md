@@ -51,9 +51,9 @@
   - Verify: directory listing count ≈ 22
 
 ### 0.4 Day 0 commit
-- [ ] **Day 0 commit** with plan + checklist + Day 0 progress + DRIFT-REPORT skeleton + sweep harness + before-baseline
+- [x] **Day 0 commit** with plan + checklist + Day 0 progress + DRIFT-REPORT skeleton + sweep harness — commit `a16c248f` (5 files; 751 insertions; screenshots/ kept as local evidence, not committed)
   - Commit message: `chore(sprint-57-26, Day 0): plan + checklist + 三-prong + route-sweep harness + before-baseline`
-  - DoD: `git status` clean post-commit; commit hash recorded in progress.md
+  - DoD: `git status` clean post-commit ✅; commit hash recorded in progress.md ✅
   - Verify: `git log --oneline -1`
 
 ---
@@ -61,41 +61,41 @@
 ## Day 1 — Group B (token correction + shell alignment) (2026-05-21)
 
 ### 1.1 US-B1 font-size approach spike + decision
-- [ ] **Approach spike**: capture `/overview` + `/cost-dashboard` + `/auth/login` at `html { font-size: 13px }` vs `81.25%`
+- [x] **Approach spike**: capture `/overview` + `/cost-dashboard` + `/auth/login` at `html { font-size: 13px }` vs `81.25%`
   - DoD: 6 screenshots compared vs mockup proportion; pick A (`13px`) or B (`81.25%`)
   - DoD: decision + reason recorded in progress.md Day 1
   - Verify: progress.md Day 1 §approach decision present
-- [ ] **`index.css` font-size baseline applied**
+- [x] **`index.css` font-size baseline applied**
   - DoD: `@layer base` gains `html { font-size: <chosen> }`; body block keeps inherit or explicit `13px`
   - Verify: `Grep("font-size", index.css)` shows the new rule
 
 ### 1.2 US-B1 rem→px design token correction
-- [ ] **`--radius` rem→px** in `index.css` `:root` + `.dark`
+- [x] **`--radius` rem→px** in `index.css` `:root` + `.dark`
   - DoD: `--radius: 0.5rem` → `--radius: 8px` (mockup `styles.css:29`); any other rem-valued custom prop from Prong 2 audit converted
   - Verify: `Grep("--radius", index.css)` shows `8px`; `npm run build` green
-- [ ] **`tailwind.config.ts` borderRadius audit**
+- [x] **`tailwind.config.ts` borderRadius audit**
   - DoD: `borderRadius.md/sm` `calc(var(--radius) - Npx)` confirmed px-arithmetic-safe with px `--radius` (likely no change)
   - Verify: read `tailwind.config.ts` borderRadius block
 
 ### 1.3 US-B2 AppShellV2 shell alignment
-- [ ] **Sidebar grid column** `grid-cols-[240px_1fr]` → `grid-cols-[232px_1fr]`
+- [x] **Sidebar grid column** `grid-cols-[240px_1fr]` → `grid-cols-[232px_1fr]`
   - DoD: matches mockup `styles.css:200` `.app` grid
-- [ ] **Root background tokens** `bg-background text-foreground` → `bg-bg text-fg`
+- [x] **Root background tokens** `bg-background text-foreground` → `bg-bg text-fg`
   - DoD: shell root consumes mockup token tree (hue consistency)
-- [ ] **`<main>` padding** `p-6` → mockup-faithful inset (Option B)
+- [x] **`<main>` padding** `p-6` → mockup-faithful inset (Option B)
   - DoD: measure mockup `#overview` inner page-gutter; apply measured value; record in progress.md
   - DoD: `fullBleed` prop path (Sprint 57.21 chat-v2) unchanged
   - Verify: `/overview` main content inset matches mockup at 1440×900
 
 ### 1.4 US-B3 AuthShell + index.css body
-- [ ] **`AuthShell.tsx` backdrop** radial-gradient base `--background` → `--bg` if drifted
+- [x] **`AuthShell.tsx` backdrop** radial-gradient base `--background` → `--bg` if drifted
   - DoD: `/auth/*` family backdrop hue consistent with authed routes
-- [ ] **`index.css` body block** `font-family` token form + `line-height: 1.45` (mockup `styles.css:185`)
+- [x] **`index.css` body block** `font-family` token form + `line-height: 1.45` (mockup `styles.css:185`)
   - DoD: body block aligned to mockup
 
 ### 1.5 Day 1 spot-check + commit
-- [ ] **Spot-check sweep** `/overview` + `/auth/login` + `/cost-dashboard` post-correction
-  - DoD: 3 routes visually closer to mockup; no obvious breakage
+- [x] **Spot-check sweep** `/overview` + `/auth/login` + `/cost-dashboard` post-correction
+  - DoD: `/overview` + `/auth/login` ✅ correction effective + no breakage; `/cost-dashboard` before+after both AppErrorBoundary → D-DAY1-1 harness mock limitation (NOT a Sprint 57.26 regression — pure CSS change cannot cause a JS error; before-sweep proves it)
 - [ ] **Day 1 commit** with Group B work
   - Commit message: `feat(frontend, sprint-57-26, Day 1, Group B): font-size baseline + rem→px tokens + AppShellV2 + AuthShell foundation alignment`
   - DoD: `git status` clean post-commit

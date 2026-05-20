@@ -23,9 +23,10 @@
  *     2. NO UserMenu (no JWT to consume)
  *
  * Created: 2026-05-10 (Sprint 57.7 Day 3 Tier 3 — initial as AppShell)
- * Last Modified: 2026-05-18
+ * Last Modified: 2026-05-21
  *
  * Modification History:
+ *   - 2026-05-21: Sprint 57.26 — backdrop base --background→--bg (foundation-fidelity token alignment)
  *   - 2026-05-18: Sprint 57.23 US-B1 — rewrite to mockup full-screen centered (closes AD-AuthShell-Mockup-Refactor)
  *   - 2026-05-10: Sprint 57.8 US-4 Day 2 — rename AppShell → AuthShell per Day 0 Decision B1; remove 3 hardcoded nav links
  *   - 2026-05-10: Initial creation (Sprint 57.7 US-B2)
@@ -47,7 +48,7 @@ export const AuthShell: FC<AuthShellProps> = ({ children, footer }) => {
       // eslint-disable-next-line no-restricted-syntax -- STYLE.md §3 escape hatch: Tailwind can't express multi-stop HSL gradient with --primary token (Sprint 57.23 US-B1 mockup AuthShell L7-12)
       style={{
         background:
-          "radial-gradient(ellipse 800px 600px at 50% -10%, hsl(var(--primary) / 0.12) 0%, transparent 60%), hsl(var(--background))",
+          "radial-gradient(ellipse 800px 600px at 50% -10%, hsl(var(--primary) / 0.12) 0%, transparent 60%), hsl(var(--bg))",
       }}
     >
       <div className="flex w-[420px] flex-col gap-[18px]">

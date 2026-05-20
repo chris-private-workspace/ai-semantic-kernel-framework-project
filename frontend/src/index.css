@@ -19,6 +19,7 @@
  * Noto Sans TC 400/500/600/700. Imports live in `src/main.tsx`.
  *
  * Modification History:
+ *   - 2026-05-21: Sprint 57.26 — root font-size 13px baseline + --radius rem→px + body line-height (foundation-fidelity)
  *   - 2026-05-17: Sprint 57.20 Day 1 — add mockup token tree + density mechanism + Geist/Noto Sans TC wire + body font-family
  *   - 2026-05-17: Sprint 57.19 — brand color HSL update (closes AD-Brand-Primary-Color-Decision + AD-Accent-Token-Gap)
  *   - 2026-05-16: Sprint 57.18 — +18 CSS vars (7 semantic + 4 risk) in :root + .dark (closes AD-Style-Token-Config-Audit)
@@ -48,7 +49,7 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
+    --radius: 8px; /* Sprint 57.26 — px (was 0.5rem) so radius survives the root font-size rescale; matches mockup styles.css:29 */
     /* Sprint 57.18 — mockup semantic + risk tokens */
     --success: 150 60% 45%;
     --success-foreground: 0 0% 100%;
@@ -152,10 +153,18 @@
   * {
     border-color: hsl(var(--border));
   }
+  /* Sprint 57.26 — mockup foundation baseline. Root 13px so every Tailwind
+     rem-based utility (text-* / p-* / gap-*) scales to the mockup
+     styles.css:184 body 13px base. Arbitrary-px utilities (w-[NNpx] etc.)
+     are unaffected by design — they are already mockup-faithful. */
+  html {
+    font-size: 13px;
+  }
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     font-family: "Geist", "Noto Sans TC", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.45;
     -webkit-font-smoothing: antialiased;
   }
 }
