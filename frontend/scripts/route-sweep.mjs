@@ -23,6 +23,11 @@
  *   node scripts/route-sweep.mjs after     # Day 2 post-correction
  *
  * Created: 2026-05-20 (Sprint 57.26 Day 0) — supersedes the temporary frontend/diagnose-render.mjs
+ *
+ * Modification History:
+ *   - 2026-05-21: Sprint 57.26 Day 2 — add endpoint-specific object mocks for
+ *     cost-summary / sla-report so the rebuilt dashboards render real content
+ *     (D-DAY1-1: the generic `[]` mock crashed their object-shaped data hooks)
  */
 import { chromium } from "playwright";
 import path from "path";
@@ -78,6 +83,40 @@ const AUTH_ME = {
   roles: ["admin"],
 };
 
+// Object-shaped endpoint mocks (D-DAY1-1) — the generic `[]` mock crashes the
+// rebuilt cost/sla dashboards whose data hooks expect an object payload.
+// Shapes mirror frontend/src/features/{cost,sla}-dashboard/types.ts.
+const COST_SUMMARY = {
+  tenant_id: "t-dev",
+  month: "2026-05",
+  total_cost_usd: "2847.00",
+  by_type: {
+    inference: {
+      "gpt-4.1": { quantity: "1240000", total_cost_usd: "1820.50", entry_count: 8400 },
+      "claude-haiku-4-5": { quantity: "2100000", total_cost_usd: "640.20", entry_count: 12400 },
+      "gpt-4.1-mini": { quantity: "480000", total_cost_usd: "92.40", entry_count: 4700 },
+    },
+    tool: {
+      "k8s.exec": { quantity: "320", total_cost_usd: "118.30", entry_count: 320 },
+      "http.fetch": { quantity: "1840", total_cost_usd: "44.10", entry_count: 1840 },
+    },
+    storage: {
+      "memory.store": { quantity: "48000", total_cost_usd: "31.50", entry_count: 7800 },
+    },
+  },
+};
+const SLA_REPORT = {
+  tenant_id: "t-dev",
+  month: "2026-05",
+  availability_pct: 99.94,
+  api_p99_ms: 920,
+  loop_simple_p99_ms: 1840,
+  loop_medium_p99_ms: 3200,
+  loop_complex_p99_ms: 8400,
+  hitl_queue_notif_p99_ms: 4100,
+  violations_count: 2,
+};
+
 async function capture(ctx, route, slug) {
   const page = await ctx.newPage();
   try {
@@ -109,7 +148,13 @@ console.log("-- AppShellV2 (mocked auth) --");
     r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(AUTH_ME) }),
   );
   await ctx.route(/\/api\/v1\//, (r) => {
-    if (/\/auth\/me/.test(r.request().url())) return r.fallback();
+    const url = r.request().url();
+    if (/\/auth\/me/.test(url)) return r.fallback();
+    const json = (obj) =>
+      r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(obj) });
+    if (/\/cost-summary/.test(url)) return json(COST_SUMMARY);
+    if (/\/sla-report/.test(url)) return json(SLA_REPORT);
+    // default — list-shaped endpoints tolerate an empty array
     return r.fulfill({ status: 200, contentType: "application/json", body: "[]" });
   });
   for (const [route, slug] of APPSHELL_ROUTES) await capture(ctx, route, slug);

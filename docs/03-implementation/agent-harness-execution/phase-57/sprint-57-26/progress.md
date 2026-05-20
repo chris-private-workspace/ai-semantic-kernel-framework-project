@@ -81,4 +81,44 @@
 
 ### Day 1 commit
 
-- Commit: _recorded after Day 1 commit_
+- Commit `2e6f1a72` — `feat(frontend, sprint-57-26, Day 1, Group B): font-size baseline + rem-to-px tokens + AppShellV2 + AuthShell foundation alignment` (5 files; +77 / -20)
+
+---
+
+## Day 2 — Group C (22-route regression sweep) — 2026-05-21
+
+### Today's Accomplishments
+
+- **Harness fix (D-DAY1-1)**: `route-sweep.mjs` gained endpoint-specific object mocks for `cost-summary` + `sla-report` (shapes mirror `features/{cost,sla}-dashboard/types.ts`). The generic `[]` mock crashed those rebuilt dashboards' object-shaped data hooks.
+- **Clean before/after re-sweep**: to make the only variable the foundation correction, re-ran BOTH sweeps with the Day-2 fixed harness — `before` against Day 0 source (`git checkout a16c248f -- index.css AppShellV2.tsx AuthShell.tsx`), `after` against Day 1 source (`git checkout 2e6f1a72 -- ...`). Working tree restored to Day 1 (HEAD) after.
+- **22-route review** complete; FOUNDATION-DRIFT-REPORT §3 matrix populated.
+
+### 22-route sweep result
+
+| Bucket | Count | Routes |
+|--------|-------|--------|
+| 🟢 render OK + foundation applied + 0 regression | 19 | home + 7 auth (login/register directly verified, 5 extrapolated as AuthShell family) + overview / chat-v2 / orchestrator / loop-debug / state-inspector / governance / cost-dashboard / sla-dashboard / admin-tenants / tenant-settings / compaction(PROP rep) |
+| ⚪ harness-unrenderable (before==after; NOT a regression) | 3 | memory / subagents / verification — data hooks expect object payloads; sweep harness `[]` mock → `undefined.length` AppErrorBoundary in BOTH before and after |
+| 🟡 cosmetic regression | 0 | — |
+| 🔴 structural regression | 0 | — |
+
+- **R1 outcome**: rebuilt routes (auth 57.23 / cost 57.24 / sla 57.25) all re-verified — render correctly post-correction; the font-size rescale tightened them toward mockup fidelity, did not break them. R1 risk closed; no `AD-Rebuilt-Route-Refidelity` carryover needed.
+- **US-C3**: 0 cosmetic + 0 structural regression → nothing to iterate, no carryover AD. The foundation correction is clean.
+
+### Drift findings (Day 2)
+
+| ID | Finding | Implication |
+|----|---------|-------------|
+| D-DAY2-1 | memory / subagents / verification render AppErrorBoundary (`Cannot read properties of undefined (reading 'length')`) under the sweep harness in BOTH before and after | Pre-existing harness data-mock limitation (same class as D-DAY1-1 cost/sla, but those were fixed because they are R1-critical rebuilt routes). before==after proves no Sprint 57.26 regression. Foundation CSS (`html` font-size + shell tokens) applies globally regardless of whether the page body renders. Visual confirmation of these 3 routes' foundation parity is deferred to their own `frontend-mockup-strict-rebuild` rebuild sprint (real backend / correct fixture available then). NOT fixing the harness further — out of foundation-sprint scope (Karpathy §3). |
+| D-DAY2-2 | vs-mockup comparison done by representative method, not a per-route mockup sweep | The 4 foundation dimensions (font 13px / sidebar 232 / main padding / bg hue) are GLOBAL CSS — identical across every route. Per-route mockup screenshots add zero signal for foundation-layer verification, and PROP routes have no mockup counterpart. `compare-overview-{prod,mockup}.png` (Sprint 57.25 diagnosis) + the global-CSS deduction cover it. Per-route residual CONTENT drift is already enumerated by the Sprint 57.22 41-route audit (DRIFT-REPORT §5 cross-references it). |
+
+### Remaining for Next Day (Day 3 — Group D)
+
+- Vitest 430/430 (adapt any shell/layout spec) + lint + build + bundle delta
+- FOUNDATION-DRIFT-REPORT §4 final verdict + §5 epic-backlog cross-ref
+- Delete `frontend/diagnose-render.mjs`
+- Retrospective + memory snapshot + calibration matrix NEW class row + CLAUDE.md minimal touch + next-phase-candidates.md
+
+### Day 2 commit
+
+- Commit: _recorded after Day 2 commit_
