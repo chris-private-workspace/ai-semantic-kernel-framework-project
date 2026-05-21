@@ -167,24 +167,23 @@
 - [x] **Verify**: `npm run lint && npm run build` clean ✅; Vitest 457/457
 
 ### 3.3 US-D3 — Vitest + Playwright + visual-regression
-- [ ] **Vitest 430+N** (N≥14) passing — no regression
-  - Verify: `npm run test`
-- [ ] **Playwright MCP pair-verify** full page (mockup 8080 + production 3007 at 1440×900)
-  - DoD: full-page screenshot compared; drift severity logged
-- [ ] **visual-regression baseline regenerate** for `/overview` via `playwright-e2e.yml` workflow_dispatch + fetch + ff-merge (per AD #42 — page-visual change moves the snapshot; do BEFORE final CI to avoid surprise)
-  - DoD: overview baseline regenerated; CI `Frontend E2E` will pass
+- [x] **Vitest 457** passing (430 baseline + 27 new — ActiveLoops/HITL Day 1 + 5 widgets Day 2) — no regression
+  - Verify: `npm run test` ✅ 94 files / 457 tests
+- [x] **Playwright MCP pair-verify** full page (mockup 8080 + production 3007 @ 1440×900) — commit pending
+  - DoD: full-page screenshots `sprint-57-27-{mockup,prod}-overview.png` compared; verdict PARITY; 1 noted divergence (ActiveLoops live 404) logged in DRIFT-REPORT §3/§4
+- [x] **visual-regression baseline regenerate** — N/A per D-PRE-2: `/overview` is NOT in `visual-regression.spec.ts` (6-route list excludes it); no baseline exists to regenerate; rebuild does not trigger a 57.26-style CI failure (R5 RESOLVED). Optional add of `/overview` to the spec deferred (out-of-scope; consider Ops Dashboards sprint).
 
 ### 3.4 DRIFT-REPORT verdict
-- [ ] **DRIFT-REPORT** §verdict for `/overview` = PARITY
-  - DoD: D1-D14 + D16 marked closed; D15 noted as carryover; per-widget verdict recorded
-- [ ] **Cosmetic regressions iterated** to parity; structural → carryover AD
+- [x] **DRIFT-REPORT** §verdict for `/overview` = **PARITY**
+  - DoD: D1-D14 + D16 closed; D17 accepted addition; D15 + ActiveLoops-404 carryover; per-widget A-I verdict recorded ✅
+- [x] **Cosmetic regressions iterated** to parity — pair-verify found no cosmetic regression needing iteration; the 1 noted item (ActiveLoops live 404) is a backend-data carryover, not cosmetic
 
 ### 3.5 Retrospective + memory + closeout
-- [ ] **retrospective.md** Q1-Q7 + Q2 calibration ratio analysis + Q4 rich-dashboard sub-class DECISION (4th data point)
-- [ ] **memory snapshot** `memory/project_phase57_27_overview_rebuild.md` + MEMORY.md +1 quality pointer
-- [ ] **`.claude/rules/sprint-workflow.md`** calibration matrix +1 row (4th app of `frontend-mockup-strict-rebuild`) + MHist
-- [ ] **`next-phase-candidates.md`** — add AD-Overview-Backend-Extensions-Phase58 + resolve #41 rich-dashboard sub-class decision
-- [ ] **CLAUDE.md** Current Sprint row + Last Updated footer (minimal touch per REFACTOR-001 §Sprint Closeout)
+- [x] **retrospective.md** Q1-Q7 + Q2 calibration (ratio ≈0.95, 4th data point) + Q2.1 #41 rich-dashboard sub-class DECISION = DROPPED
+- [x] **memory snapshot** `memory/project_phase57_27_overview_rebuild.md` created + MEMORY.md +1 quality pointer
+- [x] **`.claude/rules/sprint-workflow.md`** calibration matrix — `frontend-mockup-strict-rebuild` row +1 data point (57.27≈0.95, 4-pt mean 0.90, #41 DROPPED) + MHist entry
+- [x] **`next-phase-candidates.md`** — added #43 AD-Overview-Backend-Extensions-Phase58 + #44 AD-CardShell-Title-Crossverify-cost-sla; resolved #41 (rich-dashboard sub-class DROPPED)
+- [x] **CLAUDE.md** Current Sprint row + Last Updated footer (minimal touch per REFACTOR-001 §Sprint Closeout)
 
 ### 3.6 PR open + CI + merge
 - [ ] **PR open** with body (Sprint 57.27 scope + 16-drift closure + 9 widget groups + AP-3 reversal + 4th-app calibration + visual-baseline regen note)

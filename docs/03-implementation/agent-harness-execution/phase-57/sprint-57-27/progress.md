@@ -147,3 +147,32 @@ Mockup uses `oklch(from var(--success) l c h / 0.18)` relative-color syntax for 
 - **§3.5** retrospective.md Q1-Q7 + Q2 calibration (4th `frontend-mockup-strict-rebuild` data point) + Q4 rich-dashboard sub-class DECISION (next-phase #41) + memory snapshot + sprint-workflow calibration matrix +1 row + next-phase-candidates (AD-Overview-Backend-Extensions-Phase58) + CLAUDE.md minimal touch.
 - **§3.6** PR open (needs user approval) + CI + merge.
 - **Carryover** — `/cost-dashboard` + `/sla-dashboard` re-verify after the shared `CardShell` 12.5px change (R9). Pure mockup-fidelity correction (improves both toward mockup), not a regression — fold into DRIFT-REPORT §4 / a shared-primitive carryover note.
+
+---
+
+## Day 3 closeout (§3.3-3.5) — 2026-05-21
+
+### §3.3 Playwright MCP pair-verify — PARITY
+
+- Services: frontend 3007 ✅ + backend 8000 ✅ + mockup server 8080 ✅ (already running).
+- dev-login via `POST /api/v1/auth/dev-login?tenant_code=acme-prod&email=jamie@acme.com` (cookie set; `/auth/me` → acme-prod).
+- Screenshots @1440×900: `sprint-57-27-mockup-overview.png` (mockup) vs `sprint-57-27-prod-overview.png` (production).
+- **Verdict: PARITY** — structural + cosmetic parity across all 9 widgets (page-head / 4-stat KPI + 2 sparklines / grid2 / grid2eq×2 / quick strip).
+- **1 noted divergence (NOT a rebuild defect)**: ActiveLoopsCard renders its designed error state ("Not Found") — `useActiveLoops` → `GET /api/v1/loops?status=running` returns 404 (endpoint absent; verified all 3 candidate loop URLs 404). Pre-existing backend gap; the widget's layout + error/loading/empty states are faithful to the mockup. → §4 carryover.
+- §3.3 visual-regression baseline regen = N/A (D-PRE-2: `/overview` not in `visual-regression.spec.ts`).
+
+### §3.4 DRIFT-REPORT final verdict
+
+- DRIFT-REPORT §3 = **PARITY**; §2 widgets A-I all ✅ PARITY; D1-D14 + D16 closed, D17 accepted addition, D15 + ActiveLoops-404 carryover.
+
+### §3.5 Retrospective + memory + closeout
+
+- `retrospective.md` Q1-Q7 + Q2 calibration (ratio ≈0.95, 4th `frontend-mockup-strict-rebuild` data point) + Q2.1 **#41 rich-dashboard sub-class DECISION = DROPPED** (rich-subset 3-pt mean ~1.01 in-band → no split; KEEP 0.60 baseline).
+- `memory/project_phase57_27_overview_rebuild.md` created + MEMORY.md pointer.
+- `.claude/rules/sprint-workflow.md` calibration matrix — `frontend-mockup-strict-rebuild` row +1 data point + MHist.
+- `next-phase-candidates.md` — +#43 (AD-Overview-Backend-Extensions-Phase58) +#44 (AD-CardShell-Title-Crossverify-cost-sla); #41 RESOLVED.
+- `CLAUDE.md` Current Sprint row + Last Updated footer (minimal touch).
+
+### Remaining — §3.6 only
+
+- PR open + CI + merge — **needs user approval** (`git push` + PR per Developer Preferences). Branch `feature/sprint-57-27-overview-rebuild` ready; 9 commits.
