@@ -156,9 +156,9 @@
 - [x] **`claudedocs/1-planning/next-phase-candidates.md` update**
   - DoD: foundation-fidelity item closed; epic-backlog routes referenced; any R1 structural-regression carryover added
 - [x] **CLAUDE.md Current Sprint row + Last Updated footer** (REFACTOR-001 §Sprint Closeout minimal touch — NO history additions)
-- [ ] **Day 3 commit** closeout
+- [x] **Day 3 commit** closeout — commit `b8b0887e` (7 files; +143 / -30)
   - Commit message: `feat(frontend, sprint-57-26, Day 3): closeout — FOUNDATION-DRIFT-REPORT final + retrospective + calibration matrix NEW class + minimal CLAUDE.md touch`
-  - DoD: `git status` clean post-commit
+  - DoD: `git status` clean post-commit ✅
 
 ### 3.4 PR open + CI + merge
 - [ ] **PR open** with body (Sprint 57.26 scope + 5 foundation drifts corrected + 22-route sweep result + NEW calibration class + browser-cache hard-refresh verification note)
