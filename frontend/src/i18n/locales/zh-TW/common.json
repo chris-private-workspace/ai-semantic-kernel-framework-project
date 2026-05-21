@@ -196,9 +196,15 @@
     "newChat": "新對話",
     "kpi": {
       "activeSessions": "活躍會話",
+      "activeSessionsUnit": "迴圈",
       "hitlPending": "HITL 待處理",
+      "hitlPendingUnit": "待審批",
+      "hitlPendingDelta": "1 個緊急",
       "costMtd": "當月成本",
-      "slaP95": "SLA p95"
+      "costMtdDelta": "預算 $4,200 已用 68%",
+      "slaP95": "SLA p95",
+      "slaP95Unit": "所有迴圈",
+      "slaP95Delta": "-0.12s 週環比"
     },
     "activeLoops": {
       "title": "活躍迴圈",
@@ -208,27 +214,52 @@
     },
     "hitlQueue": {
       "title": "HITL 佇列",
-      "review": "審核"
+      "review": "審核",
+      "backendGap": "HITL 佇列顯示的是固定範例資料 — 治理待審核 API 串接待辦（AD-Overview-Backend-Extensions-Phase58）。"
     },
     "costBurn": {
       "title": "成本燃燒",
       "subtitle": "30 天支出 vs $4,200 預算",
-      "details": "詳細"
+      "details": "詳細",
+      "mtd": "本月至今",
+      "onPaceTarget": "預估目標",
+      "overPace": "超出預算",
+      "underPace": "低於預算",
+      "backendGap": "成本燃燒圖表顯示固定範例資料 — 成本儀表板 30 天歷史 API 待辦（AD-Overview-Backend-Extensions-Phase58）。"
     },
     "providers": {
       "title": "服務提供者",
-      "details": "詳細"
+      "details": "詳細",
+      "backendGap": "提供者卡片顯示固定範例資料 — 遙測提供者流量燈 API 待辦（AD-Overview-Backend-Extensions-Phase58）。"
     },
     "incidents": {
       "title": "近期事件",
-      "all": "全部事件"
+      "subtitle": "個待處理",
+      "all": "全部事件",
+      "allIncidents": "全部事件",
+      "backendGap": "事件卡片顯示固定範例資料 — 事件清單 API 待辦（AD-Overview-Backend-Extensions-Phase58）。"
     },
     "errors": {
       "title": "錯誤 · 24h",
       "subtitle": "所有迴圈的每小時計數",
-      "policy": "錯誤政策"
+      "policy": "錯誤政策",
+      "errorsLabel": "錯誤 · 24h",
+      "peakLabel": "每小時峰值",
+      "rising": "上升中",
+      "stable": "穩定",
+      "backendGap": "錯誤趨勢圖表顯示固定範例資料 — 遙測每小時計數 API 待辦（AD-Overview-Backend-Extensions-Phase58）。"
     },
     "quick": {
+      "newChat": "新對話會話",
+      "newChatSub": "開始一個 Chat (V2) 會話",
+      "review": "審核批准",
+      "reviewSub": "處理 HITL 佇列",
+      "tenants": "租戶管理",
+      "tenantsSub": "生命週期 + 設定",
+      "verification": "驗證紀錄",
+      "verificationSub": "近期更正"
+    },
+    "quickActions": {
       "newChat": "新對話會話",
       "newChatSub": "開始一個 Chat (V2) 會話",
       "review": "審核批准",

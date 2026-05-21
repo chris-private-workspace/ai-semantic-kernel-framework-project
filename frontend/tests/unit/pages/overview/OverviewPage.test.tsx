@@ -7,6 +7,7 @@
  * Created: 2026-05-17 (Sprint 57.19 Day 3 / US-C1)
  *
  * Modification History (newest-first):
+ *   - 2026-05-21: Sprint 57.27 Day 3 — adapt for R7 in-page PageHead title (no AppShellV2 pageTitle prop)
  *   - 2026-05-17: Initial creation (Sprint 57.19 Day 3 / US-C1)
  */
 
@@ -21,10 +22,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as loopsService from "@/features/loops/services/loopsService";
 
 vi.mock("@/components/AppShellV2", () => ({
-  AppShellV2: ({ children, pageTitle }: { children: ReactNode; pageTitle: string }) => (
-    <div data-testid="app-shell" data-page-title={pageTitle}>
-      {children}
-    </div>
+  // R7: AppShellV2 no longer receives pageTitle for /overview — in-page PageHead is the title.
+  AppShellV2: ({ children }: { children: ReactNode }) => (
+    <div data-testid="app-shell">{children}</div>
   ),
 }));
 
@@ -50,14 +50,15 @@ describe("OverviewPage", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders page title via AppShellV2 pageTitle prop", () => {
+  it("renders in-page title via PageHead (R7: no AppShellV2 topbar duplicate)", () => {
     vi.spyOn(loopsService, "fetchLoops").mockResolvedValue({
       items: [],
       next_cursor: null,
       page_size: 10,
     });
     render(wrap(<OverviewPage />));
-    expect(screen.getByTestId("app-shell")).toHaveAttribute("data-page-title", "Overview");
+    // Title is rendered in-page by <PageHead> — assert the heading text is present
+    expect(screen.getByText("Overview")).toBeInTheDocument();
   });
 
   it("renders all 4 KPI cards", () => {
@@ -93,13 +94,13 @@ describe("OverviewPage", () => {
     });
   });
 
-  it("renders happy-path loop rows with status badge + truncated session id", async () => {
+  it("renders happy-path loop rows with status badge + session id + tokens", async () => {
     vi.spyOn(loopsService, "fetchLoops").mockResolvedValue({
       items: [
         {
           session_id: "11111111-2222-3333-4444-555555555555",
           status: "running",
-          started_at_ms: Date.UTC(2026, 4, 17, 14, 30),
+          started_at_ms: Date.now() - 12_000,
           ended_at_ms: null,
           turn_count: 6,
           token_usage: 18420,
@@ -111,7 +112,9 @@ describe("OverviewPage", () => {
     });
     render(wrap(<OverviewPage />));
     await waitFor(() => {
-      expect(screen.getByText("11111111…")).toBeInTheDocument();
+      // ActiveLoopsCard (Sprint 57.27) renders session as the 8-char prefix
+      // (no ellipsis) inside the 5-col loop row.
+      expect(screen.getByText("11111111", { exact: false })).toBeInTheDocument();
     });
     expect(screen.getByText("running")).toBeInTheDocument();
     expect(screen.getByText(/18,420 tok/)).toBeInTheDocument();

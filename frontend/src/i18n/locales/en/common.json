@@ -196,9 +196,15 @@
     "newChat": "New chat",
     "kpi": {
       "activeSessions": "Active sessions",
+      "activeSessionsUnit": "loops",
       "hitlPending": "HITL pending",
+      "hitlPendingUnit": "approvals",
+      "hitlPendingDelta": "1 critical",
       "costMtd": "Cost (MTD)",
-      "slaP95": "SLA p95"
+      "costMtdDelta": "68% of $4,200 budget",
+      "slaP95": "SLA p95",
+      "slaP95Unit": "across loops",
+      "slaP95Delta": "-0.12s wow"
     },
     "activeLoops": {
       "title": "Active loops",
@@ -208,27 +214,52 @@
     },
     "hitlQueue": {
       "title": "HITL queue",
-      "review": "Review"
+      "review": "Review",
+      "backendGap": "HITL queue shows fixture data — governance pending-approvals API wire pending (AD-Overview-Backend-Extensions-Phase58)."
     },
     "costBurn": {
       "title": "Cost burn",
       "subtitle": "30-day spend vs $4,200 budget",
-      "details": "Details"
+      "details": "Details",
+      "mtd": "MTD",
+      "onPaceTarget": "on-pace target",
+      "overPace": "over pace",
+      "underPace": "under pace",
+      "backendGap": "Cost burn chart shows fixture data — cost-dashboard 30-day history API pending Phase 58+ AD-Overview-Backend-Extensions-Phase58."
     },
     "providers": {
       "title": "Providers",
-      "details": "Details"
+      "details": "Details",
+      "backendGap": "Providers card shows fixture data — telemetry provider traffic-light API pending Phase 58+ AD-Overview-Backend-Extensions-Phase58."
     },
     "incidents": {
       "title": "Recent incidents",
-      "all": "All incidents"
+      "subtitle": "open",
+      "all": "All incidents",
+      "allIncidents": "All incidents",
+      "backendGap": "Incidents card shows fixture data — incidents list API pending Phase 58+ AD-Overview-Backend-Extensions-Phase58."
     },
     "errors": {
       "title": "Errors · 24h",
       "subtitle": "Hourly buckets across all loops",
-      "policy": "Policy"
+      "policy": "Policy",
+      "errorsLabel": "errors · 24h",
+      "peakLabel": "peak / hour",
+      "rising": "rising",
+      "stable": "stable",
+      "backendGap": "Error trend chart shows fixture data — telemetry hourly-bucket API pending Phase 58+ AD-Overview-Backend-Extensions-Phase58."
     },
     "quick": {
+      "newChat": "New chat session",
+      "newChatSub": "Start a Chat (V2) session",
+      "review": "Review approvals",
+      "reviewSub": "Walk the HITL queue",
+      "tenants": "Tenants console",
+      "tenantsSub": "Lifecycle + settings",
+      "verification": "Verification log",
+      "verificationSub": "Recent corrections"
+    },
+    "quickActions": {
       "newChat": "New chat session",
       "newChatSub": "Start a Chat (V2) session",
       "review": "Review approvals",
