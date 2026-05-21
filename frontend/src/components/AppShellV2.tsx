@@ -31,9 +31,10 @@
  *   set in main.tsx (not here — shell is layout-only).
  *
  * Created: 2026-05-10 (Sprint 57.8 Day 1)
- * Last Modified: 2026-05-17
+ * Last Modified: 2026-05-21
  *
  * Modification History (newest-first):
+ *   - 2026-05-21: Sprint 57.26 — sidebar 240→232px + bg-bg/text-fg tokens + main mockup-content padding (foundation-fidelity)
  *   - 2026-05-18: Sprint 57.21 Day 4 D-DAY4-7 — add `fullBleed` opt-in prop; chat-v2 uses it to drop the default `<main p-6>` inset and render mockup `chat-shell` 3-col edge-to-edge
  *   - 2026-05-17: Sprint 57.20 Day 1 — V3 mockup-direct rewrite (grid layout + extract Topbar component)
  *   - 2026-05-17: Sprint 57.19 US-D1+D2 — mount CommandPalette + bell + NotificationsPanel; add ⌘K hotkey
@@ -99,7 +100,7 @@ export const AppShellV2: FC<AppShellV2Props> = ({
   return (
     <div
       data-testid="app-shell"
-      className="grid h-screen w-screen grid-cols-[240px_1fr] overflow-hidden bg-background text-foreground"
+      className="grid h-screen w-screen grid-cols-[232px_1fr] overflow-hidden bg-bg text-fg"
     >
       <Sidebar />
       <div className="relative flex min-h-0 flex-col overflow-hidden">
@@ -112,7 +113,13 @@ export const AppShellV2: FC<AppShellV2Props> = ({
           unreadCount={FIXTURE_UNREAD_COUNT}
         />
         <NotificationsPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
-        <main className={fullBleed ? "min-h-0 flex-1 overflow-hidden" : "flex-1 overflow-y-auto p-6"}>
+        <main
+          className={
+            fullBleed
+              ? "min-h-0 flex-1 overflow-hidden"
+              : "flex-1 overflow-y-auto pt-[24px] px-[28px] pb-[60px]"
+          }
+        >
           {children}
         </main>
       </div>
