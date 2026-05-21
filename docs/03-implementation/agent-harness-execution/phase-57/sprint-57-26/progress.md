@@ -147,3 +147,23 @@ NEW class `frontend-foundation-token-correction` 0.55 — 1st data point. Commit
 
 - Commit `b8b0887e` — `feat(frontend, sprint-57-26, Day 3): closeout — FOUNDATION-DRIFT-REPORT final + retrospective + calibration matrix NEW class + minimal CLAUDE.md touch` (7 files; +143 / -30)
 - Sprint 57.26 = 4 commits: `a16c248f` Day 0 · `2e6f1a72` Day 1 · `536157dd` Day 2 · `b8b0887e` Day 3. PR pending user push authorization.
+
+---
+
+## Day 3+ — Post-closeout CI fix — 2026-05-21
+
+### PR #159 opened + first CI run
+
+PR #159 opened. First CI run: 5 of 6 required checks pass; **`Frontend E2E (chromium headless)` failed** — `visual-regression.spec.ts` 5 `toHaveScreenshot()` baselines (auth-login / cost-dashboard / governance / verification-recent / admin-tenants) mismatched.
+
+### Root cause (not a regression)
+
+The foundation-token correction deliberately moved the visuals (13px font + shell layout); the committed baseline PNGs predate Sprint 57.26, so the visual-regression test correctly flagged the *intended* change. The Day 2 22-route sweep already confirmed 0 structural / functional regression — visual *change* is the sprint's purpose. Plan §Risks missed this (scoped the "22-route blast radius" to the sprint's own route-sweep harness only, not CI's pre-existing Playwright baselines). Logged as carryover AD #42 (`AD-Day0-Prong4-Visual-Baseline-Scope`).
+
+### Resolution
+
+Regenerated the 5 page-level baselines via the Sprint 57.14 `playwright-e2e.yml` `visual-baseline` workflow_dispatch job (Linux runner, run `26208172843`, `--update-snapshots`). The job's `gh pr create` step failed (`GitHub Actions is not permitted to create PRs` — known issue) but the baseline commit `f0b24bd2` pushed fine to `chore/visual-baselines-26208172843`; fast-forward-merged into the feature branch (non-force) + pushed. PR #159 CI re-run: all required checks green, `state: CLEAN`.
+
+### Commits (final)
+
+Sprint 57.26 feature branch = 6 commits: `a16c248f` Day 0 · `2e6f1a72` Day 1 · `536157dd` Day 2 · `b8b0887e` Day 3 · `8e7d9ff6` Day 3 backfill · `f0b24bd2` visual-regression baseline regen (post-closeout CI fix; github-actions[bot] author). PR #159 ready to squash-merge pending user authorization.

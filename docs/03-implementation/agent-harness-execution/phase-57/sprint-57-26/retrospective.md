@@ -46,11 +46,13 @@
 
 1. **Sweep harness generic `[]` mock is insufficient for object-shaped endpoints** (D-DAY1-1 + D-DAY2-1). Fixed for cost/sla (R1-critical rebuilt routes); left as a known limitation for memory/subagents/verification (out of foundation-sprint scope per Karpathy §3). A future sweep-harness improvement could add a small per-endpoint mock registry, but that belongs to whoever next needs a full-render sweep, not here.
 2. **vs-mockup done by representative method, not per-route** (D-DAY2-2). Justified — the 4 foundation dimensions are global CSS, identical across routes, so per-route mockup screenshots add zero foundation-layer signal, and PROP routes have no mockup counterpart. The plan's literal "per-route mockup sweep" wording was more than the verification actually needed. Future foundation-class plans should phrase vs-mockup as "representative + global-CSS deduction".
+3. **Plan §Risks missed the CI visual-regression baselines** (post-closeout CI finding). The plan correctly identified the "22-route blast radius" of the `html` font-size change but scoped it only to the sprint's own route-sweep harness — it did not foresee that CI's pre-existing Playwright `visual-regression.spec.ts` would fail on 5 stale `toHaveScreenshot()` baselines. PR #159's first CI run failed on exactly that. Visual-baseline regen is a known pattern (Sprint 57.14 mechanism, used in 57.23 + 57.24) but was not pre-adopted into the 57.26 plan. Logged as carryover AD #42 — Day 0 三-prong Prong 4 should cover `tests/e2e/visual/*-snapshots/`, not just Vitest literal-value specs. See §Post-Closeout CI Note below.
 
 ## Q5 — Carryovers
 
 - **3 `FOUNDATION-APPLIED` routes** (memory / subagents / verification) — foundation parity will be visually confirmed when each route's `frontend-mockup-strict-rebuild` rebuild sprint runs (real backend / correct fixture available then). No separate AD — folded into the existing epic.
 - **`frontend-mockup-strict-rebuild` epic continues** — per-route content drift backlog = Sprint 57.22 `AUDIT-REPORT-COMPREHENSIVE.md` 41-route matrix. This sprint did not change that backlog; it ensured every future rebuild starts from a correct foundation.
+- **AD #42 — AD-Day0-Prong4-Visual-Baseline-Scope** (post-closeout CI finding) — extend Day 0 三-prong Prong 4 to cover Playwright visual baselines for any global-CSS / foundation-token sprint. Recorded in `next-phase-candidates.md` §Sprint 57.26 Foundation-Fidelity Carryover.
 
 ## Q6 — Was the sprint right-sized?
 
@@ -64,3 +66,15 @@
 
 **Estimate accuracy**: ~91% (actual ~3.2 hr / committed ~3.5 hr).
 **Anti-Pattern checklist**: 11/11 PASS (frontend-only CSS/shell change; no LLM call / no new abstraction / no orphan — `diagnose-render.mjs` orphan deleted per Karpathy §3).
+
+---
+
+## Post-Closeout CI Note (2026-05-21)
+
+PR #159's first CI run failed: `Frontend E2E (chromium headless)` — `visual-regression.spec.ts` 5 `toHaveScreenshot()` baselines (`auth-login` / `cost-dashboard` / `governance` / `verification-recent` / `admin-tenants`) mismatched.
+
+**Root cause**: the foundation-token correction deliberately moved the visuals; the committed baseline PNGs predate Sprint 57.26 — the test correctly detected the *intended* change. **Not a regression** — the Day 2 22-route sweep already confirmed 0 structural / functional regression; deliberate visual *change* is the sprint's whole purpose. The 6th baseline (`app-shell`, empty-main shell chrome) was font-insensitive and stayed green.
+
+**Resolution**: regenerated the 5 page-level baselines via the Sprint 57.14 `playwright-e2e.yml` `visual-baseline` workflow_dispatch job (Linux runner, `--update-snapshots`). The job's `gh pr create` step failed (`GitHub Actions is not permitted to create PRs` — known issue, `next-phase-candidates.md` line 131; 3rd occurrence after 57.23 / 57.24) but the baseline commit `f0b24bd2` pushed fine to `chore/visual-baselines-26208172843`; fast-forward-merged into the feature branch (non-force). PR #159 CI re-run: all required checks green, `state: CLEAN`.
+
+Logged as carryover AD #42 (`AD-Day0-Prong4-Visual-Baseline-Scope`). Sprint outcome unchanged — foundation correction shipped clean; this note records the post-closeout discipline gap, not a defect.

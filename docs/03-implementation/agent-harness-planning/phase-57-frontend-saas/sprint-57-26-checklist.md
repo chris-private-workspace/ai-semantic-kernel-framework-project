@@ -161,10 +161,10 @@
   - DoD: `git status` clean post-commit ✅
 
 ### 3.4 PR open + CI + merge
-- [ ] **PR open** with body (Sprint 57.26 scope + 5 foundation drifts corrected + 22-route sweep result + NEW calibration class + browser-cache hard-refresh verification note)
-- [ ] **CI green**: backend-ci (paths-filter — note if skipped) / frontend lint / Vitest / Playwright / a11y / visual-regression
+- [x] **PR open** with body (Sprint 57.26 scope + 5 foundation drifts corrected + 22-route sweep result + NEW calibration class + browser-cache hard-refresh verification note) — PR #159
+- [x] **CI green**: all 6 required checks pass — backend-ci / frontend lint+build / Vitest / Frontend E2E / v2-lints / Lighthouse. First run failed `Frontend E2E` on 5 stale `visual-regression.spec.ts` baselines (foundation-token correction deliberately moved the visuals); baselines regenerated via `playwright-e2e.yml` workflow_dispatch (`f0b24bd2`); re-run green, `state: CLEAN`. Logged carryover AD #42. See progress.md §Day 3+.
 - [ ] **Merge** (after CI green + user approval; squash per Sprint 57.23-57.25 pattern)
-- [ ] **Post-merge cleanup**: local + remote branch delete
+- [ ] **Post-merge cleanup**: local + remote feature branch delete + delete throwaway `chore/visual-baselines-26208172843` branch
 
 ---
 
