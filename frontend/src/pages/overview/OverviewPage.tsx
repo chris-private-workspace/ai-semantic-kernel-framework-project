@@ -27,8 +27,9 @@
  * Created: 2026-05-17 (Sprint 57.19 Day 3 / US-C1)
  *
  * Modification History (newest-first):
+ *   - 2026-05-21: Sprint 57.27 Day 2 — extract 5 inline widgets to features/overview/components
  *   - 2026-05-21: Sprint 57.27 Day 1 — extract ActiveLoopsCard + HITLQueueCard to features/overview/components
- *   - 2026-05-17: Sprint 57.20 Day 2 US-C1 — token migration shadcn→mockup tree (bg-card→bg-bg-1; text-muted-foreground→text-fg-muted; hover:bg-muted/40→hover:bg-bg-hover) + shadow-sm on Stat cards for mockup parity
+ *   - 2026-05-17: Sprint 57.20 Day 2 US-C1 — token migration shadcn→mockup tree + shadow-sm on Stat cards
  *   - 2026-05-17: Initial creation (Sprint 57.19 Day 3 / US-C1)
  *
  * Related:
@@ -37,7 +38,7 @@
  *   - frontend/src/components/AppShellV2.tsx (page-level layout shell)
  */
 
-import { ArrowRight, CheckCheck, Download, MessageSquare, Shield, Users } from "lucide-react";
+import { ArrowRight, Download, MessageSquare } from "lucide-react";
 import type { FC, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -45,7 +46,12 @@ import { useNavigate } from "react-router-dom";
 import { AppShellV2 } from "@/components/AppShellV2";
 import { RequireAuth } from "@/features/auth/components/RequireAuth";
 import { ActiveLoopsCard } from "@/features/overview/components/ActiveLoopsCard";
+import { CostBurnChart } from "@/features/overview/components/CostBurnChart";
+import { ErrorTrendChart } from "@/features/overview/components/ErrorTrendChart";
 import { HITLQueueCard } from "@/features/overview/components/HITLQueueCard";
+import { IncidentsCard } from "@/features/overview/components/IncidentsCard";
+import { ProvidersCard } from "@/features/overview/components/ProvidersCard";
+import { QuickActionsStrip } from "@/features/overview/components/QuickActionsStrip";
 
 // ───────────────── primitives (mockup parity inline) ─────────────────
 
@@ -72,41 +78,9 @@ const Card: FC<CardProps> = ({ title, subtitle, actions, bodyClassName, children
   </div>
 );
 
-type Tone = "success" | "warning" | "danger" | "thinking" | "info" | "primary" | "muted";
-
-const TONE_CLASS: Record<Tone, string> = {
-  success: "bg-success/16 text-success",
-  warning: "bg-warning/16 text-warning",
-  danger: "bg-danger/16 text-danger",
-  thinking: "bg-thinking/16 text-thinking",
-  info: "bg-info/16 text-info",
-  primary: "bg-primary/16 text-primary",
-  muted: "bg-bg-2 text-fg-muted",
-};
-
-const Badge: FC<{ tone?: Tone; dot?: boolean; children: ReactNode }> = ({
-  tone = "muted",
-  dot,
-  children,
-}) => (
-  <span
-    className={`inline-flex items-center gap-1 rounded-full px-2 py-[2px] text-[10.5px] font-medium uppercase tracking-wide ${TONE_CLASS[tone]}`}
-  >
-    {dot && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
-    {children}
-  </span>
-);
-
-const RISK_TONE: Record<string, Tone> = {
-  low: "success",
-  medium: "info",
-  high: "warning",
-  critical: "danger",
-};
-
-const RiskBadge: FC<{ level: string }> = ({ level }) => (
-  <Badge tone={RISK_TONE[level] ?? "muted"}>{level}</Badge>
-);
+// Badge / RiskBadge / Tone / TONE_CLASS inline primitives removed Sprint 57.27 Day 2:
+// IncidentsCard (the sole consumer) is now imported from features/overview/components/.
+// _primitives.tsx is the single-source for Badge + RiskBadge in the overview feature.
 
 interface StatProps {
   label: string;
@@ -137,273 +111,16 @@ const Stat: FC<StatProps> = ({ label, value, unit, delta, deltaDir = "up" }) => 
   </div>
 );
 
-// ───────────────── inline fixtures (Sprint 57.20+ swap to real APIs) ─────────────────
-// HITL_QUEUE fixture migrated to features/overview/__fixtures__/hitlQueue.ts (Sprint 57.27).
-
-const RECENT_INCIDENTS = [
-  { id: "INC-2451", title: "p95 latency breach · gpt-4.1 provider", sev: "high", status: "open", since: "12m" },
-  { id: "INC-2447", title: "redaction rule false-positive · acme-prod", sev: "low", status: "investigating", since: "1h" },
-  { id: "INC-2440", title: "subagent budget exceeded x4 · globex-eu", sev: "medium", status: "open", since: "2h" },
-  { id: "INC-2438", title: "kb_search vector index rebuild", sev: "low", status: "resolved", since: "3h" },
-];
-
-const PROVIDERS: Array<{ name: string; state: "green" | "amber" | "red"; p95: number; calls: string }> = [
-  { name: "claude-haiku-4-5", state: "green", p95: 1.8, calls: "12.4k" },
-  { name: "gpt-4.1", state: "amber", p95: 3.2, calls: "8.1k" },
-  { name: "gpt-4.1-mini", state: "green", p95: 1.1, calls: "4.7k" },
-  { name: "embedding-3-large", state: "green", p95: 0.4, calls: "21.0k" },
-];
-
-const ERROR_24H = [3, 2, 4, 1, 0, 2, 1, 0, 0, 1, 3, 5, 8, 12, 9, 6, 4, 3, 5, 7, 4, 2, 1, 2];
-
-// ───────────────── inline SVG charts (mockup port) ─────────────────
-
-const CostBurnChart: FC = () => {
-  const days = 30;
-  const today = 18;
-  const dailyBudget = 4200 / days;
-  const spent = Array.from({ length: today }, (_, i) =>
-    dailyBudget * (0.6 + (i / today) * 0.9 + Math.sin(i * 0.7) * 0.15),
-  );
-  const cumulative = spent.reduce<number[]>(
-    (acc, v, i) => [...acc, (acc[i - 1] ?? 0) + v],
-    [],
-  );
-  const W = 360;
-  const H = 130;
-  const padding = { l: 30, r: 8, t: 8, b: 22 };
-  const innerW = W - padding.l - padding.r;
-  const innerH = H - padding.t - padding.b;
-  const maxY = 4200;
-  const xAt = (i: number) => padding.l + (i / (days - 1)) * innerW;
-  const yAt = (v: number) => padding.t + innerH - (v / maxY) * innerH;
-  const budgetLine = `M ${xAt(0)} ${yAt(0)} L ${xAt(days - 1)} ${yAt(4200)}`;
-  const burnPath = cumulative
-    .map((v, i) => `${i === 0 ? "M" : "L"} ${xAt(i)} ${yAt(v)}`)
-    .join(" ");
-  const burnArea = `${burnPath} L ${xAt(today - 1)} ${yAt(0)} L ${xAt(0)} ${yAt(0)} Z`;
-  const mtd = cumulative[today - 1] ?? 0;
-  const onPace = dailyBudget * today;
-  return (
-    <div className="flex flex-col gap-2">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" height={H}>
-        <defs>
-          <linearGradient id="overview-burn-grad" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="hsl(var(--primary) / 0.32)" />
-            <stop offset="100%" stopColor="hsl(var(--primary) / 0)" />
-          </linearGradient>
-        </defs>
-        {[0, 1050, 2100, 3150, 4200].map((v) => (
-          <g key={v}>
-            <line
-              x1={padding.l}
-              x2={W - padding.r}
-              y1={yAt(v)}
-              y2={yAt(v)}
-              stroke="hsl(var(--border))"
-              strokeDasharray="2 2"
-            />
-            <text
-              x={padding.l - 4}
-              y={yAt(v) + 3}
-              textAnchor="end"
-              fontSize={9} fill="hsl(var(--fg-subtle))"
-            >
-              ${v}
-            </text>
-          </g>
-        ))}
-        <path d={budgetLine} stroke="hsl(var(--fg-subtle))" strokeDasharray="4 3" strokeWidth="1" fill="none" />
-        <path d={burnArea} fill="url(#overview-burn-grad)" />
-        <path d={burnPath} stroke="hsl(var(--primary))" strokeWidth="1.5" fill="none" />
-        <circle cx={xAt(today - 1)} cy={yAt(mtd)} r="3" fill="hsl(var(--primary))" />
-      </svg>
-      <div className="flex items-center gap-3 text-[11px] text-fg-muted">
-        <span>
-          <span className="font-mono text-primary">${mtd.toFixed(0)}</span> MTD
-        </span>
-        <span className="flex-1" />
-        <span>
-          <span className="font-mono">${onPace.toFixed(0)}</span> on-pace
-        </span>
-        <span className={mtd > onPace ? "text-warning" : "text-success"}>
-          {mtd > onPace ? "over pace" : "under pace"}
-        </span>
-      </div>
-    </div>
-  );
-};
-
-const ErrorTrendChart: FC = () => {
-  const W = 360;
-  const H = 130;
-  const padding = { l: 30, r: 8, t: 8, b: 22 };
-  const innerW = W - padding.l - padding.r;
-  const innerH = H - padding.t - padding.b;
-  const maxY = Math.max(...ERROR_24H, 10);
-  const xAt = (i: number) => padding.l + (i / (ERROR_24H.length - 1)) * innerW;
-  const yAt = (v: number) => padding.t + innerH - (v / maxY) * innerH;
-  const bw = (innerW / ERROR_24H.length) * 0.7;
-  const total = ERROR_24H.reduce((a, b) => a + b, 0);
-  const peak = Math.max(...ERROR_24H);
-  const last3 = ERROR_24H.slice(-3).reduce((a, b) => a + b, 0);
-  return (
-    <div className="flex flex-col gap-2">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" height={H}>
-        {[0, 4, 8, 12].map((v) => (
-          <g key={v}>
-            <line
-              x1={padding.l}
-              x2={W - padding.r}
-              y1={yAt(v)}
-              y2={yAt(v)}
-              stroke="hsl(var(--border))"
-              strokeDasharray="2 2"
-            />
-            <text
-              x={padding.l - 4}
-              y={yAt(v) + 3}
-              textAnchor="end"
-              fontSize={9} fill="hsl(var(--fg-subtle))"
-            >
-              {v}
-            </text>
-          </g>
-        ))}
-        {ERROR_24H.map((v, i) => {
-          const tone =
-            v >= 10 ? "hsl(var(--danger))" : v >= 6 ? "hsl(var(--warning))" : "hsl(var(--info))";
-          return (
-            <rect
-              key={i}
-              x={xAt(i) - bw / 2}
-              y={yAt(v)}
-              width={bw}
-              height={innerH - (yAt(v) - padding.t)}
-              fill={tone}
-              fillOpacity={0.85}
-              rx={1}
-            />
-          );
-        })}
-      </svg>
-      <div className="flex items-center gap-3 text-[11px] text-fg-muted">
-        <span>
-          <span className="font-mono text-danger">{total}</span> errors · 24h
-        </span>
-        <span className="flex-1" />
-        <span>
-          <span className="font-mono">{peak}</span> peak / hour
-        </span>
-        <span className={last3 > 10 ? "text-warning" : "text-success"}>
-          {last3 > 10 ? "rising" : "stable"}
-        </span>
-      </div>
-    </div>
-  );
-};
-
-// ───────────────── widgets ─────────────────
-
-const ProvidersCard: FC = () => {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-  return (
-    <Card
-      title={t("overview.providers.title")}
-      subtitle={`${PROVIDERS.length} providers · 24h`}
-      actions={
-        <button
-          type="button"
-          onClick={() => navigate("/sla-dashboard")}
-          className="flex items-center gap-1 text-[11px] text-fg-muted hover:text-foreground"
-        >
-          {t("overview.providers.details")} <ArrowRight className="h-3 w-3" />
-        </button>
-      }
-    >
-      <div className="flex flex-col">
-        {PROVIDERS.map((p, i) => (
-          <div
-            key={p.name}
-            className={`flex items-center gap-[10px] px-1 py-[10px] ${i < PROVIDERS.length - 1 ? "border-b border-border" : ""}`}
-          >
-            <span
-              className={`h-2 w-2 rounded-full ${
-                p.state === "green" ? "bg-success" : p.state === "amber" ? "bg-warning" : "bg-danger"
-              }`}
-              // eslint-disable-next-line no-restricted-syntax -- per-state coloured ring per mockup parity (STYLE.md §1 escape hatch)
-              style={{
-                boxShadow:
-                  p.state === "green"
-                    ? "0 0 0 3px hsl(var(--success) / 0.18)"
-                    : p.state === "amber"
-                      ? "0 0 0 3px hsl(var(--warning) / 0.18)"
-                      : "0 0 0 3px hsl(var(--danger) / 0.18)",
-              }}
-            />
-            <span className="flex-1 font-mono text-[12px]">{p.name}</span>
-            <span className="font-mono text-[11px] text-fg-muted">p95 {p.p95}s</span>
-            <span className="w-[60px] text-right font-mono text-[11px] text-fg-muted">
-              {p.calls}
-            </span>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-};
-
-const IncidentsCard: FC = () => {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-  const openCount = RECENT_INCIDENTS.filter((i) => i.status !== "resolved").length;
-  return (
-    <Card
-      title={t("overview.incidents.title")}
-      subtitle={`${openCount} open`}
-      actions={
-        <button
-          type="button"
-          onClick={() => navigate("/incidents")}
-          className="flex items-center gap-1 text-[11px] text-fg-muted hover:text-foreground"
-        >
-          {t("overview.incidents.all")} <ArrowRight className="h-3 w-3" />
-        </button>
-      }
-      bodyClassName=""
-    >
-      <div>
-        {RECENT_INCIDENTS.map((inc, i) => (
-          <button
-            key={inc.id}
-            type="button"
-            onClick={() => navigate("/incidents")}
-            className={`flex w-full cursor-pointer items-center gap-[10px] px-[14px] py-[10px] text-left text-[12.5px] hover:bg-bg-hover ${i < RECENT_INCIDENTS.length - 1 ? "border-b border-border" : ""}`}
-          >
-            <RiskBadge level={inc.sev} />
-            <span className="w-[64px] font-mono text-[11.5px]">{inc.id}</span>
-            <span className="flex-1">{inc.title}</span>
-            <Badge
-              tone={
-                inc.status === "resolved"
-                  ? "success"
-                  : inc.status === "open"
-                    ? "warning"
-                    : "muted"
-              }
-            >
-              {inc.status}
-            </Badge>
-            <span className="w-[40px] text-right font-mono text-[11px] text-fg-muted">
-              {inc.since}
-            </span>
-          </button>
-        ))}
-      </div>
-    </Card>
-  );
-};
+// ───────────────── inline fixtures migrated to features/overview/__fixtures__/ (Sprint 57.27 Day 2) ─────────────────
+// HITL_QUEUE     → features/overview/__fixtures__/hitlQueue.ts (Sprint 57.27 Day 1)
+// RECENT_INCIDENTS → features/overview/__fixtures__/incidents.ts (Sprint 57.27 Day 2)
+// PROVIDERS      → features/overview/__fixtures__/providers.ts (Sprint 57.27 Day 2)
+// ERROR_24H      → features/overview/__fixtures__/errorTrend.ts (Sprint 57.27 Day 2)
+// CostBurnChart  → features/overview/components/CostBurnChart.tsx (Sprint 57.27 Day 2)
+// ErrorTrendChart→ features/overview/components/ErrorTrendChart.tsx (Sprint 57.27 Day 2)
+// ProvidersCard  → features/overview/components/ProvidersCard.tsx (Sprint 57.27 Day 2)
+// IncidentsCard  → features/overview/components/IncidentsCard.tsx (Sprint 57.27 Day 2)
+// QuickActionsStrip → features/overview/components/QuickActionsStrip.tsx (Sprint 57.27 Day 2)
 
 // ───────────────── page ─────────────────
 
@@ -499,54 +216,7 @@ function OverviewPageInner(): JSX.Element {
       </div>
 
       {/* quick actions strip */}
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={() => navigate("/chat-v2")}
-          className="flex flex-1 flex-col items-start gap-[6px] rounded-[8px] border border-border bg-bg-1 p-3 text-left hover:bg-bg-hover"
-        >
-          <span className="flex items-center gap-[6px]">
-            <MessageSquare className="h-3.5 w-3.5 text-primary" />
-            <span className="text-[12.5px] font-medium">{t("overview.quick.newChat")}</span>
-          </span>
-          <span className="text-[11px] text-fg-muted">{t("overview.quick.newChatSub")}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => navigate("/governance")}
-          className="flex flex-1 flex-col items-start gap-[6px] rounded-[8px] border border-border bg-bg-1 p-3 text-left hover:bg-bg-hover"
-        >
-          <span className="flex items-center gap-[6px]">
-            <Shield className="h-3.5 w-3.5 text-warning" />
-            <span className="text-[12.5px] font-medium">{t("overview.quick.review")}</span>
-          </span>
-          <span className="text-[11px] text-fg-muted">{t("overview.quick.reviewSub")}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => navigate("/admin/tenants")}
-          className="flex flex-1 flex-col items-start gap-[6px] rounded-[8px] border border-border bg-bg-1 p-3 text-left hover:bg-bg-hover"
-        >
-          <span className="flex items-center gap-[6px]">
-            <Users className="h-3.5 w-3.5 text-info" />
-            <span className="text-[12.5px] font-medium">{t("overview.quick.tenants")}</span>
-          </span>
-          <span className="text-[11px] text-fg-muted">{t("overview.quick.tenantsSub")}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => navigate("/verification")}
-          className="flex flex-1 flex-col items-start gap-[6px] rounded-[8px] border border-border bg-bg-1 p-3 text-left hover:bg-bg-hover"
-        >
-          <span className="flex items-center gap-[6px]">
-            <CheckCheck className="h-3.5 w-3.5 text-success" />
-            <span className="text-[12.5px] font-medium">{t("overview.quick.verification")}</span>
-          </span>
-          <span className="text-[11px] text-fg-muted">
-            {t("overview.quick.verificationSub")}
-          </span>
-        </button>
-      </div>
+      <QuickActionsStrip />
     </div>
   );
 }
