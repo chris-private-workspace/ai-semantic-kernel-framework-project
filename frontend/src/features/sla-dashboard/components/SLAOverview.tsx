@@ -143,7 +143,7 @@ export function SLAOverview() {
           unit="ms"
           delta="-18ms"
           deltaDir="up"
-          spark={<Spark points={SPARK_P50} tone="hsl(var(--primary))" />}
+          spark={<Spark points={SPARK_P50} tone="var(--primary)" />}
         />
         <StatCard
           label={t("sla.stat.p95")}
@@ -151,7 +151,7 @@ export function SLAOverview() {
           unit="s"
           delta="-180ms"
           deltaDir="up"
-          spark={<Spark points={SPARK_P95} tone="hsl(var(--info))" />}
+          spark={<Spark points={SPARK_P95} tone="var(--info)" />}
         />
         <StatCard
           label={t("sla.stat.p99")}
@@ -159,7 +159,7 @@ export function SLAOverview() {
           unit="s"
           delta="+0.30s"
           deltaDir="down"
-          spark={<Spark points={SPARK_P99} tone="hsl(var(--warning))" />}
+          spark={<Spark points={SPARK_P99} tone="var(--warning)" />}
         />
         <StatCard
           label={t("sla.stat.errorBudget")}
@@ -167,7 +167,7 @@ export function SLAOverview() {
           unit="%"
           delta="-1.2pp"
           deltaDir="down"
-          spark={<Spark points={SPARK_ERROR_BUDGET} tone="hsl(var(--success))" />}
+          spark={<Spark points={SPARK_ERROR_BUDGET} tone="var(--success)" />}
         />
       </div>
 

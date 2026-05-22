@@ -136,7 +136,7 @@ export default function CallbackPage() {
               // eslint-disable-next-line no-restricted-syntax -- STYLE.md §3 escape hatch: conic-gradient + custom animation duration (mockup 1.2s vs Tailwind animate-spin 2s default)
               style={{
                 background:
-                  "conic-gradient(from 0deg, hsl(var(--primary)), transparent 70%)",
+                  "conic-gradient(from 0deg, var(--primary), transparent 70%)",
                 animation: "spin 1.2s linear infinite",
               }}
               aria-hidden

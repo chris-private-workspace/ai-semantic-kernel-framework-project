@@ -63,7 +63,7 @@ export function ErrorRateByServiceCard() {
                 </div>
                 <BarTrack
                   pct={Math.min(100, row.rate * BAR_WIDTH_SCALE)}
-                  tone={warn ? "hsl(var(--warning))" : "hsl(var(--success))"}
+                  tone={warn ? "var(--warning)" : "var(--success)"}
                 />
               </div>
             );

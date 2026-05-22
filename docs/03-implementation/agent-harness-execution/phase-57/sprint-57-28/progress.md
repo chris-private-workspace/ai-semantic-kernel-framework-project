@@ -45,4 +45,39 @@
 ### Notes
 
 - Workload Day 0 est ~0.6 hr (calibrated) — actual ~ on track (guidance PR merge + 三-prong + sweep).
-- Day 0 commit: `<hash>` (recorded post-commit).
+- Day 0 commit: `af546fc4` (5 files; screenshots/ kept local). Day 0 三-prong + sweep ~on track.
+
+---
+
+## Day 1 — 2026-05-22 — Group B+C (Layer 2 + 3 + 4 + theme confirm) — atomic CSS foundation switch
+
+### Today's Accomplishments
+
+- **Theme decision confirmed by user**: light + dark BOTH retained (mockup has both — D-PRE-1). `ThemeProvider` `[data-theme]` toggle wiring = Day 2.
+- **Layer 2** — `frontend/src/styles-mockup.css` = byte-identical copy of `reference/design-mockups/styles.css` (1123 lines; `diff` empty); `main.tsx` imports it after `index.css` (PoC-confirmed order) + MHist.
+- **Layer 3** — `index.css` rewritten (170→~95 lines): retired the Sprint 57.18/57.20 mockup-system HSL approximations (`--bg`/`--fg`/`--success`/.../`--risk-*`/density/`--radius`/`--shadow`); kept the shadcn-system set; removed the dead `body` block (styles-mockup.css's unlayered `body` fully supersedes it); kept `html{font-size:13px}` (D-PRE-3).
+- **Layer 4** — `tailwind.config.ts` bridge rework: mockup tokens `hsl(var(--X))`→`var(--X)` (var holds full oklch); shadcn `--primary`/`--border` de-collided → `--sc-primary`/`--sc-border` (index.css + config + `* { border-color }`).
+- **index.html** — `<html>` gains `data-theme="dark"` (D-PRE-2 — required for `styles-mockup.css` `[data-theme][data-variant]` bg/fg tokens to resolve); `class="dark"` + `data-variant="linear"` + `data-density` kept.
+- **D-DAY1-2 un-translation** (user-approved Option X 2026-05-22) — 15 files / ~35 occurrences `hsl(var(--mockup-token))` → `var(--X)`; 2 alpha cases → mockup `--primary-soft`/`--primary-soft-2`. Sweep confirms cost-dashboard charts + auth backdrops restored.
+- **Quality gates**: `npm run build` green (3.52s; main 337.01 kB); `npm run lint` clean (`--max-warnings 0`); Vitest **457/457 pass** (94 files; 0 regression — 457 is the post-57.27 baseline).
+
+### Drift findings (Day 1)
+
+| ID | Sev | Finding | Resolution |
+|----|-----|---------|------------|
+| D-DAY1-1 | 🟢 | Layer 2 + 3 + 4 are **atomic** — done separately the mid-state produces `hsl(oklch())` invalid CSS app-wide. The plan's Day 1=Layer 2+3 / Day 2=Layer 4 split is not a checkable boundary. | Resequenced: Layer 2+3+4 landed together as the Day 1 session. No scope change (Layer 4 was already in-sprint). Day 2 now = theme toggle only. |
+| D-DAY1-2 | 🟠 | 15 files / ~35 occurrences directly consume `hsl(var(--mockup-token))` (the translation anti-pattern). After the switch `--primary`/etc. are oklch → `hsl(oklch())` invalid → cost/sla/overview charts blank + all 7 /auth/* backdrops flat-black (screenshot-confirmed). Initial Day-0 estimate (~10 files) was low — first grep was `head`-truncated. | User chose Option X (in-sprint fix) via AskUserQuestion. Un-translated `hsl(var(--X))`→`var(--X)` (mockup tokens are complete oklch colours). `CostBurnChart`/`ErrorTrendChart` used bare `var(--X)` already → became correct automatically. |
+
+### Decisions taken
+
+- Theme: light + dark both kept (user-confirmed 2026-05-22).
+- D-DAY1-2: in-sprint fix (Option X) — un-translation is the sprint's core purpose, not Phase-2 page re-point; avoids shipping ~5 broken parity routes + a visual-regression CI failure.
+
+### Remaining for next day (Day 2 — theme toggle)
+
+- US-C2: `ThemeProvider` wire to toggle the mockup `[data-theme]` attribute (dark↔light) instead of the shadcn `.dark` class; both themes functional. (Day 3 = CI guards + 22-route sweep; Day 4 = Vitest re-confirm + closeout.)
+
+### Notes
+
+- D-DAY1-1 resequencing means "Day 1" absorbed plan-Day-2's Layer 4. Day labels flex; checklist tracks tasks.
+- Day 1 commit: `<hash>` (recorded post-commit).

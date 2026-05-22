@@ -17,9 +17,9 @@
  *   arises (current carryover: AD-LatencyChart-Extraction-Phase58).
  *
  *   Color tones (mockup-faithful):
- *   - p50 → hsl(var(--primary)) stroke 1.8 (most prominent)
- *   - p95 → hsl(var(--info))   stroke 1.4
- *   - p99 → hsl(var(--warning)) stroke 1.4 opacity 0.9
+ *   - p50 → var(--primary) stroke 1.8 (most prominent)
+ *   - p95 → var(--info)   stroke 1.4
+ *   - p99 → var(--warning) stroke 1.4 opacity 0.9
  *
  *   Backend 24h time-series aggregation pending Phase 58+
  *   AD-SLA-Dashboard-Backend-Extensions-Phase58; AP-2 banner rendered by
@@ -42,9 +42,9 @@ const WIDTH = 760;
 const HEIGHT = 220;
 const PAD = 30;
 const SERIES: Array<{ key: keyof LatencyDataPoint; stroke: string; width: number; opacity: number }> = [
-  { key: "p50", stroke: "hsl(var(--primary))", width: 1.8, opacity: 1 },
-  { key: "p95", stroke: "hsl(var(--info))", width: 1.4, opacity: 1 },
-  { key: "p99", stroke: "hsl(var(--warning))", width: 1.4, opacity: 0.9 },
+  { key: "p50", stroke: "var(--primary)", width: 1.8, opacity: 1 },
+  { key: "p95", stroke: "var(--info)", width: 1.4, opacity: 1 },
+  { key: "p99", stroke: "var(--warning)", width: 1.4, opacity: 0.9 },
 ];
 
 export function LatencyChart() {
@@ -62,7 +62,7 @@ export function LatencyChart() {
       aria-label="24h latency distribution chart"
     >
       {/* horizontal grid lines at 25/50/75% */}
-      <g stroke="hsl(var(--border))" strokeWidth={1} opacity={0.4}>
+      <g stroke="var(--border)" strokeWidth={1} opacity={0.4}>
         {[0.25, 0.5, 0.75].map((t) => {
           const y = PAD + (HEIGHT - PAD * 2) * t;
           return <line key={t} x1={PAD} x2={WIDTH - PAD} y1={y} y2={y} />;
@@ -70,7 +70,7 @@ export function LatencyChart() {
       </g>
 
       {/* axis labels */}
-      <g fill="hsl(var(--fg-muted))" fontSize={9} fontFamily="ui-monospace">
+      <g fill="var(--fg-muted)" fontSize={9} fontFamily="ui-monospace">
         {[0, 12, 24, 36, 47].map((i) => (
           <text
             key={`x-${i}`}

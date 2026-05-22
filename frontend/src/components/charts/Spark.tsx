@@ -8,7 +8,7 @@
  *   Mockup-direct port of reference/design-mockups/ui.jsx:115-121 (Spark helper).
  *   Renders normalized polyline from `points` over the full width/height,
  *   no fill, no axes. Caller passes raw CSS color string to `tone`
- *   (e.g. "hsl(var(--memory))" / "hsl(var(--warning))" / hex / rgb).
+ *   (e.g. "var(--memory)" / "var(--warning)" / hex / rgb).
  *
  *   Planned reuse: Sprint 57.25 /sla-dashboard 4-stat sparklines (Availability /
  *   API p99 / Loop p99 / Error budget) + 57.26-57.28 other dashboards.
@@ -37,7 +37,7 @@ export const Spark: FC<SparkProps> = ({
   points,
   width = 90,
   height = 26,
-  tone = "hsl(var(--primary))",
+  tone = "var(--primary)",
 }) => {
   if (points.length === 0) return null;
   const max = Math.max(...points);

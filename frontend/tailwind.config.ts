@@ -5,6 +5,7 @@
  * Scope: Phase 57 / Sprint 57.7 US-B1 (Frontend Foundation 1/N install)
  *
  * Modification History:
+ *   - 2026-05-22: Sprint 57.28 — Layer 4 bridge rework: mockup tokens hsl(var(--X))→var(--X) (oklch); de-collide --primary/--border → --sc-*
  *   - 2026-05-16: Sprint 57.18 — +7 semantic tokens + 4 risk levels + Geist font (closes AD-Style-Token-Config-Audit)
  *   - 2026-05-09: Initial creation (Sprint 57.7 US-B1 Day 2 PM)
  */
@@ -17,15 +18,19 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // shadcn CSS variable bridge — actual values set in src/index.css
-        border: "hsl(var(--border))",
+        // Sprint 57.28 Layer 4 — two bridge styles co-exist during the Phase 1→2
+        // transition: shadcn-system tokens (HSL, src/index.css) keep `hsl(var(--X))`;
+        // mockup tokens (oklch, verbatim src/styles-mockup.css) use bare `var(--X)`.
+        // shadcn --primary/--border are de-collided as --sc-primary/--sc-border.
+        // --- shadcn-system (HSL) — retired page-by-page in the Phase 2 re-point epic ---
+        border: "hsl(var(--sc-border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: "hsl(var(--sc-primary))",
+          foreground: "hsl(var(--sc-primary-foreground))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -39,57 +44,56 @@ const config: Config = {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
         },
-        // NEW Sprint 57.18 — mockup semantic tokens (US-B1)
+        // --- mockup-system (oklch, verbatim from styles-mockup.css) — bare var(--X) ---
+        // semantic: base owned by styles-mockup.css; *-foreground is production-only (HSL).
         success: {
-          DEFAULT: "hsl(var(--success))",
+          DEFAULT: "var(--success)",
           foreground: "hsl(var(--success-foreground))",
         },
         warning: {
-          DEFAULT: "hsl(var(--warning))",
+          DEFAULT: "var(--warning)",
           foreground: "hsl(var(--warning-foreground))",
         },
         danger: {
-          DEFAULT: "hsl(var(--danger))",
+          DEFAULT: "var(--danger)",
           foreground: "hsl(var(--danger-foreground))",
         },
         thinking: {
-          DEFAULT: "hsl(var(--thinking))",
+          DEFAULT: "var(--thinking)",
           foreground: "hsl(var(--thinking-foreground))",
         },
         tool: {
-          DEFAULT: "hsl(var(--tool))",
+          DEFAULT: "var(--tool)",
           foreground: "hsl(var(--tool-foreground))",
         },
         memory: {
-          DEFAULT: "hsl(var(--memory))",
+          DEFAULT: "var(--memory)",
           foreground: "hsl(var(--memory-foreground))",
         },
         info: {
-          DEFAULT: "hsl(var(--info))",
+          DEFAULT: "var(--info)",
           foreground: "hsl(var(--info-foreground))",
         },
-        // NEW Sprint 57.18 — mockup risk severity tokens (US-B1)
         risk: {
-          low: "hsl(var(--risk-low))",
-          medium: "hsl(var(--risk-medium))",
-          high: "hsl(var(--risk-high))",
-          critical: "hsl(var(--risk-critical))",
+          low: "var(--risk-low)",
+          medium: "var(--risk-medium)",
+          high: "var(--risk-high)",
+          critical: "var(--risk-critical)",
         },
-        // NEW Sprint 57.20 — mockup layout token tree (US-B3)
         bg: {
-          DEFAULT: "hsl(var(--bg))",
-          1: "hsl(var(--bg-1))",
-          2: "hsl(var(--bg-2))",
-          3: "hsl(var(--bg-3))",
-          hover: "hsl(var(--bg-hover))",
+          DEFAULT: "var(--bg)",
+          1: "var(--bg-1)",
+          2: "var(--bg-2)",
+          3: "var(--bg-3)",
+          hover: "var(--bg-hover)",
         },
         fg: {
-          DEFAULT: "hsl(var(--fg))",
-          muted: "hsl(var(--fg-muted))",
-          subtle: "hsl(var(--fg-subtle))",
+          DEFAULT: "var(--fg)",
+          muted: "var(--fg-muted)",
+          subtle: "var(--fg-subtle)",
         },
-        "border-strong": "hsl(var(--border-strong))",
-        "primary-soft": "hsl(var(--primary-soft))",
+        "border-strong": "var(--border-strong)",
+        "primary-soft": "var(--primary-soft)",
       },
       borderRadius: {
         lg: "var(--radius)",

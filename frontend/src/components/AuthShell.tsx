@@ -48,7 +48,7 @@ export const AuthShell: FC<AuthShellProps> = ({ children, footer }) => {
       // eslint-disable-next-line no-restricted-syntax -- STYLE.md §3 escape hatch: Tailwind can't express multi-stop HSL gradient with --primary token (Sprint 57.23 US-B1 mockup AuthShell L7-12)
       style={{
         background:
-          "radial-gradient(ellipse 800px 600px at 50% -10%, hsl(var(--primary) / 0.12) 0%, transparent 60%), hsl(var(--bg))",
+          "radial-gradient(ellipse 800px 600px at 50% -10%, var(--primary-soft) 0%, transparent 60%), var(--bg)",
       }}
     >
       <div className="flex w-[420px] flex-col gap-[18px]">

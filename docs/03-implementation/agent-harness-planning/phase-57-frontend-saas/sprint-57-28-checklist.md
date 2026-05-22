@@ -38,50 +38,41 @@
 
 ---
 
-## Day 1 — Group B (Layer 2 + Layer 3)
+## Day 1 — Group B+C (Layer 2 + 3 + 4 + theme confirm) — atomic CSS foundation switch (2026-05-22)
+
+> **D-DAY1-1**: Layer 2/3/4 are atomic (mid-state = `hsl(oklch())` invalid CSS app-wide) → Layer 4 (plan Day 2 §2.1) pulled into Day 1. **D-DAY1-2**: 15 files un-translated (user-approved Option X via AskUserQuestion). See progress.md Day 1.
 
 ### 1.1 US-B1 Layer 2 — verbatim copy
-- [ ] **`frontend/src/styles-mockup.css`** = byte-identical copy of `reference/design-mockups/styles.css`
-  - DoD: `cp` with LF preserved; 1-line never-hand-edit notice via `main.tsx` import comment (not in the css file — pure byte-identical)
-  - Verify: `diff reference/design-mockups/styles.css frontend/src/styles-mockup.css` empty (line-ending tolerant)
-- [ ] **`main.tsx` import** `./styles-mockup.css` after `./index.css`
-  - DoD: import order = `index.css` then `styles-mockup.css` (cascade order — mockup classes win at equal specificity)
-  - Verify: `Grep("styles-mockup", frontend/src/main.tsx)` shows the import below `index.css`
+- [x] **`frontend/src/styles-mockup.css`** = byte-identical copy of `reference/design-mockups/styles.css` (1123 lines; `diff` empty)
+- [x] **`main.tsx` import** `./styles-mockup.css` after `./index.css` + never-hand-edit comment + MHist
 
 ### 1.2 US-B2 Layer 3 — index.css slim-down
-- [ ] **Retire mockup-system HSL approximation tokens** from `index.css`
-  - DoD: the `--bg`/`--bg-1`/`--bg-2`/`--fg`/... + 7 semantic + 4 risk HSL approximations (Sprint 57.18/57.20) removed — now sourced verbatim from `styles-mockup.css`
-  - DoD: shadcn-system token set KEPT (the 13 not-yet-re-pointed pages still consume it)
-  - Verify: `Grep("--bg:|--bg-1:", index.css)` → 0 results; `npm run build` green
-- [ ] **`html{font-size:13px}` decision applied** per Day-0 grep
-  - DoD: if mockup px-only → KEEP the hack (transition-safe), mark for Phase-2 retirement; if mockup uses rem → retire now, transition drift catalogued
-  - DoD: decision + grep evidence recorded in progress.md Day 1
-  - Verify: progress.md Day 1 §font-size decision present
-- [ ] **`index.css` body block** verified
-  - DoD: `font-family`/`line-height` — confirm `styles-mockup.css`'s own `body` rule (loads later) covers it; align only if a gap remains
-  - Verify: body block reviewed; no duplicate competing rule
+- [x] **Retired mockup-system HSL approximation tokens** from `index.css` (`--bg`/`--fg`/`--success`/.../`--risk-*`/density/`--radius`/`--shadow` — now verbatim from styles-mockup.css); shadcn-system set kept
+- [x] **`html{font-size:13px}` KEPT** per D-PRE-3 (mockup `styles.css` is px-only) — transition-safe for the not-yet-re-pointed Tailwind-rem pages
+- [x] **`index.css` body block removed** — styles-mockup.css's unlayered `body` fully supersedes it (verified)
 
-### 1.3 Day 1 spot-check + commit
-- [ ] **Spot-check** `/overview` + `/auth/login` post-Layer-2/3
-  - DoD: both routes still render + usable; mockup classes resolving (`.card`/`.badge` computed style sampled)
-  - Verify: dev server `:3007` manual or Playwright single-route check
-- [ ] **Day 1 commit** with Group B work
-  - Commit message: `feat(frontend, sprint-57-28, Day 1, Group B): Layer 2 verbatim styles-mockup.css + Layer 3 index.css slim-down`
-  - DoD: `git status` clean post-commit
+### 1.3 US-C1 Layer 4 — tailwind.config bridge rework + token de-collision (pulled into Day 1 per D-DAY1-1)
+- [x] **Mockup-token bridge** `hsl(var(--X))`→`var(--X)` in `tailwind.config.ts` (var holds full oklch)
+- [x] **Token de-collision** — shadcn `--primary`/`--border` → `--sc-primary`/`--sc-border` (index.css defs + config bridge + `* { border-color }`); shadcn-only tokens unchanged
+- [x] **index.html** `data-theme="dark"` added (D-PRE-2 — required for styles-mockup.css `[data-theme][data-variant]` bg/fg to resolve)
+
+### 1.4 D-DAY1-2 un-translation (user-approved Option X)
+- [x] **15 files / ~35 occurrences** `hsl(var(--mockup-token))` → `var(--X)` (bulk token-exact sed across charts / fixtures / dashboards / auth pages); 2 alpha cases → mockup `--primary-soft`/`--primary-soft-2`
+- [x] **Verified** — sweep confirms cost-dashboard charts + auth backdrops restored; `CostBurnChart`/`ErrorTrendChart` (bare `var()`) became correct automatically
+
+### 1.5 Day 1 verification + commit
+- [x] **Spot-check** — 22-route sweep (`route-sweep.mjs after`); cost-dashboard / auth-login screenshot-confirmed; 0 catastrophic breakage
+- [x] **Quality gates** — `npm run build` green (3.52s); `npm run lint` clean; Vitest **457/457** (0 regression)
+- [x] **Day 1 commit** — Layer 2+3+4 + un-translation
+  - Commit message: `feat(frontend, sprint-57-28, Day 1): verbatim-CSS foundation switch — Layer 2+3+4 + hsl(var()) un-translation`
 
 ---
 
 ## Day 2 — Group C (Layer 4 + theme toggle)
 
-### 2.1 US-C1 Layer 4 — tailwind.config.ts bridge rework
-- [ ] **Mockup-token bridge** `hsl(var(--X))` → `var(--X)`
-  - DoD: every mockup-consumed token's `tailwind.config.ts` colour entry drops the `hsl()` wrapper (var holds full `oklch()`)
-  - Verify: `Grep("hsl\\(var", tailwind.config.ts)` shows only de-collided shadcn entries remain
-- [ ] **Token collision resolution** per Day-0 Prong 2 enumeration
-  - DoD: each shadcn-only name collision de-collided — rename the shadcn var in `index.css` (e.g. `--primary` → `--sc-primary`) + update only that token's config bridge entry
-  - DoD: shared-intent collisions → verbatim value wins (index.css approximation already retired Day 1)
-  - DoD: 0 `bg-*`/`text-*` utility renders invalid CSS (e.g. `hsl(oklch(...))`)
-  - Verify: `npm run build` green; spot-check `bg-primary`/`bg-bg` computed style on a sample route
+### 2.1 US-C1 Layer 4 — tailwind.config.ts bridge rework — ✅ DONE Day 1 §1.3 (D-DAY1-1 atomic resequencing)
+- [x] **Mockup-token bridge** `hsl(var(--X))` → `var(--X)` — done Day 1 §1.3
+- [x] **Token collision resolution** — `--primary`/`--border` de-collided → `--sc-primary`/`--sc-border`; build green; 0 invalid-CSS utility — done Day 1 §1.3
 
 ### 2.2 US-C2 theme toggle alignment
 - [ ] **`ThemeProvider` dark-only alignment**

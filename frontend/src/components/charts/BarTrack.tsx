@@ -10,7 +10,7 @@
  *   with caller-provided tone color.
  *
  *   `pct` is clamped to [0, 100]; > 100 callers should signal overflow visually
- *   via tone instead (e.g. tone="hsl(var(--danger))" for quota-over alerts;
+ *   via tone instead (e.g. tone="var(--danger)" for quota-over alerts;
  *   see TenantTopTable).
  *
  *   Inline `style` is required for dynamic `width: X%` + `backgroundColor`
@@ -36,7 +36,7 @@ export interface BarTrackProps {
 
 export const BarTrack: FC<BarTrackProps> = ({
   pct,
-  tone = "hsl(var(--primary))",
+  tone = "var(--primary)",
   height = 4,
 }) => {
   const clamped = Math.min(100, Math.max(0, pct));

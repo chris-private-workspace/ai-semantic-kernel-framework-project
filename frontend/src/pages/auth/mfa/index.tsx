@@ -267,7 +267,7 @@ export default function MFAPage(): JSX.Element {
                   // eslint-disable-next-line no-restricted-syntax -- STYLE.md §3 escape hatch: Tailwind cannot express conic-gradient with --primary token (Sprint 57.23 US-D2 mockup AuthMFA L342-345)
                   style={{
                     background:
-                      "conic-gradient(from 0deg, hsl(var(--primary)), hsl(var(--primary) / 0.3))",
+                      "conic-gradient(from 0deg, var(--primary), var(--primary-soft-2))",
                     animation: "spin 2.5s linear infinite",
                   }}
                 >
