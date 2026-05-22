@@ -154,4 +154,42 @@
 ### Notes
 
 - Workload Day 3 est ~1.7 hr calibrated — actual on track (CI guard authoring + sweep + 27-image triage read).
-- Day 3 commit: `<hash>` (6 files: check-mockup-fidelity.mjs NEW + package.json + frontend-ci.yml + FOUNDATION-SWITCH-REPORT + checklist + progress.md; screenshots/ kept local). Hash-record line lands with the Day 4 commit.
+- Day 3 commit: `1865c15b` (6 files; +243 / -50; screenshots/ kept local). Hash-record line lands with the Day 4 commit.
+
+---
+
+## Day 4 — 2026-05-22 — Group E + closeout
+
+### Today's Accomplishments
+
+- **US-E1 quality gates** — `npm run lint` clean; `npm run build` green (3.54s; main JS 337.06 kB; CSS bundle `index-BLrq1zPz.css` 592 KB incl. verbatim `styles-mockup.css` ~39 KB raw — matches plan "~40 KB CSS"); Vitest **457/457 pass** (0 regression); `npm run check:mockup-fidelity` passes.
+- **US-E1 Vitest spec adaptation** — `AuthShell.test.tsx` ThemeProvider test was strengthened with `data-theme` assertions on Day 2 §2.2 (the actual closeout adaptation). The other 3 D-PRE-6 specs (`AppShellV2`/`UserMenu`/`adminTenantsRoleGate`) use `<ThemeProvider>` only as a render wrapper — assert no retired token / light path → no change needed.
+- **US-E2 closeout** —
+  - FOUNDATION-SWITCH-REPORT §5 final verdict + Phase-2 epic backlog written.
+  - retrospective.md Q1-Q7 created — Q2 calibration 1st data point.
+  - memory snapshot `memory/project_phase57_28_mockup_fidelity_foundation.md` + MEMORY.md +1 quality pointer.
+  - `.claude/rules/sprint-workflow.md` calibration matrix +1 NEW class row + MHist.
+  - `next-phase-candidates.md` +Sprint 57.28 carryover section (#45 `AD-RouteSweep-Object-Mock-Gap` + #46 `AD-Mockup-Fidelity-HexBaseline-Migration`).
+  - CLAUDE.md Current Sprint row + Last Updated footer (REFACTOR-001 minimal touch).
+
+### Calibration — 1st data point, NEW `frontend-verbatim-css-foundation` 0.55 class
+
+- Plan committed ~6.2 hr (0.55 × bottom-up ~11.0 hr).
+- Actual ≈6.5 hr-equivalent (estimated — agent-assisted compressed session, not rigorously per-day-tracked; same caveat as Sprint 57.13/57.27). Day 1 over-ran (Layer 4 pulled in + 15-file un-translation vs ~10 estimate); Day 2 under-ran (theme wire only); Day 3+4 on-track.
+- **Ratio actual/committed ≈1.05 ✅ in [0.85, 1.20] band.** Ratio actual/bottom-up ≈0.59.
+- 1-data-point → KEEP 0.55 baseline per `When to adjust` 3-sprint window rule.
+
+### Discipline self-check (rolling planning)
+
+- ☑ No future sprint plan pre-written.
+- ☑ No unchecked `[ ]` deleted — §2.2 + §3.2 task text corrected per §Step 2.5 (not deleted; plan R3 + report §3c are the audit trail); §4.3 PR/CI/merge items left `[ ]` (post-commit process).
+- ☑ retrospective.md contains no concrete future-sprint tasks.
+
+### Remaining (Day 4 §4.3)
+
+- PR open → CI green → merge (after user approval — push / PR / merge require confirmation) → post-merge branch cleanup.
+
+### Notes
+
+- Workload Day 4 est ~0.6 hr calibrated — actual on track (gates + closeout docs).
+- Day 4 closeout commit: `<hash>` (7 repo files: FOUNDATION-SWITCH-REPORT + retrospective.md NEW + progress.md + checklist + sprint-workflow.md + next-phase-candidates.md + CLAUDE.md; memory subfile + MEMORY.md live in the AI memory dir, not the repo; screenshots/ kept local).

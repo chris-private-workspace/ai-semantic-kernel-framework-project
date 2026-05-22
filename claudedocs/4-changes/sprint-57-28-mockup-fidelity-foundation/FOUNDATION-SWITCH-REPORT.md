@@ -121,4 +121,23 @@ Under Option B no page markup is re-pointed this sprint, so a per-route pixel co
 
 ## 5. Final verdict (Day 4)
 
-_TBD — per-route verdict + Phase-2 re-point epic backlog._
+**Sprint 57.28 = COMPLETE.** The verbatim-CSS 4-layer sync protocol (Phase 1 — foundation only) is landed:
+
+- **Layer 2** — `frontend/src/styles-mockup.css` is a byte-identical copy of `reference/design-mockups/styles.css` (CI diff guard enforces it on every PR).
+- **Layer 3** — `index.css` slimmed: the Sprint 57.18/57.20 HSL mockup-token approximations retired; the verbatim oklch values from Layer 2 are the single source.
+- **Layer 4** — `tailwind.config.ts` bridges mockup tokens as `var(--X)` (full oklch); shadcn `--primary`/`--border` de-collided to `--sc-*`.
+- **theme** — `ThemeProvider` drives the mockup `[data-theme]` attribute (light + dark both kept); `.dark` class kept in sync for the Phase-1 shadcn transition.
+- **CI guard** — `check-mockup-fidelity.mjs` (diff + grep) wired into `frontend-ci.yml`; future re-translation / hardcoded colour fails CI.
+
+**Regression verdict (22-route sweep)**: **0 catastrophic, 0 structural regression** caused by the switch. 19 routes show 🟡 transition-drift (expected — foundation switched, per-page markup not yet re-pointed); 3 routes (`/subagents` `/memory` `/verification`) are ⚪ not-assessable due to a pre-existing route-sweep harness mock-shape gap (error identically before+after — not a switch regression).
+
+**Quality**: Vitest 457/457 · lint clean · build green (main JS 337.06 kB; CSS bundle 592 KB incl. verbatim `styles-mockup.css` ~39 KB raw — matches the plan's "~40 KB CSS" estimate) · `check:mockup-fidelity` passes.
+
+### Phase-2 re-point epic backlog
+
+Phase 1 changed the **CSS delivery method**; Phase 2 re-points each page's markup to consume the mockup classes directly — the work that now gets CSS fidelity "for free" because the foundation is correct:
+
+- **19 transition-drift routes** — each `active` route's markup still consumes shadcn utilities on top of the verbatim foundation; re-point per-route to mockup classes (the `frontend-mockup-strict-rebuild` epic continues).
+- **`HEX_OKLCH_BASELINE = 18`** — 18 hardcoded `bg-[#hex]`/`text-[#hex]` lines in `features/` (governance + chat_v2 risk-colour maps: DecisionModal, AuditChainBadge, ApprovalList, ApprovalCard, HITLTurn). Each Phase-2 re-point of those pages should migrate the literals to mockup `--risk-*` tokens and lower the baseline.
+- **`AD-RouteSweep-Object-Mock-Gap`** — extend `route-sweep.mjs` with object-shaped mocks for `/api/v1/subagents` + `/api/v1/memory/recent` + the verification endpoint so those 3 routes become sweep-assessable.
+- **shadcn-system tokens** — `index.css` still carries the shadcn token set the not-re-pointed pages consume; retired page-by-page as Phase 2 progresses.

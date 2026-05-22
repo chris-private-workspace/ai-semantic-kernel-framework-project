@@ -125,27 +125,24 @@
 ## Day 4 — Group E + closeout
 
 ### 4.1 US-E1 Vitest + lint + build
-- [ ] **Token/theme Vitest specs adapted** (per Day-0 Prong 4)
-  - DoD: specs asserting a retired token / light-theme path adapted (NOT deleted)
-- [ ] **Vitest 430/430 passing** (Sprint 57.26+ baseline preserved; 0 regression)
-  - Verify: `npm run test` exit 0
-- [ ] **`npm run lint` exit 0 + `npm run build` green + bundle KB delta recorded**
-  - DoD: lint silent; build green; bundle delta recorded (Layer 2 ≈ +40 KB CSS expected)
-  - Verify: build output captured in progress.md
+- [x] **Token/theme Vitest specs adapted** (per Day-0 Prong 4)
+  - DoD: `AuthShell.test.tsx` ThemeProvider test strengthened with `data-theme` assertions (Day 2 §2.2); the other 3 D-PRE-6 specs (`AppShellV2`/`UserMenu`/`adminTenantsRoleGate`) only wrap render in `<ThemeProvider>` — assert no retired token / light path → no change needed
+- [x] **Vitest 457/457 passing** (post-Sprint-57.27 baseline preserved; 0 regression — checklist Day-0 number "430" was the plan-time figure; 57.27 added +27)
+  - Verify: `npm run test` exit 0 ✓
+- [x] **`npm run lint` exit 0 + `npm run build` green + bundle KB delta recorded**
+  - DoD: lint silent ✓; build green ✓ (main JS 337.06 kB; CSS bundle 592 KB incl. verbatim `styles-mockup.css` ~39 KB raw — matches plan "~40 KB CSS")
 
 ### 4.2 US-E2 FOUNDATION-SWITCH-REPORT final + closeout
-- [ ] **FOUNDATION-SWITCH-REPORT final verdict** + Phase-2 epic backlog
-  - DoD: per-route verdict (foundation switched / transition-drift noted) + accurate Phase-2 re-point backlog list
-- [ ] **retrospective.md Q1-Q7** at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-28/retrospective.md`
-  - DoD: Q2 records actual/committed ratio = 1st data point for NEW `frontend-verbatim-css-foundation` class
-- [ ] **memory snapshot** `memory/project_phase57_28_mockup_fidelity_foundation.md` + **MEMORY.md +1 quality pointer**
-  - DoD: distinguishing features + verdicts + keywords per quality-pointer principle (~300 char)
-- [ ] **`.claude/rules/sprint-workflow.md` calibration matrix +1 NEW class row**
-  - DoD: `frontend-verbatim-css-foundation` 0.55 row with 1st data point `57.28=<ratio>` + MHist entry
-- [ ] **`claudedocs/1-planning/next-phase-candidates.md` update**
-  - DoD: Foundation switch (Phase 1) closed; Phase-2 per-page re-point epic backlog referenced; any structural-regression carryover AD added
-- [ ] **CLAUDE.md Current Sprint row + Last Updated footer** (REFACTOR-001 §Sprint Closeout minimal touch — NO history additions)
-- [ ] **Day 4 commit** closeout
+- [x] **FOUNDATION-SWITCH-REPORT final verdict** + Phase-2 epic backlog (report §5)
+- [x] **retrospective.md Q1-Q7** at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-28/retrospective.md`
+  - DoD: Q2 records ratio actual/committed ≈1.05 = 1st data point for NEW `frontend-verbatim-css-foundation` class
+- [x] **memory snapshot** `memory/project_phase57_28_mockup_fidelity_foundation.md` + **MEMORY.md +1 quality pointer**
+- [x] **`.claude/rules/sprint-workflow.md` calibration matrix +1 NEW class row**
+  - DoD: `frontend-verbatim-css-foundation` 0.55 row with 1st data point `57.28≈1.05` + MHist entry
+- [x] **`claudedocs/1-planning/next-phase-candidates.md` update**
+  - DoD: Sprint 57.28 carryover section + #45 `AD-RouteSweep-Object-Mock-Gap` + #46 `AD-Mockup-Fidelity-HexBaseline-Migration`
+- [x] **CLAUDE.md Current Sprint row + Last Updated footer** (REFACTOR-001 §Sprint Closeout minimal touch — NO history additions)
+- [x] **Day 4 commit** closeout
   - Commit message: `feat(frontend, sprint-57-28, Day 4): closeout — FOUNDATION-SWITCH-REPORT final + retrospective + calibration matrix NEW class + minimal CLAUDE.md touch`
   - DoD: `git status` clean post-commit
 
