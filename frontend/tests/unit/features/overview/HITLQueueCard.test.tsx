@@ -7,6 +7,7 @@
  * Created: 2026-05-21 (Sprint 57.27 Day 1 / US-B2)
  *
  * Modification History (newest-first):
+ *   - 2026-05-22: Sprint 57.29 US-C2 — assert verbatim critical marker (re-point dropped bg-danger/8 Tailwind)
  *   - 2026-05-21: Initial creation (Sprint 57.27 Day 1)
  */
 
@@ -35,14 +36,22 @@ describe("HITLQueueCard", () => {
     ).toBeInTheDocument();
   });
 
-  it("applies the critical-risk tint to the critical approval card", () => {
+  it("marks the critical-risk approval card distinctly", () => {
     render(wrap(<HITLQueueCard />));
     const criticalCard = screen
       .getByText("servicenow_create_ticket — P1 incident escalation")
       .closest("button");
     expect(criticalCard).not.toBeNull();
-    expect(criticalCard).toHaveClass("bg-danger/8");
-    expect(criticalCard).toHaveClass("border-danger/40");
+    // Verbatim re-point (Sprint 57.29): the critical card carries the mockup's
+    // inline oklch danger tint (background + border from var(--danger)) — a
+    // visual-layer literal, not a Tailwind class. The critical RiskBadge
+    // (`.sev-critical`) structurally marks the card; the pixel-level tint is
+    // verified by the Day-5 Playwright fidelity sweep (jsdom does not render oklch).
+    expect(criticalCard?.querySelector(".sev-critical")).not.toBeNull();
+    const normalCard = screen
+      .getByText("salesforce_update — refund $4,820")
+      .closest("button");
+    expect(normalCard?.querySelector(".sev-critical")).toBeNull();
   });
 
   it("renders a BackendGapBanner declaring the fixture data", () => {

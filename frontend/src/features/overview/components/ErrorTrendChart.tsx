@@ -23,8 +23,10 @@
  *   - ErrorTrendChart: SVG bar chart + legend + backend-gap banner
  *
  * Created: 2026-05-21 (Sprint 57.27 Day 2 / US-B3)
+ * Last Modified: 2026-05-22
  *
  * Modification History (newest-first):
+ *   - 2026-05-22: Sprint 57.29 US-C2 — verbatim re-point legend to mockup .row/.mono classes
  *   - 2026-05-21: Initial creation (Sprint 57.27 Day 2 / US-C1) — extract from OverviewPage inline
  *
  * Related:
@@ -33,7 +35,9 @@
  *   - frontend/src/components/ui/BackendGapBanner.tsx (shared)
  */
 
-import type { FC } from "react";
+/* eslint-disable no-restricted-syntax -- verbatim re-point: inline styles are mockup page-overview.jsx visual-layer literals copied byte-for-byte; re-expressing as Tailwind IS the drift bug this epic kills (STYLE.md §1 escape hatch + frontend-mockup-fidelity.md) */
+
+import type { CSSProperties, FC } from "react";
 import { useTranslation } from "react-i18next";
 
 import { BackendGapBanner } from "@/components/ui/BackendGapBanner";
@@ -60,11 +64,10 @@ export const ErrorTrendChart: FC = () => {
   const isRising = last3Sum > 10;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="col" style={{ gap: 8 }}>
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        className="w-full"
-        height={H}
+        style={{ width: "100%", height: H }}
         aria-label={t("overview.errors.title")}
       >
         {/* y gridlines */}
@@ -142,19 +145,12 @@ export const ErrorTrendChart: FC = () => {
           now
         </text>
       </svg>
-      {/* legend row */}
-      <div className="flex items-center gap-[10px] text-[11px] text-fg-muted">
-        <span>
-          <span className="font-mono text-danger">{total}</span>{" "}
-          {t("overview.errors.errorsLabel")}
-        </span>
-        <span className="flex-1" />
-        <span>
-          <span className="font-mono">{peak}</span>{" "}
-          {t("overview.errors.peakLabel")}
-        </span>
-        {/* eslint-disable-next-line no-restricted-syntax -- dynamic per-trend colour (STYLE.md §1 escape hatch; no static Tailwind class for conditional CSS var) */}
-        <span style={{ color: isRising ? "var(--warning)" : "var(--success)" }}>
+      {/* legend row — verbatim from page-overview.jsx:369-377 */}
+      <div className="row" style={{ gap: 10, fontSize: 11, color: "var(--fg-muted)" } satisfies CSSProperties}>
+        <span><span className="mono" style={{ color: "var(--danger)" } satisfies CSSProperties}>{total}</span> {t("overview.errors.errorsLabel")}</span>
+        <span style={{ flex: 1 } satisfies CSSProperties} />
+        <span><span className="mono">{peak}</span> {t("overview.errors.peakLabel")}</span>
+        <span style={{ color: isRising ? "var(--warning)" : "var(--success)" } satisfies CSSProperties}>
           {isRising ? t("overview.errors.rising") : t("overview.errors.stable")}
         </span>
       </div>

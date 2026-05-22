@@ -6,7 +6,7 @@
  *
  * Description:
  *   1:1 mockup port of `reference/design-mockups/page-overview.jsx:204-225`.
- *   Wraps the shared <CardShell> (flush body — no padding); body renders one
+ *   Wraps mockup-ui <Card> (bodyClass="flush" — no padding); body renders one
  *   incident row per RECENT_INCIDENTS fixture entry. Each row: RiskBadge
  *   (sev), mono id, title flex-1, status Badge, since mono right-aligned.
  *
@@ -17,27 +17,30 @@
  *   - IncidentsCard: card + 4 incident rows + backend-gap banner
  *
  * Created: 2026-05-21 (Sprint 57.27 Day 2 / US-B3)
+ * Last Modified: 2026-05-22
  *
  * Modification History (newest-first):
+ *   - 2026-05-22: Sprint 57.29 US-C2 — verbatim re-point to mockup .row + mockup-ui RiskBadge/Badge
  *   - 2026-05-21: Initial creation (Sprint 57.27 Day 2 / US-C2) — extract from OverviewPage inline
  *
  * Related:
  *   - reference/design-mockups/page-overview.jsx:204-225 (IncidentsCard canonical)
  *   - frontend/src/features/overview/__fixtures__/incidents.ts (fixture data)
- *   - frontend/src/components/ui/CardShell.tsx + BackendGapBanner.tsx (shared)
- *   - frontend/src/features/overview/components/_primitives.tsx (Badge + RiskBadge)
+ *   - frontend/src/components/mockup-ui.tsx (Card / Button / Badge / RiskBadge primitives)
+ *   - frontend/src/components/ui/BackendGapBanner.tsx (shared)
  */
 
-import { ArrowRight } from "lucide-react";
-import type { FC } from "react";
+/* eslint-disable no-restricted-syntax -- verbatim re-point: inline styles are mockup page-overview.jsx visual-layer literals copied byte-for-byte; re-expressing as Tailwind IS the drift bug this epic kills (STYLE.md §1 escape hatch + frontend-mockup-fidelity.md) */
+
+import type { CSSProperties, FC } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import { BackendGapBanner } from "@/components/ui/BackendGapBanner";
-import { CardShell } from "@/components/ui/CardShell";
+import { Badge, Button, Card, RiskBadge } from "@/components/mockup-ui";
+import type { RiskLevel } from "@/components/mockup-ui";
 
 import { RECENT_INCIDENTS } from "../__fixtures__/incidents";
-import { Badge, RiskBadge } from "./_primitives";
 
 export const IncidentsCard: FC = () => {
   const { t } = useTranslation();
@@ -46,51 +49,50 @@ export const IncidentsCard: FC = () => {
   const openCount = RECENT_INCIDENTS.filter((i) => i.status !== "resolved").length;
 
   return (
-    <CardShell
+    <Card
       title={t("overview.incidents.title")}
       subtitle={`${openCount} ${t("overview.incidents.subtitle")}`}
       actions={
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
+          iconRight="arrow_right"
           onClick={() => navigate("/incidents")}
-          className="flex items-center gap-1 text-[11px] text-fg-muted hover:text-foreground"
         >
-          {t("overview.incidents.allIncidents")} <ArrowRight className="h-3 w-3" />
-        </button>
+          {t("overview.incidents.allIncidents")}
+        </Button>
       }
-      bodyClass=""
+      bodyClass="flush"
     >
+      {/* verbatim from page-overview.jsx:211-224 */}
       <div>
         {RECENT_INCIDENTS.map((inc, i) => (
-          <button
+          <div
             key={inc.id}
-            type="button"
+            className="row"
+            style={{
+              gap: 10,
+              padding: "10px 14px",
+              borderBottom: i < RECENT_INCIDENTS.length - 1 ? "1px solid var(--border)" : "none",
+              fontSize: 12.5,
+              cursor: "pointer",
+            } satisfies CSSProperties}
             onClick={() => navigate("/incidents")}
-            className={`flex w-full cursor-pointer items-center gap-[10px] px-[14px] py-[10px] text-left text-[12.5px] hover:bg-bg-hover ${
-              i < RECENT_INCIDENTS.length - 1 ? "border-b border-border" : ""
-            }`}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate("/incidents"); }}
           >
-            <RiskBadge level={inc.sev} />
-            <span className="w-[64px] font-mono text-[11.5px]">{inc.id}</span>
-            <span className="flex-1">{inc.title}</span>
-            <Badge
-              tone={
-                inc.status === "resolved"
-                  ? "success"
-                  : inc.status === "open"
-                    ? "warning"
-                    : "muted"
-              }
-            >
+            <RiskBadge level={inc.sev as RiskLevel} />
+            <span className="mono" style={{ fontSize: 11.5, width: 64 } satisfies CSSProperties}>{inc.id}</span>
+            <span style={{ flex: 1 } satisfies CSSProperties}>{inc.title}</span>
+            <Badge tone={inc.status === "resolved" ? "success" : inc.status === "open" ? "warning" : ""}>
               {inc.status}
             </Badge>
-            <span className="w-[40px] text-right font-mono text-[11px] text-fg-muted">
-              {inc.since}
-            </span>
-          </button>
+            <span className="mono subtle" style={{ fontSize: 11, width: 40, textAlign: "right" } satisfies CSSProperties}>{inc.since}</span>
+          </div>
         ))}
       </div>
       <BackendGapBanner reason={t("overview.incidents.backendGap")} />
-    </CardShell>
+    </Card>
   );
 };

@@ -6,7 +6,7 @@
  *
  * Description:
  *   1:1 mockup port of `reference/design-mockups/page-overview.jsx:143-167`.
- *   Wraps the shared <CardShell> (dense body); body renders one risk-tinted
+ *   Wraps mockup-ui <Card> (bodyClass="dense"); body renders one risk-tinted
  *   card per HITL_QUEUE fixture row. Critical-risk rows take the mockup
  *   `oklch(from var(--danger) l c h / 0.08)` tint + 0.4-alpha border.
  *
@@ -18,72 +18,78 @@
  *   - HITLQueueCard: card + 3 risk-tinted approval cards + backend-gap banner
  *
  * Created: 2026-05-21 (Sprint 57.27 Day 1 / US-B2)
+ * Last Modified: 2026-05-22
  *
  * Modification History (newest-first):
+ *   - 2026-05-22: Sprint 57.29 US-C2 — verbatim re-point to mockup .card dense + oklch tints
  *   - 2026-05-21: Initial creation (Sprint 57.27 Day 1) — extract from OverviewPage inline + banner
  *
  * Related:
  *   - reference/design-mockups/page-overview.jsx:143-167 (HITL card canonical)
  *   - frontend/src/features/overview/__fixtures__/hitlQueue.ts (fixture data)
- *   - frontend/src/components/ui/CardShell.tsx + BackendGapBanner.tsx (shared)
+ *   - frontend/src/components/mockup-ui.tsx (Card / Button / RiskBadge primitives)
+ *   - frontend/src/components/ui/BackendGapBanner.tsx (shared)
  */
 
-import { ArrowRight } from "lucide-react";
-import type { FC } from "react";
+/* eslint-disable no-restricted-syntax -- verbatim re-point: inline styles are mockup page-overview.jsx visual-layer literals copied byte-for-byte; re-expressing as Tailwind IS the drift bug this epic kills (STYLE.md §1 escape hatch + frontend-mockup-fidelity.md) */
+
+import type { CSSProperties, FC } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import { BackendGapBanner } from "@/components/ui/BackendGapBanner";
-import { CardShell } from "@/components/ui/CardShell";
+import { Button, Card, RiskBadge } from "@/components/mockup-ui";
+import type { RiskLevel } from "@/components/mockup-ui";
 
 import { HITL_QUEUE } from "../__fixtures__/hitlQueue";
-import { RiskBadge } from "./_primitives";
 
 export const HITLQueueCard: FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
   return (
-    <CardShell
+    <Card
       title={t("overview.hitlQueue.title")}
       subtitle={`${HITL_QUEUE.length} pending`}
       actions={
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
+          iconRight="arrow_right"
           onClick={() => navigate("/governance")}
-          className="flex items-center gap-1 text-[11px] text-fg-muted hover:text-foreground"
         >
-          {t("overview.hitlQueue.review")} <ArrowRight className="h-3 w-3" />
-        </button>
+          {t("overview.hitlQueue.review")}
+        </Button>
       }
-      bodyClass="p-2.5"
+      bodyClass="dense"
     >
-      <div className="flex flex-col gap-[10px]">
+      {/* verbatim from page-overview.jsx:149-166 */}
+      <div className="col" style={{ gap: 10 }}>
         {HITL_QUEUE.map((req) => (
           <button
             key={req.id}
             type="button"
+            className="col"
+            style={{
+              gap: 6,
+              padding: 10,
+              border: `1px solid ${req.risk === "critical" ? "oklch(from var(--danger) l c h / 0.4)" : "var(--border)"}`,
+              borderRadius: "var(--radius-sm)",
+              cursor: "pointer",
+              background: req.risk === "critical" ? "oklch(from var(--danger) l c h / 0.08)" : "var(--bg-1)",
+            } satisfies CSSProperties}
             onClick={() => navigate("/governance")}
-            className={`flex flex-col gap-[6px] rounded-[6px] border p-[10px] text-left ${
-              req.risk === "critical"
-                ? "border-danger/40 bg-danger/8"
-                : "border-border bg-bg-1"
-            }`}
           >
-            <div className="flex items-center justify-between gap-[6px]">
-              <RiskBadge level={req.risk} />
-              <span className="font-mono text-[10.5px] text-fg-subtle">
-                SLA · {req.sla}
-              </span>
+            <div className="row" style={{ gap: 6, justifyContent: "space-between" } satisfies CSSProperties}>
+              <RiskBadge level={req.risk as RiskLevel} />
+              <span className="mono subtle" style={{ fontSize: 10.5 } satisfies CSSProperties}>SLA · {req.sla}</span>
             </div>
-            <div className="text-[12.5px] font-medium leading-snug">{req.title}</div>
-            <div className="font-mono text-[10.5px] text-fg-subtle">
-              {req.id} · from {req.requester}
-            </div>
+            <div style={{ fontSize: 12.5, fontWeight: 500, lineHeight: 1.4 } satisfies CSSProperties}>{req.title}</div>
+            <div className="mono subtle" style={{ fontSize: 10.5 } satisfies CSSProperties}>{req.id} · from {req.requester}</div>
           </button>
         ))}
       </div>
       <BackendGapBanner reason={t("overview.hitlQueue.backendGap")} />
-    </CardShell>
+    </Card>
   );
 };

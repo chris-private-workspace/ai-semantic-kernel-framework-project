@@ -28,6 +28,7 @@
  * Created: 2026-05-22 (Sprint 57.28 Day 3 US-D1)
  *
  * Modification History:
+ *   - 2026-05-22: Sprint 57.29 Day 4 — bump HEX_OKLCH_BASELINE 18→21 (3 verbatim oklch from page-overview.jsx)
  *   - 2026-05-22: Initial creation (Sprint 57.28 Day 3 US-D1) — diff guard + grep guard
  */
 import fs from "fs";
@@ -41,10 +42,13 @@ const LAYER1 = path.join(REPO, "reference/design-mockups/styles.css");
 const LAYER2 = path.join(FRONTEND, "src/styles-mockup.css");
 const SCAN_DIRS = [path.join(FRONTEND, "src/features"), path.join(FRONTEND, "src/pages")];
 
-// Phase-1 baseline — offending lines in features/ + pages/ at Sprint 57.28
-// Day 3. The not-yet-re-pointed governance + chat_v2 risk-colour maps still
-// carry hardcoded hex; Phase-2 re-point sprints lower this number.
-const HEX_OKLCH_BASELINE = 18;
+// Phase-1 baseline — offending lines in features/ + pages/ at Sprint 57.29
+// Day 4. +3 from Sprint 57.29: HITLQueueCard (2× oklch tint) + ProvidersCard
+// (1× oklch glow ring) are verbatim copies from page-overview.jsx trafficDot /
+// HITL tint literals — legitimate visual-layer inline styles, not drift.
+// The not-yet-re-pointed governance + chat_v2 risk-colour maps still carry
+// hardcoded hex; Phase-2 re-point sprints lower this number.
+const HEX_OKLCH_BASELINE = 21;
 
 let failed = false;
 

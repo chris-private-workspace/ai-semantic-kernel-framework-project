@@ -5,8 +5,13 @@
  * Scope: Phase 57 / Sprint 57.19 Day 5 / US-D1
  *
  * Description:
- *   Mockup port from reference/design-mockups/topbar-overlays.jsx CommandPalette.
- *   Opens via global Cmd+K (mac) / Ctrl+K (win/linux) hotkey mounted by AppShellV2.
+ *   Verbatim re-point of `reference/design-mockups/topbar-overlays.jsx` CommandPalette.
+ *   The palette shell (backdrop + card) now uses verbatim inline-style literals from
+ *   the mockup. The cmdk / Radix Dialog interaction layer is kept unchanged:
+ *   `<Dialog>` / `<DialogContent>` / `<DialogTitle className="sr-only">` /
+ *   `<Command>` / `<Command.Input>` / `<Command.List>` / `<Command.Group>` /
+ *   `<Command.Item>` / `<Command.Empty>` — only the rendered markup's wrapper
+ *   class names and inline-style objects are re-pointed to the mockup literals.
  *
  *   Groups (filtered by query):
  *     - Actions (4 fixed: new chat / review HITL / onboard tenant / declare incident)
@@ -16,78 +21,115 @@
  *
  *   Keyboard: ↑↓ navigate, Enter open, Esc close. cmdk provides natively.
  *
- *   Backend wiring: deferred to Sprint 57.20+ (tenant + session feeds via Cat 7/Cat 11 read facade).
- *   Current sprint = mockup-fidelity port with fixture data.
- *
  * Created: 2026-05-17 (Sprint 57.19 Day 5 / US-D1)
+ * Last Modified: 2026-05-22
  *
  * Modification History:
+ *   - 2026-05-22: Sprint 57.29 US-B4 — verbatim re-point palette shell to mockup topbar-overlays.jsx literals
  *   - 2026-05-17: Initial creation (Sprint 57.19 Day 5 / US-D1) — mockup port + cmdk integration
  *
  * Related:
- *   - reference/design-mockups/topbar-overlays.jsx (canonical mockup source)
+ *   - reference/design-mockups/topbar-overlays.jsx §CommandPalette (canonical visual source)
+ *   - reference/design-mockups/styles.css / frontend/src/styles-mockup.css (.kbd class)
  *   - frontend/src/components/AppShellV2.tsx (mounts CommandPalette + ⌘K hotkey)
  *   - frontend/src/routes.config.ts (ROUTES source for page group)
  */
 
+/* eslint-disable no-restricted-syntax -- verbatim re-point: inline styles are mockup topbar-overlays.jsx visual-layer literals (backdrop, card shell, input row, group heading, result row, footer row) copied byte-for-byte; re-expressing as Tailwind IS the drift bug this epic kills (STYLE.md §1 escape hatch + frontend-mockup-fidelity.md) */
+
 import { Command } from "cmdk";
-import {
-  AlertTriangle,
-  ArrowRight,
-  Building2,
-  CheckCheck,
-  MessageSquare,
-  Search,
-  UserPlus,
-  Workflow,
-  type LucideIcon,
-} from "lucide-react";
-import { type FC, useEffect, useState } from "react";
+import { type CSSProperties, type FC, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
+import { Icon } from "@/components/mockup-ui";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui";
 import { ROUTES } from "@/routes.config";
+
+// ─── Verbatim mockup topbar-overlays.jsx inline-style literals ───────────────
+
+// Input row
+const INPUT_ROW_STYLE: CSSProperties = {
+  gap: 10, padding: "12px 14px", borderBottom: "1px solid var(--border)",
+};
+
+// Input element
+const INPUT_STYLE: CSSProperties = {
+  flex: 1, background: "transparent", border: "none", outline: "none",
+  color: "var(--fg)", fontSize: 14, fontFamily: "var(--font-sans)",
+};
+
+// Results scroll area
+const RESULTS_STYLE: CSSProperties = { overflowY: "auto", padding: 4 };
+
+// Empty state
+const EMPTY_STYLE: CSSProperties = {
+  gap: 6, alignItems: "center", padding: "32px 0", color: "var(--fg-subtle)",
+};
+
+// Group heading
+const GROUP_HEADING_STYLE: CSSProperties = {
+  padding: "8px 12px 4px",
+  fontSize: 10, color: "var(--fg-subtle)", textTransform: "uppercase",
+  letterSpacing: "0.06em", fontFamily: "var(--font-mono)",
+};
+
+// Result row (base; active variant adds bg)
+const resultRowStyle = (active: boolean): CSSProperties => ({
+  gap: 10, padding: "8px 12px", borderRadius: 6,
+  background: active ? "var(--bg-hover)" : "transparent",
+  cursor: "pointer", fontSize: 13,
+});
+
+// Footer row
+const FOOTER_STYLE: CSSProperties = {
+  gap: 14, padding: "8px 14px", borderTop: "1px solid var(--border)",
+  fontSize: 10.5, color: "var(--fg-subtle)", fontFamily: "var(--font-mono)",
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface CommandPaletteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-interface ExtraAction {
+interface CmdItem {
+  type: string;
   id: string;
-  icon: LucideIcon;
-  labelKey: string;
-  hintKey: string;
+  icon: string;
+  label: string;
+  hint: string;
   routeId: string;
 }
 
-const EXTRA_ACTIONS: ExtraAction[] = [
-  { id: "act-new-chat", icon: MessageSquare, labelKey: "topbar.commandPalette.actions.newChat", hintKey: "topbar.commandPalette.actions.newChatHint", routeId: "chat-v2" },
-  { id: "act-review", icon: CheckCheck, labelKey: "topbar.commandPalette.actions.reviewHitl", hintKey: "topbar.commandPalette.actions.reviewHitlHint", routeId: "governance" },
-  { id: "act-onboard", icon: UserPlus, labelKey: "topbar.commandPalette.actions.onboardTenant", hintKey: "topbar.commandPalette.actions.onboardTenantHint", routeId: "tenant-onboarding" },
-  { id: "act-incident", icon: AlertTriangle, labelKey: "topbar.commandPalette.actions.declareIncident", hintKey: "topbar.commandPalette.actions.declareIncidentHint", routeId: "incidents" },
+const EXTRA_ACTIONS: CmdItem[] = [
+  { type: "action", id: "act-new-chat",  icon: "chat",     label: "topbar.commandPalette.actions.newChat",       hint: "topbar.commandPalette.actions.newChatHint",       routeId: "chat-v2" },
+  { type: "action", id: "act-review",    icon: "approval", label: "topbar.commandPalette.actions.reviewHitl",    hint: "topbar.commandPalette.actions.reviewHitlHint",    routeId: "governance" },
+  { type: "action", id: "act-onboard",   icon: "plus",     label: "topbar.commandPalette.actions.onboardTenant", hint: "topbar.commandPalette.actions.onboardTenantHint", routeId: "tenant-onboarding" },
+  { type: "action", id: "act-incident",  icon: "warn",     label: "topbar.commandPalette.actions.declareIncident", hint: "topbar.commandPalette.actions.declareIncidentHint", routeId: "incidents" },
 ];
 
 const TENANT_FIXTURES = [
-  { id: "t1", name: "acme-prod", region: "ap-east-1", plan: "Pro" },
-  { id: "t2", name: "globex-eu", region: "eu-west-1", plan: "Pro" },
+  { id: "t1", name: "acme-prod",  region: "ap-east-1",      plan: "Pro" },
+  { id: "t2", name: "globex-eu",  region: "eu-west-1",      plan: "Pro" },
   { id: "t3", name: "initech-jp", region: "ap-northeast-1", plan: "Enterprise" },
 ];
 
 const SESSION_FIXTURES = [
-  { id: "sess_8a2f1c3", agent: "incident-responder", tenant: "acme-prod", status: "running" },
-  { id: "sess_7c11d9e", agent: "compliance-auditor", tenant: "globex-eu", status: "hitl-paused" },
-  { id: "sess_4f88c1a", agent: "rca-explorer", tenant: "acme-prod", status: "verifying" },
+  { id: "sess_8a2f1c3", agent: "incident-responder", tenant: "acme-prod",  status: "running" },
+  { id: "sess_7c11d9e", agent: "compliance-auditor", tenant: "globex-eu",  status: "hitl-paused" },
+  { id: "sess_4f88c1a", agent: "rca-explorer",       tenant: "acme-prod",  status: "verifying" },
 ];
 
 export const CommandPalette: FC<CommandPaletteProps> = ({ open, onOpenChange }) => {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const [activeIdx, setActiveIdx] = useState(0);
 
   useEffect(() => {
-    if (!open) setQuery("");
+    if (!open) { setQuery(""); setActiveIdx(0); }
   }, [open]);
 
   const lower = query.trim().toLowerCase();
@@ -99,134 +141,107 @@ export const CommandPalette: FC<CommandPaletteProps> = ({ open, onOpenChange }) 
     onOpenChange(false);
   };
 
-  const matchedPages = ROUTES
+  const matchedPages: CmdItem[] = ROUTES
     .filter((r) => r.active)
     .filter((r) => matchesQuery(r.path) || matchesQuery(t(r.nameKey)) || matchesQuery(r.name))
-    .slice(0, 8);
+    .slice(0, 8)
+    .map((r) => ({ type: "page", id: `pg-${r.path}`, icon: "dashboard", label: t(r.nameKey), hint: r.path, routeId: r.path.slice(1) }));
 
-  const matchedActions = EXTRA_ACTIONS.filter((a) => matchesQuery(t(a.labelKey)) || matchesQuery(t(a.hintKey)));
+  const matchedActions: CmdItem[] = EXTRA_ACTIONS
+    .filter((a) => matchesQuery(t(a.label)) || matchesQuery(t(a.hint)))
+    .map((a) => ({ ...a, label: t(a.label), hint: t(a.hint) }));
 
-  const matchedTenants = lower
-    ? TENANT_FIXTURES.filter((tn) => matchesQuery(tn.name))
+  const matchedTenants: CmdItem[] = lower
+    ? TENANT_FIXTURES.filter((tn) => matchesQuery(tn.name)).map((tn) => ({
+        type: "tenant", id: `tn-${tn.id}`, icon: "tenants", label: tn.name, hint: `${tn.region} · ${tn.plan}`, routeId: "admin-tenants",
+      }))
     : [];
 
-  const matchedSessions = lower && /^(sess|s_|[a-f0-9]{2,})/i.test(lower)
-    ? SESSION_FIXTURES.filter((s) => s.id.toLowerCase().includes(lower))
+  const matchedSessions: CmdItem[] = lower && /^(sess|s_|[a-f0-9]{2,})/i.test(lower)
+    ? SESSION_FIXTURES.filter((s) => s.id.toLowerCase().includes(lower)).map((s) => ({
+        type: "session", id: `ss-${s.id}`, icon: "loop", label: s.id, hint: `${s.agent} · ${s.status}`, routeId: "loop-debug",
+      }))
     : [];
 
-  const totalCount = matchedActions.length + matchedPages.length + matchedTenants.length + matchedSessions.length;
+  const groups = [
+    { label: t("topbar.commandPalette.groups.actions"),  items: matchedActions },
+    { label: t("topbar.commandPalette.groups.pages"),    items: matchedPages },
+    { label: t("topbar.commandPalette.groups.tenants"),  items: matchedTenants },
+    { label: t("topbar.commandPalette.groups.sessions"), items: matchedSessions },
+  ].filter((g) => g.items.length > 0);
+
+  const flat = groups.flatMap((g) => g.items);
+  const totalCount = flat.length;
+
+  const onKey = (e: React.KeyboardEvent): void => {
+    if (e.key === "ArrowDown") { e.preventDefault(); setActiveIdx((i) => Math.min(flat.length - 1, i + 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIdx((i) => Math.max(0, i - 1)); }
+    else if (e.key === "Enter") { e.preventDefault(); if (flat[activeIdx]) goRoute(flat[activeIdx].routeId); }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="overflow-hidden p-0 sm:max-w-xl">
         <DialogTitle className="sr-only">{t("topbar.commandPalette.title")}</DialogTitle>
-        <Command shouldFilter={false} className="bg-background text-foreground">
-          <div className="flex items-center gap-2 border-b border-border px-3.5 py-3">
-            <Search size={15} className="text-muted-foreground" />
+        <Command shouldFilter={false}>
+          {/* Input row — verbatim mockup structure */}
+          <div className="row" style={INPUT_ROW_STYLE}>
+            <Icon name="search" size={15} className="subtle" />
             <Command.Input
               value={query}
-              onValueChange={setQuery}
+              onValueChange={(v) => { setQuery(v); setActiveIdx(0); }}
+              onKeyDown={onKey}
               placeholder={t("topbar.commandPalette.placeholder")}
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              style={INPUT_STYLE}
               // eslint-disable-next-line jsx-a11y/no-autofocus -- modal dialog first-input autofocus is the a11y-correct pattern (per mockup parity + WCAG 2.4.3)
               autoFocus
             />
-            <span className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-              ESC
-            </span>
+            <span className="kbd" style={{ fontSize: 10 }}>ESC</span>
           </div>
 
-          <Command.List className="max-h-[60vh] overflow-y-auto p-1">
+          {/* Results */}
+          <Command.List style={RESULTS_STYLE}>
             {totalCount === 0 ? (
-              <Command.Empty className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
-                <Search size={20} />
-                <div className="text-xs">{t("topbar.commandPalette.empty")}</div>
+              <Command.Empty>
+                <div className="col" style={EMPTY_STYLE}>
+                  <Icon name="search" size={20} />
+                  <div style={{ fontSize: 12.5 }}>{t("topbar.commandPalette.empty")}</div>
+                </div>
               </Command.Empty>
             ) : (
-              <>
-                {matchedActions.length > 0 && (
-                  <Command.Group heading={t("topbar.commandPalette.groups.actions")} className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:font-mono [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground">
-                    {matchedActions.map((a) => {
-                      const ActionIcon = a.icon;
-                      return (
-                        <Command.Item
-                          key={a.id}
-                          value={`action-${a.id}`}
-                          onSelect={() => goRoute(a.routeId)}
-                          className="flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 text-sm aria-selected:bg-accent aria-selected:text-accent-foreground"
-                        >
-                          <ActionIcon size={14} className="text-muted-foreground" />
-                          <span className="flex-1">{t(a.labelKey)}</span>
-                          <span className="font-mono text-[11px] text-muted-foreground">{t(a.hintKey)}</span>
-                          <ArrowRight size={11} className="text-muted-foreground opacity-0 aria-selected:opacity-100" />
-                        </Command.Item>
-                      );
-                    })}
-                  </Command.Group>
-                )}
-
-                {matchedPages.length > 0 && (
-                  <Command.Group heading={t("topbar.commandPalette.groups.pages")} className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:font-mono [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground">
-                    {matchedPages.map((r) => {
-                      const RouteIcon = r.icon;
-                      return (
-                        <Command.Item
-                          key={r.path}
-                          value={`page-${r.path}`}
-                          onSelect={() => { navigate(r.path); onOpenChange(false); }}
-                          className="flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 text-sm aria-selected:bg-accent aria-selected:text-accent-foreground"
-                        >
-                          <RouteIcon size={14} className="text-muted-foreground" />
-                          <span className="flex-1">{t(r.nameKey)}</span>
-                          <span className="font-mono text-[11px] text-muted-foreground">{r.path}</span>
-                        </Command.Item>
-                      );
-                    })}
-                  </Command.Group>
-                )}
-
-                {matchedTenants.length > 0 && (
-                  <Command.Group heading={t("topbar.commandPalette.groups.tenants")} className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:font-mono [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground">
-                    {matchedTenants.map((tn) => (
+              groups.map((g) => (
+                <Command.Group key={g.label}>
+                  <div style={GROUP_HEADING_STYLE}>{g.label}</div>
+                  {g.items.map((item) => {
+                    const idx = flat.indexOf(item);
+                    const active = idx === activeIdx;
+                    return (
                       <Command.Item
-                        key={tn.id}
-                        value={`tenant-${tn.id}`}
-                        onSelect={() => goRoute("admin-tenants")}
-                        className="flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 text-sm aria-selected:bg-accent aria-selected:text-accent-foreground"
+                        key={item.id}
+                        value={item.id}
+                        onSelect={() => goRoute(item.routeId)}
+                        onMouseEnter={() => setActiveIdx(idx)}
                       >
-                        <Building2 size={14} className="text-muted-foreground" />
-                        <span className="flex-1">{tn.name}</span>
-                        <span className="font-mono text-[11px] text-muted-foreground">{tn.region} · {tn.plan}</span>
+                        <div className="row" style={resultRowStyle(active)}>
+                          <Icon name={item.icon as Parameters<typeof Icon>[0]["name"]} size={14} className="subtle" />
+                          <span style={{ flex: 1 }}>{item.label}</span>
+                          <span className="mono subtle" style={{ fontSize: 11 }}>{item.hint}</span>
+                          {active && <Icon name="arrow_right" size={11} className="subtle" />}
+                        </div>
                       </Command.Item>
-                    ))}
-                  </Command.Group>
-                )}
-
-                {matchedSessions.length > 0 && (
-                  <Command.Group heading={t("topbar.commandPalette.groups.sessions")} className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:font-mono [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground">
-                    {matchedSessions.map((s) => (
-                      <Command.Item
-                        key={s.id}
-                        value={`session-${s.id}`}
-                        onSelect={() => goRoute("loop-debug")}
-                        className="flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 text-sm aria-selected:bg-accent aria-selected:text-accent-foreground"
-                      >
-                        <Workflow size={14} className="text-muted-foreground" />
-                        <span className="flex-1 font-mono">{s.id}</span>
-                        <span className="font-mono text-[11px] text-muted-foreground">{s.agent} · {s.status}</span>
-                      </Command.Item>
-                    ))}
-                  </Command.Group>
-                )}
-              </>
+                    );
+                  })}
+                </Command.Group>
+              ))
             )}
           </Command.List>
 
-          <div className="flex items-center gap-3.5 border-t border-border px-3.5 py-2 font-mono text-[10.5px] text-muted-foreground">
-            <span><kbd className="rounded border border-border bg-muted px-1 py-0.5 text-[9px]">↑↓</kbd> {t("topbar.commandPalette.footer.navigate")}</span>
-            <span><kbd className="rounded border border-border bg-muted px-1 py-0.5 text-[9px]">↵</kbd> {t("topbar.commandPalette.footer.open")}</span>
-            <span><kbd className="rounded border border-border bg-muted px-1 py-0.5 text-[9px]">ESC</kbd> {t("topbar.commandPalette.footer.close")}</span>
-            <span className="flex-1" />
+          {/* Footer */}
+          <div className="row" style={FOOTER_STYLE}>
+            <span><span className="kbd" style={{ fontSize: 9 }}>↑↓</span> {t("topbar.commandPalette.footer.navigate")}</span>
+            <span><span className="kbd" style={{ fontSize: 9 }}>↵</span> {t("topbar.commandPalette.footer.open")}</span>
+            <span><span className="kbd" style={{ fontSize: 9 }}>ESC</span> {t("topbar.commandPalette.footer.close")}</span>
+            <span style={{ flex: 1 }} />
             <span>{totalCount} {t("topbar.commandPalette.footer.results")}</span>
           </div>
         </Command>

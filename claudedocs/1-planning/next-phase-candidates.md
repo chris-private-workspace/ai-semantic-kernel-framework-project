@@ -4,7 +4,19 @@
 
 **Selection Rule**: User explicitly selects → draft plan kicks off Sprint XX.Y; otherwise items wait here indefinitely until selected or archived.
 
-**Updated**: 2026-05-18 (Sprint 57.21 closeout — extracted from CLAUDE.md V2 Refactor Status table per REFACTOR-001 Step 3)
+**Updated**: 2026-05-22 (Sprint 57.29 closeout — Phase-2 per-page re-point opens; +4 carryover ADs)
+
+---
+
+## 🆕 Sprint 57.29 Carryover (2026-05-22 — Phase-2 per-page re-point opens)
+
+Sprint 57.29 (`AD-Overview-Verbatim-Repoint`) closed: `/overview` + app shell + 3 topbar overlays + 7 widgets re-pointed to verbatim mockup CSS — fidelity verdict **PARITY**, 22-route regression sweep 0 catastrophic / 0 structural. The Phase-2 per-page re-point template is validated (`frontend-verbatim-css-repoint` 0.60 class). Carryover:
+
+- **AD-Inline-Style-Rule-vs-Verbatim-Method** — the `no-restricted-syntax` ESLint inline-`style=` ban (Sprint 57.15/57.16) conflicts with the verbatim method's required mockup inline-style literals; currently handled per-file with `eslint-disable` + rationale. Decide: scope the rule to exclude verbatim-re-pointed dirs, or retire it.
+- **AD-UserMenu-Mockup-Structural-Deltas** — `UserMenu` retains a theme-toggle item + a "Signed in as" label + identity-card role badges with no mockup counterpart (pre-existing production features / `UserMenu.test.tsx` contracts). Decide align-strict-vs-keep when UserMenu's backing is revisited.
+- **AD-MockupFidelity-Guard-TokenRelative-Oklch** — `frontend/scripts/check-mockup-fidelity.mjs` grep counts token-relative `oklch(from var(--token) …)` literals as "hardcoded"; refine the grep to exclude them so faithful verbatim re-points don't grow `HEX_OKLCH_BASELINE` (raised 18→21 in 57.29).
+- **AD-Overview-PreExisting-Route-Crashes** — `/subagents`, `/memory`, `/verification` render an error boundary (`Cannot read properties of undefined (reading 'length')`) — pre-existing (Day-0 baseline == after sweep), NOT a 57.29 regression. Separate FIX.
+- **Next Phase-2 per-page re-point** — the 13 🟡 AppShellV2 routes (chat-v2 / orchestrator / subagents / loop-debug / memory / state-inspector / governance / verification / cost-dashboard / sla-dashboard / admin-tenants / tenant-settings / compaction) are the backlog; pick the next page + apply the Sprint 57.29 template.
 
 ---
 

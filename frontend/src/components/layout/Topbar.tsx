@@ -5,34 +5,37 @@
  * Scope: Phase 57 / Sprint 57.20 US-B1 Day 1 (NEW; mockup shell.jsx 1:1 port)
  *
  * Description:
- *   Replaces the inline `<header>` previously embedded in AppShellV2.tsx with
- *   a dedicated component that ports the mockup `shell.jsx` Topbar 1:1.
+ *   Verbatim re-point of `reference/design-mockups/shell.jsx` Topbar — the
+ *   component now consumes mockup CSS class names from `styles-mockup.css`
+ *   directly (`.topbar`, `.crumb`, `.here`, `.route-pill`, `.tenant-pill`,
+ *   `.cmdk`, `.kbd`, `.avatar`) instead of re-expressing them as Tailwind
+ *   utilities. Component-logic layer unchanged: react-router useLocation(),
+ *   useTheme(), useAuthStore, i18n toggleLocale, all props/testids/a11y attrs.
  *
  *   Composition (left → right):
- *     1. Breadcrumb: route title + route path pill (resolved from useLocation())
- *     2. Tenant pill: "acme-prod · <role>" (fixture name; real tenant API wires
- *        in AD-UserMenu-Tenant-Switch Sprint 57.21+)
- *     3. Spacer (flex-1)
- *     4. ⌘K cmdk button (clickable + Enter-keyed → triggers CommandPalette open)
- *     5. Locale toggle (EN ↔ 中) — direct toggle, not dropdown (UserMenu retains
- *        full locale list for accessibility)
- *     6. Theme toggle (sun/moon — directly mutates ThemeProvider state)
- *     7. Divider
- *     8. Bell — triggers NotificationsPanel; unread dot if count > 0
- *     9. UserMenu (Sprint 57.19 extended; Radix DropdownMenu)
+ *     1. Breadcrumb (.crumb): route title (.here h1) + route path pill (.route-pill)
+ *     2. Tenant pill (.tenant-pill): "acme-prod · <role>" with green .dot
+ *     3. Spacer (.topbar-spacer)
+ *     4. ⌘K cmdk div (.cmdk): clickable + Enter-keyed → CommandPalette open
+ *     5. Locale toggle — inline-style literals from mockup (visual layer)
+ *     6. Theme toggle — Button ghost sm (mockup uses Button variant ghost)
+ *     7. Divider — inline-style literal from mockup (visual layer)
+ *     8. Bell — Button ghost sm with unread badge (inline-style literal)
+ *     9. UserMenu (.avatar) at end
  *
- *   pageTitle prop: when provided by AppShellV2 caller, takes precedence over
- *   route-derived breadcrumb title. headerActions prop: rendered between
- *   spacer and ⌘K for backward compat with 14 existing pages.
+ *   pageTitle prop: takes precedence over route-derived title.
+ *   headerActions prop: rendered between spacer and ⌘K (backward compat).
  *
  * Created: 2026-05-17 (Sprint 57.20 Day 1 US-B1)
- * Last Modified: 2026-05-17
+ * Last Modified: 2026-05-22
  *
  * Modification History:
+ *   - 2026-05-22: Sprint 57.29 US-B4 — verbatim re-point to mockup .topbar/.cmdk classes (drop Tailwind translation)
  *   - 2026-05-17: Initial creation (Sprint 57.20 Day 1) — mockup shell.jsx port
  *
  * Related:
  *   - reference/design-mockups/shell.jsx §Topbar (canonical visual source)
+ *   - reference/design-mockups/styles.css / frontend/src/styles-mockup.css (class definitions)
  *   - frontend/src/components/AppShellV2.tsx (host)
  *   - frontend/src/components/UserMenu.tsx (avatar dropdown — Sprint 57.19)
  *   - frontend/src/components/topbar/CommandPalette.tsx (⌘K — Sprint 57.19 US-D1)
@@ -41,17 +44,50 @@
  *   - frontend/src/routes.config.ts (ROUTES single-source for breadcrumb)
  */
 
-import { Bell, Globe, Moon, Search, Sun } from "lucide-react";
-import { type FC, type ReactNode } from "react";
+/* eslint-disable no-restricted-syntax -- verbatim re-point: inline styles are mockup shell.jsx visual-layer literals (locale toggle button, divider, bell badge, avatar, notifs badge) copied byte-for-byte; re-expressing as Tailwind IS the drift bug this epic kills (STYLE.md §1 escape hatch + frontend-mockup-fidelity.md) */
+
+import { type CSSProperties, type FC, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 
+import { Icon } from "@/components/mockup-ui";
 import { useTheme } from "@/components/ThemeProvider";
 import { UserMenu } from "@/components/UserMenu";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { LOCALE_STORAGE_KEY } from "@/i18n";
-import { cn } from "@/lib/utils";
 import { ROUTES } from "@/routes.config";
+
+// Verbatim mockup shell.jsx inline-style literals — locale toggle button (visual layer).
+const LOCALE_BTN_STYLE: CSSProperties = {
+  height: 28, minWidth: 28, padding: "0 8px",
+  background: "transparent", border: "1px solid var(--border)",
+  borderRadius: "var(--radius-sm)", color: "var(--fg-muted)",
+  fontSize: 11, fontWeight: 500, fontFamily: "var(--font-mono)",
+  letterSpacing: "0.04em", cursor: "pointer",
+  display: "inline-flex", alignItems: "center", gap: 4,
+};
+
+// Verbatim mockup shell.jsx inline-style literals — divider between theme-toggle and bell.
+const DIVIDER_STYLE: CSSProperties = {
+  width: 1, height: 18, background: "var(--border)", margin: "0 4px", display: "inline-block",
+};
+
+// Verbatim mockup shell.jsx inline-style literals — notifsAnchorRef span wrapper.
+const NOTIFS_ANCHOR_STYLE: CSSProperties = { position: "relative" };
+
+// Verbatim mockup shell.jsx inline-style literals — unread badge on bell button.
+const NOTIFS_BADGE_STYLE: CSSProperties = {
+  position: "absolute", top: 3, right: 3,
+  minWidth: 14, height: 14, padding: "0 3px", borderRadius: 7,
+  background: "var(--warning)", color: "oklch(0.18 0.02 60)",
+  fontSize: 9, fontWeight: 700, fontFamily: "var(--font-mono)",
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
+  boxShadow: "0 0 0 2px var(--bg-1)",
+};
+
+// Verbatim mockup shell.jsx inline-style literals — cmdk div cursor.
+const CMDK_STYLE: CSSProperties = { cursor: "pointer" };
+
 
 interface TopbarProps {
   pageTitle?: string;
@@ -98,114 +134,92 @@ export const Topbar: FC<TopbarProps> = ({
   const localeShort = currentLng === "en" ? "EN" : "中";
 
   return (
-    <header
-      className="flex h-12 items-center gap-3 border-b border-border bg-bg-1 px-4"
-      data-testid="topbar"
-    >
-      {/* Breadcrumb — h1 preserves pre-Sprint-57.20 page-title-is-h1 contract for a11y */}
-      <div className="flex items-center gap-2 min-w-0">
-        <h1 className="truncate text-sm font-medium text-foreground m-0">{title}</h1>
-        {pathPill && (
-          <span className="rounded-sm border border-border bg-bg-2 px-1.5 py-0.5 font-mono text-[10px] text-fg-muted">
-            {pathPill}
-          </span>
-        )}
+    <header className="topbar" data-testid="topbar">
+      {/* Breadcrumb — h1 preserves page-title-is-h1 a11y contract */}
+      <div className="crumb">
+        <h1 className="here" style={{ margin: 0 }}>{title}</h1>
+        {pathPill && <span className="route-pill">{pathPill}</span>}
       </div>
 
       {/* Tenant pill */}
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-bg-2 px-2.5 py-1 text-xs text-fg-muted">
-        <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
-        <span>
-          {tenantName} · {roleLabel}
-        </span>
+      <span className="tenant-pill">
+        <span className="dot" aria-hidden="true" />
+        {tenantName} · {roleLabel}
       </span>
 
       {/* Spacer */}
-      <div className="flex-1" />
+      <div className="topbar-spacer" />
 
       {/* Optional header actions slot (backward compat) */}
-      {headerActions && <div className="flex items-center gap-2">{headerActions}</div>}
+      {headerActions && <div className="row">{headerActions}</div>}
 
-      {/* ⌘K cmdk pill */}
-      <button
-        type="button"
+      {/* ⌘K cmdk pill — mockup uses a div role="button" */}
+      <div
+        className="cmdk"
+        role="button"
+        tabIndex={0}
         onClick={onOpenPalette}
-        className={cn(
-          "inline-flex h-7 items-center gap-2 rounded-md border border-border bg-bg-2 px-2.5",
-          "text-xs text-fg-muted hover:bg-bg-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        )}
+        onKeyDown={(e) => { if (e.key === "Enter") onOpenPalette(); }}
+        style={CMDK_STYLE}
         title={t("topbar.openPalette", "Open command palette")}
         data-testid="topbar-cmdk"
       >
-        <Search size={12} />
-        <span>{t("shell.search", "Search…")}</span>
-        <span className="ml-2 rounded border border-border bg-bg-1 px-1 py-0.5 font-mono text-[9px]">
-          ⌘K
-        </span>
-      </button>
+        <Icon name="search" size={13} />
+        <span className="grow">{t("shell.search", "Search…")}</span>
+        <span className="kbd">⌘K</span>
+      </div>
 
-      {/* Locale toggle */}
+      {/* Locale toggle — verbatim mockup inline-style button */}
       <button
         type="button"
         onClick={toggleLocale}
-        className={cn(
-          "inline-flex h-7 min-w-7 items-center justify-center gap-1 rounded-md border border-border bg-transparent px-2",
-          "font-mono text-[11px] font-medium uppercase text-fg-muted hover:bg-bg-2",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        )}
+        style={LOCALE_BTN_STYLE}
         title={currentLng === "en" ? "切換到繁體中文" : "Switch to English"}
-        aria-label={t("topbar.toggleLocale", "Toggle locale")}
+        aria-label={currentLng === "en" ? "Switch to Traditional Chinese" : "Switch to English"}
         data-testid="topbar-locale"
       >
-        <Globe size={12} />
+        <Icon name="globe" size={12} />
         <span>{localeShort}</span>
       </button>
 
-      {/* Theme toggle */}
+      {/* Theme toggle — mockup uses Button variant ghost size sm */}
       <button
         type="button"
         onClick={toggleTheme}
-        className={cn(
-          "inline-flex h-7 w-7 items-center justify-center rounded-md text-fg-muted hover:bg-bg-2",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        )}
+        className="btn ghost"
+        data-size="sm"
         title={theme === "dark"
           ? t("topbar.themeLight", "Switch to light theme")
           : t("topbar.themeDark", "Switch to dark theme")}
         aria-label={t("topbar.toggleTheme", "Toggle theme")}
         data-testid="topbar-theme"
       >
-        {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+        <Icon name={theme === "dark" ? "sun" : "moon"} size={14} />
       </button>
 
-      {/* Divider */}
-      <span className="h-4 w-px bg-border" aria-hidden="true" />
+      {/* Divider — verbatim mockup inline-style literal */}
+      <span style={DIVIDER_STYLE} aria-hidden="true" />
 
-      {/* Bell */}
-      <button
-        type="button"
-        onClick={onToggleNotifs}
-        aria-label={t("topbar.notifications.title", "Notifications")}
-        data-testid="notifications-bell"
-        className={cn(
-          "relative inline-flex h-7 w-7 items-center justify-center rounded-md text-fg-muted hover:bg-bg-2",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        )}
-      >
-        <Bell size={14} />
-        {unreadCount > 0 && (
-          <span
-            className={cn(
-              "absolute -right-0.5 -top-0.5 inline-flex h-3.5 min-w-3.5 items-center justify-center",
-              "rounded-full bg-warning px-1 font-mono text-[9px] font-bold text-bg",
-            )}
-          >
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
-        )}
-      </button>
+      {/* Bell — mockup wraps in a ref span; production keeps button semantics for a11y */}
+      <span style={NOTIFS_ANCHOR_STYLE}>
+        <button
+          type="button"
+          className="btn ghost"
+          data-size="sm"
+          aria-label={t("topbar.notifications.title", "Notifications")}
+          onClick={onToggleNotifs}
+          data-testid="notifications-bell"
+        >
+          <Icon name="bell" size={14} />
+          {unreadCount > 0 && (
+            <span style={NOTIFS_BADGE_STYLE}>
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </button>
+      </span>
 
-      {/* UserMenu avatar (Sprint 57.19 extended); override slot for backward compat */}
+      {/* UserMenu avatar — mockup uses .avatar div; production wraps UserMenu for full Radix menu */}
       {userMenu ?? <UserMenu />}
     </header>
   );
