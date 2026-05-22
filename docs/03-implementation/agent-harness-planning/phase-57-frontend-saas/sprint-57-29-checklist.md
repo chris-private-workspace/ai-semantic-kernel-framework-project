@@ -150,36 +150,36 @@
 ## Day 5 — Group D + E + closeout
 
 ### 5.1 US-D1 22-route regression sweep + triage
-- [ ] **After-switch sweep** — all 22 routes via `route-sweep.mjs after` (fresh contexts, no cache) → `screenshots/after/`
+- [x] **After-switch sweep** — all 22 routes via `route-sweep.mjs after` (fresh contexts, no cache) → `screenshots/after/`
   - DoD: `screenshots/after/` has 22 PNGs
-- [ ] **Before/after matrix + triage** in REPOINT-REPORT
+- [x] **Before/after matrix + triage** in REPOINT-REPORT
   - DoD: 22-route before/after matrix populated; triage — catastrophic (crash/unusable) fixed in-sprint; shell-chrome transition-drift on the 18 not-content-re-pointed routes catalogued; structural regression → carryover AD
   - DoD: 0 catastrophic breakage shipped
 
 ### 5.2 US-D2 `/overview` fidelity verification
-- [ ] **`/overview` mockup-vs-production fidelity check**
+- [x] **`/overview` mockup-vs-production fidelity check**
   - DoD: mockup `:8080` vs production `:3007/overview` Playwright screenshot 1440×900 (fresh context)
   - DoD: computed-style measurement — representative elements (`.page-head` / a `.card` / a `.stat` / `.sidebar` / `.topbar`): colour / font / spacing / border-radius / bounding-box, production vs mockup item-by-item
   - DoD: ⌘K palette / notifications / user-menu overlays opened + compared
   - DoD: drift classified (none / cosmetic / structural) + parity verdict recorded in REPOINT-REPORT; fundamental drift → re-examine method before continuing
 
 ### 5.3 US-E1 Vitest + lint + build + guard
-- [ ] **Vitest 457/457** — shell/overview/overlay specs adapted per Day-0 Prong 4 (testids preserved → most unaffected; NOT deleted)
+- [x] **Vitest 457/457** — shell/overview/overlay specs adapted per Day-0 Prong 4 (testids preserved → most unaffected; NOT deleted)
   - Verify: `npm run test` exit 0
-- [ ] **lint + build + mockup-fidelity guard**
+- [x] **lint + build + mockup-fidelity guard**
   - DoD: `npm run lint` exit 0; `npm run build` green; `npm run check:mockup-fidelity` green; `HEX_OKLCH_BASELINE` lowered if `/overview` literals removed
   - DoD: bundle KB delta recorded in REPOINT-REPORT
 
 ### 5.4 US-E2 REPOINT-REPORT final + closeout
-- [ ] **REPOINT-REPORT final verdict** — per-route sweep verdict + `/overview` parity verdict + the re-point method/template for the next Phase-2 sprint
-- [ ] **retrospective.md Q1-Q7** at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-29/retrospective.md`
+- [x] **REPOINT-REPORT final verdict** — per-route sweep verdict + `/overview` parity verdict + the re-point method/template for the next Phase-2 sprint
+- [x] **retrospective.md Q1-Q7** at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-29/retrospective.md`
   - DoD: Q2 records ratio actual/committed = 1st data point for NEW `frontend-verbatim-css-repoint` class
-- [ ] **memory snapshot** `memory/project_phase57_29_overview_shell_repoint.md` + **MEMORY.md +1 quality pointer**
-- [ ] **`.claude/rules/sprint-workflow.md` calibration matrix +1 NEW class row**
+- [x] **memory snapshot** `memory/project_phase57_29_overview_shell_repoint.md` + **MEMORY.md +1 quality pointer**
+- [x] **`.claude/rules/sprint-workflow.md` calibration matrix +1 NEW class row**
   - DoD: `frontend-verbatim-css-repoint` 0.60 row with 1st data point + MHist entry
-- [ ] **`claudedocs/1-planning/next-phase-candidates.md` update** — `/overview` re-point closed; next Phase-2 page candidates
-- [ ] **CLAUDE.md Current Sprint row + Last Updated footer** (REFACTOR-001 §Sprint Closeout minimal touch — NO history additions)
-- [ ] **Day 5 commit** closeout
+- [x] **`claudedocs/1-planning/next-phase-candidates.md` update** — `/overview` re-point closed; next Phase-2 page candidates
+- [x] **CLAUDE.md Current Sprint row + Last Updated footer** (REFACTOR-001 §Sprint Closeout minimal touch — NO history additions)
+- [x] **Day 5 commit** closeout
   - Commit message: `feat(frontend, sprint-57-29, Day 5): closeout — REPOINT-REPORT final + 22-route sweep + retrospective + calibration matrix NEW class`
   - Verify: `git status` clean post-commit
 

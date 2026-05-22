@@ -170,3 +170,30 @@ All 7 `/overview` widgets re-pointed to mockup classes / `mockup-ui.tsx` primiti
 ### Remaining for Next Day
 
 - **Day 5 (Group D + E + closeout)**: 22-route `route-sweep.mjs after` + before/after triage; `/overview` fidelity verification (Playwright + computed-style); Vitest / lint / build / guard final; REPOINT-REPORT final verdict; retrospective; calibration matrix NEW class row; PR.
+
+---
+
+## Day 5 — 2026-05-22 (Group D + E — sweep + fidelity + closeout)
+
+### Today's Accomplishments
+
+- **US-D1** — 22-route `route-sweep.mjs after` captured (22/22, no harness error); before/after triage delegated to a `general-purpose` agent (read all 44 PNGs in its own context). Result: **0 catastrophic / 0 structural-regression** — 9× 🟢 (8 AuthShell/Home + PROP-stub + `/overview` target) + 13× 🟡 (expected shell-chrome transition on the not-yet-content-re-pointed AppShellV2 routes). Matrix in `REPOINT-REPORT.md` §2.
+- **US-D2** — `/overview` mockup-vs-production fidelity: a standalone Playwright script (NOT MCP — AD #37) loaded mockup `:8080/#overview` + production `:3007/overview` (auth-mocked) at 1440×900 + measured computed-style of `.page-head` / `.card` / `.stat` / `.sidebar` / `.topbar`. **Verdict: PARITY** — computed styles identical (oklch end-to-end, 13px baseline, Geist, padding, radius, bounding-box); 2 deltas both classified not-drift (zero-width invisible borderColor; ActiveLoops card height = fixture empty-state difference). `REPOINT-REPORT.md` §3.
+- **US-E1** — final gates green (see below).
+- **US-E2** — closeout: `REPOINT-REPORT.md` final verdict (§5); `retrospective.md` Q1-Q7; memory snapshot `project_phase57_29_overview_shell_repoint.md` + MEMORY.md pointer; `.claude/rules/sprint-workflow.md` calibration matrix +1 NEW class row (`frontend-verbatim-css-repoint` 0.60); `next-phase-candidates.md` +4 carryover ADs; `CLAUDE.md` Current Sprint row + Last Updated footer.
+
+### Findings
+
+- **D-DAY5** (🟡 catalogue → carryover): the 22-route sweep surfaced 3 routes (`/subagents`, `/memory`, `/verification`) rendering an error boundary (`Cannot read properties of undefined (reading 'length')`). Orchestrator independently verified `screenshots/before/subagents.png` vs `after/subagents.png` — the crash is present **identically in the Day-0 pre-re-point baseline** → pre-existing route-content defect, NOT a 57.29 regression. Logically confirmed: the shell is shared by all 19 AppShellV2 routes and renders correctly on 16; 57.29 did not touch those 3 routes' content files. Carryover `AD-Overview-PreExisting-Route-Crashes` (separate FIX).
+
+### Quality gates (Day 5 — final, orchestrator-verified independently)
+
+- `npx tsc -b` 0 errors · `npm run lint` exit 0 · `npm run test` **457/457** (94 files) · `npm run build` green · `npm run check:mockup-fidelity` pass (diff guard byte-identical, hex/oklch baseline 21). Working tree clean post-Day-4 (only untracked local screenshots — not committed).
+
+### Sprint outcome
+
+`/overview` + the shared app shell + 3 overlays + 7 widgets fully re-pointed to verbatim mockup CSS. `/overview` fidelity = **PARITY**. 22-route sweep 0 catastrophic / 0 structural. The verbatim re-point method is validated as the Phase-2 per-page template. Sprint 57.29 ✅ complete — PR pending user approval.
+
+### Remaining
+
+- **PR** — open + CI + merge (pending user approval per the destructive-op confirmation rule).
