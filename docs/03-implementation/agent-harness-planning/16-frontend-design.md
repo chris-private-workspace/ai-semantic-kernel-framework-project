@@ -3,6 +3,10 @@
 **建立日期**：2026-04-23
 **版本**：V2.0
 **對應**：Phase 50.2 起
+**Last Modified**：2026-05-22
+
+> **Modification History（newest-first）**
+> - 2026-05-22：§設計工具棧 + §Color Palette 加修正註記 — 設計系統視覺真相來源改為 mockup `styles.css` 逐字複製（oklch canonical）；hex SCSS palette superseded；oklch→HSL AD 已解決（oklch 勝）；指向 `docs/rules-on-demand/frontend-mockup-fidelity.md`（align to validated mockup-fidelity method）
 
 ---
 
@@ -237,10 +241,17 @@ frontend/src/features/
 
 ### 設計工具棧
 
+> **🔴 修正註記（2026-05-22）**：下表的 `Component library: shadcn/ui` + `Styling:
+> Tailwind CSS` 仍正確，但**設計系統的視覺真相來源**已改為 mockup 的逐字 `styles.css`
+> （oklch）。production 不再「翻譯」mockup CSS 進 Tailwind/shadcn；而是把 mockup
+> `styles.css` byte-identical 複製成 `frontend/src/styles-mockup.css`，頁面直接消費
+> mockup class 名。shadcn 僅用於 interaction 行為、Tailwind 僅用於 layout 一次性微調。
+> 完整方法見 [`docs/rules-on-demand/frontend-mockup-fidelity.md`](../../rules-on-demand/frontend-mockup-fidelity.md)。
+
 | 用途 | 工具 |
 |------|------|
-| Component library | **shadcn/ui**（V1 已用，保留） |
-| Styling | **Tailwind CSS** |
+| Component library | **shadcn/ui**（V1 已用，保留 — 僅 interaction 行為層） |
+| Styling | **mockup `styles.css` 逐字複製**（primary）+ **Tailwind CSS**（secondary，layout 一次性微調） |
 | Icons | **Lucide React** |
 | Charts | **Recharts** 或 **Tremor** |
 | Animations | **Framer Motion**（節制使用） |
@@ -250,7 +261,16 @@ frontend/src/features/
 
 ### Color Palette
 
+> **🔴 修正註記（2026-05-22）**：下方 SCSS hex palette **已被取代（superseded）**，僅
+> 保留作歷史紀錄（per 專案規則「不刪文件內容」）。設計系統的 canonical color tokens
+> 現由 mockup `reference/design-mockups/styles.css` 的 `oklch(...)` 宣告提供，逐字複製
+> 到 `frontend/src/styles-mockup.css`。**oklch 是 canonical**——先前作為「open AD」的
+> `AD-Brand-Primary-Color-Decision`（oklch→HSL 取捨）**已解決：oklch 勝出，禁止
+> oklch→HSL 近似**（兩者非等價色彩空間，每次轉換偏色，是 Sprint 57.18-57.27 drift 根因）。
+> 完整方法見 [`docs/rules-on-demand/frontend-mockup-fidelity.md`](../../rules-on-demand/frontend-mockup-fidelity.md) §鐵律 #3。
+
 ```scss
+// ⚠️ SUPERSEDED — 歷史紀錄；canonical tokens 改用 mockup styles.css 的 oklch
 // Tokens（透過 Tailwind 配置）
 $primary: #3B82F6;     // Blue (主 actions)
 $success: #10B981;     // Green (verified, approved)

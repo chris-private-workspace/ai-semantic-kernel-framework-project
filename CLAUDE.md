@@ -144,45 +144,53 @@ V2 嚴格按以下範疇組織代碼，**禁止跨範疇雜湊**：
 
 ## Frontend Mockup-Fidelity Hard Constraint（必守）⭐⭐⭐
 
-> **加入 2026-05-17**（Sprint 57.19 Day 0；user 明確 directive）：所有 frontend 頁面設計與 UX 必須**完全跟隨**`reference/design-mockups/`版本。**功能差距**與**後端 gap** 通過後續 sprint 逐一處理；**最最最基本是 UI / UX 視覺呈現完全按 mockup 實作**。
+> 所有 frontend 頁面的 UI / UX 視覺必須**完全跟隨** `reference/design-mockups/`。
+> **🔴 2026-05-22 重大修正**：本節原本（2026-05-17 起）規定的「翻譯 mockup 樣式 / Tailwind escape-hatch」方法，正是 Sprint 57.18-57.27 連續 10 個 sprint drift 的**根源**。已驗證的正確方法見下。完整根因 + PoC 證據：`claudedocs/5-status/v2-investigation-20260522/03-mockup-consistency-rootcause.md`。
+
+### 核心方法：mockup 是兩層，處理方式相反
+
+| mockup 的層 | 檔案 | 處理 |
+|------------|------|------|
+| **視覺層 / CSS** | `reference/design-mockups/styles.css`（oklch，251 class）| ✅ **逐字複製** → `frontend/src/styles-mockup.css`（byte-identical）；**永不翻譯** |
+| **組件邏輯層** | `reference/design-mockups/page-*.jsx` | 重寫成 typed `.tsx`（`window` 全域 → hooks、接 API、i18n）|
+
+頁面組件**直接消費 mockup class 名**（`className="card"`），色彩**全程 oklch**。「重寫」**只**套組件邏輯層 —— CSS 是「複製」不是「重寫」。混淆兩層 = 10-sprint drift 根因。
+
+> **詳細 4-layer 同步協定 + 7 鐵律 + DoD**：[`docs/rules-on-demand/frontend-mockup-fidelity.md`](docs/rules-on-demand/frontend-mockup-fidelity.md) —— **每個 frontend sprint 必讀**。
 
 ### 唯一視覺真相來源
 
-| 來源 | 角色 | 何時用 |
-|------|------|--------|
-| **`reference/design-mockups/`** | ⭐ **canonical visual source of truth** | 所有 frontend 頁面開發 / port / retrofit 時必須 1:1 對照 |
-| `design/operator-portal/` | Sprint 57.18 cp 快照（同 content）+ INTEGRATION-LOG.md | 開發 reference；但**權威性低於** `reference/design-mockups/` |
-| Sprint 57.18 wired tokens (`tailwind.config.ts` + `index.css`) | Mockup oklch HSL approximation | 翻譯 mockup 樣式時優先用這些 tokens |
+| 來源 | 角色 |
+|------|------|
+| **`reference/design-mockups/`** | ⭐ canonical visual source of truth；`styles.css` 逐字複製、`page-*.jsx` 重寫 |
+| `design/operator-portal/` | Sprint 57.18 cp 快照；權威性低於 `reference/design-mockups/` |
+| `frontend/src/styles-mockup.css` | Layer 2 —— `styles.css` 的 byte-identical 複製（`diff` 必須為空）|
 
-### 禁止項
+### 禁止項（10-sprint drift 來源）
 
-- ❌ 用 shadcn `Card` / `Badge` / `Button` 預設值替代 mockup 的 padding / radius / shadow / color 如果**視覺不一致**
+- ❌ **翻譯 CSS** —— 讀 mockup 樣式再手工拼成 Tailwind utility
+- ❌ **oklch→HSL 近似** —— Tailwind v4 原生支援 oklch，轉 HSL 是有損的 unforced error
+- ❌ 用 shadcn `Card`/`Badge`/`Button` **預設值**替代 mockup 樣式（shadcn 只作 interaction primitive，不作樣式替代層）
 - ❌ 用「production 簡化版」名義裁剪 mockup widget / 改 layout
 - ❌ 自創 i18n copy 不對照 mockup `reference/design-mockups/i18n.jsx`
-- ❌ 在 retrofit 既有頁時假設「現狀已 ship 就不重做」— 既有 8 頁（57.1-57.12）在 mockup 進專案前開發，**有 drift**，將通過 Sprint 57.20+ `AD-Mockup-Existing-Pages-Retrofit` 校準
-
-### 允許項（escape hatches，per STYLE.md §3）
-
-- ✅ Tailwind arbitrary values `text-[#hex]` / `p-[12px]` / `rounded-[10px]` — 當 Sprint 57.18 token 詞彙無對應時
-- ✅ shadcn primitives（`<Dialog>` / `<Sheet>` / `<Tabs>` / `<DropdownMenu>` / `<Command>`）— 當 mockup 的 interaction 模式直接對應這些 primitives 時
-- ✅ recharts 圖表 lib — 但**配色 / 軸標 / 資料形狀必須匹配 mockup**，不用 recharts 預設
+- ❌ 把 mockup 當成不可分割的整體（它是兩層）
 
 ### 後端 / 功能差距處理
 
-- 後端尚未支援 mockup 顯示的某 widget → 該 widget **仍依 mockup 視覺實作**，data 用 fixture / placeholder；同 sprint 或後續 sprint 加 backend API（per 用戶 2026-05-16 Q3「前後端同 sprint」原則）
-- 不允許**因為**後端沒有就改 mockup widget layout / 刪 widget
+- 後端尚未支援的 widget → **仍依 mockup 視覺實作**，data 用 fixture；後續 sprint 加 backend API
+- 不允許因後端沒有就改 mockup widget layout / 刪 widget
 
-### Mockup-Fidelity DoD（每個 frontend port / retrofit task）
+### Mockup-Fidelity DoD（每個 frontend 頁面 task）
 
-1. Playwright MCP screenshot mockup target（從 `reference/design-mockups/` via `python -m http.server`）at 1440×900 viewport
-2. Playwright MCP screenshot production at same viewport
-3. Side-by-side compare；drift severity = cosmetic / structural / functional
-4. Cosmetic → 同 commit 內 iterate Tailwind classes 至 parity；structural / functional → 在同 sprint 或 retrofit sprint 處理（不可放棄）
-5. Parity verdict 記入 progress.md / DRIFT-REPORT.md
+1. `diff reference/design-mockups/styles.css frontend/src/styles-mockup.css` → 必須為空
+2. Playwright 截圖 mockup（`python -m http.server`）vs production，1440×900
+3. **computed-style 量測**：代表元素 + 版面尺寸逐項對比（drift 偵測在量測層做，非用眼）
+4. drift 分類 + parity verdict 記入 progress.md / DRIFT-REPORT.md
+5. fundamental drift → **先換方法再重建**，不用會 drift 的方法 redo
 
-### 既有 8 ship pages drift 狀態（2026-05-17 baseline）
+### 既有頁面 drift 狀態
 
-`/cost-dashboard` (57.1) / `/sla-dashboard` (57.1) / `/admin/tenants` list (57.4) / `/admin/tenants/settings` (57.3) / `/auth/login` (57.7) / `/auth/callback` (57.7) / `/chat-v2` (57.8) / `/governance/*` 3 pages (57.9) / `/verification` (57.11) / `/memory` (57.12) — **全部 drift 等待 Sprint 57.19 US-F1 audit + Sprint 57.20 retrofit**。詳見 `claudedocs/4-changes/sprint-57-19-existing-pages-drift-audit/DRIFT-REPORT.md`（Sprint 57.19 Day 5 產出）。
+57.18-57.27 epic 已重建約 10 頁宣稱 parity（auth / cost / sla / overview），但多為「眼湊 HSL 翻譯」版，仍需依新方法 re-point；其餘 ~25 頁待依新方法重建。詳見 `claudedocs/5-status/v2-investigation-20260522/02-frontend-status.md`。
 
 ---
 

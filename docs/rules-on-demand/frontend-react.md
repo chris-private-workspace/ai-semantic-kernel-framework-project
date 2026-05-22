@@ -69,25 +69,20 @@ const { data, isLoading } = useQuery({
 const [isOpen, setIsOpen] = useState(false);
 ```
 
-## Styling with Tailwind
+## Styling
 
-```tsx
-// Use Tailwind classes
-<div className="flex items-center justify-between p-4 bg-white rounded-lg shadow">
-  <span className="text-lg font-semibold text-gray-900">Title</span>
-</div>
-
-// Shadcn UI components
-<Button variant="default" size="sm">Submit</Button>
-<Button variant="outline">Cancel</Button>
-<Button variant="destructive">Delete</Button>
-```
+Styling follows the authoritative mockup-fidelity method in
+[`frontend-mockup-fidelity.md`](./frontend-mockup-fidelity.md): mockup CSS classes
+(from `frontend/src/styles-mockup.css`) are the **primary** styling mechanism; Tailwind
+utilities are **secondary** (layout one-offs / a11y wrappers only, never to re-express
+mockup styling); shadcn primitives are for interaction behavior only. Do NOT translate
+mockup CSS into Tailwind. See that rule for the full 4-layer protocol + 7 鐵律.
 
 ## Prohibited
 
 - ❌ `any` type (use proper types)
 - ❌ `console.log` in production
-- ❌ Inline styles (use Tailwind)
+- ❌ Inline styles (use mockup CSS classes / Tailwind per `frontend-mockup-fidelity.md`)
 - ❌ Direct DOM manipulation
 - ❌ Class components (use functional)
 

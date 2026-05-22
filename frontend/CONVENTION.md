@@ -5,10 +5,11 @@
 > For visual + UX style rules, see [`STYLE.md`](./STYLE.md).
 
 **Created**: 2026-05-09 (Sprint 57.10 codified from Sprint 57.7+57.8+57.9 emergent patterns)
-**Last Modified**: 2026-05-10
+**Last Modified**: 2026-05-22
 **Status**: Active
 
 > **Modification History (newest-first)**
+> - 2026-05-22: §10 clarify `components/ui/` is component-logic layer not styling-substitution; point to `docs/rules-on-demand/frontend-mockup-fidelity.md` (align to validated mockup-fidelity method)
 > - 2026-05-10: Sprint 57.14 post-merge — §8 visual-baseline note: job opens a PR (was: direct push to protected main; FIX-008)
 > - 2026-05-10: Sprint 57.14 — §8 add "hermetic API mocking" + "visual regression baselines" sub-sections (AD-Frontend-E2E-Sweep / AD-Visual-Baseline-Generation)
 > - 2026-05-10: Sprint 57.13 — add §10 design-system / §11 i18n / §12 a11y / §13 performance
@@ -708,6 +709,17 @@ NOT in MHist. Git log preserves the rich detail.
 
 Since Sprint 57.13 US-B2 the loading / empty / error / button / badge / card primitives
 live in `src/components/ui/` (shadcn-style; barrel `src/components/ui/index.ts`).
+
+> **🔴 These primitives are the COMPONENT-LOGIC layer, NOT a styling-substitution layer.**
+> `components/ui/` provides typed wrappers + interaction behavior (focus trap / ESC /
+> outside-click / variant props). Their **visual styling must come from the mockup CSS
+> classes** in `styles-mockup.css` — do NOT treat shadcn `Card` / `Badge` / `Button`
+> defaults as the source of padding / radius / shadow / color for a mockup-derived
+> page. The styling method (verbatim-copy mockup CSS, consume mockup class names, oklch
+> end-to-end) is defined in
+> [`docs/rules-on-demand/frontend-mockup-fidelity.md`](../docs/rules-on-demand/frontend-mockup-fidelity.md)
+> — that is the authoritative reference; this section governs only the component-logic
+> layer.
 
 ### Rule: feature pages MUST use `components/ui/` for loading / empty / error
 

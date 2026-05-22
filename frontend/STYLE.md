@@ -1,5 +1,13 @@
 # Frontend Style Guide
 
+> **🔴 AUTHORITATIVE METHOD**: The styling **method** for any mockup-derived page is
+> defined in [`docs/rules-on-demand/frontend-mockup-fidelity.md`](../docs/rules-on-demand/frontend-mockup-fidelity.md)
+> — verbatim-copy the mockup CSS into `frontend/src/styles-mockup.css`, consume mockup
+> class names directly, oklch end-to-end, NO CSS translation. This STYLE.md covers
+> orthogonal visual/UX patterns (loading / empty / error states, typography baselines,
+> file structure). Where this doc and the mockup-fidelity rule appear to conflict, the
+> mockup-fidelity rule wins.
+>
 > **Visual + UX rules** for V2 frontend. For convention rules (architecture / state /
 > SSE / test patterns), see [`CONVENTION.md`](./CONVENTION.md).
 > For React basic rules (ESLint / TypeScript / no inline styles), see
@@ -8,10 +16,11 @@
 > [`docs/03-implementation/agent-harness-planning/16-frontend-design.md`](../docs/03-implementation/agent-harness-planning/16-frontend-design.md).
 
 **Created**: 2026-05-09 (Sprint 57.10 codified from Sprint 53.5+57.7+57.8+57.9 emergent palette + UX patterns)
-**Last Modified**: 2026-05-17
+**Last Modified**: 2026-05-22
 **Status**: Active
 
 > **Modification History (newest-first)**
+> - 2026-05-22: Align to validated mockup-fidelity method — §1 mockup CSS classes now PRIMARY (Tailwind SECONDARY); `styles-mockup.css` permitted+required; §2 oklch canonical (drop oklch→HSL approximation); shadcn = interaction-only; point to `docs/rules-on-demand/frontend-mockup-fidelity.md`
 > - 2026-05-17: Sprint 57.19 — §2 indigo primary + accent (closes AD-Brand-Primary-Color-Decision + AD-Accent-Token-Gap)
 > - 2026-05-11: Sprint 57.16 — escape-hatch sub-§ no longer references ChatLayout (migrated; frontend/src now inline-style-clean) (AD-Inline-Style-Cleanup-Sweep-Round2)
 > - 2026-05-11: Sprint 57.15 — §1 no-inline-style is now lint-enforced (`no-restricted-syntax`); add "Inline-style escape hatches" sub-section (AD-Inline-Style-Cleanup-Sweep)
@@ -24,9 +33,12 @@
 Frontend style + UX patterns historically drifted because Sprint 53.5 governance
 shipped with inline styles + arbitrary hex values; Sprint 57.7 cost-dashboard ship
 introduced Tailwind utility-first but reused 53.5's hex via `text-[#2e7d32]` arbitrary
-value rather than canonical token. This doc codifies:
-- **Tailwind utility-first rule** with shadcn primitives where available
-- **Canonical color token table** (token name + hex + Tailwind class equivalents)
+value rather than canonical token. A deeper 10-sprint drift (57.18-57.27) was traced
+in the 2026-05-22 investigation to a **wrong styling method** — translating mockup CSS
+into Tailwind / shadcn. This doc codifies:
+- **Styling mechanism rule** — mockup CSS classes primary, Tailwind secondary
+  (full method in `frontend-mockup-fidelity.md`)
+- **Canonical color token source** (verbatim oklch from `styles-mockup.css`)
 - **Risk badge palette** as a single-source enum table
 - **Typography / spacing baselines**
 - **Standard UX patterns** (loading skeleton / empty state / error retry)
@@ -36,24 +48,44 @@ sprints for ad-hoc precedents.
 
 ---
 
-## 1. Tailwind Utility-First
+## 1. Styling Mechanism — Mockup CSS Primary, Tailwind Secondary
 
-V2 frontend uses **Tailwind CSS utility-first** exclusively. shadcn/ui primitives are
-available for common UI patterns.
+> Full method + 7 鐵律 + DoD: [`docs/rules-on-demand/frontend-mockup-fidelity.md`](../docs/rules-on-demand/frontend-mockup-fidelity.md).
+
+V2 frontend styling for any mockup-derived page is driven by the **mockup CSS classes**
+(from `frontend/src/styles-mockup.css` — the byte-identical verbatim copy of the mockup
+`reference/design-mockups/styles.css`). Tailwind utilities are a **secondary** mechanism
+for layout one-offs and a11y wrappers only — they are **never** used to re-express
+styling that the mockup CSS already provides. shadcn/ui primitives are used for
+**interaction behavior only** (focus trap / ESC / outside-click), never as a styling
+substitute.
 
 ### Rules
 
-- ❌ **No inline styles** — the JSX `style=` prop (on DOM elements *and* components, whether the value is an inline literal, a variable, or a fn call) is **lint-enforced** by `no-restricted-syntax` in `eslint.config.js` (`error`, since Sprint 57.15 / AD-Inline-Style-Cleanup-Sweep). Use Tailwind utility classes; for the rare dynamic case see "Inline-style escape hatches" below.
-- ❌ **No custom CSS files** except `index.css` (shadcn vars + global resets only)
+- ✅ **Mockup CSS classes are the PRIMARY styling mechanism** — pages consume mockup
+  class names directly (`className="card"` / `"grid-stats"` / `"badge"` …); do NOT
+  re-build mockup styling out of Tailwind utilities.
+- ✅ **`frontend/src/styles-mockup.css` is permitted and required** — it is the
+  byte-identical verbatim copy of the mockup `styles.css`. Hand-writing OTHER custom
+  CSS files is still discouraged (`index.css` holds only `@import "tailwindcss"` + a
+  thin bridge).
+- ✅ **Tailwind utilities are SECONDARY** — layout one-offs / a11y wrappers where the
+  mockup has no corresponding class. Never to re-express mockup styling.
+- ✅ **shadcn primitives for INTERACTION behavior only** (Dialog / Tabs / Dropdown /
+  Tooltip) — their visual styling still comes from mockup CSS classes; do NOT rely on
+  shadcn `Card` / `Badge` / `Button` defaults to stand in for mockup padding / radius /
+  shadow / color.
+- ❌ **No inline styles** — the JSX `style=` prop (on DOM elements *and* components, whether the value is an inline literal, a variable, or a fn call) is **lint-enforced** by `no-restricted-syntax` in `eslint.config.js` (`error`, since Sprint 57.15 / AD-Inline-Style-Cleanup-Sweep). Use mockup CSS classes (or Tailwind utilities for layout one-offs); for the rare dynamic case see "Inline-style escape hatches" below.
 - ❌ **No CSS-in-JS** libraries (styled-components / emotion forbidden)
-- ✅ **shadcn primitives where available** (Button / Input / Dialog / Tabs / Dropdown / Tooltip)
-- ✅ **Tailwind utility classes** for everything else
-- ✅ **Arbitrary values `text-[#xxxxxx]` allowed only when no token exists** (prefer `text-success` over `text-[#10B981]`; arbitrary value should be exception, not default)
+- ❌ **No translation of mockup CSS into Tailwind utilities** — this is the root drift
+  cause of Sprint 57.18-57.27; see `frontend-mockup-fidelity.md` §禁止項.
 
-### Migration precedent (Sprint 57.9 US-2)
+### Migration precedent — inline styles → class names
 
 Sprint 57.9 migrated 3 governance components (ApprovalsPage / ApprovalList / DecisionModal)
-from inline styles to Tailwind. Pattern:
+away from inline `style=` objects. The takeaway is **no inline `style=`** — styling
+belongs in class names. For mockup-derived pages, that means the **mockup CSS class**;
+the Tailwind form below is acceptable only for layout one-offs with no mockup equivalent.
 
 ❌ **Wrong** (Sprint 53.5 inline styles):
 ```tsx
@@ -67,13 +99,14 @@ const cardStyle = {
 return <div style={cardStyle}>...</div>;
 ```
 
-✅ **Right** (Sprint 57.9 Tailwind):
+✅ **Right** (mockup CSS class — primary, for any mockup-derived element):
 ```tsx
-return (
-  <div className="rounded-lg border border-border bg-muted p-4">
-    ...
-  </div>
-);
+return <div className="card">...</div>;   // .card defined verbatim in styles-mockup.css
+```
+
+✅ **Acceptable** (Tailwind utilities — secondary, layout one-off with no mockup class):
+```tsx
+return <div className="flex items-center gap-2">...</div>;
 ```
 
 ### Inline-style escape hatches (dynamic values)
@@ -101,66 +134,58 @@ For a whole legacy file that hasn't been migrated yet, a top-of-file `/* eslint-
 
 ## 2. Color Tokens
 
-Canonical color tokens per `16-frontend-design.md §245-262` + tailwind.config.ts theme.
-
-> **Sprint 57.19 update (2026-05-17)**: production `primary` brand color moved from dark-slate `hsl(222.2 47.4% 11.2%)` → indigo `hsl(234 89% 60%)` (light) / `hsl(234 84% 70%)` (dark), HSL approximation of mockup's canonical `oklch(0.62 0.16 250)` cool indigo (closes AD-Brand-Primary-Color-Decision). `--accent` + `--accent-foreground` NOW defined in `src/index.css` :root + .dark (closes AD-Accent-Token-Gap; Sidebar `bg-accent`/`text-accent-foreground` now resolve to real tokens). Contrast-ratio audit of components consuming new indigo + accent tokens still scheduled for Sprint 57.19+ ongoing ports (AD-Post-Hotfix-Token-Audit contrast portion).
+> **🔴 Token source = `styles-mockup.css`, verbatim, in oklch.**
+> Design tokens come **verbatim** from `frontend/src/styles-mockup.css` (the
+> byte-identical copy of the mockup `styles.css`), which declares every token as
+> `oklch(...)` in its `:root` / `[data-theme="dark"]` blocks. **There is NO
+> oklch→HSL approximation step** — oklch and HSL are non-equivalent color spaces, and
+> every approximation introduces visible color drift. Consume the token via
+> `var(--X)` (the variable already contains the full `oklch()`); never re-express it
+> as `hsl(var(--X))` or eyeball an HSL substitute.
 >
-> **Sprint 57.18 update (2026-05-16)**: 7 semantic tokens + 4 risk levels NOW defined in `tailwind.config.ts` + `src/index.css` :root + .dark (closes AD-Style-Token-Config-Audit token-coverage portion).
+> The oklch→HSL "approximation" tables that previously lived in this section codified
+> the forbidden lossy step (it was the root cause of Sprint 57.18-57.27 drift) and have
+> been removed. The historical Sprint 57.18 / 57.19 token notes are preserved below for
+> audit trail, but the method they describe is **superseded**.
+>
+> See [`docs/rules-on-demand/frontend-mockup-fidelity.md`](../docs/rules-on-demand/frontend-mockup-fidelity.md)
+> §鐵律 #3 + §4-layer 同步協定.
 
-| Token | Hex (reference) | Tailwind class | Usage |
-|-------|-----------------|----------------|-------|
-| `primary` | `oklch(0.62 0.16 250)` (mockup canonical) ≈ `hsl(234 89% 60%)` light / `hsl(234 84% 70%)` dark | `text-primary` / `bg-primary` / `border-primary` | Main actions (submit / nav active); cool indigo brand (Sprint 57.19+) |
-| `accent` | `hsl(234 89% 60%)` light / `hsl(234 84% 70%)` dark (same hue as primary, used with /opacity modifier per mockup) | `bg-accent` / `text-accent-foreground` | Hover / focus emphasis / Sidebar active highlight (Sprint 57.19+) |
-| `success` | `#10B981` ≈ `hsl(150 60% 45%)` | `text-success` / `bg-success` / `border-success` | Verified / approved / passed |
-| `warning` | `#F59E0B` ≈ `hsl(38 92% 50%)` | `text-warning` / `bg-warning` | HITL pending / attention / DRAFT badge |
-| `danger` | `#EF4444` ≈ `hsl(0 84% 60%)` | `text-danger` / `bg-danger` | Errors / tripwire / blocked |
-| `thinking` | `#8B5CF6` ≈ `hsl(270 75% 60%)` | `text-thinking` / `bg-thinking` | Thinking blocks (LLM reasoning) / PROP badge |
-| `tool` | `#06B6D4` ≈ `hsl(188 70% 50%)` | `text-tool` / `bg-tool` | Tool call cards |
-| `memory` | `#EC4899` ≈ `hsl(326 80% 60%)` | `text-memory` / `bg-memory` | Memory operations |
-| `info` | `#3B82F6` ≈ `hsl(217 91% 60%)` | `text-info` / `bg-info` | Info banners / Priority badge (Sprint 57.18 NEW) |
+> **Superseded historical notes (audit trail — method no longer followed)**:
+> - *Sprint 57.19 (2026-05-17)*: production `primary` was given an HSL approximation
+>   of the mockup's canonical `oklch(0.62 0.16 250)` cool indigo. The HSL step is now
+>   forbidden — the oklch value from `styles-mockup.css` is canonical.
+> - *Sprint 57.18 (2026-05-16)*: 7 semantic tokens + 4 risk levels were added to
+>   `tailwind.config.ts` + `src/index.css` as HSL approximations. Superseded — token
+>   definitions come verbatim from `styles-mockup.css` in oklch.
 
-### Risk severity tokens (Sprint 57.18 NEW)
+### Token usage
 
-4 risk levels per design/operator-portal/styles.css; used by ApprovalCard + risk badges:
-
-| Token | Hex (light) | Hex (dark) | Tailwind class | Usage |
-|-------|-------------|------------|----------------|-------|
-| `risk-low` | ≈ `hsl(150 60% 45%)` | ≈ `hsl(150 50% 55%)` | `text-risk-low` / `bg-risk-low` | LOW severity HITL approvals |
-| `risk-medium` | ≈ `hsl(38 92% 50%)` | ≈ `hsl(38 80% 60%)` | `text-risk-medium` / `bg-risk-medium` | MEDIUM severity |
-| `risk-high` | ≈ `hsl(20 90% 55%)` | ≈ `hsl(20 80% 60%)` | `text-risk-high` / `bg-risk-high` | HIGH severity |
-| `risk-critical` | `#B71C1C` ≈ `hsl(0 70% 40%)` | ≈ `hsl(0 60% 50%)` | `text-risk-critical` / `bg-risk-critical` | CRITICAL severity (matches approval-card.spec.ts sentinel `#b71c1c`) |
-
-### shadcn semantic tokens (additionally)
-
-shadcn theme provides semantic tokens used widely in components:
-
-| Token | Tailwind class | Usage |
-|-------|----------------|-------|
-| `foreground` | `text-foreground` | Primary text |
-| `muted-foreground` | `text-muted-foreground` | Secondary text / labels |
-| `background` | `bg-background` | Page background |
-| `muted` | `bg-muted` | Subtle background (cards / sections) |
-| `border` | `border-border` | Default border color |
-
-### Preferred over arbitrary values
+Pages consume mockup CSS classes (`.card` / `.badge` / `.stat` …) which already carry
+the correct token-driven colors. Where a Tailwind utility is genuinely needed for a
+layout one-off, bridge to the mockup token via `var(--X)` — never hand-pick a hex/HSL.
 
 ```tsx
-// ❌ Wrong (arbitrary hex; bypasses theme; harder to maintain)
+// ❌ Wrong — arbitrary hex / eyeballed HSL bypasses the verbatim oklch token
 <span className="text-[#10B981]">Approved</span>
 
-// ✅ Right (token; auto-respects dark mode + theme overrides)
-<span className="text-success">Approved</span>
+// ✅ Right — consume the mockup class (token-driven, oklch end-to-end)
+<span className="badge badge-success">Approved</span>
 ```
 
-### When arbitrary values are acceptable
-
-- Risk badge palette has 4 specific hex values not in primary tokens (LOW / MED / HIGH / CRITICAL — see §3)
-- One-off external brand colors (logos / partner integrations)
-- Prototype / spike code (must convert to token before merge to main)
+Risk-severity colors (LOW / MEDIUM / HIGH / CRITICAL) are likewise defined as oklch
+tokens in `styles-mockup.css` and consumed via the mockup risk-badge classes; see §3.
 
 ---
 
 ## 3. Risk Badge Palette
+
+> **Note (2026-05-22)**: For mockup-derived pages, risk colors come from the oklch
+> risk tokens in `styles-mockup.css`, consumed via the mockup risk-badge classes — NOT
+> the arbitrary hex below. The hex table is retained as the historical Sprint 53.5
+> reference (and as the sentinel values some `*.spec.ts` tests still assert), but new
+> components MUST consume the mockup risk-badge classes. See
+> [`docs/rules-on-demand/frontend-mockup-fidelity.md`](../docs/rules-on-demand/frontend-mockup-fidelity.md).
 
 Canonical 4-level risk palette per Sprint 53.5 governance ship. Used by HITL approval
 cards / verifier results / guardrail alerts / audit log severity.

@@ -14,7 +14,7 @@
 | 位置 | 行為 | 用途 |
 |------|------|------|
 | **`.claude/rules/*.md`**（頂層 4 條 + 本 README）| ✅ Claude Code 自動載入每個 session | 高頻 critical 規則 |
-| **`docs/rules-on-demand/*.md`**（10 條）| ⏸️ 預設不載入，需 AI 主動 `Read` | 情境式規則 |
+| **`docs/rules-on-demand/*.md`**（11 條）| ⏸️ 預設不載入，需 AI 主動 `Read` | 情境式規則 |
 
 **為何脫離 .claude/**: Claude Code 會**遞迴掃描 .claude/ 整樹**載入 project memory；2026-05-09 第一版的 `.claude/rules/on-demand/` 子目錄結構雖然語義上是 on-demand，實際仍被 Claude Code 自動載入（佔 ~39KB／session，違反設計意圖）。將 on-demand rules 移到 `docs/rules-on-demand/` 後 Claude Code 不再掃描，真正落實 Hybrid。
 
@@ -33,7 +33,7 @@
 
 ---
 
-## 📋 On-Demand（10 條，需要時主動 Read）
+## 📋 On-Demand（11 條，需要時主動 Read）
 
 > **AI 規則**：碰到下列「Trigger」時，**先 Read 對應規則檔再開始 code**。
 
@@ -50,6 +50,7 @@
 | [`git-workflow.md`](../../docs/rules-on-demand/git-workflow.md) | 寫 commit message / 開新 branch（scope 對應 11+1 範疇）|
 | [`backend-python.md`](../../docs/rules-on-demand/backend-python.md) | 純 Python backend 通用約定（少用，多被 code-quality 取代）|
 | [`frontend-react.md`](../../docs/rules-on-demand/frontend-react.md) | 純 React/TypeScript 通用約定 |
+| [`frontend-mockup-fidelity.md`](../../docs/rules-on-demand/frontend-mockup-fidelity.md) | 前端頁面開發 / mockup port / 改 `styles-mockup.css` / 設計系統 |
 | [`graphify-usage.md`](../../docs/rules-on-demand/graphify-usage.md) | 用 graphify-out/ 加速理解 codebase |
 
 ---
@@ -67,6 +68,9 @@
 ### 寫新業務 endpoint
 - ✅ Always: `multi-tenant-data.md`（tenant_id 鐵律）
 - 📋 Read: `docs/rules-on-demand/observability-instrumentation.md`（埋點）+ `docs/rules-on-demand/testing.md`（multi-tenant test）
+
+### 前端頁面開發 / mockup port / 改設計系統
+- 📋 Read: `docs/rules-on-demand/frontend-mockup-fidelity.md`（mockup CSS 逐字複製法 — 權威方法）+ `docs/rules-on-demand/frontend-react.md`（React/TS 通用約定）
 
 ### 動 LLM 呼叫 / Adapter
 - 📋 Read: `docs/rules-on-demand/llm-provider-neutrality.md` + `docs/rules-on-demand/adapters-layer.md`
@@ -97,6 +101,7 @@
 | docs/rules-on-demand/code-quality.md | 11-test-strategy.md |
 | docs/rules-on-demand/testing.md | 11-test-strategy.md / 04-anti-patterns.md |
 | docs/rules-on-demand/git-workflow.md | CLAUDE.md §Code Standards |
+| docs/rules-on-demand/frontend-mockup-fidelity.md | CLAUDE.md §Frontend Mockup-Fidelity Hard Constraint / 16-frontend-design.md |
 | docs/rules-on-demand/graphify-usage.md | CLAUDE.md §graphify（純本地工具）|
 
 > **權威排序**：V2 規劃文件（21 份）> 本目錄規則 > 既有代碼。衝突以上位者為準。
@@ -124,6 +129,7 @@
 
 ## Modification History
 
+- 2026-05-22: 新增 `frontend-mockup-fidelity.md` 到 On-Demand 索引（10 → 11 條）+ 任務情境快查「前端頁面開發」配對 + V2 文件對應表（align to validated mockup-fidelity method）
 - 2026-05-09 (revised): on-demand rules 真正移出 `.claude/` → `docs/rules-on-demand/`（10 個檔案 git mv）。Root cause: Claude Code 遞迴掃描 `.claude/` 整樹載入 project memory，子目錄不阻止；本日上午第一版的 `.claude/rules/on-demand/` 結構並未真正生效（仍被自動載入 ~39KB／session）。修正後 on-demand rules 完全脫離 Claude Code memory 掃描範圍。節省 ~39KB context／session。
 - 2026-05-09: Hybrid 重構（4 critical always-loaded + 10 on-demand 移至 `.claude/rules/on-demand/`）。設計意圖節省 ~35KB／session（**註**：當日上午 / 下午內驗證未真正生效，下午修正移到 `docs/`）。
 - 2026-04-28: V2 Phase 49+ 重寫

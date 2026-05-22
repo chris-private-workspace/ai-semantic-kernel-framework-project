@@ -111,6 +111,7 @@ docs/03-implementation/agent-harness-planning/ (19 份 V2 規劃) > 根目錄 CL
 - `06-phase-roadmap.md`（22 sprint 路線圖）
 - `.claude/rules/README.md`（13 份 V2 開發規則索引）
 - `claudedocs/templates/spike-design-note-template.md`（spike sprint Day 4 closeout extract 用 template + 8-Point Quality Gate）
+- 🆕 **任何 frontend sprint**：`docs/rules-on-demand/frontend-mockup-fidelity.md`（mockup CSS 逐字複製法 — 前端 mockup-fidelity 權威方法；杜絕 Sprint 57.18-57.27 CSS 翻譯 drift）
 
 ---
 
