@@ -106,7 +106,7 @@ export function SLOStatusCard({ data }: SLOStatusCardProps) {
               </div>
               <BarTrack
                 pct={s.used}
-                tone={ok ? "hsl(var(--success))" : "hsl(var(--danger))"}
+                tone={ok ? "var(--success)" : "var(--danger)"}
               />
               <div className="mt-1 font-mono text-[10px] text-fg-subtle">
                 {t("sla.slo.budgetUsed")}: {s.used}%

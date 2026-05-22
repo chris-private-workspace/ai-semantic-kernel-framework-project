@@ -29,8 +29,8 @@ export interface ProviderMixRow {
 }
 
 export const PROVIDER_MIX_FIXTURE: ProviderMixRow[] = [
-  { label: "provider-A", tokens: "8.1M", cost: 1620, pct: 57, toneColor: "hsl(var(--primary))", toneClass: "bg-primary" },
-  { label: "provider-B", tokens: "4.4M", cost: 884, pct: 31, toneColor: "hsl(var(--thinking))", toneClass: "bg-thinking" },
-  { label: "provider-C", tokens: "1.3M", cost: 260, pct: 9, toneColor: "hsl(var(--tool))", toneClass: "bg-tool" },
-  { label: "self-hosted", tokens: "0.4M", cost: 83, pct: 3, toneColor: "hsl(var(--memory))", toneClass: "bg-memory" },
+  { label: "provider-A", tokens: "8.1M", cost: 1620, pct: 57, toneColor: "var(--primary)", toneClass: "bg-primary" },
+  { label: "provider-B", tokens: "4.4M", cost: 884, pct: 31, toneColor: "var(--thinking)", toneClass: "bg-thinking" },
+  { label: "provider-C", tokens: "1.3M", cost: 260, pct: 9, toneColor: "var(--tool)", toneClass: "bg-tool" },
+  { label: "self-hosted", tokens: "0.4M", cost: 83, pct: 3, toneColor: "var(--memory)", toneClass: "bg-memory" },
 ];

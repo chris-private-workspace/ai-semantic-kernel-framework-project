@@ -141,7 +141,7 @@ export function CostOverview() {
           spark={
             <Spark
               points={STAT_FIXTURES.spendMtdSpark}
-              tone="hsl(var(--memory))"
+              tone="var(--memory)"
             />
           }
         />
@@ -161,7 +161,7 @@ export function CostOverview() {
           spark={
             <Spark
               points={STAT_FIXTURES.costPerRunSpark}
-              tone="hsl(var(--warning))"
+              tone="var(--warning)"
             />
           }
         />
@@ -174,7 +174,7 @@ export function CostOverview() {
           spark={
             <Spark
               points={STAT_FIXTURES.cacheHitSpark}
-              tone="hsl(var(--success))"
+              tone="var(--success)"
             />
           }
         />
@@ -191,7 +191,7 @@ export function CostOverview() {
           title={t("cost.spendOverTime.title")}
           subtitle={t("cost.spendOverTime.subtitle")}
         >
-          <AreaChart data={SPEND_OVER_TIME_30D} tone="hsl(var(--memory))" />
+          <AreaChart data={SPEND_OVER_TIME_30D} tone="var(--memory)" />
           <BackendGapBanner reason={t("cost.banner.areaChart30d")} />
         </CardShell>
 

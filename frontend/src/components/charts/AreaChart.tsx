@@ -11,7 +11,7 @@
  *   gradient-filled area path + stroke line path.
  *
  *   `data` is the value series; max normalized to (peak × 1.15) for headroom.
- *   `tone` accepts raw CSS color string (e.g. "hsl(var(--memory))"); gradient
+ *   `tone` accepts raw CSS color string (e.g. "var(--memory)"); gradient
  *   ID derives from sanitized tone string (uniqueness across multiple instances).
  *
  *   Planned reuse: Sprint 57.25 /sla-dashboard latency chart base (3-series
@@ -41,7 +41,7 @@ const PADDING = 24;
 
 export const AreaChart: FC<AreaChartProps> = ({
   data,
-  tone = "hsl(var(--primary))",
+  tone = "var(--primary)",
   height = 180,
 }) => {
   if (data.length === 0) return null;
@@ -81,7 +81,7 @@ export const AreaChart: FC<AreaChartProps> = ({
             x2={VIEW_WIDTH - PADDING}
             y1={PADDING + (height - PADDING * 2) * t}
             y2={PADDING + (height - PADDING * 2) * t}
-            stroke="hsl(var(--border))"
+            stroke="var(--border)"
             strokeWidth="0.5"
             opacity="0.6"
           />

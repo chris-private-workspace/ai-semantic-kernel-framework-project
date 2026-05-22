@@ -36,6 +36,10 @@ jobs:
         working-directory: frontend
         run: npm run lint
 
+      - name: Mockup-fidelity guard (verbatim styles-mockup.css diff + hardcoded-colour grep)
+        working-directory: frontend
+        run: npm run check:mockup-fidelity
+
       - name: TypeScript check + Vite build
         working-directory: frontend
         run: npm run build

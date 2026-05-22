@@ -31,10 +31,10 @@ export interface CategoryBreakdownRow {
 }
 
 export const CATEGORY_BREAKDOWN_FIXTURE: CategoryBreakdownRow[] = [
-  { key: "inferenceInput", value: 1240, pct: 44, toneColor: "hsl(var(--thinking))", toneClass: "bg-thinking" },
-  { key: "inferenceOutput", value: 780, pct: 27, toneColor: "hsl(var(--primary))", toneClass: "bg-primary" },
-  { key: "thinkingTokens", value: 412, pct: 14, toneColor: "hsl(var(--info))", toneClass: "bg-info" },
-  { key: "toolRuns", value: 280, pct: 10, toneColor: "hsl(var(--tool))", toneClass: "bg-tool" },
-  { key: "embeddings", value: 90, pct: 3, toneColor: "hsl(var(--memory))", toneClass: "bg-memory" },
-  { key: "sandboxCompute", value: 45, pct: 2, toneColor: "hsl(var(--warning))", toneClass: "bg-warning" },
+  { key: "inferenceInput", value: 1240, pct: 44, toneColor: "var(--thinking)", toneClass: "bg-thinking" },
+  { key: "inferenceOutput", value: 780, pct: 27, toneColor: "var(--primary)", toneClass: "bg-primary" },
+  { key: "thinkingTokens", value: 412, pct: 14, toneColor: "var(--info)", toneClass: "bg-info" },
+  { key: "toolRuns", value: 280, pct: 10, toneColor: "var(--tool)", toneClass: "bg-tool" },
+  { key: "embeddings", value: 90, pct: 3, toneColor: "var(--memory)", toneClass: "bg-memory" },
+  { key: "sandboxCompute", value: 45, pct: 2, toneColor: "var(--warning)", toneClass: "bg-warning" },
 ];

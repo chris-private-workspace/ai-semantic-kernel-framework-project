@@ -141,7 +141,7 @@ function OverviewPageInner(): JSX.Element {
           value="$2,847"
           delta={t("overview.kpi.costMtdDelta")}
           deltaDir="up"
-          spark={<Spark points={COST_MTD_SPARK} tone="hsl(var(--primary))" />}
+          spark={<Spark points={COST_MTD_SPARK} tone="var(--primary)" />}
         />
         <StatCard
           label={t("overview.kpi.slaP95")}
@@ -149,7 +149,7 @@ function OverviewPageInner(): JSX.Element {
           unit={t("overview.kpi.slaP95Unit")}
           delta={t("overview.kpi.slaP95Delta")}
           deltaDir="up"
-          spark={<Spark points={SLA_P95_SPARK} tone="hsl(var(--success))" />}
+          spark={<Spark points={SLA_P95_SPARK} tone="var(--success)" />}
         />
       </div>
 

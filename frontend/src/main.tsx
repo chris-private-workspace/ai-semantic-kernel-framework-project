@@ -4,6 +4,7 @@
  * Category: Frontend / root (Sprint 57.7 US-B2 Frontend Foundation 1/N)
  *
  * Modification History:
+ *   - 2026-05-22: Sprint 57.28 — import ./styles-mockup.css (Layer 2 verbatim mockup CSS) after ./index.css
  *   - 2026-05-10: Sprint 57.13 US-B5 — import ./i18n (i18next bootstrap) before render
  *   - 2026-05-10: Sprint 57.13 US-B4 — initObservability() + reportWebVitals() at startup
  *   - 2026-05-10: Sprint 57.13 US-B1 — QueryClient moved to lib/queryClient.ts (mutationCache toast)
@@ -38,6 +39,10 @@ import "@fontsource/noto-sans-tc/500.css";
 import "@fontsource/noto-sans-tc/600.css";
 import "@fontsource/noto-sans-tc/700.css";
 import "./index.css";
+// Layer 2 — verbatim copy of reference/design-mockups/styles.css; NEVER hand-edit
+// (CI diff-guard enforces byte-identical). Loaded AFTER index.css so the mockup's
+// 251 design classes win the cascade at equal specificity. Sprint 57.28.
+import "./styles-mockup.css";
 import { initObservability, reportWebVitals } from "./lib/observability";
 import { queryClient } from "./lib/queryClient";
 

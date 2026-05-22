@@ -41,9 +41,9 @@ import {
 } from "../__fixtures__/tenantTop8";
 
 const quotaBarTone = (pct: number): string => {
-  if (pct > 100) return "hsl(var(--danger))";
-  if (pct > 80) return "hsl(var(--warning))";
-  return "hsl(var(--success))";
+  if (pct > 100) return "var(--danger)";
+  if (pct > 80) return "var(--warning)";
+  return "var(--success)";
 };
 
 const quotaTextClass = (pct: number): string => {

@@ -1,8 +1,8 @@
 /**
  * File: frontend/scripts/route-sweep.mjs
- * Purpose: Standalone Playwright 1440×900 route-sweep harness for Sprint 57.26
- *          (AD-Foundation-Fidelity-Token-Correction) before/after regression evidence.
- * Category: Frontend / scripts (Sprint 57.26 Day 0)
+ * Purpose: Standalone Playwright 1440×900 route-sweep harness for frontend
+ *          foundation before/after regression evidence (reused across foundation sprints).
+ * Category: Frontend / scripts (Sprint 57.26 Day 0; reused Sprint 57.28)
  *
  * Description:
  *   Screenshots all ~22 representative production routes at 1440×900 into a
@@ -25,6 +25,7 @@
  * Created: 2026-05-20 (Sprint 57.26 Day 0) — supersedes the temporary frontend/diagnose-render.mjs
  *
  * Modification History:
+ *   - 2026-05-22: Sprint 57.28 — re-point OUT_DIR to sprint-57-28-mockup-fidelity-foundation (reused for verbatim-CSS foundation switch sweep)
  *   - 2026-05-21: Sprint 57.26 Day 2 — add endpoint-specific object mocks for
  *     cost-summary / sla-report so the rebuilt dashboards render real content
  *     (D-DAY1-1: the generic `[]` mock crashed their object-shaped data hooks)
@@ -42,7 +43,7 @@ if (!["before", "after"].includes(MODE)) {
 const BASE = "http://localhost:3007";
 const VP = { width: 1440, height: 900 };
 const OUT_DIR = path.resolve(
-  `../claudedocs/4-changes/sprint-57-26-foundation-fidelity/screenshots/${MODE}`,
+  `../claudedocs/4-changes/sprint-57-28-mockup-fidelity-foundation/screenshots/${MODE}`,
 );
 fs.mkdirSync(OUT_DIR, { recursive: true });
 

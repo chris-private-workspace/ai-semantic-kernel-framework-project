@@ -70,7 +70,7 @@ Build enterprise AI agent teams that work like **human professional teams** — 
 | Attribute | Value |
 |-----------|-------|
 | **Phase** | V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend ongoing (Phase 57+) |
-| **Current Sprint** | Sprint 57.27 closed 2026-05-21 (PR pending) — AD-Mockup-Fidelity-Rebuild-Overview; `/overview` operator dashboard full rebuild — 9 widgets 1:1 from mockup, OverviewPage 728→~215-line assembly (AP-3 reversal complete), DRIFT verdict PARITY; `frontend-mockup-strict-rebuild` 0.60 class 4th app (#41 rich-dashboard sub-class DROPPED); see `memory/project_phase57_27_overview_rebuild.md` for detail. Next: see `claudedocs/1-planning/next-phase-candidates.md` (admin-tenants list rebuild + others) |
+| **Current Sprint** | Sprint 57.28 closed 2026-05-22 (PR pending) — AD-Mockup-Fidelity-Foundation-Switch; verbatim-CSS 4-layer sync protocol Phase 1 (foundation only) — Layer 2 byte-identical `styles-mockup.css` + Layer 3 `index.css` slim + Layer 4 tailwind bridge + theme `[data-theme]` toggle + CI guard; 22-route sweep 0 catastrophic / 0 structural regression; NEW `frontend-verbatim-css-foundation` 0.55 class 1st app; see `memory/project_phase57_28_mockup_fidelity_foundation.md` for detail. Next: see `claudedocs/1-planning/next-phase-candidates.md` (Phase-2 per-page re-point epic) |
 | **Sprint History** | See [`memory/MEMORY.md`](memory/MEMORY.md) §Recent Sprints + per-sprint subfile `memory/project_phase57_XX_*.md` + retrospective.md under `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-XX/` |
 | **Pending / Next Phase** | See [`claudedocs/1-planning/next-phase-candidates.md`](claudedocs/1-planning/next-phase-candidates.md) |
 | **Roadmap** | Phase 49-55 V2 ✅ / Phase 56-58 SaaS Stage 1 3/3 ✅ / Phase 57+ Frontend ongoing |
@@ -625,7 +625,7 @@ V1 完整 CLAUDE.md 已保留於 `CLAUDE.backup.md`。如需查閱 V1 架構（M
 
 ---
 
-**Last Updated**: 2026-05-21 (Sprint 57.27 — `/overview` Mockup-Fidelity Rebuild); see `memory/` for sprint history
+**Last Updated**: 2026-05-22 (Sprint 57.28 — Verbatim-CSS Foundation Switch); see `memory/` for sprint history
 **Project Start**: 2025-11-14
 **V2 Authority**: `docs/03-implementation/agent-harness-planning/` (21 docs — 20 規劃 + 1 review)
 **V1 Reference**: `CLAUDE.backup.md` + `docs/07-analysis/V9/00-index.md`
