@@ -75,13 +75,18 @@
 - [x] **Token collision resolution** — `--primary`/`--border` de-collided → `--sc-primary`/`--sc-border`; build green; 0 invalid-CSS utility — done Day 1 §1.3
 
 ### 2.2 US-C2 theme toggle alignment
-- [ ] **`ThemeProvider` dark-only alignment**
-  - DoD: light branch retired; `ThemeProvider` simplified (NOT deleted — kept as mount point for future `[data-variant]`/`[data-density]`)
-  - DoD: `<html>` carries the mockup-expected dark default; `index.html` updated only if needed
-  - Verify: `/overview` + `/auth/login` render dark consistently; no dead light path
-- [ ] **Day 2 spot-check + commit**
-  - DoD: `/overview` + `/cost-dashboard` + `/auth/login` render correctly post-Layer-4/theme
-  - Commit message: `feat(frontend, sprint-57-28, Day 2, Group C): Layer 4 tailwind bridge rework + token collision resolution + dark-only theme`
+
+> **D-PRE-1 / plan §Risks R3**: mockup `styles.css` HAS a full light theme (`[data-theme="light"]` ×4 variants, L113-165). US-C2 is NOT "dark-only" — light + dark both retained (user-confirmed 2026-05-22). Task text corrected per sprint-workflow §Step 2.5; plan R3 row is the audit trail.
+
+- [x] **`ThemeProvider` mockup `[data-theme]` alignment (light + dark both kept)**
+  - DoD: `ThemeProvider` drives `<html>` `data-theme` attribute (`dark`↔`light`) — the mockup mechanism `styles-mockup.css` scopes `--bg`/`--fg`/... by `[data-theme][data-variant]`
+  - DoD: `.dark` class toggle KEPT in sync during Phase 1 (the 13 not-yet-re-pointed pages still consume `index.css` shadcn `:root`/`.dark` tokens); Phase 2 drops it
+  - DoD: `ThemeProvider` public API (`theme`/`toggleTheme`/`setTheme`/`useTheme`) unchanged — NOT deleted; stays as mount point for future `[data-variant]`/`[data-density]`
+  - DoD: `index.html` already carries `data-theme="dark"` + `data-variant="linear"` (Day 1 §1.3) — updated only if needed
+  - Verify: `/overview` + `/auth/login` render dark by default; theme toggle flips both `data-theme` + `.dark`
+- [x] **Day 2 spot-check + commit**
+  - DoD: `/overview` + `/cost-dashboard` + `/auth/login` render correctly post-theme-wire
+  - Commit message: `feat(frontend, sprint-57-28, Day 2, Group C): theme toggle drives mockup [data-theme] attr (light+dark)`
   - Verify: `git status` clean post-commit
 
 ---

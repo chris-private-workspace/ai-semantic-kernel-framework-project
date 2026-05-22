@@ -80,4 +80,38 @@
 ### Notes
 
 - D-DAY1-1 resequencing means "Day 1" absorbed plan-Day-2's Layer 4. Day labels flex; checklist tracks tasks.
-- Day 1 commit: `<hash>` (recorded post-commit).
+- Day 1 commit: `2d6745b9` (22 files; +1300 / -219; styles-mockup.css NEW 1123 lines).
+
+---
+
+## Day 2 — 2026-05-22 — Group C theme toggle (US-C2) — mockup `[data-theme]` drive
+
+### Today's Accomplishments
+
+- **§2.1 Layer 4** — confirmed already done Day 1 §1.3 (D-DAY1-1 atomic resequencing); no Day 2 work.
+- **US-C2 theme toggle** — `ThemeProvider.tsx` reworked: `applyHtmlClass` → `applyHtmlTheme` now sets the mockup `<html data-theme>` attribute (`dark`↔`light`) AND keeps the shadcn `.dark` class in sync. The dual-mechanism is the deliberate Phase 1 transition state — the 13 not-yet-re-pointed pages still consume `index.css` shadcn `:root`/`.dark` tokens; Phase 2 drops the `.dark` line as pages re-point off shadcn. Public API (`theme`/`toggleTheme`/`setTheme`/`useTheme`) unchanged — 0 consumer edits.
+- **Theme = light + dark both kept** (D-PRE-1 / plan §Risks R3 — mockup `styles.css` has a full light theme `[data-theme="light"]` ×4 variants, L113-165). The §Technical Specifications "dark-only" premise was wrong; checklist §2.2 task text corrected per sprint-workflow §Step 2.5 (plan R3 row = audit trail; §Technical Specifications NOT silently rewritten).
+- **Test strengthened (not deleted)** — `AuthShell.test.tsx` `ThemeProvider` test + `data-theme` attribute assertions (dark default + light after toggle) + `beforeEach`/`afterEach` `data-theme` cleanup; docstring §3 + MHist updated. Verifies the US-C2 core deliverable durably.
+- **Quality gates** — `npm run lint` clean (`--max-warnings 0`); `npm run build` green (3.26s; main 337.06 kB, +0.05 kB vs Day 1 — negligible); Vitest **457/457 pass** (0 regression; AuthShell 4/4 with the new assertions).
+- **Runtime spot-check** — `route-sweep.mjs after` 22/22 routes ✓ (0 ✗ crash). Read-verified `/overview` + `/cost-dashboard` + `/auth/login` — all render correctly dark with the verbatim foundation (sidebar + topbar + widgets / Cost Ledger charts + tables / AuthShell centered card all coherent). `screenshots/after/` refreshed (Day 3 re-runs fresh).
+
+### Drift findings (Day 2)
+
+- None new. (The D-PRE-1 / R3 theme-has-light finding was caught Day 0; resolved this day.)
+
+### Decisions taken
+
+- Theme toggle drives BOTH `data-theme` (mockup mechanism) + `.dark` (shadcn transition) — deliberate Phase 1 dual-mechanism; Phase 2 removes the `.dark` toggle.
+- `index.html` unchanged — already carries `data-theme="dark" data-variant="linear"` from Day 1 §1.3.
+- Playwright MCP browser stuck (known issue — `route-sweep.mjs` header AD #37) → used the standalone `route-sweep.mjs` harness for the runtime spot-check.
+
+### Remaining for next day (Day 3 — CI guards + 22-route sweep)
+
+- US-D1: `check-mockup-fidelity.mjs` (diff guard + grep guard) + `package.json` script + frontend CI workflow step.
+- US-D2: fresh after-switch 22-route sweep + before/after + vs-mockup matrix in FOUNDATION-SWITCH-REPORT.
+- US-D3: triage — catastrophic fix in-sprint / transition drift catalogue / structural → carryover AD.
+
+### Notes
+
+- Workload Day 2 est ~2.2 hr calibrated — actual well under (Layer 4 was pre-done Day 1; Day 2 = theme wire only — a small, well-scoped change).
+- Day 2 commit: `<hash>` (4 files: ThemeProvider.tsx + AuthShell.test.tsx + checklist + this progress.md; screenshots/ kept local).
