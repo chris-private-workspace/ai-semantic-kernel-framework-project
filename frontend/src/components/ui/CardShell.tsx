@@ -22,9 +22,10 @@
  *   ProviderMixCard wrap CardShell) + Sprint 57.25-57.28 dashboards.
  *
  * Created: 2026-05-19 (Sprint 57.24 Day 1 US-B3)
- * Last Modified: 2026-05-19
+ * Last Modified: 2026-05-21
  *
  * Modification History (newest-first):
+ *   - 2026-05-21: Sprint 57.27 Day 3 — card-title text-sm → text-[12.5px] (R9 / closes D8 toward mockup .card-title)
  *   - 2026-05-19: Initial creation (Sprint 57.24 Day 1 US-B3) — 1st consumer cost-dashboard
  *
  * Related:
@@ -56,7 +57,7 @@ export const CardShell: FC<CardShellProps> = ({
     {(title || actions) && (
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div>
-          {title && <div className="text-sm font-semibold">{title}</div>}
+          {title && <div className="text-[12.5px] font-semibold">{title}</div>}
           {subtitle && <div className="text-[11px] text-fg-muted">{subtitle}</div>}
         </div>
         {actions}
