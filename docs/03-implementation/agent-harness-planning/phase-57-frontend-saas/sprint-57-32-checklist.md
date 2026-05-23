@@ -26,41 +26,33 @@
 
 - [x] **22 AppShellV2 + AuthShell + Home route screenshots** via `route-sweep.mjs before` mode — 22/22 ✓ captured to `claudedocs/4-changes/sprint-57-32-sla-dashboard-repoint/screenshots/before/`; route-sweep.mjs OUT_DIR re-pointed + MHist entry added
 - [x] **sla-dashboard extras** — **skipped**: regular sweep capture suffices (no additional stateful UI requiring separate snapshots like cost-dashboard MonthPicker / table anomaly)
-- [ ] **Day 0 commit** — single commit on `feature/sprint-57-32-sla-dashboard-repoint` branch (pending; next step)
+- [x] **Day 0 commit** — `acab0292` on `feature/sprint-57-32-sla-dashboard-repoint` (includes 57.31 checklist closeout cosmetic catchup as housekeeping)
 
 ---
 
 ## Day 1 — Group B (page-head + TimeRangeTabs + KPI row)
 
-### 1.1 US-B1 — page-head + TimeRangeTabs verbatim re-point
+### 1.1 US-B1 — page-head + TimeRangeTabs verbatim re-point — ✅ done
 
-- [ ] **Read mockup** `page-admin.jsx:34-52` (page-head + .btn-group time-range tabs)
-- [ ] **Re-point** `pages/sla-dashboard/index.tsx`
-  - Sub: drop `pageTitle="SLA Dashboard"` prop on AppShellV2 (avoid topbar duplicate per Sprint 57.31 pattern)
-  - Sub: verbatim page-head with title + subtitle + `.route-pill /sla-dashboard` + actions composition
-- [ ] **Re-point** `TimeRangeTabs.tsx`
-  - Sub: `.btn-group` with 4 Button variants (1h ghost / 24h outline / 7d ghost / 30d ghost)
-  - Sub: state-driven active variant (currently controlled by parent or local state — preserve logic)
-  - Sub: include Refresh + Export Buttons inline with btn-group per mockup L49-50
-- [ ] **Header MHist** updated (1-line per Sprint 55.3 char budget)
-- [ ] **Verify**: Playwright shot `day1-sla-dashboard-head.png` showing new page-head matches mockup L34-52
+- [x] **Read mockup** `page-admin.jsx:34-52` (page-head + .btn-group time-range tabs)
+- [x] **Re-point** `pages/sla-dashboard/index.tsx` — dropped `pageTitle="SLA Dashboard"` prop; page-head now lives verbatim inside SLAOverview
+- [x] **Re-point** `TimeRangeTabs.tsx` — translated Tailwind container + per-button classes → mockup `.btn-group` + mockup-ui `Button` (variant ghost/outline; size sm); role="tablist" + aria-selected + data-testid preserved
+- [x] **Header MHist** updated (1-line per Sprint 55.3 char budget)
+- [x] **Verify**: Playwright shot `day1-sla-dashboard-fold.png` shows new page-head matches mockup L34-52 (PARITY visual)
 
-### 1.2 US-B2 — SLAOverview grid-stats verbatim
+### 1.2 US-B2 — SLAOverview grid-stats verbatim — ✅ done
 
-- [ ] **Read mockup** `page-admin.jsx:54-59` (4-stat grid-stats KPI row)
-- [ ] **Re-point** `SLAOverview.tsx`
-  - Sub: `.grid-stats` 4-stat row
-  - Sub: each Stat uses mockup-ui `<Stat>` primitive + `<Spark>` sparkline (reuse from Sprint 57.29; do NOT re-port primitive)
-  - Sub: 4 stats: p50 latency (ms, primary tone) + p95 latency (s, info) + p99 latency (s, warning) + Error budget (%, success)
-  - Sub: deltaDir per mockup ("up" / "down") with correct color semantics
-- [ ] **Header MHist** updated
-- [ ] **Verify**: Playwright shot `day1-sla-dashboard-fold.png` (full above-the-fold = page-head + KPI row)
+- [x] **Read mockup** `page-admin.jsx:54-59` (4-stat grid-stats KPI row)
+- [x] **Re-point** `SLAOverview.tsx` — added `layoutStyles` const (mirror Sprint 57.31 pattern: page / gridStats / gridMainRow1 / gridMainRow2 / monthPickerRow / monthPickerNote / noTenant); swapped imports `PageHead`/`StatCard`/`CardShell` → `Card`/`Stat`/`Spark`/`Badge`/`Button` from mockup-ui; replaced wrapper components with inline `.page-head` + `style={layoutStyles.gridStats}` + `style={layoutStyles.gridMainRow1/Row2}` + `.kbar` legend Badges
+- [x] **Header MHist** updated
+- [x] **Verify**: Playwright shot `day1-sla-dashboard-fold.png` confirms above-the-fold parity (page-head + KPI row + LatencyChart + SLOStatus)
 
-### 1.3 Day 1 mini-verify
+### 1.3 Day 1 mini-verify — ✅ done
 
-- [ ] All Day 1 files lint-clean
-- [ ] Vitest re-run — 452 baseline maintained (or adapted spec count documented)
-- [ ] Day 1 commit
+- [x] All Day 1 files lint-clean (ESLint exit 0)
+- [x] tsc strict — 0 new errors (TS6310 carryover pre-existing only)
+- [x] Vitest re-run — 452/452 baseline maintained; sla-dashboard subset 30/30 pass
+- [ ] Day 1 commit (pending; next step)
 
 ---
 

@@ -5,6 +5,7 @@
  * Scope: Phase 57 / Sprint 57.1 US-3 → 57.8 US-4 (page-level AppShellV2 migration)
  *
  * Modification History:
+ *   - 2026-05-23: Sprint 57.32 Day 1 US-B1 — drop pageTitle prop (avoid topbar duplicate; verbatim page-head now lives in SLAOverview per Sprint 57.31 pattern)
  *   - 2026-05-10: Sprint 57.13 US-A2 — wrap in <RequireAuth> (was ungated)
  *   - 2026-05-10: Sprint 57.8 US-4 — page-level AppShellV2 wrap
  *   - 2026-05-06: Initial creation (Sprint 57.1 Day 2 / US-3)
@@ -19,7 +20,7 @@ import { SLAOverview } from "../../features/sla-dashboard/components/SLAOverview
 export default function SLADashboardPage() {
   return (
     <RequireAuth>
-      <AppShellV2 pageTitle="SLA Dashboard">
+      <AppShellV2>
         <Routes>
           <Route index element={<SLAOverview />} />
         </Routes>
