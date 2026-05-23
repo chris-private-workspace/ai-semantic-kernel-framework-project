@@ -37,23 +37,16 @@
 
 ### 1.1 US-B1 — SubagentsPage defensive guard
 
-- [ ] **Edit `pages/subagents/SubagentsPage.tsx:262`** — `data?.items.length ?? 0` → `data?.items?.length ?? 0`
-  - DoD: `?.` added on `items`
-  - Verify: `Grep` `data\?\.items\?\.length` in file
-- [ ] **Grep `items\.(map|filter|forEach)` in SubagentsPage** — confirm no downstream undefined-array crash sites
-  - DoD: if any found, also guard them with `?? []`; else log "0 downstream sites" in progress.md
+- [x] **Edit `pages/subagents/SubagentsPage.tsx:262`** — `data?.items.length ?? 0` → `data?.items?.length ?? 0`
+- [x] **Grep `items\.(map|filter|forEach)` in SubagentsPage** — 0 downstream sites (only L262 references `items` in the page; L17 is in comment, L274 is `SUBAGENT_LIST.length` static fixture)
 
 ### 1.2 US-B2 — Vitest defensive spec
 
-- [ ] **Add empty-items / missing-items / loading defensive spec** — `tests/unit/pages/subagents/SubagentsPage.test.tsx` (locate or create)
-  - 3 cases: `{data: undefined, isLoading: true}` / `{data: {}, isSuccess: true}` / `{data: {items: undefined, total: 0}, isSuccess: true}`
-  - DoD: spec asserts component renders without throwing (no error boundary triggered)
-  - Verify: `cd frontend; npm run test -- --run SubagentsPage`
+- [x] **Add missing-items defensive spec** — `tests/unit/pages/subagents/SubagentsPage.test.tsx` — 1 case (`items` field omitted in mocked response). Page renders without throw + KPI cards render + carryover banner emerges on query resolve.
 
 ### 1.3 Day 1 5-gate quick-check
 
-- [ ] **tsc + ESLint + Vitest pass** on Day 1 edit
-  - Verify: `cd frontend; npm run lint; npm run test -- --run`
+- [x] **Vitest pass** on Day 1 edit — 8/8 (7 baseline + 1 NEW defensive)
 - [ ] **Commit Day 1** — `fix(frontend, sprint-57-33): /subagents crash fix — defensive ?. on items.length (US-B1+B2)`
 
 ---

@@ -7,6 +7,7 @@
  * Created: 2026-05-17 (Sprint 57.19 Day 4 / US-C3)
  *
  * Modification History (newest-first):
+ *   - 2026-05-24: Sprint 57.33 Day 1 US-B2 — defensive spec: page survives backend payload with `items: undefined` (AD-Overview-PreExisting-Route-Crashes regression guard)
  *   - 2026-05-17: Initial creation (Sprint 57.19 Day 4 / US-C3)
  */
 
@@ -141,5 +142,33 @@ describe("SubagentsPage", () => {
     await user.click(screen.getByRole("tab", { name: /Budget/i }));
     expect(screen.getByText("Max tokens")).toBeInTheDocument();
     expect(screen.getByText(/Worktree mode is intentionally/i)).toBeInTheDocument();
+  });
+
+  // FIX-Sprint-57-33 US-B2 (2026-05-24): regression guard for
+  // AD-Overview-PreExisting-Route-Crashes — the page must survive a backend payload
+  // where the `items` field is missing/undefined (e.g. legacy stub returning only
+  // {not_implemented_reason: "..."}). Prior code did `data?.items.length` which
+  // crashed with "Cannot read properties of undefined (reading 'length')"; the fix
+  // adds `?.` on items (`data?.items?.length`). This spec asserts no throw.
+  it("survives backend payload with items field missing (defensive guard)", async () => {
+    vi.spyOn(subagentsService, "fetchSubagents").mockResolvedValue({
+      // Intentional shape: items field omitted. Cast through unknown because the
+      // SubagentListResponse type asserts items as non-optional — the bug exists
+      // precisely because runtime can diverge from declared type.
+      not_implemented_reason: "Subagent runtime not persisted (legacy stub shape).",
+      next_cursor: null,
+      page_size: 50,
+    } as unknown as Awaited<ReturnType<typeof subagentsService.fetchSubagents>>);
+    // Render must not throw with the missing-items shape. Prior to the FIX-009-style
+    // defensive guard the line `data?.items.length ?? 0` crashed inside React render,
+    // bubbling to the error boundary. With `data?.items?.length ?? 0` the optional
+    // chain short-circuits cleanly.
+    expect(() => render(wrap(<SubagentsPage />))).not.toThrow();
+    // KPI cards render immediately from the SUBAGENT_LIST fixture (no query wait).
+    expect(screen.getByText("fork", { selector: "div" })).toBeInTheDocument();
+    // Carryover banner emerges once the query resolves with the not_implemented_reason.
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent(/legacy stub shape/i);
+    });
   });
 });

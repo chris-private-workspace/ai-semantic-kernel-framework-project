@@ -19,8 +19,10 @@
  *   (8 rows) for visual fidelity reference so design review can proceed.
  *
  * Created: 2026-05-17 (Sprint 57.19 Day 4 / US-C3)
+ * Last Modified: 2026-05-24
  *
  * Modification History (newest-first):
+ *   - 2026-05-24: Sprint 57.33 Day 1 US-B1 — defensive ?. on items.length (crash fix; AD-Overview-PreExisting-Route-Crashes)
  *   - 2026-05-17: Initial creation (Sprint 57.19 Day 4 / US-C3)
  *
  * Related:
@@ -259,7 +261,10 @@ function SubagentsPageInner(): JSX.Element {
 
   const active = SUBAGENT_LIST.find((s) => s.id === selectedId) ?? SUBAGENT_LIST[0];
   const notImplementedReason = data?.not_implemented_reason ?? null;
-  const realItemsCount = data?.items.length ?? 0;
+  // FIX-Sprint-57-33 US-B1 (2026-05-24): defensive ?. on items — backend stub may return
+  // {not_implemented_reason: "..."} without an items field; previously crashed the page tree
+  // with "Cannot read properties of undefined (reading 'length')" (AD-Overview-PreExisting-Route-Crashes).
+  const realItemsCount = data?.items?.length ?? 0;
 
   return (
     <div className="flex flex-col gap-[14px] p-[18px]">
