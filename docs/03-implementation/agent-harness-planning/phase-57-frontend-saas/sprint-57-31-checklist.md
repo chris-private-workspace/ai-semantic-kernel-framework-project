@@ -115,13 +115,13 @@ Day 2 + Day 3 work all done in Day 1 batched delegation. Rationale: Day 0 baseli
 - [x] **CLAUDE.md** Current Sprint row + footer updated (minimal touch)
 - [x] **`sprint-workflow.md §Scope-class multiplier matrix`** updated — `frontend-verbatim-css-repoint` row now 3 data points + baseline LIFTED 0.60→0.50 + MHist entry; `AD-Sprint-Plan-frontend-verbatim-bimodal-watch` CLOSED in row text
 - [x] **`next-phase-candidates.md`** updated — bimodal-watch CLOSED, replaced by baseline-lift AD; +2 NEW carryover (baseline-lift + CostBreakdownTable-Backend-Tenant-Scope); 3 production-only widget patterns documented
-- [ ] **Day 4 commit** — pending (next step)
-- [ ] **PR open** — pending Day 4 commit
-- [ ] **CI green → squash-merge** — pending PR
+- [x] **Day 4 commit** — `56148edf` on `feature/sprint-57-31-cost-dashboard-repoint`
+- [x] **PR open** — PR #165 https://github.com/laitim2001/ai-semantic-kernel-framework-project/pull/165
+- [x] **CI green → squash-merge** — 1st CI run failed (only `/cost-dashboard` visual-regression baseline stale, expected); workflow_dispatch triggered baseline-regen `chore/visual-baselines-26331694920`; cherry-picked regen commit `66aed649` into feature branch; CI re-run all 10 checks PASSED; squash-merged as `6c9f25cf` to main; feature branch deleted via `--delete-branch`
 
 ### 4.5 Sprint closeout self-check
 
 - [x] Sacred Rule check — 0 unchecked items deleted
 - [x] Acceptance Criteria — all pass (PARITY verdict + 0 catastrophic/structural + 5 gates green + bimodal-watch resolved + docs synced)
-- [ ] Working tree clean post-merge — pending
-- [ ] Branch deleted — pending
+- [x] Working tree clean post-merge — on main; only untracked older-sprint debug PNGs
+- [x] Branch deleted — `feature/sprint-57-31-cost-dashboard-repoint` deleted local + remote
