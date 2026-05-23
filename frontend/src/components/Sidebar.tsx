@@ -26,9 +26,10 @@
  *   collapse; i18n `nav.*` keys.
  *
  * Created: 2026-05-10 (Sprint 57.8 Day 1)
- * Last Modified: 2026-05-22
+ * Last Modified: 2026-05-24
  *
  * Modification History:
+ *   - 2026-05-24: FIX-009 — collapsed-state sidebar-head column-stack (toggle button no longer clipped past 56px boundary)
  *   - 2026-05-22: Sprint 57.29 US-B3 — verbatim re-point to mockup .sidebar/.nav-* classes (drop Tailwind translation)
  *   - 2026-05-17: Sprint 57.20 Day 1 — mockup shell.jsx port (tenant switcher + bottom user-card)
  *   - 2026-05-16: Sprint 57.18 US-C3 — PROP/DRAFT badge per entry + propCount header
@@ -106,8 +107,20 @@ export const Sidebar: FC = () => {
       data-collapsed={sidebarCollapsed || undefined}
       aria-label={t("shell.primaryNavigation")}
     >
-      {/* Sidebar head — brand mark + brand text + production-only collapse toggle */}
-      <div className="sidebar-head">
+      {/* Sidebar head — brand mark + brand text + production-only collapse toggle.
+          FIX-009 (2026-05-24): When collapsed, switch to column-stack so the
+          toggle button stays inside the 56px sidebar column (instead of being
+          pushed past the right edge by row-flex + marginLeft:auto + 26px
+          brand-mark in only 28px of usable inner width). Expanded layout is
+          untouched (style is undefined when !sidebarCollapsed). */}
+      <div
+        className="sidebar-head"
+        style={
+          sidebarCollapsed
+            ? { flexDirection: "column", height: "auto", padding: 8, gap: 6 }
+            : undefined
+        }
+      >
         <div className="brand-mark" aria-hidden="true" />
         {!sidebarCollapsed && (
           <Link to="/" className="brand-text grow" style={{ minWidth: 0 }}>
