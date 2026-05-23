@@ -20,6 +20,11 @@
  *   Empty/missing states: 404 / null sessionId → "No correction trace..."
  *
  * Created: 2026-05-10 (Sprint 57.11 Day 3 §3.2)
+ * Last Modified: 2026-05-24
+ *
+ * Modification History (newest-first):
+ *   - 2026-05-24: Sprint 57.33 Day 3 US-D2 — defensive ?? [] on entries (_groupByTurn input + .length; AD-Overview-PreExisting-Route-Crashes)
+ *   - 2026-05-10: Initial creation (Sprint 57.11 Day 3 §3.2)
  *
  * Related:
  *   - ../hooks/useCorrectionTrace.ts
@@ -55,7 +60,9 @@ export function CorrectionTraceView(): JSX.Element {
 
   const groupedByTurn = useMemo(() => {
     if (query.data === undefined) return new Map<number, VerificationLogItem[]>();
-    return _groupByTurn(query.data.entries);
+    // FIX-Sprint-57-33 US-D2: defensive ?? [] — backend may return {} without `entries`,
+    // crashing _groupByTurn's for…of (AD-Overview-PreExisting-Route-Crashes).
+    return _groupByTurn(query.data.entries ?? []);
   }, [query.data]);
 
   if (sessionId === null) {
@@ -101,7 +108,7 @@ export function CorrectionTraceView(): JSX.Element {
     <div className="space-y-6" data-testid="correction-trace">
       <div className="text-sm text-muted-foreground">
         Session <span className="font-mono">{sessionId.slice(0, 8)}…</span> /{" "}
-        {query.data.entries.length} entries
+        {(query.data.entries ?? []).length} entries
       </div>
       {Array.from(groupedByTurn.entries()).map(([turnIndex, entries]) => (
         <div key={turnIndex} data-testid={`turn-${turnIndex}`}>

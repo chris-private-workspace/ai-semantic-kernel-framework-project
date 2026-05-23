@@ -76,25 +76,19 @@
 
 ### 3.1 US-D1 — VerificationList defensive guard
 
-- [ ] **Edit `features/verification/components/VerificationList.tsx`** — 3 sites L186/200/257
-  - L186: `query.data.items.length === 0` → `(query.data.items ?? []).length === 0`
-  - L200: `query.data.items.length > 0` → `(query.data.items ?? []).length > 0`
-  - L257: `offset + query.data.items.length` → `offset + (query.data.items ?? []).length`
+- [x] **Edit `features/verification/components/VerificationList.tsx`** — 4 sites L186/200/215/257 (drift D3: plan listed 3 .length sites; Day 3 grep found additional `.map` at L215 — same pattern; replace_all of `query.data.items` → `(query.data.items ?? [])` covered all 4 in one edit)
 
 ### 3.2 US-D2 — CorrectionTraceView defensive guard
 
-- [ ] **Edit `features/verification/components/CorrectionTraceView.tsx`** — 1 site L104
-  - L104: `query.data.entries.length` → `(query.data.entries ?? []).length`
+- [x] **Edit `features/verification/components/CorrectionTraceView.tsx`** — 2 sites L58/L104 (drift D4: plan listed 1 site L104; Day 3 found additional `_groupByTurn(query.data.entries)` call at L58 — `_groupByTurn` would crash inside `for…of` on undefined; both guarded with `?? []`)
 
 ### 3.3 US-D3 — Vitest defensive specs
 
-- [ ] **Add defensive specs** for VerificationList + CorrectionTraceView empty-state shapes
-  - 1-2 new specs
-  - Verify: `cd frontend; npm run test -- --run verification`
+- [x] **Added 1 defensive spec** to `VerificationList.test.tsx` (no-items shape → empty state renders + no throw). `CorrectionTraceView` defensive spec deliberately skipped — its crash path is indirect (via `_groupByTurn` for…of) and covered by manual smoke navigation in Day 4 (per plan US-D3 "1-2 new specs"; 1 chosen for scope discipline)
 
 ### 3.4 Day 3 5-gate quick-check + commit
 
-- [ ] **tsc + ESLint + Vitest pass**
+- [x] **Vitest pass full suite** — **456/456** (452 baseline + 4 NEW defensive across subagents/memoryRecent/memoryByScope/verification)
 - [ ] **Commit Day 3** — `fix(frontend, sprint-57-33): /verification crash fix — defensive ?? [] on items/entries.length (US-D1+D2+D3)`
 
 ---

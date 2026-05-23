@@ -5,6 +5,11 @@
  * Scope: Phase 57 / Sprint 57.11 Day 3 / US-4
  *
  * Created: 2026-05-10 (Sprint 57.11 Day 3 §3.1)
+ * Last Modified: 2026-05-24
+ *
+ * Modification History (newest-first):
+ *   - 2026-05-24: Sprint 57.33 Day 3 US-D3 — defensive spec: list survives backend payload with `items: undefined` (AD-Overview-PreExisting-Route-Crashes regression guard)
+ *   - 2026-05-10: Initial creation (Sprint 57.11 Day 3 §3.1)
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -110,5 +115,27 @@ describe("VerificationList (Sprint 57.11 US-4 §3.1)", () => {
     fireEvent.click(screen.getByTestId("row-7"));
 
     await waitFor(() => expect(screen.getByTestId("timeline-page")).toBeInTheDocument());
+  });
+
+  // FIX-Sprint-57-33 US-D3 (2026-05-24): regression guard for
+  // AD-Overview-PreExisting-Route-Crashes — list must survive a backend payload
+  // where the `items` field is missing/undefined. Prior code did
+  // query.data.items.length / .map without ?? [] fallback, crashing with
+  // "Cannot read properties of undefined (reading 'length')".
+  test("survives backend payload with items field missing (defensive guard)", async () => {
+    vi.spyOn(verificationService, "fetchVerificationRecent").mockResolvedValueOnce({
+      // items field intentionally omitted; cast through unknown since the type
+      // asserts items as non-optional but runtime can diverge — that divergence
+      // IS the bug class this sprint addresses.
+      total: 0,
+      next_offset: null,
+      page_size: 50,
+    } as unknown as VerificationLogPage);
+
+    expect(() => renderList()).not.toThrow();
+    // Empty state surfaces once the query resolves cleanly.
+    await waitFor(() =>
+      expect(screen.getByText("No verification entries match the filters.")).toBeInTheDocument(),
+    );
   });
 });
