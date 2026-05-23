@@ -1,10 +1,11 @@
 /**
  * File: frontend/src/pages/cost-dashboard/index.tsx
- * Purpose: Cost Dashboard page — wraps Routes in AppShellV2 (page-level layout per Day 0 A1).
+ * Purpose: Cost Dashboard page — wraps Routes in AppShellV2; in-page .page-head is sole title per mockup.
  * Category: Frontend / pages / cost-dashboard
- * Scope: Phase 57 / Sprint 57.1 US-2 → 57.8 US-4 → Sprint 57.9 US-6 Day 4 (loading source migrated)
+ * Scope: Phase 57 / Sprint 57.1 US-2 → 57.8 US-4 → 57.9 US-6 → 57.31 Day 1 (verbatim re-point)
  *
  * Modification History (newest-first):
+ *   - 2026-05-23: Sprint 57.31 Day 1 — drop AppShellV2 pageTitle prop so in-page .page-head is sole title (mockup verbatim re-point)
  *   - 2026-05-10: Sprint 57.13 US-B5 — pageTitle via i18n t("nav.costDashboard")
  *   - 2026-05-10: Sprint 57.13 US-A2 — wrap in <RequireAuth> (was ungated)
  *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — MonthPickerSlot consumes useIsFetching for loading state (store no longer holds loading)
@@ -14,7 +15,6 @@
 
 import { useIsFetching } from "@tanstack/react-query";
 import type { FC } from "react";
-import { useTranslation } from "react-i18next";
 import { Route, Routes } from "react-router-dom";
 
 import { AppShellV2 } from "../../components/AppShellV2";
@@ -32,10 +32,13 @@ const MonthPickerSlot: FC = () => {
 };
 
 export default function CostDashboardPage() {
-  const { t } = useTranslation("common");
+  // Sprint 57.31 Day 1: NO pageTitle prop — derivedTitle (route registry) feeds the
+  // topbar <h1 className="here">; the in-page .page-head (CostOverview) is the
+  // canonical title per mockup page-admin.jsx:203-219. Matches OverviewPage
+  // Sprint 57.29 verbatim re-point pattern.
   return (
     <RequireAuth>
-      <AppShellV2 pageTitle={t("nav.costDashboard")} headerActions={<MonthPickerSlot />}>
+      <AppShellV2 headerActions={<MonthPickerSlot />}>
         <Routes>
           <Route index element={<CostOverview />} />
         </Routes>

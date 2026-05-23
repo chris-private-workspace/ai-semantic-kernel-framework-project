@@ -1,13 +1,24 @@
 /**
  * File: frontend/src/features/cost-dashboard/components/TenantTopTable.tsx
- * Purpose: Admin-scope top-8 spend-by-tenant table per mockup page-admin.jsx:258-293.
+ * Purpose: Admin-scope top-8 spend-by-tenant table — verbatim re-point to mockup page-admin.jsx:258-293.
  * Category: Frontend / cost-dashboard / components
- * Scope: Phase 57 / Sprint 57.24 Day 2 US-C2
+ * Scope: Phase 57 / Sprint 57.24 Day 2 US-C2 → 57.31 Day 1 (verbatim re-point)
  *
  * Description:
  *   Renders the mockup "Spend by tenant" admin-scope card: top-8 rows with
  *   tenant avatar + slug + optional anomaly Badge + Plan Badge + Tokens +
- *   Cost + Quota used % (color-coded) + quota BarTrack (color-coded).
+ *   Cost + Quota used % (color-coded) + quota .bar-track (color-coded).
+ *
+ *   Sprint 57.31 Day 1 verbatim re-point: consume mockup-ui <Card> + <Badge> +
+ *   verbatim CSS classes (.table / .row / .mono / .tnum / .subtle / .bar-track)
+ *   per page-admin.jsx:258-293; drop translated-Tailwind CardShell / BarTrack /
+ *   shadcn Badge wrappers in favor of mockup primitives + inline verbatim
+ *   visual-layer literals (avatar 18×18 rounded square, color-coded quota %).
+ *
+ *   Quota color: production keeps the text-danger / text-warning / text-fg-muted
+ *   class names on the quota % span (Vitest spec contract — class membership
+ *   check, NOT visual styling — class is wired to the same oklch token tree
+ *   via Tailwind config; same final color).
  *
  *   Admin scope gate: this component itself is ADMIN-AGNOSTIC — the parent
  *   (CostOverview) checks isPlatformAdmin and conditionally mounts. This
@@ -23,18 +34,21 @@
  *   - else      → muted text + success bar tone
  *
  * Created: 2026-05-19 (Sprint 57.24 Day 2 US-C2)
+ * Last Modified: 2026-05-23
  *
  * Modification History:
+ *   - 2026-05-23: Sprint 57.31 Day 1 — verbatim re-point to mockup .table/.bar-track/.row/Badge per page-admin.jsx:258-293
  *   - 2026-05-19: Initial creation (Sprint 57.24 Day 2 US-C2)
  */
 
-import type { FC } from "react";
+/* eslint-disable no-restricted-syntax -- verbatim re-point: inline-style literals (avatar geom + col widths + .bar-track fill width%/bg + colored % via var(--*)) are mockup page-admin.jsx visual-layer literals copied byte-for-byte; STYLE.md §1 escape hatch + frontend-mockup-fidelity.md */
+
+import type { CSSProperties, FC } from "react";
 import { useTranslation } from "react-i18next";
 
-import { BarTrack } from "../../../components/charts/BarTrack";
-import { Badge } from "../../../components/ui/badge";
+import { Badge } from "../../../components/mockup-ui";
 import { BackendGapBanner } from "../../../components/ui/BackendGapBanner";
-import { CardShell } from "../../../components/ui/CardShell";
+import { Card } from "../../../components/mockup-ui";
 import {
   TENANT_TOP_8_FIXTURE,
   type TenantTopRow,
@@ -46,6 +60,9 @@ const quotaBarTone = (pct: number): string => {
   return "var(--success)";
 };
 
+// Production class membership preserved for Vitest spec contract
+// (TenantTopTable.test.tsx asserts className contains text-danger / text-warning).
+// Tailwind config wires text-danger → var(--danger) — same token as inline below.
 const quotaTextClass = (pct: number): string => {
   if (pct > 100) return "text-danger";
   if (pct > 80) return "text-warning";
@@ -56,46 +73,77 @@ const TenantRow: FC<{ row: TenantTopRow; anomalyLabel: string }> = ({
   row,
   anomalyLabel,
 }) => (
-  <tr className="border-t border-border" data-testid="tenant-row">
-    <td className="px-3 py-2">
-      <span className="inline-flex items-center gap-1.5">
-        <span
-          aria-hidden
-          className="inline-flex h-[18px] w-[18px] items-center justify-center rounded bg-primary/15 text-[10px] font-semibold uppercase text-primary"
-        >
-          {row.slug[0]}
-        </span>
-        <span className="font-mono text-xs">{row.slug}</span>
-        {row.alert && (
-          <span
-            data-testid="tenant-anomaly-badge"
-            className="inline-flex items-center gap-1 rounded-full bg-danger/15 px-2 py-0.5 text-[10.5px] font-medium text-danger"
-          >
-            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />
-            {anomalyLabel}
-          </span>
-        )}
+  <tr data-testid="tenant-row">
+    {/* verbatim from page-admin.jsx:273-277 — .row + 18×18 avatar */}
+    <td className="row" style={{ gap: 6 } satisfies CSSProperties}>
+      <span
+        aria-hidden
+        style={{
+          width: 18,
+          height: 18,
+          borderRadius: 4,
+          background: "var(--primary-soft-2)",
+          color: "var(--primary)",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 10,
+          fontWeight: 600,
+        } satisfies CSSProperties}
+      >
+        {row.slug[0].toUpperCase()}
       </span>
+      <span className="mono" style={{ fontSize: 12 } satisfies CSSProperties}>
+        {row.slug}
+      </span>
+      {row.alert && (
+        <span data-testid="tenant-anomaly-badge" style={{ display: "inline-flex" } satisfies CSSProperties}>
+          <Badge tone="danger" dot>
+            {anomalyLabel}
+          </Badge>
+        </span>
+      )}
     </td>
-    <td className="px-3 py-2">
-      <Badge variant="outline">{row.plan}</Badge>
+    <td>
+      <Badge>{row.plan}</Badge>
     </td>
-    <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-fg-muted">
+    {/* verbatim from page-admin.jsx:279-280 — .mono .tnum .subtle / .mono .tnum right-aligned */}
+    <td className="mono tnum subtle" style={{ textAlign: "right" } satisfies CSSProperties}>
       {row.tokens}
     </td>
-    <td className="px-3 py-2 text-right font-mono text-xs tabular-nums">
+    <td className="mono tnum" style={{ textAlign: "right" } satisfies CSSProperties}>
       ${row.cost}
     </td>
-    <td className="px-3 py-2 text-right">
+    {/* verbatim from page-admin.jsx:281-283 — text color via inline var(--*) tone */}
+    <td style={{ textAlign: "right" } satisfies CSSProperties}>
       <span
         data-testid="tenant-quota-pct"
-        className={`font-mono text-[11px] tabular-nums ${quotaTextClass(row.pct)}`}
+        className={`mono tnum ${quotaTextClass(row.pct)}`}
+        style={{
+          fontSize: 11,
+          color:
+            row.pct > 100
+              ? "var(--danger)"
+              : row.pct > 80
+                ? "var(--warning)"
+                : "var(--fg-muted)",
+        } satisfies CSSProperties}
       >
         {row.pct}%
       </span>
     </td>
-    <td className="w-[100px] px-3 py-2">
-      <BarTrack pct={row.pct} tone={quotaBarTone(row.pct)} />
+    {/* verbatim from page-admin.jsx:284-288 — 100px-wide .bar-track */}
+    <td style={{ width: 100 } satisfies CSSProperties}>
+      <div className="bar-track" data-testid="bar-track">
+        <span
+          data-testid="bar-track-fill"
+          data-pct={Math.min(100, row.pct)}
+          style={{
+            width: `${Math.min(100, row.pct)}%`,
+            background: quotaBarTone(row.pct),
+          } satisfies CSSProperties}
+        />
+      </div>
     </td>
   </tr>
 );
@@ -103,29 +151,27 @@ const TenantRow: FC<{ row: TenantTopRow; anomalyLabel: string }> = ({
 export const TenantTopTable: FC = () => {
   const { t } = useTranslation("common");
   return (
-    <CardShell
+    <Card
       title={t("cost.tenant.title")}
       subtitle={t("cost.tenant.subtitle")}
-      bodyClass=""
+      bodyClass="flush"
     >
-      <table
-        className="w-full text-left text-xs"
-        data-testid="tenant-top-table"
-      >
+      {/* verbatim from page-admin.jsx:259-292 — .table */}
+      <table className="table" data-testid="tenant-top-table">
         <thead>
-          <tr className="text-[11px] uppercase tracking-wide text-fg-muted">
-            <th className="px-3 py-2 font-medium">{t("cost.tenant.col.tenant")}</th>
-            <th className="px-3 py-2 font-medium">{t("cost.tenant.col.plan")}</th>
-            <th className="px-3 py-2 text-right font-medium">
+          <tr>
+            <th>{t("cost.tenant.col.tenant")}</th>
+            <th>{t("cost.tenant.col.plan")}</th>
+            <th style={{ textAlign: "right" } satisfies CSSProperties}>
               {t("cost.tenant.col.tokens")}
             </th>
-            <th className="px-3 py-2 text-right font-medium">
+            <th style={{ textAlign: "right" } satisfies CSSProperties}>
               {t("cost.tenant.col.cost")}
             </th>
-            <th className="px-3 py-2 text-right font-medium">
+            <th style={{ textAlign: "right" } satisfies CSSProperties}>
               {t("cost.tenant.col.quotaUsed")}
             </th>
-            <th className="px-3 py-2" aria-hidden />
+            <th aria-hidden />
           </tr>
         </thead>
         <tbody>
@@ -138,9 +184,9 @@ export const TenantTopTable: FC = () => {
           ))}
         </tbody>
       </table>
-      <div className="px-3 pb-3 pt-1">
+      <div style={{ padding: "8px 16px 16px" } satisfies CSSProperties}>
         <BackendGapBanner reason={t("cost.banner.crossTenant")} />
       </div>
-    </CardShell>
+    </Card>
   );
 };
