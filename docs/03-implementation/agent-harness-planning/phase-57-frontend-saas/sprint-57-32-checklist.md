@@ -140,44 +140,44 @@
 - [x] All Day 3 files lint-clean (ESLint exit 0)
 - [x] tsc strict — 0 new errors (TS6310 carryover pre-existing only)
 - [x] Playwright shot `day3-sla-dashboard-full.png` confirms PARITY (Top slow ops table 6 rows with Badge tone-per-kind + p99 color-coded; Error rate by service 6 rows with .bar-track scaled by rate × 50)
-- [ ] Day 3 commit (pending; next step)
+- [x] Day 3 commit — `3787d91f` on `feature/sprint-57-32-sla-dashboard-repoint`
 
 ---
 
 ## Day 4 — Group E (regression sweep + fidelity + closeout)
 
-### 4.1 US-E1 — 22-route regression sweep
+### 4.1 US-E1 — 22-route regression sweep — ✅ done
 
-- [ ] **after-sweep** via `route-sweep.mjs after` — 22 PNG captured
-- [ ] **Agent triage** — expect 18 🟢 PARITY + 1 🟢 PROP-stub + 0 🟡/🟠/🔴 + 3 ⚪ pre-existing fails (continuation of cleanest-yet pattern from 57.30-57.31)
-- [ ] **REPOINT-REPORT.md** written (agent-produced)
+- [x] **after-sweep** via `route-sweep.mjs after` — 22/22 PNG captured
+- [x] **Sweep triage** — 17 🟢 PARITY shell + 1 🟢 PARITY target + 1 🟢 PROP-stub + 0 🟡/🟠/🔴 + 3 ⚪ pre-existing fails (cleanest yet)
+- [x] **REPOINT-REPORT.md** written
 
-### 4.2 US-E2 — /sla-dashboard fidelity verify
+### 4.2 US-E2 — /sla-dashboard fidelity verify — ✅ done
 
-- [ ] **Step 1** styles.css ↔ styles-mockup.css diff → must remain empty (foundation untouched)
-- [ ] **Step 2** mockup vs prod assessed via triage agent (read mockup file + Day 3 verify screenshots)
-- [ ] **Step 3** representative mockup elements catalogued in REPOINT-REPORT.md (page-head + KPI + LatencyChart + SLOStatus + TopSlowOps + ErrorRateByService)
-- [ ] **Step 4** drift verdict logged (target: **🟢 PARITY**)
+- [x] **Step 1** styles-mockup.css ↔ reference/design-mockups/styles.css diff → **empty** (foundation byte-identical contract honored)
+- [x] **Step 2** mockup vs prod assessed via REPOINT-REPORT element-by-element table (12+ representative elements)
+- [x] **Step 3** representative mockup elements catalogued in REPOINT-REPORT.md (.page-head + .grid-stats KPI + LatencyChart .chart/.grid/.axis + SLOStatusCard 5-row .bar-track + TopSlowOpsTable .table + ErrorRateByServiceCard .bar-track + 3 BackendGapBanner AP-2 honesty)
+- [x] **Step 4** drift verdict logged: **🟢 PARITY**
 
-### 4.3 US-E3 — Full gates
+### 4.3 US-E3 — Full gates — ✅ done
 
-- [ ] tsc strict — only pre-existing TS6310 carryover (no new errors)
-- [ ] ESLint exit 0
-- [ ] Vitest baseline maintained (452 ± 5)
-- [ ] Vite build successful
-- [ ] check:mockup-fidelity 25/25 unchanged (no new oklch literals)
-- [ ] Bundle size delta logged (expected ~0; no orphan cleanup this sprint)
+- [x] tsc strict — 0 new errors (TS6310 carryover pre-existing only)
+- [x] ESLint exit 0
+- [x] Vitest 94 files / 452/452 baseline maintained; sla-dashboard subset 30/30
+- [x] Vite build successful (3.21s)
+- [x] check:mockup-fidelity 25/25 baseline maintained; foundation diff guard PASSED
+- [x] Bundle size delta: 0 (no orphan cleanup; no new modules)
 
 ### 4.4 US-E4 — Closeout
 
-- [ ] **retrospective.md** Q1-Q7 written (Q7 N/A SKIP per Sprint 57.29-57.31 precedent; Q4 has baseline-lift 1st-data-point evaluation + RESOLUTION action)
-- [ ] **Memory snapshot** `memory/project_phase57_32_sla_dashboard_repoint.md` NEW
-- [ ] **MEMORY.md** pointer entry added (~250-300 char quality pointer per `.claude/rules/sprint-workflow.md §Sprint Closeout`)
-- [ ] **CLAUDE.md** Current Sprint row + footer updated (minimal touch per `.claude/rules/sprint-workflow.md §Sprint Closeout — CLAUDE.md Update Policy`)
-- [ ] **`sprint-workflow.md §Scope-class multiplier matrix`** updated — `frontend-verbatim-css-repoint` row now 4 data points + baseline-lift 1st-data-point validation result + MHist entry
-- [ ] **`next-phase-candidates.md`** updated — update baseline-lift AD with 1st validation result; carryover open items refreshed
-- [ ] **Day 4 commit** on `feature/sprint-57-32-sla-dashboard-repoint`
-- [ ] **PR open** — `gh pr create` with body listing Sprint Goal + USs completed + 5 gates + bimodal/baseline-lift narrative + 22-route sweep summary
+- [x] **retrospective.md** Q1-Q7 written (Q7 N/A SKIP per Sprint 57.29-57.31 precedent; Q4 has baseline-lift 1st-data-point evaluation + RESOLUTION action)
+- [x] **Memory snapshot** `memory/project_phase57_32_sla_dashboard_repoint.md` NEW
+- [x] **MEMORY.md** pointer entry added (~300 char quality pointer)
+- [x] **CLAUDE.md** Current Sprint row + footer updated (minimal touch)
+- [x] **`sprint-workflow.md §Scope-class multiplier matrix`** updated — `frontend-verbatim-css-repoint` row now 4 data points + baseline-lift 1st-data-point validation result + MHist entry
+- [x] **`next-phase-candidates.md`** updated — Sprint 57.32 Carryover section added; baseline-lift AD updated with 1st validation status
+- [ ] **Day 4 commit** on `feature/sprint-57-32-sla-dashboard-repoint` (pending; next step)
+- [ ] **PR open** — `gh pr create` with body listing Sprint Goal + USs completed + 5 gates + baseline-lift 1st-validation narrative + 22-route sweep summary
 - [ ] **CI green → squash-merge** — if `/sla-dashboard` visual-regression baseline stale, expect manual ff-merge required (AD-CI-7-GHA-PR-Permission still open; same workaround as 57.31)
 
 ### 4.5 Sprint closeout self-check

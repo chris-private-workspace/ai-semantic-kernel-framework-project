@@ -70,7 +70,7 @@ Build enterprise AI agent teams that work like **human professional teams** — 
 | Attribute | Value |
 |-----------|-------|
 | **Phase** | V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend ongoing (Phase 57+) |
-| **Current Sprint** | Sprint 57.31 closed 2026-05-23 (PR pending) — AD-Cost-Dashboard-Verbatim-Repoint; 3rd Phase-2 per-page re-point — `/cost-dashboard` 7 components batched Day 1 single agent delegation (per Day 0 finding production already very mockup-aligned from Sprint 57.24 v2); fidelity verdict **PARITY**, 22-route sweep **cleanest yet** (18 🟢 PARITY + 1 🟢 PROP-stub + 0 🟡/🟠/🔴 + 3 ⚪ pre-existing fails — shell unchanged from 57.30); 3rd data point RESOLVES `AD-Sprint-Plan-frontend-verbatim-bimodal-watch` (CLOSED — bimodal hypothesis REJECTED: 57.29+57.31 same shape with vastly different ratios 1.0 vs 0.35, so shape NOT driver of variance; driver IS estimate generosity diminishing across class iteration) → **`frontend-verbatim-css-repoint` baseline LIFTED 0.60→0.50** + NEW `AD-Sprint-Plan-frontend-verbatim-css-repoint-baseline-lift` validates 0.50 next 2-3 sprints; 3 production-only widget patterns identified (mockup-token-only / mockup-table-vocabulary-no-AP-2 / mockup-vocabulary-with-AP-2); see `memory/project_phase57_31_cost_dashboard_repoint.md` for detail. Next: see `claudedocs/1-planning/next-phase-candidates.md` (Phase-2 epic — 11 🟡 routes + 3 ⚪ crash-fix routes remaining) |
+| **Current Sprint** | Sprint 57.32 closed 2026-05-24 (PR pending) — `/sla-dashboard` Phase-2 verbatim CSS re-point (4th app of Phase-2 epic); fidelity PARITY; 1st validation of `frontend-verbatim-css-repoint` 0.50 lifted baseline (ratio ~0.40-0.55 lower band edge → KEEP 0.50 per 3-sprint window rule); cleanest mockup mapping of any Phase-2 sprint (0 production-only widgets). Detail in `memory/project_phase57_32_sla_dashboard_repoint.md`. Next: see `claudedocs/1-planning/next-phase-candidates.md` (Phase-2 epic — 10 🟡 routes + 3 ⚪ crash-fix routes remaining) |
 | **Sprint History** | See [`memory/MEMORY.md`](memory/MEMORY.md) §Recent Sprints + per-sprint subfile `memory/project_phase57_XX_*.md` + retrospective.md under `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-XX/` |
 | **Pending / Next Phase** | See [`claudedocs/1-planning/next-phase-candidates.md`](claudedocs/1-planning/next-phase-candidates.md) |
 | **Roadmap** | Phase 49-55 V2 ✅ / Phase 56-58 SaaS Stage 1 3/3 ✅ / Phase 57+ Frontend ongoing |
@@ -625,7 +625,7 @@ V1 完整 CLAUDE.md 已保留於 `CLAUDE.backup.md`。如需查閱 V1 架構（M
 
 ---
 
-**Last Updated**: 2026-05-23 (Sprint 57.31 — Cost-Dashboard Verbatim Re-Point + bimodal-watch CLOSED + class-baseline 0.50 lift); see `memory/` for sprint history
+**Last Updated**: 2026-05-24 (Sprint 57.32 — SLA-Dashboard Verbatim Re-Point + baseline-lift 1st validation); see `memory/` for sprint history
 **Project Start**: 2025-11-14
 **V2 Authority**: `docs/03-implementation/agent-harness-planning/` (21 docs — 20 規劃 + 1 review)
 **V1 Reference**: `CLAUDE.backup.md` + `docs/07-analysis/V9/00-index.md`

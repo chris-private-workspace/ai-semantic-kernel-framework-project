@@ -176,3 +176,36 @@ Day 3 wall-clock ~25 min (2 file edits + verify; no spec drift surprise — Hybr
 ### Open items
 
 - Day 4 closeout pending: 22-route after-sweep + agent triage + REPOINT-REPORT.md + /sla-dashboard fidelity verify + full gates + retrospective.md Q1-Q7 + memory snapshot + docs sync + PR + CI green → merge + baseline-lift 1st validation data point logged.
+
+---
+
+## Day 4 — Group E (regression sweep + fidelity + closeout) — ✅ done (2026-05-24)
+
+### Today's Accomplishments
+
+- **US-E1 22-route regression sweep** — `route-sweep.mjs after` 22/22 ✓; triage 17 🟢 PARITY shell + 1 🟢 PARITY target (`/sla-dashboard`) + 1 🟢 PROP-stub (`/compaction`) + 0 🟡/🟠/🔴 cosmetic/structural + 3 ⚪ pre-existing fails (`/subagents` `/memory` `/verification` — known `AD-Overview-PreExisting-Route-Crashes`); cleanest yet (matching Sprint 57.30-57.31 trend). REPOINT-REPORT.md written.
+- **US-E2 /sla-dashboard fidelity verify** — `styles-mockup.css` ↔ `reference/design-mockups/styles.css` diff EMPTY (foundation byte-identical contract honored); 12+ mockup elements verified element-by-element vs production (.page-head + .route-pill + .btn-group + .grid-stats KPI + LatencyChart .chart/.grid/.axis + SLOStatusCard 5-row .bar-track + TopSlowOpsTable .table + ErrorRateByServiceCard .bar-track + 3 BackendGapBanner AP-2). Drift verdict: **🟢 PARITY**.
+- **US-E3 Full gates** — tsc 0 new errors / ESLint exit 0 / Vitest 452/452 (sla-dashboard 30/30) / Vite build 3.21s / check:mockup-fidelity 25/25 baseline maintained + foundation diff guard PASSED / bundle delta 0.
+- **US-E4 Closeout** — retrospective.md Q1-Q7 (Q7 N/A SKIP) + memory snapshot `project_phase57_32_sla_dashboard_repoint.md` + MEMORY.md pointer entry + CLAUDE.md Current Sprint row + footer (minimal touch per policy) + `.claude/rules/sprint-workflow.md §Scope-class multiplier matrix` row updated (4 data points + 57.32 evaluation criteria + MHist entry) + `next-phase-candidates.md` Sprint 57.32 Carryover section added (baseline-lift 1st validation status).
+
+### 5-gate final result
+
+| Gate | Result | Evidence |
+|------|--------|----------|
+| 1. Vitest | ✅ | 94 files / 452/452 baseline; sla-dashboard 30/30; 0 spec drift on Day 3 (Hybrid bridge preemptive) |
+| 2. tsc strict | ✅ | Only pre-existing TS6310 carryover |
+| 3. ESLint | ✅ | exit 0 |
+| 4. Vite build | ✅ | `built in 3.21s` |
+| 5. check:mockup-fidelity | ✅ | 25/25 baseline; styles-mockup.css ↔ reference/design-mockups/styles.css diff empty |
+
+### Sprint final calibration ratio (4th data point for baseline-lift AD)
+
+- Committed (HYBRID blended ≈ 0.55 anchored to class baseline 0.50): **~5-7.5 hr**
+- Actual wall-clock: **~3 hr** (Day 0 ~1 hr + Day 1 ~30 min + Day 2 ~30 min + Day 3 ~25 min + Day 4 ~35 min)
+- **Ratio actual / committed ≈ 0.40-0.55** (lower band edge of [0.85, 1.20] band)
+- Per §Class baseline 4th-data-point evaluation: "0.50 still too generous; propose 0.40 next iteration" range
+- Per `When to adjust` 3-sprint window rule: KEEP 0.50 this iteration (1 validation data point insufficient); if 57.33+57.34 also < 0.7 → propose 0.50 → 0.40 in 57.34 retro
+
+### Open items
+
+- Day 4 commit + PR + CI + squash-merge pending (next mechanical steps).

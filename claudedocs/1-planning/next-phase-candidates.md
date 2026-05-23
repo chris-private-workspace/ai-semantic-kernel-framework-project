@@ -4,11 +4,19 @@
 
 **Selection Rule**: User explicitly selects → draft plan kicks off Sprint XX.Y; otherwise items wait here indefinitely until selected or archived.
 
-**Updated**: 2026-05-23 (Sprint 57.31 closeout — 3rd Phase-2 per-page re-point /cost-dashboard; +2 NEW carryover / -1 CLOSED bimodal-watch + class baseline LIFTED 0.60→0.50)
+**Updated**: 2026-05-24 (Sprint 57.32 closeout — 4th Phase-2 per-page re-point /sla-dashboard; 1st validation data point for baseline-lift AD — 4-pt mean ≈0.55 lower edge → KEEP 0.50 per 3-sprint window)
 
 ---
 
-## 🆕 Sprint 57.31 Carryover (2026-05-23 — /cost-dashboard Phase-2)
+## 🆕 Sprint 57.32 Carryover (2026-05-24 — /sla-dashboard Phase-2)
+
+Sprint 57.32 (`AD-Sla-Dashboard-Verbatim-Repoint`) closed: `/sla-dashboard` 7 files re-pointed — fidelity verdict **PARITY**, 22-route sweep **cleanest yet** (17 🟢 PARITY shell + 1 🟢 PARITY target + 1 🟢 PROP-stub + 0 🟡/🟠/🔴 + 3 ⚪ pre-existing fails). 4th data point for `frontend-verbatim-css-repoint` 0.50 (lifted) class; **cleanest mockup mapping of any Phase-2 sprint** (0 production-only widgets — distinct from Sprint 57.31 cost-dashboard which had 3). ~3 hr total wall-clock. Carryover updates:
+
+- **AD-Sprint-Plan-frontend-verbatim-css-repoint-baseline-lift** (Sprint 57.31 NEW; **1st validation data point this sprint**) — Sprint 57.32 ratio actual/committed ~0.40-0.55 (lower band edge). 4-pt mean ≈0.55 lower edge; 3-pt mean ≈0.40 excluding 57.29 anchor (below band by 0.30). Per `When to adjust` 3-sprint window rule, 1 validation data point insufficient to adjust further → **KEEP 0.50 baseline this iteration**. If Sprint 57.33 + 57.34 also < 0.7 → propose 0.50 → 0.40 in Sprint 57.34 retrospective.
+
+- **Hybrid Tailwind+inline color bridge pattern matured across 5 files** (Sprint 57.29 carryover `AD-Inline-Style-Rule-vs-Verbatim-Method` partial exercise) — applied across SLAOverview, LatencyChart, SLOStatusCard, TopSlowOpsTable, ErrorRateByServiceCard. Day 2 SLOStatusCard caught 2 spec drift; Day 3 applied bridge preemptively → 0 spec drift. Pattern documented as standard for Sprint 57.25+ dashboards being Phase-2 re-pointed. Lesson: any color-tone Tailwind class (`text-warning`, `text-danger`, `text-fg-muted`) used in Sprint 57.25 spec contracts should be preserved alongside inline `style={{ color: var(--*) }}` for verbatim.
+
+## Sprint 57.31 Carryover (2026-05-23 — /cost-dashboard Phase-2)
 
 Sprint 57.31 (`AD-Cost-Dashboard-Verbatim-Repoint`) closed: `/cost-dashboard` 7 components batched Day 1 single agent delegation — fidelity verdict **PARITY**, 22-route sweep **cleanest yet** (18 🟢 PARITY + 1 🟢 PROP-stub + 0 🟡/🟠/🔴 + 3 ⚪ pre-existing fails — shell unchanged from 57.30 + cost-dashboard gain internal). 3rd data point for `frontend-verbatim-css-repoint` 0.60 class. New carryover:
 
