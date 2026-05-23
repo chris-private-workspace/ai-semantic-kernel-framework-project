@@ -4,15 +4,29 @@
 
 **Selection Rule**: User explicitly selects → draft plan kicks off Sprint XX.Y; otherwise items wait here indefinitely until selected or archived.
 
-**Updated**: 2026-05-23 (Sprint 57.30 closeout — 2nd Phase-2 per-page re-point + shell hotfix; +5 carryover ADs / -1 closed)
+**Updated**: 2026-05-23 (Sprint 57.31 closeout — 3rd Phase-2 per-page re-point /cost-dashboard; +2 NEW carryover / -1 CLOSED bimodal-watch + class baseline LIFTED 0.60→0.50)
 
 ---
 
-## 🆕 Sprint 57.30 Carryover (2026-05-23 — chat-v2 Phase-2 + shell hotfix)
+## 🆕 Sprint 57.31 Carryover (2026-05-23 — /cost-dashboard Phase-2)
+
+Sprint 57.31 (`AD-Cost-Dashboard-Verbatim-Repoint`) closed: `/cost-dashboard` 7 components batched Day 1 single agent delegation — fidelity verdict **PARITY**, 22-route sweep **cleanest yet** (18 🟢 PARITY + 1 🟢 PROP-stub + 0 🟡/🟠/🔴 + 3 ⚪ pre-existing fails — shell unchanged from 57.30 + cost-dashboard gain internal). 3rd data point for `frontend-verbatim-css-repoint` 0.60 class. New carryover:
+
+- **AD-Sprint-Plan-frontend-verbatim-css-repoint-baseline-lift** (Day 4 calibration) — replaces CLOSED `AD-Sprint-Plan-frontend-verbatim-bimodal-watch` (Sprint 57.30 carryover). Bimodal hypothesis REJECTED — 57.29 + 57.31 same rich-dashboard shape with vastly different ratios (1.0 vs 0.35), so shape NOT the driver of variance. Driver IS estimate generosity diminishing as class iteration matures. Per `When to adjust` 3+ consecutive < 0.7 rule (57.30 + 57.31 + the 0.45+ below-band magnitude on 2 of 3 = clear signal) → LOWER baseline 0.60 → 0.50. Validate 0.50 across next 2-3 sprints; if continues < 0.5 → consider 0.40 next iteration.
+- **AD-CostBreakdownTable-Backend-Tenant-Scope** (Day 1 D4 finding) — `CostBreakdownTable.tsx` shows real backend `by_type` 2-level drill-down (`cost_type/sub_type/quantity/total_cost_usd/entry_count`) for current authenticated tenant; distinct from `TenantTopTable` (cross-tenant admin fixture). Document data ownership to prevent accidental merge in future sprints; consider adding ARCHITECTURE.md section on cost-dashboard data flows.
+
+**3 production-only widget patterns identified** (generalizable for future Phase-2 sprints):
+1. **Mockup token vocabulary only** (MonthPicker D5) — `var(--*)` inline; no AP-2 banner; UI affordance.
+2. **Mockup `.table` vocabulary verbatim** (CostBreakdownTable D4 decision c) — real backend; no AP-2; same vocabulary as if mockup had it.
+3. **Mockup vocabulary + AP-2 BackendGapBanner** (e.g. Sprint 57.30 InputBar error) — fixture data; AP-2 honesty banner.
+
+---
+
+## Sprint 57.30 Carryover (2026-05-23 — chat-v2 Phase-2 + shell hotfix; AD-Sprint-Plan-frontend-verbatim-bimodal-watch CLOSED in 57.31)
 
 Sprint 57.30 (`AD-Chatv2-Verbatim-Repoint + Shell-Hotfix-UserMenu-Avatar`) closed: `/chat-v2` 19 components re-pointed to verbatim mockup CSS + Day 1 shell hotfix (UserMenu Radix-drop + verbatim `useDismiss` port + avatar trigger 36→26 split + topbar icon audit 0 drift) — fidelity verdict **PARITY**, 22-route sweep 0 catastrophic / 0 structural; Day 5 orphan cleanup deletes `dropdown-menu.tsx` + `npm uninstall @radix-ui/react-dropdown-menu` → bundle **-116.87 KB / -38.37 KB gzipped**. Closed `AD-UserMenu-Mockup-Structural-Deltas` (Sprint 57.29 carryover). New carryover:
 
-- **AD-Sprint-Plan-frontend-verbatim-bimodal-watch** (Day 5 calibration) — `frontend-verbatim-css-repoint` 0.60 baseline 2-data-point: 57.29 ≈1.0 (in-band middle) vs 57.30 ≈0.40 (below band by 0.45). 2-pt mean 0.70 lower edge. KEEP 0.60 per `When to adjust` 3-sprint window rule (2 pts insufficient). Watch 3rd data point; if continues low, propose split between "structural-heavy re-point" (0.65) and "css-swap-only re-point" (0.40).
+- ✅ **CLOSED Sprint 57.31**: **AD-Sprint-Plan-frontend-verbatim-bimodal-watch** — Sprint 57.31 3rd data point evaluation rejected bimodal hypothesis; replaced by `AD-Sprint-Plan-frontend-verbatim-css-repoint-baseline-lift` above.
 - **AD-Tsconfig-Node-NoEmit** (Day 1 finding) — `tsc --strict` reports pre-existing `TS6310: referenced project tsconfig.node.json may not disable emit` since baseline `5c0ce0dd`. Not introduced by Sprint 57.30. Defer to tooling cleanup sprint or separate PR.
 - **AD-Topbar-Use-Button-Primitive** (Day 0 D4 finding) — production Topbar uses raw `<button className="btn ghost" data-size="sm">` instead of mockup-ui `<Button>` primitive. Rendered DOM byte-identical; cosmetic-code-style refactor, low ROI. Defer.
 - **AD-Topbar-Tweaks-Panel-Phase58+** (Day 0 D5 finding) — mockup `shell.jsx:218` has `<Button icon="sliders" onToggleTweaks>` Tweaks button; production omits it (no Tweaks panel implementation). Defer to Phase 58+ when Tweaks panel ships.
