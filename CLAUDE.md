@@ -70,7 +70,7 @@ Build enterprise AI agent teams that work like **human professional teams** — 
 | Attribute | Value |
 |-----------|-------|
 | **Phase** | V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend ongoing (Phase 57+) |
-| **Current Sprint** | Sprint 57.32 closed 2026-05-24 (PR pending) — `/sla-dashboard` Phase-2 verbatim CSS re-point (4th app of Phase-2 epic); fidelity PARITY; 1st validation of `frontend-verbatim-css-repoint` 0.50 lifted baseline (ratio ~0.40-0.55 lower band edge → KEEP 0.50 per 3-sprint window rule); cleanest mockup mapping of any Phase-2 sprint (0 production-only widgets). Detail in `memory/project_phase57_32_sla_dashboard_repoint.md`. Next: see `claudedocs/1-planning/next-phase-candidates.md` (Phase-2 epic — 10 🟡 routes + 3 ⚪ crash-fix routes remaining) |
+| **Current Sprint** | Sprint 57.33 closed 2026-05-24 (PR pending) — page-bug-fix sweep on 3 ⚪ pre-existing crash routes (`/subagents` + `/memory` + `/verification`) — defensive `(query.data.X ?? []).length/map` across 5 files / 11 sites; 22-route sweep 3 ⚪ → ✅ flip + 0 regressions; Vitest 452→456 (4 NEW defensive specs); NEW class `frontend-page-bug-fix` 0.45 1st app ratio 1.24 top edge of band; closes `AD-Overview-PreExisting-Route-Crashes` carryover; unblocks Phase-2 re-point on these 3 routes. Detail in `memory/project_phase57_33_page_bug_fix_sweep.md`. Next: see `claudedocs/1-planning/next-phase-candidates.md` (Phase-2 epic — 10 🟡 routes remaining; 3 ⚪ routes now unblocked for re-point candidacy) |
 | **Sprint History** | See [`memory/MEMORY.md`](memory/MEMORY.md) §Recent Sprints + per-sprint subfile `memory/project_phase57_XX_*.md` + retrospective.md under `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-XX/` |
 | **Pending / Next Phase** | See [`claudedocs/1-planning/next-phase-candidates.md`](claudedocs/1-planning/next-phase-candidates.md) |
 | **Roadmap** | Phase 49-55 V2 ✅ / Phase 56-58 SaaS Stage 1 3/3 ✅ / Phase 57+ Frontend ongoing |
@@ -625,7 +625,7 @@ V1 完整 CLAUDE.md 已保留於 `CLAUDE.backup.md`。如需查閱 V1 架構（M
 
 ---
 
-**Last Updated**: 2026-05-24 (Sprint 57.32 — SLA-Dashboard Verbatim Re-Point + baseline-lift 1st validation); see `memory/` for sprint history
+**Last Updated**: 2026-05-24 (Sprint 57.33 — Page Bug Fix Sweep: 3 ⚪ crash routes flipped to ✅; NEW class `frontend-page-bug-fix` 0.45 1st app); see `memory/` for sprint history
 **Project Start**: 2025-11-14
 **V2 Authority**: `docs/03-implementation/agent-harness-planning/` (21 docs — 20 規劃 + 1 review)
 **V1 Reference**: `CLAUDE.backup.md` + `docs/07-analysis/V9/00-index.md`

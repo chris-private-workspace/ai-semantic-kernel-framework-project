@@ -97,41 +97,33 @@
 
 ### 4.1 US-E1 — 22-route sweep after
 
-- [ ] **Run `route-sweep.mjs after`** — OUT_DIR = `frontend/screenshots/sprint-57-33-page-bug-fix/after/`
-  - DoD: 22 PNGs captured
-  - Verify: `cd frontend; node scripts/route-sweep.mjs after`
-- [ ] **Sweep delta analysis** — confirm 3 ⚪ → ✅ PARITY; no other route regresses
-  - DoD: REPOINT-REPORT.md documents delta with concrete per-route status table
+- [x] **Run `route-sweep.mjs after`** — 22 PNGs captured to `claudedocs/4-changes/sprint-57-33-page-bug-fix/screenshots/after/`
+- [x] **Sweep delta analysis** — 3 ⚪ → ✅ flip confirmed (subagents = full Registry; memory = empty state; verification = filter form + empty state); 0 regressions on 19 other routes; FIX-REPORT.md documents per-route delta
 
 ### 4.2 US-E2 — Manual smoke navigation
 
-- [ ] **Navigate `/subagents`** — empty-state or list renders; no error boundary
-- [ ] **Navigate `/memory`** (both Recent + By Scope tabs) — same
-- [ ] **Navigate `/verification`** — same
-- [ ] Capture 3 verification screenshots (added to `frontend/screenshots/sprint-57-33-page-bug-fix/manual/`)
+- [x] **Navigate `/subagents`** — empty-state or list renders; no error boundary
+- [x] **Navigate `/memory`** (both Recent + By Scope tabs) — same
+- [x] **Navigate `/verification`** — same
+- [x] 3 verification screenshots captured via after-baseline sweep (sampling subagents.png / memory.png / verification.png from `screenshots/after/` in lieu of separate manual/ dir; functionally equivalent)
 
 ### 4.3 US-E3 — Final 5-gate verification
 
-- [ ] **tsc** (via `npm run build`)
-- [ ] **ESLint** (`npm run lint`)
-- [ ] **Vitest** — count = 452 baseline + 3-5 new specs (final ~455-457)
-- [ ] **Vite build** — success
-- [ ] **check:mockup-fidelity** — diff empty + grep clean (CSS untouched)
+- [x] **tsc + Vite build** — `built in 3.16s` (subsumed in `npm run build`)
+- [x] **ESLint** — exit 0
+- [x] **Vitest** — **456/456** (452 baseline + 4 NEW defensive)
+- [x] **check:mockup-fidelity** — diff empty + grep clean (baseline 25 hex/oklch unchanged)
 
 ### 4.4 US-E4 — Docs sync
 
-- [ ] **REPOINT-REPORT.md** — `claudedocs/4-changes/sprint-57-33-page-bug-fix/REPOINT-REPORT.md` documenting:
-  - 3 ⚪ → ✅ flip
-  - 10 sites fixed across 5 files
-  - 3-5 new Vitest defensive specs
-  - 22-route sweep delta
-- [ ] **progress.md Day 0-4** — daily entries with `Task X.Y — actual Z min (est ~W min, delta ±N%)` format
-- [ ] **retrospective.md Q1-Q7** — Q2 calibration (`actual/committed` + `actual/bottom-up` + class evaluation per `When to adjust`)
-- [ ] **`sprint-workflow.md §Scope-class multiplier matrix`** — add NEW `frontend-page-bug-fix` 0.45 row (1st application) + MHist entry
-- [ ] **memory subfile** — `memory/project_phase57_33_page_bug_fix_sweep.md` with sprint summary
-- [ ] **`MEMORY.md` pointer** — ~250-300 char quality pointer (topic + keywords + subfile link)
-- [ ] **`CLAUDE.md` Current Sprint row + footer** — minimal touch (1-2 lines)
-- [ ] **`next-phase-candidates.md`** — close AD-Overview-PreExisting-Route-Crashes (RESOLVED) + Sprint 57.33 Carryover section
+- [x] **FIX-REPORT.md** — `claudedocs/4-changes/sprint-57-33-page-bug-fix/FIX-REPORT.md` (3 ⚪ → ✅ delta + 11 sites fixed across 5 files + 4 NEW Vitest specs + drift catalog D1-D4 + calibration; renamed from REPOINT-REPORT.md since this is a bug-fix not re-point sprint)
+- [x] **progress.md Day 0-4** — daily entries with task-level estimate vs actual
+- [x] **retrospective.md Q1-Q7** — Q2 calibration ratio 1.24 top edge of band + 1st-data-point KEEP 0.45
+- [x] **`sprint-workflow.md §Matrix`** — NEW `frontend-page-bug-fix` 0.45 row added + MHist entry
+- [x] **memory subfile** — `memory/project_phase57_33_page_bug_fix_sweep.md` written
+- [x] **`MEMORY.md` pointer** — Sprint 57.33 entry added above Sprint 57.32 entry
+- [x] **`CLAUDE.md` Current Sprint row + footer** — minimal touch (2 line edits)
+- [x] **`next-phase-candidates.md`** — Sprint 57.33 Carryover section added + AD-Overview-PreExisting-Route-Crashes marked ✅ RESOLVED
 
 ### 4.5 US-E5 — Commit + PR + merge
 

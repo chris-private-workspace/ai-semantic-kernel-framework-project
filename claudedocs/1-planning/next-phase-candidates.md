@@ -4,11 +4,25 @@
 
 **Selection Rule**: User explicitly selects → draft plan kicks off Sprint XX.Y; otherwise items wait here indefinitely until selected or archived.
 
-**Updated**: 2026-05-24 (Sprint 57.32 closeout — 4th Phase-2 per-page re-point /sla-dashboard; 1st validation data point for baseline-lift AD — 4-pt mean ≈0.55 lower edge → KEEP 0.50 per 3-sprint window)
+**Updated**: 2026-05-24 (Sprint 57.33 closeout — page-bug-fix sweep on 3 ⚪ crash routes; closes `AD-Overview-PreExisting-Route-Crashes` carryover; NEW class `frontend-page-bug-fix` 0.45 1st app ratio 1.24 top edge of band)
 
 ---
 
-## 🆕 Sprint 57.32 Carryover (2026-05-24 — /sla-dashboard Phase-2)
+## 🆕 Sprint 57.33 Carryover (2026-05-24 — Page Bug Fix Sweep)
+
+Sprint 57.33 (`AD-Page-Bug-Fix-Sweep`) closed: 3 ⚪ pre-existing crash routes (`/subagents` + `/memory` + `/verification`) fixed by adding defensive `(query.data.X ?? []).length/map` across 5 files / 11 sites including 4 drift sites D1-D4 (`.map` × 3 + `_groupByTurn(items)` × 1) found by widening Day 0 grep beyond `.length`. 22-route sweep: **3 ⚪ → ✅ flip + 0 regressions** on other 19 routes. Vitest 452 → 456 (4 NEW defensive specs). NEW class `frontend-page-bug-fix` 0.45 1st application; ratio actual/committed **1.24** top edge of [0.85, 1.20] band +0.04 over. ~2.8 hr wall-clock. Closes `AD-Overview-PreExisting-Route-Crashes` carryover from Sprint 57.29-32. Updates:
+
+- ✅ **RESOLVED — AD-Overview-PreExisting-Route-Crashes** (Sprint 57.29-32 carryover) — fully closed. 3 ⚪ routes now render proper UI (subagents = full Registry + 4 KPI cards + table; memory = Recent + By Scope tabs + empty state; verification = Recent + Correction Trace tabs + filter form + empty state).
+
+- 🆕 **AD-Sprint-Plan-frontend-page-bug-fix-1st-data-point** — KEEP 0.45 baseline per `When to adjust` 3-sprint window rule. If next 2-3 applications show ratio > 1.20 consistently → propose **0.45 → 0.55-0.60 lift** (mechanical-class-like trend, parallel to Sprint 57.16 AD-Sprint-Plan-13 `frontend-refactor-mechanical` 0.50 → 0.80 evidence).
+
+- 🆕 **AD-CorrectionTraceView-Defensive-Spec** (low priority) — defensive Vitest spec for `CorrectionTraceView` deliberately skipped this sprint per US-D3 "1-2 new specs" scope discipline. Crash path is indirect (via `_groupByTurn(entries)` for…of); covered by Day 4 manual smoke + 22-route sweep flip. Add in future maintenance sprint if `/verification` structural rebuild is scheduled.
+
+- 📚 **Lesson logged in retrospective Q4** — for "undefined-field" / "missing property" crash classes, Day 0 Prong 2 grep should query **all access patterns** on the at-risk field (`\.length`, `\.map`, `\.filter`, `\.forEach`, bare references as function args), not just the access pattern surfaced in the bug repro. 4 drift sites D1-D4 in this sprint are evidence.
+
+- 🔓 **Unblocks** — Phase-2 verbatim CSS re-point candidates for `/subagents`, `/memory`, `/verification` (sweep `after` baselines now meaningful; visual fidelity audit can proceed). `/memory` STRUCTURAL rebuild Phase 58+ remains unchanged scope (independent of crash-fix).
+
+## Sprint 57.32 Carryover (2026-05-24 — /sla-dashboard Phase-2)
 
 Sprint 57.32 (`AD-Sla-Dashboard-Verbatim-Repoint`) closed: `/sla-dashboard` 7 files re-pointed — fidelity verdict **PARITY**, 22-route sweep **cleanest yet** (17 🟢 PARITY shell + 1 🟢 PARITY target + 1 🟢 PROP-stub + 0 🟡/🟠/🔴 + 3 ⚪ pre-existing fails). 4th data point for `frontend-verbatim-css-repoint` 0.50 (lifted) class; **cleanest mockup mapping of any Phase-2 sprint** (0 production-only widgets — distinct from Sprint 57.31 cost-dashboard which had 3). ~3 hr total wall-clock. Carryover updates:
 
@@ -49,7 +63,7 @@ Sprint 57.29 (`AD-Overview-Verbatim-Repoint`) closed: `/overview` + app shell + 
 - **AD-Inline-Style-Rule-vs-Verbatim-Method** — the `no-restricted-syntax` ESLint inline-`style=` ban (Sprint 57.15/57.16) conflicts with the verbatim method's required mockup inline-style literals; currently handled per-file with `eslint-disable` + rationale. Decide: scope the rule to exclude verbatim-re-pointed dirs, or retire it.
 - **AD-UserMenu-Mockup-Structural-Deltas** — ✅ **CLOSED in Sprint 57.30 Day 1**: Radix `<DropdownMenu>` dropped entirely; `useDismiss` hook ported verbatim from mockup `topbar-overlays.jsx:9-27`; avatar trigger 36→26 split via `.avatar` CSS class; dropdown now flush against topbar bottom edge (`top:50; right:12` verbatim positioning honoured).
 - **AD-MockupFidelity-Guard-TokenRelative-Oklch** — `frontend/scripts/check-mockup-fidelity.mjs` grep counts token-relative `oklch(from var(--token) …)` literals as "hardcoded"; refine the grep to exclude them so faithful verbatim re-points don't grow `HEX_OKLCH_BASELINE` (raised 18→21 in 57.29; 21→25 in 57.30).
-- **AD-Overview-PreExisting-Route-Crashes** — `/subagents`, `/memory`, `/verification` render an error boundary (`Cannot read properties of undefined (reading 'length')`) — pre-existing (Day-0 baseline == after sweep on both 57.29 and 57.30); NOT a regression. Separate FIX sprint candidate (Sprint 57.31+ "frontend-page-bug-fix" class at ~0.45 mid-band).
+- ~~**AD-Overview-PreExisting-Route-Crashes** — `/subagents`, `/memory`, `/verification` render an error boundary (`Cannot read properties of undefined (reading 'length')`) — pre-existing (Day-0 baseline == after sweep on both 57.29 and 57.30); NOT a regression. Separate FIX sprint candidate (Sprint 57.31+ "frontend-page-bug-fix" class at ~0.45 mid-band).~~ **✅ RESOLVED Sprint 57.33** — see Sprint 57.33 Carryover section above.
 - **Next Phase-2 per-page re-point** — Sprint 57.30 picked `/chat-v2`. Remaining 12 🟡 AppShellV2 routes: orchestrator / loop-debug / memory / state-inspector / governance / verification / cost-dashboard / sla-dashboard / admin-tenants / tenant-settings / compaction (+ subagents / memory / verification but those need crash fix first).
 
 ---
