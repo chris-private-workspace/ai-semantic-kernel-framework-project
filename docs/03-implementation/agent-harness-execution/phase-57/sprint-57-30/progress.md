@@ -113,3 +113,41 @@ Side-by-side comparison vs Day-0 `extra-usermenu-open-overview.png` shows both b
 - The `code-implementer` agent ran Day 1 cleanly first pass (5 gates all green except the pre-existing tsc carryover; visual fix verified). ~45 min real wall-clock; matches plan estimate of ~3-4 hr after agent-assisted compression.
 - The verbatim `useDismiss` TypeScript port required a small adaptation: React's `KeyboardEvent<T>` import shadows DOM's global; resolved via `type KeyboardEvent as ReactKeyboardEvent` rename. Documented inline in `UserMenu.tsx` for future reference.
 - `onMenuItemKey` (Enter/Space → click) is the trade-off accepted in the AskUserQuestion Option A — we lose Radix's arrow-key nav but preserve Enter/Space keyboard activation. Matches mockup design (mockup ships without arrow-key nav).
+
+---
+
+## Day 2 — Group C chat-v2 shell + composer (2026-05-23)
+
+### Today's Accomplishments
+
+- **US-C1**: ChatLayout 3-col grid → `.chat-shell` + `data-list`/`data-insp` attrs verbatim (translated Tailwind dropped; CSS-driven via `styles-mockup.css` L669-708)
+- **US-C2**: ChatHeader (`-78/+101`) + SessionList (`-80/+84`) + Composer (`-63/+71`) + InputBar (`-64/+103`) + page index (`+1`) all re-pointed verbatim
+- `check:mockup-fidelity` HEX_OKLCH_BASELINE bumped 21→25 with audit comment (4 NEW verbatim oklch tints for production-only widgets — same precedent as Sprint 57.29 18→21)
+- Day 2 verify screenshots × 3 captured (`day2-chatv2-shell.png` + `day2-chatv2-list-hidden.png` + `day2-chatv2-insp-hidden.png`)
+- Day 1 UserMenu verify re-run: no regression
+
+### 5-gate result
+
+| Gate | Result | Evidence |
+|------|--------|----------|
+| 1. Vitest | ✅ | 457/457 (== Day 1 baseline; 0 spec adaptation needed — testid + text-based selectors survived verbatim re-point) |
+| 2. tsc strict | ✅ | Only pre-existing TS6310 carryover (same as Day 1); 0 new TS errors |
+| 3. ESLint | ✅ | exit 0; max-warnings 0 |
+| 4. Vite build | ✅ | `built in 3.44s` |
+| 5. check:mockup-fidelity | ✅ | diff guard empty; grep guard 25/25 (audit-justified bump 21→25) |
+
+### Notable design decisions (made by agent during implementation)
+
+- **shadcn `<Badge>` + `<Button>` dropped from chat-v2 shell components** — switched to plain `<span className="badge thinking">` + `<button className="btn ghost" data-size="sm">` (mockup class form). Rationale: `<Badge variant=...>` is shadcn API; mockup uses `.badge.thinking` / `.badge.warning` CSS class form directly. Per `frontend-mockup-fidelity.md` — shadcn primitives are interaction-only fallback; when mockup styling diverges, use mockup classes verbatim. This is the right call.
+- **TurnList scroll architecture unchanged** — agent confirmed `<TurnList />` ships `flex flex-1 flex-col overflow-y-auto`; the sticky-header/scroll-body/sticky-composer pattern emerges naturally from `.chat-stream` `display: flex; flex-direction: column` (styles-mockup.css L699-704). No additional wrapper needed.
+
+### Open items / blockers
+
+- None for Day 2. Day 3 (turns + 3 blocks) can proceed.
+- Note: agent observed `ui/dropdown-menu.tsx` + `ui/index.ts` Radix wrapper still orphan after Day 1; will be cleaned Day 5 closeout per Karpathy §3 + plan §Constraints.
+
+### Notes
+
+- `code-implementer` agent ran cleanly first pass. All 6 files + 2 supporting (check:mockup-fidelity baseline + day2-verify script) edited correctly.
+- 0 Vitest spec adaptation needed across 6 component edits — the chat-v2 specs (94 test files / 457 tests) use testid + text queries, NOT class-name / DOM-structure assertions. This is the design payoff of Sprint 57.21 Phase-1 structural rewrite: when CSS is re-pointed in Phase-2, behavioural specs stay green.
+- Pattern reuse acceleration evident: Day 1 took ~45 min, Day 2 covered 6 files in ~60 min (10 min/file average) — agent-assisted Phase-2 per-component re-point is becoming routine.

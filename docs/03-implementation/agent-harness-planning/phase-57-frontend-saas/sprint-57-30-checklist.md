@@ -65,51 +65,19 @@
 
 ### 2.1 US-C1 — ChatLayout 3-col grid verbatim
 
-- [ ] **Read mockup `page-chat.jsx`** for outer ChatLayout grid (verbatim source)
-  - Sub: identify the outer grid template (3 cols: session-rail / 1fr center / inspector-rail)
-  - Sub: identify gap + min/max widths
-  - DoD: mockup grid spec catalogued in `progress.md` Day 2
-- [ ] **Re-point `ChatLayout.tsx`** to verbatim mockup grid
-  - Sub: drop translated-Tailwind `grid grid-cols-[...]`
-  - Sub: use mockup CSS class (if exists in `styles-mockup.css`) OR inline-style verbatim
-  - Sub: preserve component-logic layer (children slots, conditional Inspector rendering, etc.)
-  - Sub: add file-level eslint-disable comment with verbatim escape-hatch reason
-  - Sub: update file header MHist (1-line)
-  - DoD: ChatLayout consumes verbatim grid
-  - Verify: `/chat-v2` 3-col layout matches mockup at 1440×900 Playwright screenshot
+- [x] **Read mockup `page-chat.jsx:79`** — outer `.chat-shell` consumes `styles-mockup.css` L669-708 grid template + responsive
+- [x] **Re-point `ChatLayout.tsx`** to verbatim `.chat-shell` class + `data-list`/`data-insp` attrs — Tailwind grid-cols-[…] dropped; -33 / +24 lines
 
-### 2.2 US-C2 — ChatHeader + SessionList + Composer + InputBar verbatim
+### 2.2 US-C2 — ChatHeader + SessionList + Composer + InputBar + page index
 
-- [ ] **ChatHeader** re-point
-  - Sub: read mockup `page-chat.jsx` chat-header section
-  - Sub: replace shadcn / Tailwind with verbatim mockup classes + inline-style
-  - Sub: preserve all logic (back nav, session title, status indicator, etc.)
-  - Sub: header MHist update
-  - DoD: ChatHeader verbatim
-  - Verify: `/chat-v2` header bar matches mockup screenshot
-- [ ] **SessionList** re-point
-  - Sub: read mockup session-list section
-  - Sub: verbatim re-point
-  - Sub: preserve session selection + active highlight + scroll behaviour
-  - Sub: header MHist update
-  - DoD: SessionList verbatim
-- [ ] **Composer** re-point
-  - Sub: read mockup composer container
-  - Sub: verbatim re-point
-  - Sub: preserve form submission + keyboard `Enter` / `Shift+Enter` behaviour
-  - Sub: header MHist update
-  - DoD: Composer verbatim
-- [ ] **InputBar** re-point
-  - Sub: read mockup input field + send button
-  - Sub: verbatim re-point
-  - Sub: preserve auto-resize, mention/slash command UI, attach button
-  - Sub: header MHist update
-  - DoD: InputBar verbatim
-- [ ] **Day 2 mini-verify**
-  - Sub: `npm run dev` → `/chat-v2` mounts → composer renders → send a message → Vitest `npm run test -- chat-v2` all pass
-  - DoD: no regression in chat-v2 send-message flow
-- [ ] Day 2 commit
-  - Sub: `git commit -m "feat(frontend, sprint-57-30): Day 2 Group C — chat-v2 shell + composer verbatim re-point (US-C1 + US-C2)\n\n..."`
+- [x] **ChatHeader** re-point — `.panel-toggle` + `.badge agent/thinking` + `.provider-neutral` + `.live-dot` + Loop/Audit `.btn ghost data-size="sm"` (shadcn Badge + Button dropped) -78 / +101
+- [x] **SessionList** re-point — `.chat-list`/`.session-item`/`.session-title`/`.session-meta` + DomainDot + AP-2 banner preserved + `.btn primary New session` -80 / +84
+- [x] **Composer** re-point — `.composer`/`.composer-inner`/`.composer-input`/`.composer-tools` + mockup L362 drop hint inline-style -63 / +71
+- [x] **InputBar** re-point — `.composer` shell + `.btn primary/.btn danger`; production status pill / mode toggle / error banner use mockup token vocabulary (4 NEW verbatim oklch tints) -64 / +103
+- [x] **pages/chat-v2/index.tsx** — MHist only (AppShellV2 wrap preserved) +1
+- [x] **Day 2 mini-verify** — `day2-chatv2-shell.png` + `day2-chatv2-list-hidden.png` + `day2-chatv2-insp-hidden.png` capture; Day 1 UserMenu verify re-run no regression
+- [x] **`check:mockup-fidelity` baseline** — HEX_OKLCH_BASELINE 21→25 with audit note (precedent: 57.29 18→21; same legitimate-verbatim-oklch case)
+- [ ] Day 2 commit — pending (next step)
 
 ---
 
