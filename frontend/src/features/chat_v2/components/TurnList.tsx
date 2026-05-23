@@ -10,20 +10,28 @@
  *   turn or block append. Empty state matches Sprint 57.20 baseline copy
  *   for behavioral continuity (echo_demo hint preserved).
  *
- *   Sprint 57.21 Day 2 ships TurnList; Day 3 ChatLayout 3-col rewrite
- *   replaces MessageList consumer with TurnList; MessageList.tsx becomes
- *   thin compat re-export Day 3 EOD.
+ *   Sprint 57.30 Day 3 re-points scroll container + empty-state pad/text
+ *   to verbatim mockup vocabulary (mockup page-chat.jsx L83 inline
+ *   `{ flex: 1, overflowY: "auto" }` wrapper around the TURNS.map). No
+ *   dedicated mockup class for the scroller — preserve inline-style
+ *   `{ flex: 1, overflowY: "auto" }` to match L83 verbatim. Empty state
+ *   uses mockup `.subtle` color + mockup `.mono` for the echo code chip.
  *
  * Created: 2026-05-17 (Sprint 57.21 Day 2 §2.1)
  *
  * Modification History:
+ *   - 2026-05-23: Sprint 57.30 Day 3 §D1 — re-point scroll wrapper to mockup L83 verbatim inline-style + empty-state to mockup .subtle/.mono
  *   - 2026-05-17: Initial creation (Sprint 57.21 Day 2 §2.1)
  *
  * Related:
+ *   - reference/design-mockups/page-chat.jsx L83-85 (scrolling wrapper around TURNS.map)
  *   - reference/design-mockups/page-chat.jsx L159-163 (TurnRender dispatcher source)
  *   - ./turns/{UserTurn,AgentTurn,HITLTurn}.tsx (role components)
  *   - ../store/chatStore.ts (subscribes to turns + block-sequence reducer)
  */
+
+/* eslint-disable no-restricted-syntax -- verbatim re-point: mockup page-chat.jsx L83
+   wraps the turns list in `{ flex: 1, overflowY: "auto" }`; preserve inline-style. */
 
 import { useEffect, useRef } from "react";
 
@@ -45,17 +53,22 @@ export function TurnList(): JSX.Element {
 
   if (turns.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center overflow-y-auto p-8 text-center text-sm text-fg-muted">
-        <p>
-          Type a message below to start. Try <code className="rounded bg-bg-2 px-1.5 py-0.5 font-mono text-xs">echo hello</code>{" "}
+      <div
+        ref={scrollRef}
+        style={{ flex: 1, overflowY: "auto" }}
+        className="subtle"
+      >
+        <div style={{ padding: "32px 24px", textAlign: "center", fontSize: 13 }}>
+          Type a message below to start. Try{" "}
+          <code className="mono" style={{ fontSize: 11 }}>echo hello</code>{" "}
           in echo_demo mode.
-        </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto" ref={scrollRef}>
+    <div ref={scrollRef} style={{ flex: 1, overflowY: "auto" }}>
       {turns.map((turn) => {
         if (turn.role === "user") return <UserTurn key={turn.id} turn={turn} />;
         if (turn.role === "agent") return <AgentTurn key={turn.id} turn={turn} />;

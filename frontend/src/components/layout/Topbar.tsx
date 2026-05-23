@@ -27,9 +27,10 @@
  *   headerActions prop: rendered between spacer and ⌘K (backward compat).
  *
  * Created: 2026-05-17 (Sprint 57.20 Day 1 US-B1)
- * Last Modified: 2026-05-22
+ * Last Modified: 2026-05-23
  *
  * Modification History:
+ *   - 2026-05-23: Sprint 57.30 US-B3 — topbar icon size audit close 0 drift (D3 Day-0)
  *   - 2026-05-22: Sprint 57.29 US-B4 — verbatim re-point to mockup .topbar/.cmdk classes (drop Tailwind translation)
  *   - 2026-05-17: Initial creation (Sprint 57.20 Day 1) — mockup shell.jsx port
  *

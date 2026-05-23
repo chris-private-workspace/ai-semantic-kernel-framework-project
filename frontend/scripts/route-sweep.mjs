@@ -25,6 +25,7 @@
  * Created: 2026-05-20 (Sprint 57.26 Day 0) — supersedes the temporary frontend/diagnose-render.mjs
  *
  * Modification History:
+ *   - 2026-05-23: Sprint 57.30 — re-point OUT_DIR to sprint-57-30-chatv2-shell-repoint (reused for chat-v2 + shell hotfix sweep)
  *   - 2026-05-22: Sprint 57.29 — re-point OUT_DIR to sprint-57-29-overview-shell-repoint (reused for /overview + shell re-point sweep)
  *   - 2026-05-22: Sprint 57.28 — re-point OUT_DIR to sprint-57-28-mockup-fidelity-foundation (reused for verbatim-CSS foundation switch sweep)
  *   - 2026-05-21: Sprint 57.26 Day 2 — add endpoint-specific object mocks for
@@ -44,7 +45,7 @@ if (!["before", "after"].includes(MODE)) {
 const BASE = "http://localhost:3007";
 const VP = { width: 1440, height: 900 };
 const OUT_DIR = path.resolve(
-  `../claudedocs/4-changes/sprint-57-29-overview-shell-repoint/screenshots/${MODE}`,
+  `../claudedocs/4-changes/sprint-57-30-chatv2-shell-repoint/screenshots/${MODE}`,
 );
 fs.mkdirSync(OUT_DIR, { recursive: true });
 

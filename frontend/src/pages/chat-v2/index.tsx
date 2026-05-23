@@ -18,9 +18,10 @@
  *        to fit inside AppShellV2 main column).
  *
  * Created: 2026-04-30 (Sprint 50.2 Day 3.7 — placeholder)
- * Last Modified: 2026-05-09
+ * Last Modified: 2026-05-23
  *
  * Modification History (newest-first):
+ *   - 2026-05-23: Sprint 57.30 Day 2 US-C2 — verbatim re-point page wrap (no structural change; ChatLayout now ships .chat-shell verbatim)
  *   - 2026-05-17: Sprint 57.21 Day 3 §3.2 — swap MessageList → TurnList (AD-ChatV2-Full-Mockup-Fidelity Phase-1)
  *   - 2026-05-10: Sprint 57.13 US-A1 — gate via <RequireAuth> (was inline isAuthenticated() check)
  *   - 2026-05-10: Sprint 57.12 US-6 §3.8 — mount inline LoopVisualizer + SubagentTree panels

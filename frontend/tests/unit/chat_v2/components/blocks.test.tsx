@@ -99,13 +99,15 @@ describe("VerificationBlock (mockup L234-244)", () => {
   });
 
   test("failed variant renders danger tone styling", () => {
+    // Sprint 57.30 Day 4 §D2: verbatim re-point — failed variant is the
+    // .block.verification.failed mockup class (styles-mockup.css L829-832).
     const { container } = render(
       <VerificationBlock
         block={{ type: "verification", verifier: "judge_v1", ok: false, claim: "missing evidence", evidence: "" }}
       />,
     );
     expect(screen.getByText("missing evidence")).toBeInTheDocument();
-    expect(container.querySelector(".border-danger\\/40")).toBeTruthy();
+    expect(container.querySelector(".block.verification.failed")).toBeTruthy();
   });
 });
 

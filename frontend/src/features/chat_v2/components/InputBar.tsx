@@ -1,61 +1,66 @@
+/* eslint-disable no-restricted-syntax -- verbatim re-point: inline styles are mockup page-chat.jsx visual-layer literals copied byte-for-byte (composer shell shape); production-only status pill + mode toggle have no mockup equivalent (STYLE.md §1 escape hatch + frontend-mockup-fidelity.md) */
 /**
  * File: frontend/src/features/chat_v2/components/InputBar.tsx
- * Purpose: Bottom input bar — textarea + Send / Stop button + mode toggle.
+ * Purpose: Bottom input bar — textarea + Send / Stop button + mode toggle (production send path).
  * Category: Frontend / chat_v2 / components
- * Scope: Phase 50 / Sprint 50.2 (Day 4.3) → Sprint 57.16 Tailwind migration
+ * Scope: Phase 50 / Sprint 50.2 (Day 4.3) → Sprint 57.16 Tailwind migration → 57.30 Day 2 verbatim re-point
  *
  * Description:
- *   Two states:
+ *   Mockup `page-chat.jsx` ships only the **visual** Composer scaffolding (no
+ *   wired send / mode toggle / status pill). InputBar.tsx is the **production
+ *   send path** — preserves Sprint 50.2 → 57.16 logic:
  *     - idle / completed / cancelled / error: Send button enabled
  *     - running: Send button → Stop button (cancels via abort signal)
+ *     - Mode toggle (echo_demo / real_llm) sits next to Send
+ *     - Keyboard: Enter → send, Shift+Enter → newline
  *
- *   Mode toggle (echo_demo / real_llm) sits next to Send. real_llm requires
- *   AZURE_OPENAI_* env vars on the backend; if missing the POST returns 503
- *   and useLoopEventStream surfaces the error.
+ *   Sprint 57.30 Day 2 verbatim re-point — the **shell + button visuals** are
+ *   re-pointed to mockup `.composer` / `.composer-inner` / `.composer-input` /
+ *   `.btn` classes from styles-mockup.css L919-937 + L426-446 (matching the
+ *   sibling Composer.tsx scaffolding). The **production-only widgets** (status
+ *   pill, mode toggle, error banner) have no mockup equivalent — they use
+ *   inline-style literals consistent with mockup token vocabulary (var(--*)).
  *
- *   Keyboard:
- *     - Enter           → send
- *     - Shift+Enter     → newline
- *
- *   Sprint 57.16 (AD-Inline-Style-Cleanup-Sweep-Round2): migrated to Tailwind
- *   utility classes. The 4-way status pill, mode-toggle active state, and
- *   send-button disabled state use finite class lookups (STATUS_PILL Record +
- *   inline `cn()` for the booleans); topRow text uses text-fg-muted
- *   (AA-compliant; prerequisite for re-enabling color-contrast on /chat-v2).
+ *   STYLE.md §1 escape hatch applies — inline styles here are verbatim mockup
+ *   literals OR production-only widgets with no mockup counterpart; re-expressing
+ *   them as Tailwind risks re-introducing the drift bug Sprint 57.18-57.27 root
+ *   cause investigation identified.
  *
  * Created: 2026-04-30 (Sprint 50.2 Day 4.3)
- * Last Modified: 2026-05-11
+ * Last Modified: 2026-05-23
  *
  * Modification History (newest-first):
+ *   - 2026-05-23: Sprint 57.30 Day 2 US-C2 — verbatim re-point to mockup composer shell (.composer / .composer-inner / .composer-input / .btn primary / .btn danger / .btn ghost)
  *   - 2026-05-17: Sprint 57.20 Day 3 US-D1 — token migration text-muted-foreground→text-fg-muted; bg-muted-foreground→bg-fg-muted (disabled Send) for new shell mockup consistency
  *   - 2026-05-11: Sprint 57.16 — inline styles → Tailwind utility classes; statusPill/modeButton/sendBtn → finite class lookup (AD-Inline-Style-Cleanup-Sweep-Round2)
  *   - 2026-04-30: Initial creation (Sprint 50.2 Day 4.3)
  *
  * Related:
+ *   - reference/design-mockups/page-chat.jsx L316-368 (Composer visual reference)
+ *   - frontend/src/styles-mockup.css L919-937 (.composer / .composer-inner / .composer-input / .composer-tools) / L426-446 (.btn variants)
  *   - ../hooks/useLoopEventStream.ts (send / cancel)
  *   - ../store/chatStore.ts (status / mode / errorMessage)
- *   - frontend/STYLE.md §1 (no inline styles) + §2 (tokens)
+ *   - ./Composer.tsx (sibling visual scaffolding; non-wired)
+ *   - docs/rules-on-demand/frontend-mockup-fidelity.md (verbatim re-point method)
  */
 
-import { useState, type KeyboardEvent } from "react";
+import { useState, type CSSProperties, type KeyboardEvent } from "react";
 
-import { cn } from "../../../lib/utils";
 import { useLoopEventStream } from "../hooks/useLoopEventStream";
 import { useChatStore } from "../store/chatStore";
 import type { ChatMode } from "../types";
 
-// 4-way status pill (+ idle default). 57.15 vocab (`text-success` etc.) for
-// visual continuity with TenantListTable / ApprovalCard; literal class strings
-// so the Tailwind JIT sees them.
-const STATUS_PILL: Record<string, { label: string; cls: string }> = {
-  running: { label: "● running", cls: "text-primary" },
-  completed: { label: "● completed", cls: "text-success" },
-  cancelled: { label: "● cancelled", cls: "text-warning" },
-  error: { label: "● error", cls: "text-danger" },
+// 4-way status pill (production-only; no mockup equivalent). Each entry maps to
+// a mockup CSS-var color so visual continuity with .badge / Cat 9 risk palette holds.
+const STATUS_PILL: Record<string, { label: string; color: string }> = {
+  running: { label: "● running", color: "var(--primary)" },
+  completed: { label: "● completed", color: "var(--success)" },
+  cancelled: { label: "● cancelled", color: "var(--warning)" },
+  error: { label: "● error", color: "var(--danger)" },
 };
 
-function getPill(status: string): { label: string; cls: string } {
-  return STATUS_PILL[status] ?? { label: "○ idle", cls: "text-fg-muted" };
+function getPill(status: string): { label: string; color: string } {
+  return STATUS_PILL[status] ?? { label: "○ idle", color: "var(--fg-muted)" };
 }
 
 export default function InputBar(): JSX.Element {
@@ -84,26 +89,50 @@ export default function InputBar(): JSX.Element {
   const modes: ChatMode[] = ["echo_demo", "real_llm"];
   const sendDisabled = text.trim().length === 0;
 
+  // Production-only widget styles (no mockup equivalent) — kept as inline-style
+  // literals using mockup CSS-var token vocabulary for visual continuity.
+  const errorBoxStyle: CSSProperties = {
+    border: "1px solid oklch(from var(--danger) l c h / 0.4)",
+    background: "oklch(from var(--danger) l c h / 0.1)",
+    color: "var(--danger)",
+    padding: "6px 10px",
+    borderRadius: 4,
+    fontSize: 12,
+  };
+
+  const topRowStyle: CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    fontSize: 12,
+    color: "var(--fg-muted)",
+    marginBottom: 6,
+  };
+
+  const modeButtonStyle = (active: boolean): CSSProperties => ({
+    cursor: isRunning ? "not-allowed" : "pointer",
+    border: "1px solid var(--border)",
+    background: active ? "var(--primary)" : "var(--bg)",
+    color: active ? "white" : "var(--fg-muted)",
+    padding: "2px 8px",
+    borderRadius: 4,
+    fontSize: 11,
+    fontFamily: "var(--font-mono)",
+  });
+
   return (
-    <div className="flex flex-col gap-2 border-t border-border bg-background px-6 py-3">
-      {errorMessage && (
-        <div className="rounded border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs text-danger">
-          {errorMessage}
-        </div>
-      )}
-      <div className="flex items-center gap-2.5 text-xs text-fg-muted">
-        <span className={cn("inline-flex items-center gap-1 font-medium", pill.cls)}>
-          {pill.label}
-        </span>
-        <div className="ml-auto flex items-center gap-1">
+    <div className="composer" data-testid="input-bar">
+      {errorMessage && <div style={errorBoxStyle}>{errorMessage}</div>}
+
+      <div style={topRowStyle}>
+        <span style={{ color: pill.color, fontWeight: 500 }}>{pill.label}</span>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4 }}>
           <span>mode:</span>
           {modes.map((m) => (
             <button
               key={m}
-              className={cn(
-                "cursor-pointer rounded-sm border border-border px-2 py-0.5 text-[11px]",
-                mode === m ? "bg-primary text-white" : "bg-background text-fg-muted",
-              )}
+              type="button"
+              style={modeButtonStyle(mode === m)}
               onClick={() => setMode(m)}
               disabled={isRunning}
             >
@@ -112,9 +141,10 @@ export default function InputBar(): JSX.Element {
           ))}
         </div>
       </div>
-      <div className="flex items-end gap-2.5">
+
+      <div className="composer-inner">
         <textarea
-          className="max-h-40 min-h-11 flex-1 resize-none rounded-md border border-border px-3 py-2.5 text-sm leading-relaxed outline-none"
+          className="composer-input"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKey}
@@ -122,25 +152,25 @@ export default function InputBar(): JSX.Element {
           rows={2}
           disabled={isRunning}
         />
-        {isRunning ? (
-          <button
-            className="cursor-pointer rounded-md border-none bg-danger px-4 py-2.5 text-sm font-medium text-white"
-            onClick={cancel}
-          >
-            Stop
-          </button>
-        ) : (
-          <button
-            className={cn(
-              "rounded-md border-none px-4 py-2.5 text-sm font-medium text-white",
-              sendDisabled ? "cursor-not-allowed bg-fg-muted" : "cursor-pointer bg-primary",
-            )}
-            onClick={onSend}
-            disabled={sendDisabled}
-          >
-            Send
-          </button>
-        )}
+        <div className="composer-tools">
+          <div className="grow" />
+          {isRunning ? (
+            <button type="button" className="btn danger" data-size="sm" onClick={cancel}>
+              Stop
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn primary"
+              data-size="sm"
+              onClick={onSend}
+              disabled={sendDisabled}
+              style={sendDisabled ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+            >
+              Send
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

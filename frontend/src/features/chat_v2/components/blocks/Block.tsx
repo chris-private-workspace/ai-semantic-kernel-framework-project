@@ -15,6 +15,7 @@
  * Created: 2026-05-17 (Sprint 57.21 Day 2 §2.2)
  *
  * Modification History:
+ *   - 2026-05-23: Sprint 57.30 Day 3 §D2 — no markup change (pure dispatcher); per-block re-point shipped in ThinkingBlock / ToolBlock
  *   - 2026-05-17: Initial creation (Sprint 57.21 Day 2 §2.2)
  *
  * Related:

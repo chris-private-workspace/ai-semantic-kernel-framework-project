@@ -28,15 +28,10 @@ export {
   DialogTitle,
   DialogTrigger,
 } from "./dialog";
-export {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuPortal,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "./dropdown-menu";
+// Sprint 57.30 Day 5: DropdownMenu re-export removed; the wrapper + Radix
+// dep dropped together with the verbatim re-point of UserMenu (closes
+// AD-UserMenu-Mockup-Structural-Deltas). UserMenu now uses the mockup
+// useDismiss hook + .avatar class natively; no second consumer remains.
 export { EmptyState, type EmptyStateProps } from "./empty-state";
 export { ErrorRetry, type ErrorRetryProps } from "./error-retry";
 export { CardSkeleton, Skeleton, TableSkeleton } from "./skeleton";

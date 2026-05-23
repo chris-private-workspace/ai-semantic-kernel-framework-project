@@ -1,59 +1,79 @@
 /**
  * File: frontend/src/features/chat_v2/components/inspector/InspectorTurn.tsx
- * Purpose: Right-rail Inspector "Turn" tab — populated KV pairs + block sequence from active agent turn.
+ * Purpose: Inspector "Turn" tab — verbatim mockup re-point of page-chat.jsx L392-432.
  * Category: Frontend / chat_v2 / components / inspector
- * Scope: Phase 57.21 Day 4 §4.1 (AD-ChatV2-Full-Mockup-Fidelity Phase-1)
+ * Scope: Phase 57.30 Day 4 §D3 (AD-Mockup-Direct-Port-Round-2 chatv2 shell repoint)
  *
  * Description:
- *   Mockup L392-417. Picks the most-recent AgentTurn from chatStore.turns and
- *   renders Inspector metadata:
- *     - Header: "Turn N · stop_reason" (font-mono uppercase)
- *     - KV pairs: stop_reason / duration / tokens.in / tokens.out /
- *                 tokens.thinking / cost / trace_id / span_id
- *       (placeholders "—" when SSE doesn't carry the metadata; trace_id /
- *        span_id Phase-2 Cat 12 wire-up via AD-Cat12-SSE-Trace-Id-Phase2)
- *     - Block sequence: dot + colored type label + descriptive text per block
- *     - 2 action buttons: Open audit entry / Open in Loop Debug (placeholder
- *       wires; Phase-2 hooks deferred)
+ *   Mockup L392-417 (InspectorTurn) + L419-432 (KV + EventLine helpers).
+ *   Picks the most-recent AgentTurn from chatStore.turns and renders:
+ *     - Section header: "Turn N · stop_reason" (font-mono uppercase)
+ *     - 8 KV rows: stop_reason / duration / tokens.in/out/thinking /
+ *                  cost / trace_id / span_id (placeholder "—" when null)
+ *     - .thin-rule divider
+ *     - "Block sequence" header + 1 EventLine per block (color dot +
+ *       type label + descriptive text)
+ *     - .thin-rule divider
+ *     - 2 action buttons: "Open audit entry" / "Open in Loop Debug"
  *
  *   Pure read; no side effects. Empty state when no agent turn yet.
  *
- * Created: 2026-05-17 (Sprint 57.21 Day 4 §4.1)
+ *   Sprint 57.30 Day 4: re-pointed from Tailwind utility translations
+ *   (flex flex-col gap-2 / text-fg-muted / border-t border-border /
+ *   bg-bg-2 / variant="outline" Button etc.) to verbatim mockup `.col`,
+ *   `.spread`, `.thin-rule`, `.mono`, `.tnum`, `.subtle`, `.row` classes
+ *   + `.btn outline`/`.btn ghost` button system + inline-style mockup
+ *   font-size/family/color literals verbatim per L394 / L405 / L420 /
+ *   L427-431. KV + EventLine helpers retained (private to file) per
+ *   mockup shape but emit verbatim DOM.
  *
- * Modification History:
+ *   Vitest spec contract preserved (ChatInspector.test.tsx):
+ *   - data-testid="inspector-turn" + "inspector-turn-empty"
+ *   - Visible text: "Turn N · stop_reason" / KV values / dash "—" / block
+ *     type labels ("thinking", "tool")
+ *   - "metrics.query · 210ms" describeBlock output preserved
+ *
+ * Created: 2026-05-17 (Sprint 57.21 Day 4 §4.1)
+ * Last Modified: 2026-05-23
+ *
+ * Modification History (newest-first):
+ *   - 2026-05-23: Sprint 57.30 Day 4 §D3 — verbatim re-point Tailwind → mockup .col/.spread/.thin-rule/.mono/.tnum + .btn outline/ghost
  *   - 2026-05-17: Initial creation (Sprint 57.21 Day 4 §4.1)
  *
  * Related:
  *   - reference/design-mockups/page-chat.jsx L392-417 (InspectorTurn) + L419-432 (KV + EventLine)
+ *   - frontend/src/styles-mockup.css L615+L617+L620+L621 (.spread/.subtle/.mono/.tnum)
+ *   - frontend/src/styles-mockup.css L1119 (.thin-rule)
+ *   - frontend/src/styles-mockup.css L426-460 (.btn outline/ghost)
  *   - ../../store/chatStore.ts (turns selector)
  *   - ../../types.ts (AgentTurn + Block)
- *   - ./ChatInspector.tsx (tab consumer)
  */
+
+/* eslint-disable no-restricted-syntax -- verbatim re-point: mockup page-chat.jsx L394
+   (section header inline font-size/color/text-transform/font-family), L405 (Block
+   sequence sub-header inline), L413+L414 (Button-shaped inline icon), L420+L427-431
+   (KV + EventLine inline-style row shape with width / colors). Tokens via var(--*). */
 
 import { Activity, ScrollText } from "lucide-react";
 import type { ReactNode } from "react";
-
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 import { useChatStore } from "../../store/chatStore";
 import type { AgentTurn, Block } from "../../types";
 
 function KV({ k, v, mono = false }: { k: string; v: ReactNode; mono?: boolean }): JSX.Element {
   return (
-    <div className="flex items-center justify-between text-[12px]">
-      <span className="text-fg-muted">{k}</span>
-      <span className={cn(mono && "font-mono tabular-nums text-fg")}>{v}</span>
+    <div className="spread" style={{ fontSize: 12 }}>
+      <span className="subtle">{k}</span>
+      <span className={mono ? "mono tnum" : undefined}>{v}</span>
     </div>
   );
 }
 
-const BLOCK_TONE: Record<Block["type"], { dot: string; text: string }> = {
-  thinking: { dot: "bg-thinking", text: "text-thinking" },
-  tool: { dot: "bg-tool", text: "text-tool" },
-  verification: { dot: "bg-success", text: "text-success" },
-  subagent_fork: { dot: "bg-info", text: "text-info" },
+const BLOCK_TONE: Record<Block["type"], string> = {
+  thinking: "var(--thinking)",
+  tool: "var(--tool)",
+  verification: "var(--success)",
+  subagent_fork: "var(--info)",
 };
 
 function describeBlock(block: Block): string {
@@ -75,10 +95,16 @@ function describeBlock(block: Block): string {
 function EventLine({ block }: { block: Block }): JSX.Element {
   const tone = BLOCK_TONE[block.type];
   return (
-    <div className="flex items-center gap-1.5 py-0.5 font-mono text-[11px]">
-      <span aria-hidden="true" className={cn("inline-block h-1.5 w-1.5 rounded-full", tone.dot)} />
-      <span className={cn("min-w-[78px]", tone.text)}>{block.type}</span>
-      <span className="text-fg-subtle">{describeBlock(block)}</span>
+    <div
+      className="row"
+      style={{ gap: 6, padding: "3px 0", fontFamily: "var(--font-mono)", fontSize: 11 }}
+    >
+      <span
+        aria-hidden="true"
+        style={{ width: 6, height: 6, borderRadius: "50%", background: tone, display: "inline-block" }}
+      />
+      <span style={{ color: tone, minWidth: 78 }}>{block.type}</span>
+      <span className="subtle">{describeBlock(block)}</span>
     </div>
   );
 }
@@ -91,10 +117,22 @@ export function InspectorTurn(): JSX.Element {
     return (
       <div
         data-testid="inspector-turn-empty"
-        className="px-4 py-3 text-[12px] text-fg-muted"
+        style={{ padding: "12px 16px", fontSize: 12, color: "var(--fg-muted)" }}
       >
-        <div className="font-mono text-[11.5px] uppercase tracking-wider text-fg-subtle">No active turn</div>
-        <p className="mt-2 leading-relaxed">Send a message to populate Inspector with turn metadata.</p>
+        <div
+          style={{
+            fontSize: 11.5,
+            color: "var(--fg-subtle)",
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+            fontFamily: "var(--font-mono)",
+          }}
+        >
+          No active turn
+        </div>
+        <p style={{ marginTop: 8, lineHeight: 1.55 }}>
+          Send a message to populate Inspector with turn metadata.
+        </p>
       </div>
     );
   }
@@ -104,19 +142,24 @@ export function InspectorTurn(): JSX.Element {
   const stopReason = lastAgent.stopReason ?? "—";
 
   return (
-    <div data-testid="inspector-turn" className="flex flex-col gap-2 px-4 py-3">
-      <div className="font-mono text-[11.5px] uppercase tracking-wider text-fg-subtle">
+    <div data-testid="inspector-turn" style={{ padding: "12px 16px" }}>
+      <div
+        style={{
+          fontSize: 11.5,
+          color: "var(--fg-subtle)",
+          textTransform: "uppercase",
+          letterSpacing: "0.06em",
+          marginBottom: 8,
+          fontFamily: "var(--font-mono)",
+        }}
+      >
         Turn {turnNumber} · {stopReason}
       </div>
 
-      <div className="flex flex-col gap-2 text-[12px]">
+      <div className="col" style={{ gap: 8, fontSize: 12 }}>
         <KV
           k="stop_reason"
-          v={
-            <Badge variant="outline" className="border-border bg-bg-2 px-1.5 py-0 text-[10px] text-fg-muted">
-              {stopReason}
-            </Badge>
-          }
+          v={<span className="badge">{stopReason}</span>}
         />
         <KV k="duration" v={durationLabel} mono />
         <KV k="tokens.in" v={lastAgent.tokensIn != null ? lastAgent.tokensIn.toLocaleString() : "—"} mono />
@@ -129,30 +172,42 @@ export function InspectorTurn(): JSX.Element {
         <KV k="cost" v={lastAgent.costUsd != null ? `$${lastAgent.costUsd.toFixed(4)}` : "—"} mono />
         <KV k="trace_id" v={lastAgent.traceId ?? "—"} mono />
         <KV k="span_id" v={lastAgent.spanId ?? "—"} mono />
+
+        <div className="thin-rule" />
+
+        <div
+          style={{
+            fontSize: 11,
+            color: "var(--fg-subtle)",
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+            fontFamily: "var(--font-mono)",
+          }}
+        >
+          Block sequence
+        </div>
+        <div className="col" style={{ gap: 3 }}>
+          {lastAgent.blocks.length === 0 && (
+            <span className="mono subtle" style={{ fontSize: 11 }}>
+              no blocks yet
+            </span>
+          )}
+          {lastAgent.blocks.map((b, i) => (
+            <EventLine key={i} block={b} />
+          ))}
+        </div>
+
+        <div className="thin-rule" />
+
+        <button type="button" className="btn outline" data-size="sm">
+          <ScrollText size={12} aria-hidden="true" />
+          Open audit entry
+        </button>
+        <button type="button" className="btn ghost" data-size="sm">
+          <Activity size={12} aria-hidden="true" />
+          Open in Loop Debug
+        </button>
       </div>
-
-      <hr className="my-2 border-t border-border" />
-
-      <div className="font-mono text-[11px] uppercase tracking-wider text-fg-subtle">Block sequence</div>
-      <div className="flex flex-col gap-0.5">
-        {lastAgent.blocks.length === 0 && (
-          <span className="font-mono text-[11px] text-fg-subtle">no blocks yet</span>
-        )}
-        {lastAgent.blocks.map((b, i) => (
-          <EventLine key={i} block={b} />
-        ))}
-      </div>
-
-      <hr className="my-2 border-t border-border" />
-
-      <Button variant="outline" size="sm" className="h-7 justify-start gap-1 text-xs">
-        <ScrollText className="h-3 w-3" aria-hidden="true" />
-        Open audit entry
-      </Button>
-      <Button variant="ghost" size="sm" className="h-7 justify-start gap-1 text-xs">
-        <Activity className="h-3 w-3" aria-hidden="true" />
-        Open in Loop Debug
-      </Button>
     </div>
   );
 }

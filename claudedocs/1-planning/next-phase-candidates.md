@@ -4,19 +4,31 @@
 
 **Selection Rule**: User explicitly selects → draft plan kicks off Sprint XX.Y; otherwise items wait here indefinitely until selected or archived.
 
-**Updated**: 2026-05-22 (Sprint 57.29 closeout — Phase-2 per-page re-point opens; +4 carryover ADs)
+**Updated**: 2026-05-23 (Sprint 57.30 closeout — 2nd Phase-2 per-page re-point + shell hotfix; +5 carryover ADs / -1 closed)
 
 ---
 
-## 🆕 Sprint 57.29 Carryover (2026-05-22 — Phase-2 per-page re-point opens)
+## 🆕 Sprint 57.30 Carryover (2026-05-23 — chat-v2 Phase-2 + shell hotfix)
+
+Sprint 57.30 (`AD-Chatv2-Verbatim-Repoint + Shell-Hotfix-UserMenu-Avatar`) closed: `/chat-v2` 19 components re-pointed to verbatim mockup CSS + Day 1 shell hotfix (UserMenu Radix-drop + verbatim `useDismiss` port + avatar trigger 36→26 split + topbar icon audit 0 drift) — fidelity verdict **PARITY**, 22-route sweep 0 catastrophic / 0 structural; Day 5 orphan cleanup deletes `dropdown-menu.tsx` + `npm uninstall @radix-ui/react-dropdown-menu` → bundle **-116.87 KB / -38.37 KB gzipped**. Closed `AD-UserMenu-Mockup-Structural-Deltas` (Sprint 57.29 carryover). New carryover:
+
+- **AD-Sprint-Plan-frontend-verbatim-bimodal-watch** (Day 5 calibration) — `frontend-verbatim-css-repoint` 0.60 baseline 2-data-point: 57.29 ≈1.0 (in-band middle) vs 57.30 ≈0.40 (below band by 0.45). 2-pt mean 0.70 lower edge. KEEP 0.60 per `When to adjust` 3-sprint window rule (2 pts insufficient). Watch 3rd data point; if continues low, propose split between "structural-heavy re-point" (0.65) and "css-swap-only re-point" (0.40).
+- **AD-Tsconfig-Node-NoEmit** (Day 1 finding) — `tsc --strict` reports pre-existing `TS6310: referenced project tsconfig.node.json may not disable emit` since baseline `5c0ce0dd`. Not introduced by Sprint 57.30. Defer to tooling cleanup sprint or separate PR.
+- **AD-Topbar-Use-Button-Primitive** (Day 0 D4 finding) — production Topbar uses raw `<button className="btn ghost" data-size="sm">` instead of mockup-ui `<Button>` primitive. Rendered DOM byte-identical; cosmetic-code-style refactor, low ROI. Defer.
+- **AD-Topbar-Tweaks-Panel-Phase58+** (Day 0 D5 finding) — mockup `shell.jsx:218` has `<Button icon="sliders" onToggleTweaks>` Tweaks button; production omits it (no Tweaks panel implementation). Defer to Phase 58+ when Tweaks panel ships.
+- **AD-ApprovalCard-Legacy-Phase58-Migrate** (Day 4 finding) — `ApprovalCard` confirmed legacy per `chatStore.ts:L324` dual-emit comment; HITLTurn is canonical Phase-1 chat-inline render. Re-pointed this sprint for completeness; 0 main render path. Migrate governance integration to HITLTurn-only in Phase 58+, then delete.
+
+---
+
+## 🆕 Sprint 57.29 Carryover (2026-05-22 — Phase-2 per-page re-point opens; partially closed in 57.30)
 
 Sprint 57.29 (`AD-Overview-Verbatim-Repoint`) closed: `/overview` + app shell + 3 topbar overlays + 7 widgets re-pointed to verbatim mockup CSS — fidelity verdict **PARITY**, 22-route regression sweep 0 catastrophic / 0 structural. The Phase-2 per-page re-point template is validated (`frontend-verbatim-css-repoint` 0.60 class). Carryover:
 
 - **AD-Inline-Style-Rule-vs-Verbatim-Method** — the `no-restricted-syntax` ESLint inline-`style=` ban (Sprint 57.15/57.16) conflicts with the verbatim method's required mockup inline-style literals; currently handled per-file with `eslint-disable` + rationale. Decide: scope the rule to exclude verbatim-re-pointed dirs, or retire it.
-- **AD-UserMenu-Mockup-Structural-Deltas** — `UserMenu` retains a theme-toggle item + a "Signed in as" label + identity-card role badges with no mockup counterpart (pre-existing production features / `UserMenu.test.tsx` contracts). Decide align-strict-vs-keep when UserMenu's backing is revisited.
-- **AD-MockupFidelity-Guard-TokenRelative-Oklch** — `frontend/scripts/check-mockup-fidelity.mjs` grep counts token-relative `oklch(from var(--token) …)` literals as "hardcoded"; refine the grep to exclude them so faithful verbatim re-points don't grow `HEX_OKLCH_BASELINE` (raised 18→21 in 57.29).
-- **AD-Overview-PreExisting-Route-Crashes** — `/subagents`, `/memory`, `/verification` render an error boundary (`Cannot read properties of undefined (reading 'length')`) — pre-existing (Day-0 baseline == after sweep), NOT a 57.29 regression. Separate FIX.
-- **Next Phase-2 per-page re-point** — the 13 🟡 AppShellV2 routes (chat-v2 / orchestrator / subagents / loop-debug / memory / state-inspector / governance / verification / cost-dashboard / sla-dashboard / admin-tenants / tenant-settings / compaction) are the backlog; pick the next page + apply the Sprint 57.29 template.
+- **AD-UserMenu-Mockup-Structural-Deltas** — ✅ **CLOSED in Sprint 57.30 Day 1**: Radix `<DropdownMenu>` dropped entirely; `useDismiss` hook ported verbatim from mockup `topbar-overlays.jsx:9-27`; avatar trigger 36→26 split via `.avatar` CSS class; dropdown now flush against topbar bottom edge (`top:50; right:12` verbatim positioning honoured).
+- **AD-MockupFidelity-Guard-TokenRelative-Oklch** — `frontend/scripts/check-mockup-fidelity.mjs` grep counts token-relative `oklch(from var(--token) …)` literals as "hardcoded"; refine the grep to exclude them so faithful verbatim re-points don't grow `HEX_OKLCH_BASELINE` (raised 18→21 in 57.29; 21→25 in 57.30).
+- **AD-Overview-PreExisting-Route-Crashes** — `/subagents`, `/memory`, `/verification` render an error boundary (`Cannot read properties of undefined (reading 'length')`) — pre-existing (Day-0 baseline == after sweep on both 57.29 and 57.30); NOT a regression. Separate FIX sprint candidate (Sprint 57.31+ "frontend-page-bug-fix" class at ~0.45 mid-band).
+- **Next Phase-2 per-page re-point** — Sprint 57.30 picked `/chat-v2`. Remaining 12 🟡 AppShellV2 routes: orchestrator / loop-debug / memory / state-inspector / governance / verification / cost-dashboard / sla-dashboard / admin-tenants / tenant-settings / compaction (+ subagents / memory / verification but those need crash fix first).
 
 ---
 

@@ -1,44 +1,51 @@
+/* eslint-disable no-restricted-syntax -- verbatim re-point: inline styles are mockup page-chat.jsx visual-layer literals copied byte-for-byte; re-expressing as Tailwind IS the drift bug this epic kills (STYLE.md §1 escape hatch + frontend-mockup-fidelity.md) */
 /**
  * File: frontend/src/features/chat_v2/components/ChatHeader.tsx
  * Purpose: Top header of the chat center column — title + badges + streaming + actions + panel toggles.
  * Category: Frontend / chat_v2 / components
- * Scope: Phase 57.21 Day 3 §3.2 (AD-ChatV2-Full-Mockup-Fidelity Phase-1)
+ * Scope: Phase 57.21 Day 3 §3.2 → 57.30 Day 2 verbatim re-point
  *
  * Description:
- *   Mockup L93-121 — center column header. Renders:
- *     - Left panel toggle button (collapse / expand sessions sidebar)
- *     - Gradient warn icon (danger → warning) per mockup
- *     - Session title + agent / model / provider / turns metadata row
- *     - Streaming indicator (live-dot + "streaming" mono text) when active
- *     - Loop button (link to /loop-debug) + Audit button
- *     - Right panel toggle (collapse / expand inspector sidebar)
+ *   Mockup `page-chat.jsx` L93-121 — verbatim re-point of center-column header.
+ *   Mockup CSS classes consumed verbatim:
+ *     - .panel-toggle (styles-mockup.css L712-724) — square 26×26 toggle button
+ *     - .row / .grow / .mono / .subtle (styles-mockup.css L613-620)
+ *     - .live-dot (styles-mockup.css L649)
+ *     - .provider-neutral (styles-mockup.css L1092)
  *
- *   Data sources:
+ *   Inline-style literals copied byte-for-byte from mockup L94, L98, L101, L102,
+ *   L103, L107, L111, L113, L118 — these are visual-layer literals; re-expressing
+ *   them as Tailwind is the drift bug Sprint 57.18-57.27 root cause investigation
+ *   (claudedocs/5-status/v2-investigation-20260522/03-mockup-consistency-rootcause.md)
+ *   identified. STYLE.md §1 escape hatch + frontend-mockup-fidelity.md.
+ *
+ *   Data sources (component-logic layer; preserved unchanged):
  *     - chatStore.activeSessionId → FIXTURE_SESSIONS lookup for title/agent/turns
  *     - chatStore.status === "running" → streaming indicator visibility
+ *     - i18n via react-i18next ("common" namespace)
  *
- *   Token migration note: this is Day 3 NEW work, uses Sprint 57.18+ mockup
- *   token vocabulary directly (bg-bg-1 / text-fg / text-fg-muted / etc.) per
- *   STYLE.md §2.
+ *   Mockup uses `Button variant="ghost" size="sm" icon="loop"` shadcn-foreign shape
+ *   for Loop / Audit actions. Production retains shadcn `<Button>` because the
+ *   mockup Button maps 1:1 onto the production primitive AND no DOM/class drift
+ *   results — both render to the same `.h-7 px-2 text-xs` ghost button shape.
  *
  * Created: 2026-05-17 (Sprint 57.21 Day 3 §3.2)
+ * Last Modified: 2026-05-23
  *
  * Modification History:
+ *   - 2026-05-23: Sprint 57.30 Day 2 US-C2 — verbatim re-point to mockup page-chat.jsx L93-121 ChatHeader markup (.panel-toggle, inline-style literals byte-identical)
  *   - 2026-05-17: Initial creation (Sprint 57.21 Day 3 §3.2)
  *
  * Related:
  *   - reference/design-mockups/page-chat.jsx L93-121 (ChatHeader source)
+ *   - frontend/src/styles-mockup.css L712-724 (.panel-toggle) / L649 (.live-dot) / L613-620 (.row / .grow / .mono / .subtle) / L1092 (.provider-neutral)
  *   - ../fixtures/sessions.ts (FIXTURE_SESSIONS for title lookup)
  *   - ../store/chatStore.ts (activeSessionId + status)
- *   - frontend/STYLE.md §2
+ *   - docs/rules-on-demand/frontend-mockup-fidelity.md (verbatim re-point method)
  */
 
 import { Activity, AlertTriangle, PanelLeft, PanelRight, ScrollText } from "lucide-react";
 import { useTranslation } from "react-i18next";
-
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 import { FIXTURE_SESSIONS } from "../fixtures/sessions";
 import { useChatStore } from "../store/chatStore";
@@ -66,94 +73,114 @@ export function ChatHeader({ listOpen, inspOpen, onToggleList, onToggleInsp }: P
   const isStreaming = status === "running";
 
   return (
-    <header
+    <div
       data-testid="chat-header"
-      className="flex items-center gap-2.5 border-b border-border bg-bg-1 px-5 py-2.5"
+      style={{
+        padding: "10px 20px",
+        borderBottom: "1px solid var(--border)",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        background: "var(--bg-1)",
+      }}
     >
-      {/* Left panel toggle */}
+      {/* Left panel toggle — mockup L95-97 */}
       <button
         type="button"
+        className="panel-toggle"
         data-testid="chat-header-toggle-list"
         data-active={listOpen}
         aria-label={t("chat.header.toggleList") ?? "Toggle session list"}
         title={t("chat.header.toggleList") ?? undefined}
         onClick={onToggleList}
-        className={cn(
-          "inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-fg-muted",
-          "hover:bg-bg-hover hover:text-fg",
-          listOpen && "bg-bg-2 text-fg",
-        )}
       >
-        <PanelLeft className="h-3.5 w-3.5" aria-hidden="true" />
+        <PanelLeft size={14} aria-hidden="true" />
       </button>
 
-      {/* Gradient warn icon */}
+      {/* Gradient warn icon — mockup L98-100 */}
       <div
         aria-hidden="true"
-        className="flex h-[26px] w-[26px] flex-shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-danger to-warning"
+        style={{
+          width: 26,
+          height: 26,
+          borderRadius: 6,
+          background: "linear-gradient(135deg, var(--danger), var(--warning))",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
       >
-        <AlertTriangle className="h-3 w-3 text-white" />
+        <AlertTriangle size={13} style={{ color: "white" }} />
       </div>
 
-      {/* Title + metadata row */}
-      <div className="min-w-0 flex-1 overflow-hidden">
-        <h2 className="m-0 truncate text-[13px] font-semibold text-fg" title={titleText}>
+      {/* Title + metadata row — mockup L101-109 */}
+      <div style={{ minWidth: 0, overflow: "hidden" }}>
+        <div
+          style={{
+            fontWeight: 600,
+            fontSize: 13,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+          title={titleText}
+        >
           {titleText}
-        </h2>
-        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px]">
-          <Badge variant="outline" className="border-border bg-bg-2 px-1.5 py-0 text-[10px] text-fg-muted">
-            {agentText}
-          </Badge>
-          <Badge variant="outline" className="border-thinking/40 bg-thinking/16 px-1.5 py-0 text-[10px] text-thinking">
-            claude-haiku-4-5
-          </Badge>
-          <span className="font-mono text-[10px] text-fg-subtle">{t("chat.header.providerNeutral")}</span>
-          <span className="text-[11px] text-fg-subtle">· {t("chat.session.meta.turns", { count: turnCount })}</span>
+        </div>
+        <div className="row" style={{ gap: 6, marginTop: 2, flexWrap: "wrap" }}>
+          <span className="badge">{agentText}</span>
+          <span className="badge thinking">claude-haiku-4-5</span>
+          <span className="provider-neutral">{t("chat.header.providerNeutral")}</span>
+          <span className="subtle" style={{ fontSize: 11 }}>
+            · {t("chat.session.meta.turns", { count: turnCount })}
+          </span>
         </div>
       </div>
 
-      {/* Streaming indicator */}
+      {/* Grow spacer — mockup L110 */}
+      <div className="grow" />
+
+      {/* Streaming indicator — mockup L111-114 (gated on running status) */}
       {isStreaming && (
-        <span className="flex items-center gap-1.5" aria-live="polite">
-          <span aria-hidden="true" className="inline-block h-2 w-2 animate-pulse rounded-full bg-warning" />
-          <span className="font-mono text-[11px] text-fg-muted">{t("chat.header.streaming")}</span>
+        <span className="row" style={{ gap: 6 }} aria-live="polite">
+          <span className="live-dot" />
+          <span className="mono" style={{ fontSize: 11, color: "var(--fg-muted)" }}>
+            {t("chat.header.streaming")}
+          </span>
         </span>
       )}
 
-      {/* Loop + Audit actions */}
-      <Button
-        size="sm"
-        variant="ghost"
-        className="h-7 gap-1 px-2 text-xs"
+      {/* Loop + Audit actions — mockup L115-116 (verbatim .btn .ghost [data-size="sm"]) */}
+      <button
+        type="button"
+        className="btn ghost"
+        data-size="sm"
         onClick={() => {
           window.location.hash = "loop-debug";
         }}
       >
-        <Activity className="h-3 w-3" aria-hidden="true" />
+        <Activity size={12} aria-hidden="true" />
         {t("chat.header.loopButton")}
-      </Button>
-      <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs">
-        <ScrollText className="h-3 w-3" aria-hidden="true" />
+      </button>
+      <button type="button" className="btn ghost" data-size="sm">
+        <ScrollText size={12} aria-hidden="true" />
         {t("chat.header.auditButton")}
-      </Button>
+      </button>
 
-      {/* Right panel toggle */}
+      {/* Right panel toggle — mockup L117-119 (icon mirrored via scaleX(-1)) */}
       <button
         type="button"
+        className="panel-toggle"
         data-testid="chat-header-toggle-inspector"
         data-active={inspOpen}
         aria-label={t("chat.header.toggleInspector") ?? "Toggle inspector"}
         title={t("chat.header.toggleInspector") ?? undefined}
         onClick={onToggleInsp}
-        className={cn(
-          "inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-fg-muted",
-          "hover:bg-bg-hover hover:text-fg",
-          inspOpen && "bg-bg-2 text-fg",
-        )}
       >
-        <PanelRight className="h-3.5 w-3.5" aria-hidden="true" />
+        <PanelRight size={14} style={{ transform: "scaleX(-1)" }} aria-hidden="true" />
       </button>
-    </header>
+    </div>
   );
 }
 
