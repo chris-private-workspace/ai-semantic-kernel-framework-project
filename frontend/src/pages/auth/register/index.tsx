@@ -1,43 +1,48 @@
 /**
  * File: frontend/src/pages/auth/register/index.tsx
- * Purpose: Self-serve tenant onboarding — 4-step wizard per Sprint 57.23 US-C2 (mockup AuthRegister direct port).
+ * Purpose: Self-serve tenant onboarding — verbatim re-point per mockup AuthRegister (Sprint 57.35 US-C2).
  * Category: Frontend / pages / auth
- * Scope: Phase 57 / Sprint 57.23 US-C2 (NEW route)
+ * Scope: Phase 57 / Sprint 57.23 US-C2 (initial NEW route) → Sprint 57.35 US-C2 (Phase-2 verbatim-CSS re-point)
  *
  * Description:
- *   Sprint 57.23 US-C2 NEW per `reference/design-mockups/page-auth-extras.jsx:31-188`:
- *     - 4-step wizard: Identity → Organization → Plan → Confirm
- *     - Stepper bar (4 circles + connectors; active/completed/future visual states)
- *     - Step 0 Identity: Work email + Full name + SAML hint
- *     - Step 1 Organization: Company name + Tenant slug (with .ipa.platform suffix) + Region + Size dropdowns
- *     - Step 2 Plan: 3 radio cards (Trial / Pro / Enterprise; Pro defaultChecked)
- *     - Step 3 Confirm: hitl-card-style summary + terms checkbox + email verification hint
- *     - Back/Continue navigation; Create workspace primary on step 3
+ *   Sprint 57.35 US-C2 verbatim re-point per `reference/design-mockups/page-auth-extras.jsx:31-188`:
+ *     - Drop shadcn Card/CardContent/Button/Badge + lucide-react Check/AlertTriangle/ShieldCheck/ArrowRight
+ *     - Drop local <Field> in favour of mockup-ui Field (.field/.field-label)
+ *     - Use mockup-ui Card + Button + Badge + Icon (check/warn/shield/bolt)
+ *     - Verbatim .col + .row + .muted + .subtle + .mono + .input + .select + .hr + .spread classes
+ *     - Step circles use inline-style literals per mockup L55-65 (var(--primary) fill / var(--bg-3) muted)
+ *     - Step 2 Plan radio cards use inline-style literals per mockup L126-132
+ *     - Step 3 Confirm uses .hitl-card[data-severity="risk-low"] + .hitl-card-bar + .hitl-head verbatim
+ *     - Continue / Create buttons use mockup-ui iconRight="arrow_right" / icon="bolt"
  *
- *   Backend stub:
- *     - POST /api/v1/tenants/register expected to return 501 NotImplemented this sprint
- *     - AD-Auth-Register-Backend-IAM-Block-B-Phase58 carryover for real implementation
- *     - "Backend wire pending Phase 58+ IAM Block B" demo banner above stepper (AP-2 compliance)
+ *   Backend behavior preserved (Sprint 57.23 US-C2):
+ *     - POST /api/v1/tenants/register expected 501 NotImplemented this sprint
+ *     - AD-Auth-Register-Backend-IAM-Block-B-Phase58 carryover
+ *     - Demo banner above stepper (AP-2 compliance) — re-cast as .hitl-card[risk-medium] visual style
  *
  * Created: 2026-05-18 (Sprint 57.23 US-C2)
+ * Last Modified: 2026-05-24
  *
  * Modification History:
+ *   - 2026-05-24: Sprint 57.35 US-C2 — verbatim re-point per page-auth-extras.jsx:31-188 (closes Sprint 57.23 vintage HSL-translation drift)
  *   - 2026-05-18: Initial creation (Sprint 57.23 US-C2) — mockup-direct port of AuthRegister wizard
  *
  * Related:
  *   - backend/src/api/v1/auth.py (or NEW tenants.py) — POST /api/v1/tenants/register stub 501 (AD-IAM-Block-B-Phase58)
- *   - frontend/src/components/AuthShell.tsx (Sprint 57.23 mockup full-screen centered)
+ *   - frontend/src/components/AuthShell.tsx (Sprint 57.35 verbatim re-point)
+ *   - frontend/src/components/mockup-ui.tsx (Card/Button/Badge/Field/Icon)
  *   - frontend/src/i18n/locales/{en,zh-TW}/auth.json (auth.register.* namespace)
  *   - reference/design-mockups/page-auth-extras.jsx:31-188 (AuthRegister canonical visual source)
  */
 
-import { AlertTriangle, ArrowRight, Check, ShieldCheck } from "lucide-react";
-import { type ChangeEvent, type FormEvent, type ReactNode, useState } from "react";
+/* eslint-disable no-restricted-syntax -- verbatim re-point: inline-style literals (stepper circles + plan radio cards + container) copied byte-for-byte from mockup page-auth-extras.jsx:31-188 (STYLE.md §1 escape hatch + frontend-mockup-fidelity.md verbatim-CSS rule) */
+
+import { type ChangeEvent, type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { AuthShell } from "@/components/AuthShell";
-import { Badge, Button, Card, CardContent } from "@/components/ui";
+import { Badge, Button, Card, Field, Icon } from "@/components/mockup-ui";
 import { fetchWithAuth } from "@/features/auth/services/authService";
 
 type Step = 0 | 1 | 2 | 3;
@@ -89,25 +94,6 @@ const SIZES = [
   "2000+ enterprise",
 ];
 
-interface FieldProps {
-  label: string;
-  help?: string;
-  children: ReactNode;
-  htmlFor?: string;
-}
-
-function Field({ label, help, children, htmlFor }: FieldProps): JSX.Element {
-  return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={htmlFor} className="text-[12px] font-medium text-fg-muted">
-        {label}
-      </label>
-      {children}
-      {help && <div className="text-[11px] text-fg-subtle">{help}</div>}
-    </div>
-  );
-}
-
 export default function RegisterPage(): JSX.Element {
   const { t } = useTranslation("auth");
   const [step, setStep] = useState<Step>(0);
@@ -155,11 +141,9 @@ export default function RegisterPage(): JSX.Element {
         }),
       });
       if (!res.ok) {
-        // Sprint 57.23: backend stub 501; show demo-banner-style error per Q2 frontend-only decision
         setError(t("register.errorStubbed"));
         return;
       }
-      // Phase 58+ IAM Block B: on success, redirect to /auth/callback for JWT mint
       window.location.href = "/auth/callback";
     } catch {
       setError(t("register.errorStubbed"));
@@ -168,282 +152,362 @@ export default function RegisterPage(): JSX.Element {
     }
   };
 
+  const selectedPlan = PLAN_OPTIONS.find((p) => p.id === plan);
+
   return (
     <AuthShell
       footer={
         <span>
           {t("register.alreadyHave")}{" "}
-          <Link to="/auth/login" className="text-primary hover:underline">
+          <Link to="/auth/login" style={{ color: "var(--primary)", textDecoration: "none" }}>
             {t("register.signIn")}
           </Link>
         </span>
       }
     >
       <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col gap-4">
-            {/* Header */}
-            <div>
-              <div className="mb-1 text-lg font-semibold">{t("register.title")}</div>
-              <div className="text-[12.5px] text-fg-muted">{t("register.subtitle")}</div>
+        <div className="col" style={{ gap: 16 }}>
+          {/* header */}
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>
+              {t("register.title")}
             </div>
+            <div className="muted" style={{ fontSize: 12.5 }}>
+              {t("register.subtitle")}
+            </div>
+          </div>
 
-            {/* AP-2 demo banner */}
-            <div
-              role="note"
-              className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-[11px] text-warning"
-            >
+          {/* AP-2 demo banner — verbatim per .hitl-card[data-severity="risk-medium"] pattern */}
+          <div className="hitl-card" data-severity="risk-medium" style={{ margin: 0 }} role="note">
+            <div className="hitl-card-bar" />
+            <div className="hitl-head">
+              <span className="icon-ring">
+                <Icon name="warn" size={13} />
+              </span>
               {t("register.demoBanner")}
             </div>
+          </div>
 
-            {/* Stepper bar (mockup L51-70) */}
-            <div className="flex flex-row items-center gap-1">
-              {steps.map((s, i) => (
-                <div key={s.k} className="flex flex-row items-center gap-1">
-                  <div className="flex flex-row items-center gap-1.5">
-                    <span
-                      className={
-                        i <= step
-                          ? "flex h-[18px] w-[18px] items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground"
-                          : "flex h-[18px] w-[18px] items-center justify-center rounded-full border border-border bg-bg-3 text-[10px] font-semibold text-fg-subtle"
-                      }
-                    >
-                      {i < step ? <Check size={9} /> : i + 1}
-                    </span>
-                    <span
-                      className={
-                        i === step
-                          ? "text-[11px] text-foreground"
-                          : "text-[11px] text-fg-subtle"
-                      }
-                    >
-                      {s.label}
-                    </span>
-                  </div>
-                  {i < steps.length - 1 && <div className="h-px flex-1 bg-border" aria-hidden />}
-                </div>
-              ))}
-            </div>
-
-            <div className="h-px bg-border" aria-hidden />
-
-            {/* Error surface */}
-            {error && (
+          {/* stepper — verbatim mockup L51-70 */}
+          <div className="row" style={{ gap: 4, alignItems: "center" }}>
+            {steps.map((s, i) => (
               <div
-                role="alert"
-                className="flex items-start gap-2 rounded border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+                key={s.k}
+                className="row"
+                style={{ gap: 4, alignItems: "center", flex: i < steps.length - 1 ? 1 : "initial" }}
               >
-                <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-                <span>{error}</span>
+                <div className="row" style={{ gap: 6, alignItems: "center" }}>
+                  <span
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: "50%",
+                      background: i <= step ? "var(--primary)" : "var(--bg-3)",
+                      border: i <= step ? "none" : "1px solid var(--border)",
+                      color: i <= step ? "white" : "var(--fg-subtle)",
+                      fontSize: 10,
+                      fontWeight: 600,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {i < step ? <Icon name="check" size={9} /> : i + 1}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: i === step ? "var(--fg)" : "var(--fg-subtle)",
+                    }}
+                  >
+                    {s.label}
+                  </span>
+                </div>
+                {i < steps.length - 1 && (
+                  <div
+                    style={{ flex: 1, height: 1, background: "var(--border)" }}
+                    aria-hidden
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="hr" style={{ margin: 0 }} />
+
+          {/* Error surface */}
+          {error && (
+            <div
+              role="alert"
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 8,
+                padding: 10,
+                borderRadius: 6,
+                border: "1px solid oklch(from var(--danger) l c h / 0.4)",
+                background: "oklch(from var(--danger) l c h / 0.1)",
+                color: "var(--danger)",
+                fontSize: 12.5,
+              }}
+            >
+              <Icon name="warn" size={14} style={{ marginTop: 1, flexShrink: 0 }} />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <form onSubmit={submit} className="col" style={{ gap: 12 }}>
+            {/* Step 0 — Identity (mockup L75-86) */}
+            {step === 0 && (
+              <div className="col" style={{ gap: 12 }}>
+                <Field label={t("register.workEmail")}>
+                  <input
+                    id="reg-email"
+                    type="email"
+                    className="input"
+                    value={email}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                    placeholder="founder@yourco.com"
+                    style={{ height: 36, fontSize: 13.5 }}
+                  />
+                </Field>
+                <Field label={t("register.fullName")}>
+                  <input
+                    id="reg-name"
+                    className="input"
+                    value={fullName}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFullName(e.target.value)}
+                    placeholder="Alex Chen"
+                    style={{ height: 36, fontSize: 13.5 }}
+                  />
+                </Field>
+                <div className="muted" style={{ fontSize: 11, lineHeight: 1.5 }}>
+                  <Icon
+                    name="shield"
+                    size={11}
+                    style={{ verticalAlign: -1, marginRight: 4 }}
+                  />
+                  {t("register.ssoHint")}
+                </div>
               </div>
             )}
 
-            <form onSubmit={submit} className="flex flex-col gap-3">
-              {/* Step 0 — Identity (mockup L75-86) */}
-              {step === 0 && (
-                <div className="flex flex-col gap-3">
-                  <Field label={t("register.workEmail")} htmlFor="reg-email">
+            {/* Step 1 — Organization (mockup L89-117) */}
+            {step === 1 && (
+              <div className="col" style={{ gap: 12 }}>
+                <Field label={t("register.companyName")}>
+                  <input
+                    id="reg-company"
+                    className="input"
+                    value={companyName}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setCompanyName(e.target.value)}
+                    placeholder="Acme Corp"
+                    style={{ height: 36, fontSize: 13.5 }}
+                  />
+                </Field>
+                <Field label={t("register.tenantSlug")} help={t("register.tenantSlugHelp")}>
+                  <div className="row" style={{ gap: 4 }}>
                     <input
-                      id="reg-email"
-                      type="email"
-                      value={email}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                      placeholder="founder@yourco.com"
-                      className="h-9 rounded-md border border-border bg-background px-3 text-[13.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      id="reg-slug"
+                      className="input mono"
+                      value={tenantSlug}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                        setTenantSlug(e.target.value)
+                      }
+                      placeholder="acme"
+                      style={{ flex: 1, height: 36, fontSize: 13 }}
                     />
-                  </Field>
-                  <Field label={t("register.fullName")} htmlFor="reg-name">
-                    <input
-                      id="reg-name"
-                      value={fullName}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => setFullName(e.target.value)}
-                      placeholder="Alex Chen"
-                      className="h-9 rounded-md border border-border bg-background px-3 text-[13.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    />
-                  </Field>
-                  <div className="flex flex-row items-center gap-1.5 text-[11px] text-fg-muted">
-                    <ShieldCheck size={11} aria-hidden />
-                    <span>{t("register.ssoHint")}</span>
+                    <span className="mono subtle" style={{ alignSelf: "center", fontSize: 12 }}>
+                      .ipa.platform
+                    </span>
                   </div>
-                </div>
-              )}
-
-              {/* Step 1 — Organization (mockup L89-117) */}
-              {step === 1 && (
-                <div className="flex flex-col gap-3">
-                  <Field label={t("register.companyName")} htmlFor="reg-company">
-                    <input
-                      id="reg-company"
-                      value={companyName}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => setCompanyName(e.target.value)}
-                      placeholder="Acme Corp"
-                      className="h-9 rounded-md border border-border bg-background px-3 text-[13.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    />
-                  </Field>
-                  <Field label={t("register.tenantSlug")} help={t("register.tenantSlugHelp")} htmlFor="reg-slug">
-                    <div className="flex flex-row items-center gap-1">
-                      <input
-                        id="reg-slug"
-                        value={tenantSlug}
-                        onChange={(e: ChangeEvent<HTMLInputElement>) => setTenantSlug(e.target.value)}
-                        placeholder="acme"
-                        className="h-9 flex-1 rounded-md border border-border bg-background px-3 font-mono text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      />
-                      <span className="self-center font-mono text-[12px] text-fg-subtle">.ipa.platform</span>
-                    </div>
-                  </Field>
-                  <Field label={t("register.region")} htmlFor="reg-region">
-                    <select
-                      id="reg-region"
-                      value={region}
-                      onChange={(e: ChangeEvent<HTMLSelectElement>) => setRegion(e.target.value)}
-                      className="h-9 rounded-md border border-border bg-background px-2 text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      {REGIONS.map((r) => (
-                        <option key={r} value={r}>
-                          {r}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label={t("register.size")} htmlFor="reg-size">
-                    <select
-                      id="reg-size"
-                      value={size}
-                      onChange={(e: ChangeEvent<HTMLSelectElement>) => setSize(e.target.value)}
-                      className="h-9 rounded-md border border-border bg-background px-2 text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      {SIZES.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                </div>
-              )}
-
-              {/* Step 2 — Plan (mockup L120-145) */}
-              {step === 2 && (
-                <div className="flex flex-col gap-2.5">
-                  {PLAN_OPTIONS.map((p) => {
-                    const active = plan === p.id;
-                    return (
-                      <label
-                        key={p.id}
-                        htmlFor={`reg-plan-${p.id}`}
-                        aria-label={`${p.name} · ${p.price} ${p.period}`}
-                        className={
-                          active
-                            ? "flex cursor-pointer flex-row gap-2.5 rounded-md border border-primary bg-primary/[0.08] p-3"
-                            : "flex cursor-pointer flex-row gap-2.5 rounded-md border border-border bg-bg-1 p-3"
-                        }
-                      >
-                        <input
-                          id={`reg-plan-${p.id}`}
-                          type="radio"
-                          name="plan"
-                          value={p.id}
-                          checked={active}
-                          onChange={() => setPlan(p.id)}
-                          className="accent-primary"
-                        />
-                        <div className="flex grow flex-col gap-1">
-                          <div className="flex flex-row items-baseline gap-2">
-                            <span className="text-[13.5px] font-semibold">{p.name}</span>
-                            <span className="font-mono text-[12px]">{p.price}</span>
-                            <span className="font-mono text-[11px] text-fg-subtle">{p.period}</span>
-                          </div>
-                          <div className="text-[11.5px] leading-relaxed text-fg-muted">{p.desc}</div>
-                        </div>
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Step 3 — Confirm (mockup L148-171) */}
-              {step === 3 && (
-                <div className="flex flex-col gap-3.5">
-                  <div
-                    data-severity="risk-low"
-                    className="relative rounded-lg border border-success/40 bg-success/5 p-4"
+                </Field>
+                <Field label={t("register.region")}>
+                  <select
+                    id="reg-region"
+                    className="select"
+                    value={region}
+                    onChange={(e: ChangeEvent<HTMLSelectElement>) => setRegion(e.target.value)}
+                    style={{ height: 34, fontSize: 13 }}
                   >
-                    <div className="absolute left-0 top-0 bottom-0 w-0.5 rounded-l-lg bg-success" aria-hidden />
-                    <div className="mb-2 flex flex-row items-center gap-2 text-[13.5px] font-semibold text-success">
-                      <Check size={13} aria-hidden />
-                      {t("register.almostDone")}
-                    </div>
-                    <div className="flex flex-col gap-1.5 text-[12px] text-fg-muted">
-                      <div className="flex flex-row justify-between">
-                        <span>{t("register.workEmail")}</span>
-                        <span className="font-mono">{email || "founder@yourco.com"}</span>
-                      </div>
-                      <div className="flex flex-row justify-between">
-                        <span>{t("register.companyName")}</span>
-                        <span>{companyName || "—"}</span>
-                      </div>
-                      <div className="flex flex-row justify-between">
-                        <span>{t("register.tenantSlug")}</span>
-                        <span className="font-mono">{tenantSlug || "acme"}.ipa.platform</span>
-                      </div>
-                      <div className="flex flex-row justify-between">
-                        <span>{t("register.region")}</span>
-                        <span className="font-mono">{region.split(" ·")[0]}</span>
-                      </div>
-                      <div className="flex flex-row items-center justify-between">
-                        <span>Plan</span>
-                        <Badge>
-                          {PLAN_OPTIONS.find((p) => p.id === plan)?.name} ·{" "}
-                          {PLAN_OPTIONS.find((p) => p.id === plan)?.price}
-                          {PLAN_OPTIONS.find((p) => p.id === plan)?.period}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                  <label
-                    htmlFor="reg-terms"
-                    className="flex flex-row items-center gap-2 text-[12px] text-fg-muted"
+                    {REGIONS.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label={t("register.size")}>
+                  <select
+                    id="reg-size"
+                    className="select"
+                    value={size}
+                    onChange={(e: ChangeEvent<HTMLSelectElement>) => setSize(e.target.value)}
+                    style={{ height: 34, fontSize: 13 }}
                   >
-                    <input
-                      id="reg-terms"
-                      type="checkbox"
-                      checked={termsAccepted}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => setTermsAccepted(e.target.checked)}
-                      className="accent-primary"
-                    />
-                    <span>{t("register.terms")}</span>
-                  </label>
-                  <div className="flex flex-row items-start gap-1.5 text-[11px] text-fg-muted">
-                    <AlertTriangle size={11} className="mt-0.5 shrink-0 text-warning" aria-hidden />
-                    <span className="leading-relaxed">{t("register.verifyHint")}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Navigation (mockup L174-184) */}
-              <div className="mt-1 flex flex-row gap-2">
-                {step > 0 && (
-                  <Button type="button" variant="ghost" onClick={back} disabled={busy}>
-                    {t("register.back")}
-                  </Button>
-                )}
-                <div className="grow" />
-                {step < 3 ? (
-                  <Button type="button" onClick={next} disabled={busy}>
-                    {t("register.continue")}
-                    <ArrowRight size={16} className="ml-1" />
-                  </Button>
-                ) : (
-                  <Button type="submit" disabled={busy || !termsAccepted}>
-                    {busy ? t("register.submitting") : t("register.create")}
-                    <ArrowRight size={16} className="ml-1" />
-                  </Button>
-                )}
+                    {SIZES.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
               </div>
-            </form>
-          </div>
-        </CardContent>
+            )}
+
+            {/* Step 2 — Plan (mockup L120-145) */}
+            {step === 2 && (
+              <div className="col" style={{ gap: 10 }}>
+                {PLAN_OPTIONS.map((p) => {
+                  const active = plan === p.id;
+                  return (
+                    <label
+                      key={p.id}
+                      htmlFor={`reg-plan-${p.id}`}
+                      aria-label={`${p.name} · ${p.price} ${p.period}`}
+                      className="row"
+                      style={{
+                        gap: 10,
+                        padding: 12,
+                        background: active
+                          ? "oklch(from var(--primary) l c h / 0.08)"
+                          : "var(--bg-1)",
+                        border: `1px solid ${active ? "var(--primary)" : "var(--border)"}`,
+                        borderRadius: "var(--radius-sm)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <input
+                        id={`reg-plan-${p.id}`}
+                        type="radio"
+                        name="plan"
+                        value={p.id}
+                        checked={active}
+                        onChange={() => setPlan(p.id)}
+                        style={{ accentColor: "var(--primary)" }}
+                      />
+                      <div className="col grow" style={{ gap: 4 }}>
+                        <div className="row" style={{ gap: 8, alignItems: "baseline" }}>
+                          <span style={{ fontWeight: 600, fontSize: 13.5 }}>{p.name}</span>
+                          <span className="mono" style={{ fontSize: 12 }}>
+                            {p.price}
+                          </span>
+                          <span className="mono subtle" style={{ fontSize: 11 }}>
+                            {p.period}
+                          </span>
+                        </div>
+                        <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.5 }}>
+                          {p.desc}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Step 3 — Confirm (mockup L148-171) */}
+            {step === 3 && (
+              <div className="col" style={{ gap: 14 }}>
+                <div
+                  className="hitl-card"
+                  data-severity="risk-low"
+                  style={{ margin: 0 }}
+                >
+                  <div className="hitl-card-bar" />
+                  <div className="hitl-head">
+                    <span className="icon-ring">
+                      <Icon name="checkcheck" size={13} />
+                    </span>
+                    {t("register.almostDone")}
+                  </div>
+                  <div
+                    className="col"
+                    style={{ gap: 6, fontSize: 12, color: "var(--fg-muted)" }}
+                  >
+                    <div className="spread">
+                      <span className="muted">{t("register.workEmail")}</span>
+                      <span className="mono">{email || "founder@yourco.com"}</span>
+                    </div>
+                    <div className="spread">
+                      <span className="muted">{t("register.companyName")}</span>
+                      <span>{companyName || "—"}</span>
+                    </div>
+                    <div className="spread">
+                      <span className="muted">{t("register.tenantSlug")}</span>
+                      <span className="mono">{tenantSlug || "acme"}.ipa.platform</span>
+                    </div>
+                    <div className="spread">
+                      <span className="muted">{t("register.region")}</span>
+                      <span className="mono">{region.split(" ·")[0]}</span>
+                    </div>
+                    <div className="spread">
+                      <span className="muted">Plan</span>
+                      <Badge tone="primary">
+                        {selectedPlan?.name} · {selectedPlan?.price}
+                        {selectedPlan?.period}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+                <label
+                  htmlFor="reg-terms"
+                  className="row"
+                  style={{ gap: 8, fontSize: 12, color: "var(--fg-muted)" }}
+                >
+                  <input
+                    id="reg-terms"
+                    type="checkbox"
+                    checked={termsAccepted}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      setTermsAccepted(e.target.checked)
+                    }
+                    style={{ accentColor: "var(--primary)" }}
+                  />
+                  <span>{t("register.terms")}</span>
+                </label>
+                <div className="muted" style={{ fontSize: 11, lineHeight: 1.5 }}>
+                  <Icon
+                    name="warn"
+                    size={11}
+                    style={{ verticalAlign: -1, marginRight: 4, color: "var(--warning)" }}
+                  />
+                  {t("register.verifyHint")}
+                </div>
+              </div>
+            )}
+
+            {/* nav — verbatim mockup L174-184 */}
+            <div className="row" style={{ gap: 8, marginTop: 4 }}>
+              {step > 0 && (
+                <Button type="button" variant="ghost" onClick={back} disabled={busy}>
+                  {t("register.back")}
+                </Button>
+              )}
+              <div className="grow" />
+              {step < 3 ? (
+                <Button
+                  type="button"
+                  variant="primary"
+                  iconRight="arrow_right"
+                  onClick={next}
+                  disabled={busy}
+                >
+                  {t("register.continue")}
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  variant="primary"
+                  icon="bolt"
+                  disabled={busy || !termsAccepted}
+                >
+                  {busy ? t("register.submitting") : t("register.create")}
+                </Button>
+              )}
+            </div>
+          </form>
+        </div>
       </Card>
     </AuthShell>
   );

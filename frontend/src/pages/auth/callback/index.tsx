@@ -1,34 +1,26 @@
 /**
  * File: frontend/src/pages/auth/callback/index.tsx
- * Purpose: OIDC callback landing — mockup-direct rewrite with timed 3-step progress UI + parallel bootstrap.
+ * Purpose: OIDC callback landing — verbatim re-point per mockup AuthCallback (Sprint 57.35 US-C1).
  * Category: Frontend / pages / auth
- * Scope: Phase 57 / Sprint 57.13 US-A1 → Sprint 57.23 US-C1 (timed 3-step progress per mockup AuthCallback)
+ * Scope: Phase 57 / Sprint 57.13 US-A1 → Sprint 57.23 US-C1 (timed 3-step progress) → Sprint 57.35 US-C1 (Phase-2 verbatim-CSS re-point)
  *
  * Description:
- *   Sprint 57.23 US-C1 rewrite per `reference/design-mockups/page-extras.jsx:59-107`:
- *     - Conic-gradient spinning ring (animation: spin 1.2s linear infinite)
- *     - "Completing sign-in…" + `callback=acme.workos.com` mono subtitle
- *     - 3-step progress list with timed setTimeout transitions (800/1800/2800ms):
- *       1. Verifying SAML assertion
- *       2. Resolving tenant + RLS context
- *       3. Loading feature flags + memory scopes
- *     - Steps show success-token-tinted check icon when `step > index`; else outline placeholder
+ *   Sprint 57.35 US-C1 verbatim re-point per `reference/design-mockups/page-extras.jsx:59-107`:
+ *     - Drop shadcn Card/CardContent/Button/EmptyState + lucide-react Check/AlertTriangle
+ *     - Use mockup-ui Card + Button + Icon (check + warn)
+ *     - Verbatim .col + .row + .muted + .mono classes
+ *     - Conic-gradient spinning ring + inline-style step badges per mockup L76-100
+ *     - Preserved: timed 3-step transitions (800/1800/2800ms) + parallel bootstrap +
+ *       min 2800ms enforced + ?error= short-circuit + ?next= navigation
  *
- *   Backend bootstrap runs in parallel with timed UI; min 2800ms enforced so all 3
- *   steps render before navigate (UX consistency — silent-redirect on fast vendor
- *   would skip the progress affordance). When real backend SSE per-step status
- *   emission arrives (AD-Auth-Callback-Loading-UX-Phase58), this frontend
- *   simulation will swap for real status feed.
- *
- *   Preserved Sprint 57.13 logic:
- *     - `?error=` short-circuits before everything → EmptyState + Back to login
- *     - `useAuthStore.bootstrap()` runs after timed UI starts
- *     - `?next=` param OR `consumePostLoginRedirect()` post-bootstrap navigation
+ *   Backend bootstrap runs in parallel with timed UI; min 2800ms enforced.
+ *   AD-Auth-Callback-Loading-UX-Phase58 will swap simulation for real SSE per-step feed.
  *
  * Created: 2026-05-09 (Sprint 57.7 Day 2 PM)
- * Last Modified: 2026-05-18
+ * Last Modified: 2026-05-24
  *
  * Modification History:
+ *   - 2026-05-24: Sprint 57.35 US-C1 — verbatim re-point per page-extras.jsx:59-107 (closes Sprint 57.23 vintage HSL-translation drift)
  *   - 2026-05-18: Sprint 57.23 US-C1 — mockup-direct rewrite with timed 3-step progress + parallel bootstrap (min 2800ms)
  *   - 2026-05-10: Sprint 57.13 US-B9 — <AuthShell> + <EmptyState> error + spinner loading; drop inline styles
  *   - 2026-05-10: Sprint 57.13 US-B5 — i18n the strings (auth namespace)
@@ -37,19 +29,21 @@
  *
  * Related:
  *   - backend/src/api/v1/auth.py:callback (302 here with v2_jwt cookie + ?next)
- *   - frontend/src/components/AuthShell.tsx (Sprint 57.23 mockup full-screen centered)
+ *   - frontend/src/components/AuthShell.tsx (Sprint 57.35 verbatim re-point)
+ *   - frontend/src/components/mockup-ui.tsx (Card / Button / Icon primitives)
  *   - frontend/src/features/auth/store/authStore.ts (bootstrap)
  *   - frontend/src/i18n/locales/{en,zh-TW}/auth.json (auth.callback.* / errorTitle / backToLogin)
  *   - reference/design-mockups/page-extras.jsx:59-107 (AuthCallback canonical visual source)
  */
 
-import { AlertTriangle, Check } from "lucide-react";
+/* eslint-disable no-restricted-syntax -- verbatim re-point: inline-style literals (conic-gradient spinner + step badges + container) copied byte-for-byte from mockup page-extras.jsx:73-105 (STYLE.md §1 escape hatch + frontend-mockup-fidelity.md verbatim-CSS rule) */
+
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { AuthShell } from "@/components/AuthShell";
-import { Button, Card, CardContent, EmptyState } from "@/components/ui";
+import { Button, Card, Icon } from "@/components/mockup-ui";
 import { consumePostLoginRedirect } from "@/features/auth/services/authService";
 import { useAuthStore } from "@/features/auth/store/authStore";
 
@@ -99,7 +93,7 @@ export default function CallbackPage() {
     };
   }, [navigate, params, bootstrap]);
 
-  // Sprint 57.23 US-C1: 3 progress steps per mockup AuthCallback L67-71
+  // Sprint 57.23 US-C1 / 57.35 US-C1 verbatim: 3 progress steps per mockup AuthCallback L67-71
   const steps = [
     { key: "verifySaml", label: t("callback.steps.verifySaml"), done: step > 0 },
     { key: "resolveTenant", label: t("callback.steps.resolveTenant"), done: step > 1 },
@@ -109,18 +103,27 @@ export default function CallbackPage() {
   if (errorMessage) {
     return (
       <AuthShell>
-        <div role="alert">
-          <EmptyState
-            icon={<AlertTriangle size={32} className="text-destructive" />}
-            title={t("errorTitle")}
-            message={errorMessage}
-            action={
-              <Button asChild variant="outline">
-                <Link to="/auth/login">{t("backToLogin")}</Link>
-              </Button>
-            }
-          />
-        </div>
+        <Card>
+          <div
+            role="alert"
+            className="col"
+            style={{ gap: 14, alignItems: "center", textAlign: "center", padding: 8 }}
+          >
+            <Icon name="warn" size={32} style={{ color: "var(--danger)" }} />
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 600 }}>{t("errorTitle")}</div>
+              <div className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>{errorMessage}</div>
+            </div>
+            <Button variant="outline" data-size="lg">
+              <Link
+                to="/auth/login"
+                style={{ color: "inherit", textDecoration: "none" }}
+              >
+                {t("backToLogin")}
+              </Link>
+            </Button>
+          </div>
+        </Card>
       </AuthShell>
     );
   }
@@ -128,48 +131,68 @@ export default function CallbackPage() {
   return (
     <AuthShell>
       <Card>
-        <CardContent className="p-6">
-          <div role="status" className="flex flex-col items-center gap-[18px] p-2 text-center">
-            {/* Conic-gradient spinning ring (mockup AuthCallback L76-83) */}
+        <div
+          role="status"
+          className="col"
+          style={{ gap: 18, alignItems: "center", textAlign: "center", padding: 8 }}
+        >
+          {/* Conic-gradient spinning ring — mockup L76-83 */}
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: "50%",
+              background:
+                "conic-gradient(from 0deg, var(--primary), transparent 70%)",
+              animation: "spin 1.2s linear infinite",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            aria-hidden
+          >
             <div
-              className="flex h-12 w-12 items-center justify-center rounded-full"
-              // eslint-disable-next-line no-restricted-syntax -- STYLE.md §3 escape hatch: conic-gradient + custom animation duration (mockup 1.2s vs Tailwind animate-spin 2s default)
               style={{
-                background:
-                  "conic-gradient(from 0deg, var(--primary), transparent 70%)",
-                animation: "spin 1.2s linear infinite",
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                background: "var(--bg-1)",
               }}
-              aria-hidden
-            >
-              <div className="h-9 w-9 rounded-full bg-bg-1" />
-            </div>
+            />
+          </div>
 
-            <div>
-              <div className="text-[15px] font-semibold">{t("completing")}</div>
-              <div className="mt-1 font-mono text-[11.5px] text-fg-muted">
-                {t("callback.callbackUrlPrefix")}={t("callback.callbackUrlHost")}
-              </div>
-            </div>
-
-            <div className="mt-2 flex flex-col items-stretch gap-2 self-stretch">
-              {steps.map((s) => (
-                <div key={s.key} className="flex flex-row items-center gap-2 text-[12px]">
-                  <span
-                    className={
-                      s.done
-                        ? "flex h-3.5 w-3.5 items-center justify-center rounded-full bg-success"
-                        : "flex h-3.5 w-3.5 items-center justify-center rounded-full border border-border bg-bg-3"
-                    }
-                    aria-hidden
-                  >
-                    {s.done ? <Check size={9} className="text-white" /> : null}
-                  </span>
-                  <span className={s.done ? "text-foreground" : "text-fg-muted"}>{s.label}</span>
-                </div>
-              ))}
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>{t("completing")}</div>
+            <div className="muted mono" style={{ fontSize: 11.5, marginTop: 4 }}>
+              {t("callback.callbackUrlPrefix")}={t("callback.callbackUrlHost")}
             </div>
           </div>
-        </CardContent>
+
+          <div className="col" style={{ gap: 8, alignSelf: "stretch", marginTop: 8 }}>
+            {steps.map((s) => (
+              <div key={s.key} className="row" style={{ gap: 8, fontSize: 12 }}>
+                <span
+                  style={{
+                    width: 14,
+                    height: 14,
+                    borderRadius: "50%",
+                    background: s.done ? "var(--success)" : "var(--bg-3)",
+                    border: s.done ? "none" : "1px solid var(--border)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                  aria-hidden
+                >
+                  {s.done && <Icon name="check" size={9} style={{ color: "white" }} />}
+                </span>
+                <span style={{ color: s.done ? "var(--fg)" : "var(--fg-muted)" }}>
+                  {s.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       </Card>
     </AuthShell>
   );

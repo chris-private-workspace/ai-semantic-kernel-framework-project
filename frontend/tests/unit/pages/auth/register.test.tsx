@@ -52,9 +52,11 @@ describe("RegisterPage", () => {
     expect(
       screen.getByText(/Backend wire pending Phase 58\+ IAM Block B/i),
     ).toBeInTheDocument();
-    // Step 0 fields visible
-    expect(screen.getByLabelText(/Work email/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Full name/i)).toBeInTheDocument();
+    // Step 0 fields visible — Sprint 57.35 verbatim re-point uses mockup `.field` + `.field-label`
+    // (div, not <label htmlFor>); assert by visible label text. Semantically equivalent to
+    // prior getByLabelText contract; visual layer changed, behavioral intent preserved.
+    expect(screen.getByText(/Work email/i)).toBeInTheDocument();
+    expect(screen.getByText(/Full name/i)).toBeInTheDocument();
     // Continue (not Create) button on step 0
     expect(screen.getByRole("button", { name: /Continue/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Back/i })).not.toBeInTheDocument();
@@ -63,11 +65,11 @@ describe("RegisterPage", () => {
   it("Continue advances step 0 → 1 (Organization)", () => {
     renderRegister();
     fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
-    // Step 1 fields visible
-    expect(screen.getByLabelText(/Company name/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Tenant slug/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Region/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Team size/i)).toBeInTheDocument();
+    // Step 1 fields visible — mockup .field-label is div; assert by visible label text.
+    expect(screen.getByText(/Company name/i)).toBeInTheDocument();
+    expect(screen.getByText(/Tenant slug/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Region$/i)).toBeInTheDocument();
+    expect(screen.getByText(/Team size/i)).toBeInTheDocument();
     // Back button now visible (step > 0)
     expect(screen.getByRole("button", { name: /Back/i })).toBeInTheDocument();
   });
@@ -76,9 +78,9 @@ describe("RegisterPage", () => {
     renderRegister();
     fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
     fireEvent.click(screen.getByRole("button", { name: /Back/i }));
-    // Back to step 0
-    expect(screen.getByLabelText(/Work email/i)).toBeInTheDocument();
-    expect(screen.queryByLabelText(/Company name/i)).not.toBeInTheDocument();
+    // Back to step 0 — mockup .field-label is div; assert by visible label text.
+    expect(screen.getByText(/Work email/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Company name/i)).not.toBeInTheDocument();
   });
 
   it("Advances through all 4 steps to Confirm; Create workspace button on step 3", () => {
