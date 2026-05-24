@@ -22,9 +22,10 @@
  *   Tab nav uses NavLink with isActive callback for active state highlighting.
  *
  * Created: 2026-04-29 (Sprint 49.1 placeholder)
- * Last Modified: 2026-05-09
+ * Last Modified: 2026-05-24
  *
  * Modification History (newest-first):
+ *   - 2026-05-24: Sprint 57.39 Domain A — verbatim CSS swap tab-shell per page-governance.jsx:283 Approvals (.tabs/.tab[data-active])
  *   - 2026-05-10: Sprint 57.13 US-A1 — gate via <RequireAuth> (was inline isAuthenticated() check)
  *   - 2026-05-09: Sprint 57.9 US-1 Day 1 — auth gate + AppShellV2 + 2-tab routes (real ship)
  *   - 2026-05-04: Wire ApprovalsPage at /approvals (Sprint 53.5 US-1)
@@ -35,34 +36,41 @@
  *   - frontend/src/components/AppShellV2.tsx (Sprint 57.8 US-1.3)
  *   - frontend/src/features/governance/components/ApprovalsPage.tsx (Sprint 53.5 US-1)
  *   - frontend/src/features/governance/components/AuditLogViewer.tsx (Sprint 57.9 US-4 Day 3)
+ *   - frontend/src/styles-mockup.css (.tabs / .tab[data-active] L590-610)
  */
 
-import { Navigate, NavLink, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { AppShellV2 } from "@/components/AppShellV2";
+import { Tabs } from "@/components/mockup-ui";
 import { RequireAuth } from "@/features/auth/components/RequireAuth";
 import { ApprovalsPage } from "@/features/governance/components/ApprovalsPage";
 import { AuditLogViewer } from "@/features/governance/components/AuditLogViewer";
 
-const tabClass = ({ isActive }: { isActive: boolean }): string =>
-  `px-4 py-2 text-sm font-medium ${
-    isActive
-      ? "border-b-2 border-primary text-primary"
-      : "text-muted-foreground hover:text-foreground"
-  }`;
+/** Tab items — verbatim mockup `Tabs` primitive contract (components/mockup-ui.tsx L611).
+ *  AP-Phase2-C: visual layer fully owned by mockup `.tab[data-active]` CSS (L590-610),
+ *  uses mockup `--border` / `--primary` tokens — no shadcn `border-border` / `border-primary`
+ *  Tailwind utilities (which would resolve to `--sc-*` de-collided tokens).
+ */
+const TAB_ITEMS = [
+  { id: "approvals", label: "Pending Approvals" },
+  { id: "audit-log", label: "Audit Log" },
+] as const;
 
 export default function GovernancePage(): JSX.Element {
+  const location = useLocation();
+  const navigate = useNavigate();
+  // Derive active tab from URL pathname (URL-addressable per Sprint 57.9 plan Q3 select A).
+  const activeTab = location.pathname.includes("/audit-log") ? "audit-log" : "approvals";
   return (
     <RequireAuth>
       <AppShellV2 pageTitle="Governance">
-        <nav className="mb-4 flex gap-2 border-b border-border" aria-label="Governance tabs">
-          <NavLink to="approvals" className={tabClass}>
-            Pending Approvals
-          </NavLink>
-          <NavLink to="audit-log" className={tabClass}>
-            Audit Log
-          </NavLink>
-        </nav>
+        <Tabs
+          items={[...TAB_ITEMS]}
+          value={activeTab}
+          onChange={(id) => navigate(id)}
+          ariaLabel="Governance tabs"
+        />
         <Routes>
           <Route index element={<Navigate to="approvals" replace />} />
           <Route path="approvals" element={<ApprovalsPage />} />
