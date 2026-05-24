@@ -4,7 +4,38 @@
 
 **Selection Rule**: User explicitly selects → draft plan kicks off Sprint XX.Y; otherwise items wait here indefinitely until selected or archived.
 
-**Updated**: 2026-05-24 (Sprint 57.37 closeout — 2-domain batched: /loop-debug full rebuild closes 57.36 mockup-fidelity gap + /state-inspector Phase-2 re-point; user-reported empty-state RESOLVED; **3-consecutive-above-band lift trigger MET** for `frontend-verbatim-css-repoint` → NEW class-split-proposal AD candidate for Sprint 57.38)
+**Updated**: 2026-05-24 (Sprint 57.38 closeout — 3-domain batched: Option 2 class split decision for `frontend-verbatim-css-repoint` (`-simple` 0.50 / `-with-extras` 0.65) + Domain B `/subagents` Phase-2 re-point + Domain C `AD-FullBleed-Pages-Audit` FIX-010 follow-up 0 sites missing happy outcome. **3 carryover ADs CLOSED**: `class-split-proposal` / `multi-dimensional-variance-watch` / `baseline-lift`.)
+
+---
+
+## 🆕 Sprint 57.38 Carryover (2026-05-24 — 3-domain batched: class-split decision + /subagents re-point + fullbleed audit)
+
+Sprint 57.38 (`AD-ClassSplit-Decision-And-Subagents-Repoint-And-FullBleed-Audit`) closed:
+
+- **Domain A — Option 2 class split applied** for `frontend-verbatim-css-repoint`:
+  - `-simple` baseline **0.50** — applies when ALL hold: ≤3 files / no AP-2 banner / no dual-mount / no playback/filter widgets / HEX_OKLCH_BASELINE bump < 4. Empirical: 57.34 (/orchestrator) + 57.38B (/subagents) — 2-pt mean ~1.0 in band middle ✅
+  - `-with-extras` baseline **0.65** — applies when ANY hold: multi-file > 3 / AP-2 BackendGapBanner / dual-mount / playback/filter/inspector widgets / HEX_OKLCH_BASELINE bump ≥ 4. Empirical: 57.35 + 57.36 + 57.37B historical mean 1.48 at 0.50 → equivalent ~1.14 at 0.65 in band ✅
+  - Per-sprint classification rule codified in `.claude/rules/sprint-workflow.md §Scope-class multiplier matrix`
+- **Domain B — `/subagents` Phase-2 verbatim CSS re-point shipped** (commit `7466d6ef`; agent-delegated 5th consecutive). Day 0 D5 cautiously reclassified `-with-extras` but Day 3 strict criteria re-eval reverted to `-simple` 2nd app (0/5 criteria met). Ratio ~0.91-1.09 estimated.
+- **Domain C — `AD-FullBleed-Pages-Audit` 0 sites missing** (happy outcome) — confirms FIX-010 was isolated prop-drop, NOT systematic layout-class assignment failure. 13 production AppShellV2 mounts mapped to mockup wrapper classes: 2 fullbleed (loop-canvas + chat-shell) both correctly opt in; 11 page-head padded card-layout pages all correctly default to NO fullBleed.
+
+### 🔚 CLOSED carryover ADs (Sprint 57.38)
+
+- **`AD-Sprint-Plan-frontend-verbatim-css-repoint-class-split-proposal`** (Sprint 57.37 NEW) — RESOLVED via Option 2 split
+- **`AD-Sprint-Plan-frontend-verbatim-css-repoint-multi-dimensional-variance-watch`** (Sprint 57.36 NEW) — RESOLVED; class split absorbs multi-D variance into 2 baselines
+- **`AD-Sprint-Plan-frontend-verbatim-css-repoint-baseline-lift`** (Sprint 57.31 NEW) — RESOLVED; class split was alternative chosen path
+- **`AD-FullBleed-Pages-Audit`** (FIX-010 Sprint 57.37+ follow-up) — RESOLVED 0 sites missing
+
+### 🆕 NEW carryover candidates (Sprint 57.39+)
+
+- **`AD-Day0-Prong-Test-Dir-Convention`** — extend Day 0 Prong 1 grep template to cover BOTH `frontend/src/**/__tests__/` AND `frontend/tests/unit/pages/<name>/<name>.test.*` (per Sprint 57.38 D-DB1-2 lesson — project uses separated test dir convention not always co-located `__tests__/`)
+- **`AD-Day0-D5-Reclass-Strict-Criteria-Checklist`** — codify 5-item strict checklist before reclassifying `-simple` → `-with-extras` at Day 0 D5 (per Sprint 57.38 retro Q4#2: multi-file > 3 / AP-2 banner / dual-mount / playback widgets / HEX_OKLCH_BASELINE bump ≥ 4 — if 0 of 5 check, keep `-simple` even when internal structure complex)
+- **Convention candidate (D-DB1-1)**: agent proactive div-wrap pattern preserves text+role+class-selector spec compat — document in `docs/rules-on-demand/frontend-react.md` as recommended-pattern when spec uses `getByText(x, { selector: "div" })`
+
+### Phase-2 epic progress
+
+- **11 routes shipped** since Sprint 57.29 epic open: /overview / /chat-v2 / /cost-dashboard / /sla-dashboard / /orchestrator / /loop-debug LoopVisualizer (Sprint 57.36) / /state-inspector / /subagents (Sprint 57.38) + AuthShell + LoopVisualizer dual-mount + StateInspectorPage
+- **6 🟡 routes remaining**: /governance multi-page / /admin-tenants / /tenant-settings STRUCTURAL Phase 58+ / /memory STRUCTURAL Phase 58+ / /verification / /compaction (PROP stub representative)
 
 ---
 

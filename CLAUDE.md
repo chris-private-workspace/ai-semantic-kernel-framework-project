@@ -70,7 +70,7 @@ Build enterprise AI agent teams that work like **human professional teams** — 
 | Attribute | Value |
 |-----------|-------|
 | **Phase** | V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend ongoing (Phase 57+) |
-| **Current Sprint** | Sprint 57.37 closed 2026-05-24 (PR pending) — 2-domain batched (Domain A `/loop-debug` **full mockup-fidelity rebuild** closes Sprint 57.36 §Frontend Mockup-Fidelity Hard Constraint gap with 18-event fixture + playback strip + filter pills + LoopInspector pane + corrected AP-2 DEMO DATA banner + Domain B `/state-inspector` Phase-2 verbatim CSS re-point preserving Sprint 57.19 backend wiring); **user-reported `/loop-debug` empty-state issue FULLY RESOLVED**; sprint ratio ~1.0 IN BAND middle (HYBRID blend) BUT Domain B 4th non-rich-shape ratio 1.33 ABOVE band → **3-consecutive-above-band lift trigger MET** for `frontend-verbatim-css-repoint` → NEW `AD-Sprint-Plan-frontend-verbatim-css-repoint-class-split-proposal` for Sprint 57.38 retro decision (Option 1 baseline lift OR Option 2 class split `-simple` 0.50 vs `-with-extras` 0.65); agent-assisted Day 1-3 (4th consecutive code-implementer; ~4.5 hr wall-clock for 2-domain); 22-route sweep 18 IDENTICAL + 4 CHANGED (loop-debug +63,405 B fixture-rich; state-inspector -14,681 B verbatim simpler; chat-v2 0 B PERFECT cascade; auth-callback -68 B + overview +138 B noise); Vitest 464/464 (+8 NEW Domain A specs); HEX_OKLCH_BASELINE 41→50 within Day 0 estimate; D-DAY3-1 positive surprise (StateInspector spec class-swap-resilient text/role-based selectors — Sprint 57.38+ convention candidate). Detail in `memory/project_phase57_37_loop_debug_fixture_state_inspector.md`. Next: see `claudedocs/1-planning/next-phase-candidates.md` (Phase-2 epic — 7 🟡 routes remaining) |
+| **Current Sprint** | Sprint 57.38 closed 2026-05-24 (PR pending) — 3-domain batched: class-split decision + /subagents Phase-2 re-point + fullbleed audit. Detail in `memory/project_phase57_38_class_split_subagents_fullbleed_audit.md`. Next: see `claudedocs/1-planning/next-phase-candidates.md` (Phase-2 epic — 6 🟡 routes remaining) |
 | **Sprint History** | See [`memory/MEMORY.md`](memory/MEMORY.md) §Recent Sprints + per-sprint subfile `memory/project_phase57_XX_*.md` + retrospective.md under `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-XX/` |
 | **Pending / Next Phase** | See [`claudedocs/1-planning/next-phase-candidates.md`](claudedocs/1-planning/next-phase-candidates.md) |
 | **Roadmap** | Phase 49-55 V2 ✅ / Phase 56-58 SaaS Stage 1 3/3 ✅ / Phase 57+ Frontend ongoing |
@@ -625,7 +625,7 @@ V1 完整 CLAUDE.md 已保留於 `CLAUDE.backup.md`。如需查閱 V1 架構（M
 
 ---
 
-**Last Updated**: 2026-05-24 (Sprint 57.37 — 2-domain batched: /loop-debug full rebuild closes 57.36 mockup-fidelity gap + /state-inspector Phase-2 re-point; user-reported empty-state RESOLVED; 3-consecutive-above-band lift trigger MET → NEW class-split-proposal AD); see `memory/` for sprint history
+**Last Updated**: 2026-05-24 (Sprint 57.38 — 3-domain batched: Option 2 class split decision (`frontend-verbatim-css-repoint` → `-simple` 0.50 + `-with-extras` 0.65) + /subagents Phase-2 re-point + FullBleed audit 0 sites missing); see `memory/` for sprint history
 **Project Start**: 2025-11-14
 **V2 Authority**: `docs/03-implementation/agent-harness-planning/` (21 docs — 20 規劃 + 1 review)
 **V1 Reference**: `CLAUDE.backup.md` + `docs/07-analysis/V9/00-index.md`
