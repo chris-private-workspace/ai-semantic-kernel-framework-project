@@ -4,7 +4,45 @@
 
 **Selection Rule**: User explicitly selects → draft plan kicks off Sprint XX.Y; otherwise items wait here indefinitely until selected or archived.
 
-**Updated**: 2026-05-24 (Sprint 57.38 closeout — 3-domain batched: Option 2 class split decision for `frontend-verbatim-css-repoint` (`-simple` 0.50 / `-with-extras` 0.65) + Domain B `/subagents` Phase-2 re-point + Domain C `AD-FullBleed-Pages-Audit` FIX-010 follow-up 0 sites missing happy outcome. **3 carryover ADs CLOSED**: `class-split-proposal` / `multi-dimensional-variance-watch` / `baseline-lift`.)
+**Updated**: 2026-05-24 (Sprint 57.38 follow-up FIX-011 + 3 systematic anti-patterns codified — user-reported `/state-inspector` outer padding (FIX-011 resolved) + `[v18 by orchestrator_loop]` baseline misalignment (AP-Phase2-B AD) + all-page buttons black borders (AP-Phase2-C AD). 3 NEW carryover ADs added below.)
+
+---
+
+## 🆕 Sprint 57.38 Follow-up Carryover (2026-05-24 — 3 user-reported issues → FIX-011 + 3 NEW ADs + frontend-mockup-fidelity.md updated)
+
+User-reported via screenshots after Sprint 57.38 PR #176 merge `44489aba`:
+
+1. `/state-inspector` left/right padding visibly wider than mockup
+2. `/state-inspector` detail card title `[v18 by orchestrator_loop]` — `by` baseline lower than mono tokens
+3. All-page buttons render black borders vs mockup light grey
+
+### What got fixed in PR (this hotfix)
+
+- ✅ **Issue 1 — FIX-011**: `StateInspectorPage.tsx` drop `padding: 18` from outer wrapper (production-only Sprint 57.19 vintage; mockup has no outer wrapper)
+- ✅ **3 systematic anti-patterns codified** in `docs/rules-on-demand/frontend-mockup-fidelity.md` §Phase-2 re-point systematic anti-patterns:
+  - **AP-Phase2-A**: Production-only outer padding wrapper (translation-era artifact)
+  - **AP-Phase2-B**: Inline mixed-font span baseline misalignment
+  - **AP-Phase2-C**: Tailwind utility `border-border` → shadcn `--sc-border` token residue
+- ✅ Code review checklist (3 new mandatory items per Phase-2 re-point PR)
+
+### 🆕 NEW carryover ADs (Sprint 57.39+)
+
+- 🆕 **`AD-State-Inspector-Outer-Padding-Wrapper-Fix`** — ✅ RESOLVED by FIX-011 (logged for trace)
+- 🆕 **`AD-Inline-Font-Baseline-Alignment`** — needs typography audit + targeted fix(es) on mockup pages with mixed-font inline spans (e.g. `/state-inspector` detail title, possibly others); recommended fix shape: `display: inline-flex; align-items: baseline` on outer row span. Estimated ~2-3 hr; mid-priority. Class: `sprint-meta + micro-fix` 0.65 candidate.
+- 🆕 **`AD-Shadcn-Border-Token-Visual-Audit-Or-Align-To-Mockup`** — decide between:
+  - **Path A** (1-line global fix): align `--sc-border` value to `--border` in `index.css`. Pros: every shadcn-system page instantly visually closer to mockup. Cons: violates Sprint 57.28 4-layer dual-track design intent.
+  - **Path B** (completeness): continue Phase-2 epic re-point until all 6 🟡 routes done; shadcn token usage naturally disappears.
+  - Recommended: **B**, but A is acceptable transitional fix.
+- 🆕 **Sister-bug observation**: FIX-010 (`/loop-debug` fullBleed prop drop) + FIX-011 (`/state-inspector` outer padding wrapper) form a recurring **layout-class production-only artifact** class. Each Phase-2 re-point sprint Day 0 Prong 1 should grep for these artifacts on the target page BEFORE Day 1 code.
+
+### Why Sprint 57.38 Day 2.1 audit missed Issue 1
+
+Domain C `AD-FullBleed-Pages-Audit` cross-referenced production `AppShellV2` mounts vs mockup outer wrapper classes (`chat-shell` / `loop-canvas` / `page-head`) — looking for **fullBleed prop drops**. It found 0 sites. But the audit scope was **only the `fullBleed` decision class**; it did NOT scan for *production-only outer padding wrappers ADDED inside the AppShellV2 mount*. Issue 1 falls into a different class (AP-Phase2-A) that the Sprint 57.38 audit didn't cover.
+
+**Lesson for next audit**: extend Day 0 grep to include:
+```bash
+grep -n "style={{.*padding\|<div style={{[^}]*padding" frontend/src/pages/<target>/<page>.tsx
+```
 
 ---
 

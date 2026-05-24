@@ -25,6 +25,7 @@
  * Last Modified: 2026-05-24
  *
  * Modification History (newest-first):
+ *   - 2026-05-24: FIX-011 — drop production-only padding:18 on outer wrapper (mockup has no outer wrapper; .content padding sufficed; the extra 18px stacked ~46px effective vs mockup 28px)
  *   - 2026-05-24: Sprint 57.37 Day 3 — verbatim CSS re-point per page-platform.jsx:21-155 (closes Sprint 57.19 vintage HSL-translation drift; drops TONE_CLASS Record + bg-X/16/text-X Tailwind utility patterns + shadcn token classes; adopts mockup verbatim .page-head/.grid-stats/.card/.col/.spread/.mono/.subtle/.tnum + verbatim oklch alpha-tints)
  *   - 2026-05-17: Initial creation (Sprint 57.19 Day 4 / US-C4)
  *
@@ -51,7 +52,13 @@ import { useStateSnapshot } from "@/features/state/hooks/useStateSnapshot";
 // no-restricted-syntax eslint rule (only inline JSX object literals are flagged).
 // Mockup source line references in each name.
 
-const STATE_PAGE_WRAPPER_STYLE = { display: "flex", flexDirection: "column" as const, gap: 14, padding: 18 };
+// FIX-011 (Sprint 57.38 follow-up 2026-05-24): dropped `padding: 18` — production-only
+// Sprint 57.19 vintage outer padding artifact; mockup page-platform.jsx:25-145 has NO
+// outer wrapper. .content already provides 24px 28px 60px padding; the extra 18px
+// stacked on top added ~46px effective left/right inset vs mockup's intended 28px.
+// `gap: 14` kept to preserve vertical rhythm between page-head + grid-stats + grid-2
+// children (mockup relies on per-class margins which we conservatively reinforce here).
+const STATE_PAGE_WRAPPER_STYLE = { display: "flex", flexDirection: "column" as const, gap: 14 };
 const STATE_GRID_320_1FR_STYLE = { display: "grid", gridTemplateColumns: "320px 1fr", gap: 14 };
 const CARRYOVER_BANNER_STYLE = {
   padding: 12,

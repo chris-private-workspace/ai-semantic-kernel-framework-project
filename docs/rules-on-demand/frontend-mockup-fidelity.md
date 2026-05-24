@@ -93,4 +93,82 @@ Sprint 57.18-57.27（10 個 sprint）前端始終無法與 mockup 一致：`/ove
 
 ---
 
-**維護責任**：每個 frontend sprint kickoff 必讀本檔；Code reviewer 以 DoD 5 條 + 鐵律 7 條為 PR 強制檢查項。
+## Phase-2 re-point systematic anti-patterns（2026-05-24 user-reported issues 後加入）
+
+Sprint 57.18-57.27 epic 解決了「CSS 翻譯 → HSL approximation」這條主軸 drift。但 Phase-2 per-page re-point（57.29+）開展後又揭示**另外 3 條獨立的系統性 drift class**，需在每個 re-point sprint 的 Day 0 + Day 2.5 對齊驗證納入。
+
+### Anti-pattern AP-Phase2-A：Production-only 外層 padding wrapper（翻譯遺產）
+
+**症狀**：Production page 的 root JSX 元素包了一層 `<div style={{ padding: <N>, ... }}>` 或類似 wrapper，外層 padding 跟 `.content` 預設 `padding: 24px 28px 60px` 疊加 → 視覺左右 inset 比 mockup 明顯多 10-20+ px。
+
+**前車**：`/state-inspector` `STATE_PAGE_WRAPPER_STYLE = { padding: 18, ... }`（Sprint 57.19 vintage；Sprint 57.37 verbatim re-point 誤以為「保留 backend wiring」而保留）→ FIX-011 fixed 2026-05-24。
+
+**Day 0 Prong 1 額外 grep**：
+```bash
+grep -n "padding:.*[0-9]\|style={{ padding" frontend/src/pages/<target>/<page>.tsx
+# mockup page-*.jsx return 通常以 <> fragment 或 <div className="page-head"> 起；無 padding wrapper
+```
+
+**判定規則**：
+- Mockup 頁面 return 第一層是否有 `<div style={{ padding: ... }}>` 或 `<div className="some-page-wrapper" style={{...}}>`？→ 若 mockup 無 → production 該層必須刪
+- 例外：若 mockup 有 fullbleed 設計（`loop-canvas` / `chat-shell`），production 用 `AppShellV2 fullBleed` prop 而**不是**自己加 padding wrapper
+
+**Re-point sprint Day 1 task**：刪除所有 production-only padding/margin wrapper；如需內部間距，用 mockup `.grid-X` / `.col` / `.row` class（這些 class 本身含 gap 邏輯）。
+
+---
+
+### Anti-pattern AP-Phase2-B：Inline 混 font-family span 缺 baseline 對齊提示
+
+**症狀**：mockup 設計中混排 `<span class="mono">` + `<span class="subtle">` + 普通 `<span>` 在同一 inline row。Mono 字體（Geist Mono）跟 sans 字體（Noto Sans TC）baseline 距離大；production 渲染時 mono 字 baseline 看起來「下沉」明顯，跟 mockup 看起來不一致。
+
+**前車**：`/state-inspector` detail card title `[v18 by orchestrator_loop]` —`by` 字 baseline 明顯低於 `v18` + `orchestrator_loop` 兩個 mono token。Mockup 設計用 `<span class="row" style={{ gap: 6 }}>` 包，但**未強制 baseline 對齊**；mockup 本身在系統 mono `Menlo` 渲染時差距小，production 用 `Geist Mono` 差距大。
+
+**Day 0 Prong 2 grep**：
+```bash
+grep -n 'className="mono"\|className=".*\bmono\b\|className="subtle"' reference/design-mockups/<target-page>.jsx
+# 看是否同 inline row 有 mono + subtle / 普通 sans 混排
+```
+
+**Re-point sprint Day 1 task（推薦）**：
+- 若 mockup 該 row 設計用 `<span class="row">` 包多個不同 font-family 的 span，production 應**主動補加** baseline 對齊：要嘛 outer span 加 `display: inline-flex; align-items: baseline`，要嘛內 span 加 `vertical-align: baseline`
+- 不算違反「verbatim CSS swap」原則 —— mockup 自身沒設這個 prop 是因為 mockup 渲染環境 font 差距小
+
+**驗證**：Day 2.5 後 baseline sweep，截圖該 row vs mockup `localhost:8080/#<route>` 1:1 對比。
+
+---
+
+### Anti-pattern AP-Phase2-C：Tailwind utility `border-border` → shadcn token 殘留（Phase-2 未 re-point 的 page）
+
+**症狀**：production 內 31+ files 還在用 Tailwind `border border-border` / `border-b-2 border-border` 等 utility class。這些 utility 透過 `tailwind.config` 解析到 `hsl(var(--sc-border))` —— shadcn-system **`--sc-border`**，**不是** mockup `--border`。視覺差距：
+- Mockup dark `--border: oklch(0.26 0.008 260)` (L=26%) — 中深灰
+- Shadcn dark `--sc-border: hsl(217.2 32.6% 17.5%)` (L=17.5%) — 更深，視覺接近黑
+
+**這不是「CSS translation drift」class（不像 Sprint 57.18-57.27 翻譯方法錯）**——這是 **Phase-2 epic incomplete migration** class：剩 6 個 🟡 routes 還沒 re-point，這些 page 的所有 Tailwind utility border 都還在用 shadcn token。
+
+**Day 0 Prong 2 grep（用於 audit pages）**：
+```bash
+grep -rln "border-border\|\bborder\s+border-" frontend/src/pages/<route>/ frontend/src/features/<feature>/
+# 若 > 0 sites，re-point sprint 必須包含 Tailwind utility → mockup verbatim CSS class 替換
+```
+
+**Re-point sprint Day 1 task**：
+- 把 Tailwind utility class（`border-border`, `bg-card`, `text-muted-foreground`, `bg-muted/30` 等）→ mockup verbatim class（`.card`, `.subtle`, `.mono`, etc.）
+- 移除 `text-card-foreground` / `bg-card` 等 shadcn-system token usage —— 用 mockup CSS classes 取代
+
+**全局 fix candidate（高 ROI 替代路徑）**：
+- Option **A** — 對齊 `--sc-border` 值到 mockup `--border`（1-line `index.css` 改：dark `--sc-border` → `oklch(0.26 0.008 260)` / light → `oklch(0.91 0.006 260)`）。**Pros**：未 re-point page 立刻視覺對齊 mockup；**Cons**：違反 Sprint 57.28 4-layer 設計意圖（shadcn token 故意 dual-track）
+- Option **B** — 加速 Phase-2 re-point 剩 6 🟡 routes；不再追加 shadcn-system tokens；等 epic close 該 utility 自然消失（completeness path）
+
+**推薦**：B（completeness），但 A 是 acceptable 過渡 fix 若用戶覺得視覺差距難忍。
+
+### Code review checklist（新增 3 條）
+
+每個 Phase-2 re-point sprint PR 必須能對下列 3 條回答 ✅ / N/A：
+
+- [ ] **AP-Phase2-A**: production root JSX 第一層有 `<div style={{ padding: X }}>` 或 wrapper？若有，已對照 mockup 確認該層**應該存在**（fullBleed 例外）；否則已刪除
+- [ ] **AP-Phase2-B**: 若 mockup row 中混排 mono + subtle / 不同 font-family span，已主動補 `align-items: baseline` 或 `vertical-align: baseline`
+- [ ] **AP-Phase2-C**: 該 page / feature 內 Tailwind utility `border-border` / `bg-card` / `text-muted-foreground` 等 shadcn-system token 用法已全部替換為 mockup verbatim class
+
+---
+
+**維護責任**：每個 frontend sprint kickoff 必讀本檔；Code reviewer 以 DoD 5 條 + 鐵律 7 條 + Phase-2 anti-patterns 3 條為 PR 強制檢查項。
