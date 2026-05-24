@@ -70,7 +70,7 @@ Build enterprise AI agent teams that work like **human professional teams** — 
 | Attribute | Value |
 |-----------|-------|
 | **Phase** | V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend ongoing (Phase 57+) |
-| **Current Sprint** | Sprint 57.38 closed 2026-05-24 (PR pending) — 3-domain batched: class-split decision + /subagents Phase-2 re-point + fullbleed audit. Detail in `memory/project_phase57_38_class_split_subagents_fullbleed_audit.md`. Next: see `claudedocs/1-planning/next-phase-candidates.md` (Phase-2 epic — 6 🟡 routes remaining) |
+| **Current Sprint** | Sprint 57.39 closed 2026-05-24 (PR pending) — Governance Category Multi-Page Phase-2 4-domain batched. Detail in `memory/project_phase57_39_governance_multipage_phase2.md`. Next: see `claudedocs/1-planning/next-phase-candidates.md` (Phase-2 epic — 15/17 routes shipped / 2 🟡 Phase 58+ STRUCTURAL remaining) |
 | **Sprint History** | See [`memory/MEMORY.md`](memory/MEMORY.md) §Recent Sprints + per-sprint subfile `memory/project_phase57_XX_*.md` + retrospective.md under `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-XX/` |
 | **Pending / Next Phase** | See [`claudedocs/1-planning/next-phase-candidates.md`](claudedocs/1-planning/next-phase-candidates.md) |
 | **Roadmap** | Phase 49-55 V2 ✅ / Phase 56-58 SaaS Stage 1 3/3 ✅ / Phase 57+ Frontend ongoing |
@@ -625,7 +625,7 @@ V1 完整 CLAUDE.md 已保留於 `CLAUDE.backup.md`。如需查閱 V1 架構（M
 
 ---
 
-**Last Updated**: 2026-05-24 (Sprint 57.38 — 3-domain batched: Option 2 class split decision (`frontend-verbatim-css-repoint` → `-simple` 0.50 + `-with-extras` 0.65) + /subagents Phase-2 re-point + FullBleed audit 0 sites missing); see `memory/` for sprint history
+**Last Updated**: 2026-05-24 (Sprint 57.39 — Governance Category Multi-Page Phase-2 4-domain batched: /governance + /verification re-point + /redaction + /error-policy PROP→real; 1st deliberate-test of `-with-extras` 0.65 baseline ratio ~0.41 BELOW band; 5 NEW carryover ADs including agent-delegation factor modifier); see `memory/` for sprint history
 **Project Start**: 2025-11-14
 **V2 Authority**: `docs/03-implementation/agent-harness-planning/` (21 docs — 20 規劃 + 1 review)
 **V1 Reference**: `CLAUDE.backup.md` + `docs/07-analysis/V9/00-index.md`
