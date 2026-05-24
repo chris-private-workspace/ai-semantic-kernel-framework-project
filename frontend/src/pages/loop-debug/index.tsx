@@ -26,6 +26,7 @@
  * Last Modified: 2026-05-10
  *
  * Modification History (newest-first):
+ *   - 2026-05-24: FIX-009 — pass fullBleed to AppShellV2 (loop-canvas grid 1fr+360px is mockup-fullbleed)
  *   - 2026-05-10: Sprint 57.13 US-A1 — gate via <RequireAuth> (was inline isAuthenticated() check)
  *   - 2026-05-10: Initial creation (Sprint 57.12 US-4 Day 2 — real ship)
  *
@@ -42,7 +43,7 @@ import { LoopVisualizer } from "@/features/orchestrator-loop/components/LoopVisu
 export default function LoopDebugPage(): JSX.Element {
   return (
     <RequireAuth>
-      <AppShellV2 pageTitle="Loop Debug">
+      <AppShellV2 pageTitle="Loop Debug" fullBleed>
         <LoopVisualizer mode="standalone" />
       </AppShellV2>
     </RequireAuth>
