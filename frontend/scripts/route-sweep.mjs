@@ -25,6 +25,7 @@
  * Created: 2026-05-20 (Sprint 57.26 Day 0) — supersedes the temporary frontend/diagnose-render.mjs
  *
  * Modification History:
+ *   - 2026-05-24: Sprint 57.37 — re-point OUT_DIR to sprint-57-37-loop-debug-state-inspector (reused for 2-domain batched sprint: Domain A /loop-debug full rebuild + Domain B /state-inspector Phase-2 verbatim re-point; 8th+9th apps; closes Sprint 57.36 §Frontend Mockup-Fidelity Hard Constraint gap)
  *   - 2026-05-24: Sprint 57.36 — re-point OUT_DIR to sprint-57-36-loop-debug-repoint (reused for /loop-debug Phase-2 verbatim re-point sweep; 7th app of epic; 3rd non-rich-dashboard shape — single-file scope; discriminates bimodal-by-shape vs scale-overhead variance hypotheses)
  *   - 2026-05-24: Sprint 57.35 — re-point OUT_DIR to sprint-57-35-auth-repoint (reused for AuthShell + 7 /auth/* routes Phase-2 verbatim re-point; 2nd non-rich-dashboard shape; closes Sprint 57.23 vintage epic gap)
  *   - 2026-05-24: Sprint 57.34 — re-point OUT_DIR to sprint-57-34-orchestrator-repoint (reused for /orchestrator Phase-2 verbatim CSS re-point sweep; 1st non-rich-dashboard shape in epic)
@@ -51,7 +52,7 @@ if (!["before", "after"].includes(MODE)) {
 const BASE = "http://localhost:3007";
 const VP = { width: 1440, height: 900 };
 const OUT_DIR = path.resolve(
-  `../claudedocs/4-changes/sprint-57-36-loop-debug-repoint/screenshots/${MODE}`,
+  `../claudedocs/4-changes/sprint-57-37-loop-debug-state-inspector/screenshots/${MODE}`,
 );
 fs.mkdirSync(OUT_DIR, { recursive: true });
 
