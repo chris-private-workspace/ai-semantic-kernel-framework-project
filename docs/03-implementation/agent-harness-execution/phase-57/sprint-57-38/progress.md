@@ -53,3 +53,43 @@
 ### Drift handling note
 
 This is the **2nd consecutive sprint where Day 0 Prong 1+2 caught material plan-vs-repo drift before Day 1 code started** (Sprint 57.5/55.5/55.6 lineage). Validates AD-Plan-3 promotion ROI claim. Without prong, Day 1 agent delegation would have produced wrong-file edits + wasted ~30-60 min discovery cycle. Cost: ~15 min grep + ~10 min drift catalog. Benefit: ~45-90 min Day 1 rework avoided + scope-shift surfaced before commitments locked.
+
+---
+
+## Day 1 — Domain B `/subagents` verbatim CSS re-point (agent-delegated 5th consecutive)
+
+### Today's Accomplishments
+
+- ✅ Day 0.7 baseline checks all GREEN (Vitest 464/464 / mockup-fidelity byte-identical+baseline 50 / lint clean)
+- ✅ Day 0.6 before baseline captured (22/22 routes ✓ 0 failures) committed `5510ca59`
+- ✅ Day 1 agent delegation prep — read mockup `page-agents.jsx:300-450` + production `SubagentsPage.tsx`
+- ✅ **Day 1 code-implementer agent delegation completed** (5th consecutive 57.34→57.35→57.36→57.37→57.38)
+  - **Commit**: `7466d6ef` `feat(frontend, sprint-57-38): Day 1 Domain B /subagents verbatim CSS re-point`
+  - **Files edited**: `frontend/src/pages/subagents/SubagentsPage.tsx` (structural rewrite; ~stable line count) + `frontend/scripts/check-mockup-fidelity.mjs` (baseline 50→51)
+  - **Verification (my own re-pass after agent finished)**:
+    - Vitest 464/464 ✓ (Sprint 57.37 baseline preserved)
+    - mockup-fidelity guard: diff byte-identical + grep guard 51/51 ✓
+    - Lint clean ✓ (only pre-existing jsx-ast-utils warnings)
+  - **HEX_OKLCH_BASELINE delta**: 50 → 51 (+1; new oklch literal for selected row highlight `oklch(from var(--primary) l c h / 0.10)` — well within +5-8 envelope estimated in plan §3.3)
+
+### Agent-reported drift findings (Day 1)
+
+| ID | Finding | Resolution |
+|----|---------|------------|
+| **D-DB1-1** | Existing Vitest spec `SubagentsPage.test.tsx:75` asserted `getByText(mode, { selector: "div" })` for KPI mode labels; mockup verbatim uses `<span style={...}>` (page-agents.jsx:339) | Agent wrapped mode label in `<div>` inside `.stat-label` (zero visual delta; inline style identical) — spec compat preserved without spec edit. Documented inline at wrapping `<div>` |
+| **D-DB1-2** | Vitest spec EXISTS at `frontend/tests/unit/pages/subagents/SubagentsPage.test.tsx` (NOT in `frontend/src/features/subagents/components/__tests__/` as Day 0 D2 grep target assumed) — Day 0 Prong 1 missed it | Spec preserved all 7 assertions without edit (KPI cards / fixture row count / carryover banner / default selection / row-click→detail / Budget tab / defensive `items: undefined` guard). **Lesson for future Day 0 prong**: also grep `frontend/tests/**/SubagentsPage.test.*` or `frontend/tests/unit/pages/**/<page-name>.test.*` — project uses separated test dir convention (not co-located `__tests__/`) |
+
+### Day 1 actual vs estimate (per plan §8 amend)
+
+- Wall-clock: ~30 min (agent delegation included setup + agent run + 3 own validation passes)
+- Plan amend estimated calibrated ~3.6 hr → actual ~0.5 hr → ratio actual/calibrated ~0.14 (significantly under)
+  - **Note**: this is wall-clock to spec-stable-state, not human-equivalent solo dev time. Treat as data point for code-implementer agent leverage measurement, NOT for class-baseline calibration (which uses bottom-up estimates, not wall-clock).
+- Bottom-up was ~5.5 hr (reasoning + write all 4 visual blocks + spec compat + lint cleanup); agent delivered in 1 wall-clock pass.
+
+### Pending for Day 2 (handles Domain C + Day 1 lessons)
+
+- [ ] Day 2.1 Domain C fullbleed audit finalize (grep production page mounts vs mockup fullbleed-class layouts)
+- [ ] Day 2.2 Any 1-line fullbleed fixes per audit verdict (cap 3 in-sprint per plan §Risks)
+- [ ] Day 2.3 Vitest + mockup-fidelity stability re-check after Day 2 edits
+- [ ] Day 2.4 progress.md Day 2 entry + commit
+- [ ] Day 2.5 after baseline + 22-route sweep diff review
