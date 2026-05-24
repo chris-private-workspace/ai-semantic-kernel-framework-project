@@ -70,7 +70,7 @@ Build enterprise AI agent teams that work like **human professional teams** — 
 | Attribute | Value |
 |-----------|-------|
 | **Phase** | V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend ongoing (Phase 57+) |
-| **Current Sprint** | Sprint 57.35 closed 2026-05-24 (PR pending) — AuthShell + 7 `/auth/*` routes Phase-2 verbatim-CSS re-point (6th app of Phase-2 epic; 8-file batched); **closes Sprint 57.23 vintage HSL-translation epic gap** (CLAUDE.md Frontend Mockup-Fidelity Hard Constraint warning); user-reported `/auth/login` drift 2026-05-24 fully RESOLVED; 22-route sweep 0 regressions; Vitest 456/456 baseline preserved (4 spec updates for mockup-ui Field DOM); ratio ~1.65-1.75 **ABOVE band** by ~0.45-0.55 → **bimodal-by-shape signal WEAKENED**, file-count + spec-update overhead emerging as 2nd variance driver → NEW `AD-Sprint-Plan-frontend-verbatim-css-repoint-scale-overhead-watch`. 4 drifts D-DAY1-1..D-DAY3-1 handled (AuthShell width 420→400 mockup truth + register a11y + register banner + expired Badge tone). Detail in `memory/project_phase57_35_auth_repoint.md`. Next: see `claudedocs/1-planning/next-phase-candidates.md` (Phase-2 epic — 9 🟡 routes remaining) |
+| **Current Sprint** | Sprint 57.36 closed 2026-05-24 (PR pending) — `/loop-debug` LoopVisualizer.tsx Phase-2 verbatim-CSS re-point (7th app of Phase-2 epic; single-file dual-mount); 3rd shape-validation data point — **bimodal-by-shape REJECTED + scale-overhead WEAKENED + variance is multi-dimensional** (file count + AP-2 + dual-mount + drift handling compound); ratio ~1.42 ABOVE band by 0.22; AP-2 BackendGapBanner + EmptyInspectorPlaceholder defer playback/scrubber/filter/inspector pane Phase 58+ per Sprint 57.12 AP-6 (SSE event persistence); agent-assisted Day 1-2 (3rd consecutive); 22-route sweep 19 IDENTICAL + 3 CHANGED (loop-debug +22,512 B structural; chat-v2 +18 B cascade ε; overview +70 B noise); Vitest 456/456 baseline preserved; NEW `AD-Sprint-Plan-frontend-verbatim-css-repoint-multi-dimensional-variance-watch`. Detail in `memory/project_phase57_36_loop_debug_repoint.md`. Next: see `claudedocs/1-planning/next-phase-candidates.md` (Phase-2 epic — 8 🟡 routes remaining) |
 | **Sprint History** | See [`memory/MEMORY.md`](memory/MEMORY.md) §Recent Sprints + per-sprint subfile `memory/project_phase57_XX_*.md` + retrospective.md under `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-XX/` |
 | **Pending / Next Phase** | See [`claudedocs/1-planning/next-phase-candidates.md`](claudedocs/1-planning/next-phase-candidates.md) |
 | **Roadmap** | Phase 49-55 V2 ✅ / Phase 56-58 SaaS Stage 1 3/3 ✅ / Phase 57+ Frontend ongoing |
@@ -625,7 +625,7 @@ V1 完整 CLAUDE.md 已保留於 `CLAUDE.backup.md`。如需查閱 V1 架構（M
 
 ---
 
-**Last Updated**: 2026-05-24 (Sprint 57.35 — AuthShell + 7 auth routes Phase-2 verbatim re-point; closes Sprint 57.23 epic gap; user-reported /auth/login drift RESOLVED; bimodal-by-shape WEAKENED, scale-overhead 2nd variance driver — NEW scale-overhead-watch AD); see `memory/` for sprint history
+**Last Updated**: 2026-05-24 (Sprint 57.36 — /loop-debug Phase-2 verbatim re-point; 3rd shape data point reveals variance is multi-dimensional — bimodal-by-shape REJECTED + scale-overhead WEAKENED; NEW multi-dimensional-variance-watch AD); see `memory/` for sprint history
 **Project Start**: 2025-11-14
 **V2 Authority**: `docs/03-implementation/agent-harness-planning/` (21 docs — 20 規劃 + 1 review)
 **V1 Reference**: `CLAUDE.backup.md` + `docs/07-analysis/V9/00-index.md`

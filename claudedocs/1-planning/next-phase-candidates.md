@@ -4,11 +4,34 @@
 
 **Selection Rule**: User explicitly selects → draft plan kicks off Sprint XX.Y; otherwise items wait here indefinitely until selected or archived.
 
-**Updated**: 2026-05-24 (Sprint 57.35 closeout — AuthShell + 7 auth routes Phase-2 re-point; closes Sprint 57.23 vintage epic gap; user-reported /auth/login drift RESOLVED; **bimodal-by-shape WEAKENED, scale-overhead 2nd variance driver** — NEW scale-overhead-watch AD)
+**Updated**: 2026-05-24 (Sprint 57.36 closeout — /loop-debug Phase-2 re-point; **3rd shape data point reveals variance is MULTI-DIMENSIONAL** — bimodal-by-shape REJECTED + scale-overhead WEAKENED; NEW multi-dimensional-variance-watch AD)
 
 ---
 
-## 🆕 Sprint 57.35 Carryover (2026-05-24 — AuthShell + 7 auth routes Phase-2)
+## 🆕 Sprint 57.36 Carryover (2026-05-24 — /loop-debug Phase-2)
+
+Sprint 57.36 (`AD-Loop-Debug-Verbatim-Repoint`) closed: `frontend/src/features/orchestrator-loop/components/LoopVisualizer.tsx` single-file re-pointed to mockup verbatim per `reference/design-mockups/page-governance.jsx:33-212`. **7th Phase-2 epic app; 3rd shape-validation data point.** 22-route sweep **19 IDENTICAL + 3 CHANGED** (loop-debug +22,512 B expected structural; chat-v2 +18 B cascade ε; overview +70 B time-text noise). 4 gates green (TS 0 / lint 0 / Vitest 456/456 / mockup-fidelity 41/41 unchanged). Agent-assisted Day 1-2 via code-implementer agent (3rd consecutive validated; ~80 min wall-clock). AP-2 BackendGapBanner + EmptyInspectorPlaceholder explicitly defer playback/scrubber/filter/inspector pane to Phase 58+ per Sprint 57.12 AP-6. Dual-mount preserved (Sprint 57.30 chat-v2 inline ship safe). ~205 min total human-equivalent. Ratio actual/committed ~1.42 ABOVE band by 0.22. Updates:
+
+- 🆕 **AD-Sprint-Plan-frontend-verbatim-css-repoint-multi-dimensional-variance-watch** — Sprint 57.36 is 3rd shape data point: 1-file non-rich AGAIN (like 57.34) but ratio diverged sharply (1.0 vs 1.42). Both prior 1-D hypotheses (bimodal-by-shape AND scale-overhead) insufficient. Emerging compound drivers: file count + AP-2 banner addition + dual-mount complexity + spec adapt + drift handling. If Sprint 57.37+ continues > 1.20, propose either (a) baseline lift 0.50 → 0.60, or (b) class split `frontend-verbatim-css-repoint-simple` (0.50, no AP-2 / no dual-mount) vs `frontend-verbatim-css-repoint-with-ap2-or-dual-mount` (0.65). KEEP 0.50 this iteration per `When to adjust` 3-sprint window rule (3-pt non-rich: 1.0/1.7/1.42 needs 1 more above-band for formal lift trigger).
+
+- 🔚 **CLOSED: AD-Sprint-Plan-frontend-verbatim-css-repoint-shape-bimodal-watch** (Sprint 57.34 NEW; Sprint 57.35 weakened) — 3 non-rich data points (57.34=1.0 / 57.35=1.7 / 57.36=1.42) span the whole band; not bimodal. REJECTED.
+
+- 🔄 **Updated → WEAKENED: AD-Sprint-Plan-frontend-verbatim-css-repoint-scale-overhead-watch** (Sprint 57.35 NEW) — 1-file (57.36) ALSO above band (1.42); file-count alone is not the variance driver. Broaden into multi-dimensional-variance-watch.
+
+- 🔄 **Updated: AD-Sprint-Plan-frontend-verbatim-css-repoint-baseline-lift** (Sprint 57.31 NEW) — 4th validation data point logged. 0.50 baseline still appropriate for **simple non-rich 1-file** sprints (57.34 only in-band data point); above-band trend (57.35 + 57.36) needs 1 more above-band sprint for formal lift trigger.
+
+- 📚 **Lessons logged**:
+  - Day 0 Prong 1 glob coverage rule: extend to BOTH `frontend/src/**` AND `frontend/tests/**` for spec-existence claims (test files conventionally live outside `src/`). D-DAY1-1 cost ~5 min in agent re-discovery. Codify in `.claude/rules/sprint-workflow.md` §Step 2.5 Prong 1.
+  - AP-2 BackendGapBanner addition: ~10-15% calibration surcharge candidate.
+  - Dual-mount preservation (mode-branching): ~5-10% surcharge candidate.
+  - Combined sprints (AP-2 + dual-mount) should baseline ~0.60-0.65 not 0.50.
+  - ESLint `no-restricted-syntax` JSXAttribute style matcher is body-blind for `style={CONSTANT_REF}`; Sprint 57.24 BarTrack STYLE.md §3 escape hatch (module-scope constants + per-site `eslint-disable-next-line`) is the documented workaround.
+
+- 🔍 **Drift findings** (Day 0-1): D-DAY0-1..7 catalogued in progress.md; D-DAY1-1 (test file location) + D-DAY1-2 (ESLint body-blind) caught by agent.
+
+- 🎯 **Phase-2 epic progress**: 6 routes shipped (+ AuthShell + LoopVisualizer dual-mount) / 8 routes remaining (state-inspector, memory STRUCTURAL Phase 58+, governance multi-page, admin-tenants, tenant-settings STRUCTURAL, compaction, 3 unblocked-by-57.33 PROP stubs).
+
+## Sprint 57.35 Carryover (2026-05-24 — AuthShell + 7 auth routes Phase-2)
 
 Sprint 57.35 (`AD-Auth-Shell-And-Pages-Verbatim-Repoint`) closed: 8 files (1 AuthShell + 7 auth routes) re-pointed to mockup verbatim — **6th Phase-2 epic app**; user-reported `/auth/login` drift 2026-05-24 (SSO unstyled / Continue no fill / `dev-login` orange missing) **fully RESOLVED**; **closes Sprint 57.23 vintage HSL-translation epic gap** on auth routes (CLAUDE.md §Frontend Mockup-Fidelity Hard Constraint warning). 22-route sweep **0 regressions** on other 14 routes. 5 gates green. Vitest **456/456 baseline preserved** (4 spec files updated `getByLabelText` → `getByText`+id selectors for mockup-ui Field DOM change; behavioral test intent preserved). Agent-assisted Day 1-3 via code-implementer agent. ~7-7.5 hr human-equivalent effort. Updates:
 

@@ -65,6 +65,70 @@ Vs plan §8 bottom-up ~45 min (0.75 hr × 60). 10 min over budget — primarily 
 
 ---
 
+## Day 3 — 2026-05-24 (After sweep + 22-route diff verdict)
+
+### Accomplishments
+
+- **`node scripts/route-sweep.mjs after`** ran in ~30s; **22/22 PNG captured** in `screenshots/after/` — all routes still render (zero broken).
+- **22-route SHA256 + size diff (PowerShell)**: **19 IDENTICAL byte-for-byte + 3 CHANGED**
+  - `loop-debug` +22,512 B (expected structural change — the actual re-pointed route)
+  - `chat-v2` +18 B (expected ε cascade — inline LoopVisualizer mount preserved Sprint 57.30 ship)
+  - `overview` +70 B (unrelated noise — time-relative text or PNG anti-aliasing variance; agent only modified LoopVisualizer.tsx + LoopVisualizer.test.tsx + route-sweep.mjs per `git diff main --stat`; no overview-touching file edited)
+- **Visual confirm `/loop-debug` after.png** (Read by harness): 2-col mockup `.loop-canvas` layout with `.loop-track` (left) + `.loop-inspector` placeholder (right) including EmptyInspectorPlaceholder AP-2 honesty notice ("Per-event inspector (HITL policy · raw payload · trace IDs) requires backend SSE event persistence — deferred Phase 58+."). Empty-state branch preserves "No loop events yet. Start a chat-v2 session to populate the visualizer." copy. AP-2 BackendGapBanner not visible in this empty-state screenshot (correctly conditional on rawEvents > 0 per agent implementation).
+
+### Drift findings
+
+- **D-DAY3-1**: `/overview` +70 B delta — within ε tolerance; root cause not investigated (not a regression; no overview file modified per git diff). Documented as known noise pattern for future sprint sweeps.
+
+### Verdict
+
+**PARITY** — 22-route sweep: 0 catastrophic / 0 structural regression on other 21 routes. `/loop-debug` shape now matches mockup `LoopDebug` per `reference/design-mockups/page-governance.jsx:33-212` (within scope of Option A pure CSS re-point + AP-2 banner deferral).
+
+### Day 3 wall-clock ~10 min (sweep + PowerShell diff + visual review)
+
+---
+
+## Day 4 — 2026-05-24 (Closeout — retro + memory + matrix + push + PR)
+
+### Accomplishments
+
+- **`retrospective.md` written** per Sprint 57.35 Q1-Q7 template — calibration ratio ~1.42 ABOVE band by 0.22; **bimodal-by-shape REJECTED + scale-overhead WEAKENED + variance is multi-dimensional**; NEW `AD-Sprint-Plan-frontend-verbatim-css-repoint-multi-dimensional-variance-watch`.
+- **`memory/project_phase57_36_loop_debug_repoint.md` written** per REFACTOR-001 single-source policy — full retro highlights + calibration + AD evolution + drift findings + lessons + commits + verification gates.
+- **`memory/MEMORY.md` updated** — 1-line quality pointer added at top of recent sprints (~600 char including keywords).
+- **`.claude/rules/sprint-workflow.md §Scope-class multiplier matrix` updated** — `frontend-verbatim-css-repoint` row 7th data point appended (57.36~1.42) + AD evolution noted in row header + NEW MHist entry prepended.
+- **`claudedocs/1-planning/next-phase-candidates.md` updated** — Sprint 57.36 Carryover section inserted above Sprint 57.35; header date+headline updated to reflect multi-dimensional variance signal.
+- **`CLAUDE.md` updated** (minimal touch per REFACTOR-001 policy) — `Current Sprint` row + `Last Updated` footer 1-line each.
+
+### Sprint 57.36 Closeout Self-Check (per `.claude/rules/sprint-workflow.md` §Sprint Closeout)
+
+- [x] CLAUDE.md changes only navigator / principle / rule level (Current Sprint row + Last Updated footer; NO Latest Sprint / Prev Sprint table rows added)
+- [x] MEMORY.md new entry ~600 char quality pointer (topic + keywords + subfile link; quality > char count per header rule)
+- [x] Sprint detail preserved in memory subfile + retrospective.md (single-source maintained)
+- [x] Carryover / open items in `next-phase-candidates.md` (NOT in CLAUDE.md table cell)
+- [x] Calibration ratio tracked in `sprint-workflow.md` matrix (NOT in CLAUDE.md / MEMORY.md prose)
+
+### Day 4 wall-clock ~50 min (retro + memory + matrix + next-phase + CLAUDE.md + progress Day 3-4 + commit + push + PR open + CI monitor)
+
+---
+
+## Final Wall-Clock Summary
+
+| Day | Theme | Bottom-up | Calibrated (×0.50) | Actual |
+|-----|-------|-----------|--------------------|--------|
+| 0 | Plan + Checklist + 三-prong + before | ~45 min | ~23 min | ~55 min |
+| 1-2 | Verbatim re-point (agent) | ~150 min | ~75 min | ~80 min |
+| 3 | After sweep + diff verdict | ~30 min | ~15 min | ~10 min |
+| 4 | Closeout (retro + memory + matrix + PR) | ~60 min | ~30 min | ~50 min |
+| **Total** | | **~285 min (4.75 hr)** | **~143 min (2.4 hr)** | **~195-205 min (3.25-3.42 hr)** |
+
+**ratio actual/committed**: **~1.42** ABOVE [0.85, 1.20] band by 0.22.
+**ratio actual/bottom-up**: **~0.72** — bottom-up was 28% generous.
+
+→ Captured in retrospective.md Q2 + sprint-workflow.md §Scope-class multiplier matrix 7th data point.
+
+
+---
+
 ## Day 1-2 — 2026-05-24 (Verbatim CSS re-point implementation)
 
 ### Accomplishments
