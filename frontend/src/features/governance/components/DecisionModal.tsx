@@ -19,9 +19,10 @@
  *   semantic colours (green/red/orange) — `<Button>` variants don't carry those.
  *
  * Created: 2026-05-04 (Sprint 53.5 Day 3)
- * Last Modified: 2026-05-10
+ * Last Modified: 2026-05-25
  *
  * Modification History (newest-first):
+ *   - 2026-05-25: FIX-015 — re-point shadcn-utility tokens (bg-muted/text-foreground/border-border/etc.) → mockup verbatim classes/vars
  *   - 2026-05-10: Sprint 57.13 US-B3 — overlay+panel → components/ui <Dialog> (Radix)
  *   - 2026-05-09: Sprint 57.9 US-3 Day 2 — drop onSubmit prop + useState/setBusy/setError → useApprovalDecide mutation
  *   - 2026-05-09: Sprint 57.9 US-2 Day 1 — Tailwind migration (drop inline styles)
@@ -44,18 +45,15 @@ type Props = {
   onClose: () => void;
 };
 
-const BUTTON_BASE =
-  "rounded px-4 py-2 text-[0.95rem] font-semibold disabled:opacity-50 disabled:cursor-not-allowed";
-
 const BUTTON_KIND: Record<"approve" | "reject" | "escalate" | "cancel", string> = {
-  approve: "bg-[#2e7d32] text-white hover:bg-[#256a29]",
-  reject: "bg-[#c62828] text-white hover:bg-[#b22222]",
-  escalate: "bg-[#ed6c02] text-white hover:bg-[#d46002]",
-  cancel: "bg-[#e0e0e0] text-[#333] hover:bg-[#d0d0d0]",
+  approve: "btn success",
+  reject: "btn danger",
+  escalate: "btn warning",
+  cancel: "btn outline",
 };
 
 const ROW = "my-1.5 flex gap-2 text-[0.95rem]";
-const ROW_LABEL = "min-w-[110px] font-semibold text-foreground/70";
+const ROW_LABEL = "min-w-[110px] font-semibold";
 
 export function DecisionModal({ approval, onClose }: Props) {
   const [reason, setReason] = useState("");
@@ -114,7 +112,15 @@ export function DecisionModal({ approval, onClose }: Props) {
           {approval.payload.tool_arguments && (
             <div className={ROW}>
               <span className={ROW_LABEL}>Arguments:</span>
-              <pre className="m-0 rounded bg-muted p-1.5 text-[0.85rem]">
+              <pre
+                className="m-0 p-1.5 text-[0.85rem]"
+                style={{
+                  background: "var(--bg-2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 6,
+                  fontFamily: "var(--font-mono)",
+                }}
+              >
                 {JSON.stringify(approval.payload.tool_arguments, null, 2)}
               </pre>
             </div>
@@ -124,7 +130,7 @@ export function DecisionModal({ approval, onClose }: Props) {
         <label className="block text-[0.95rem] font-semibold">
           Reviewer reason (optional):
           <textarea
-            className="mt-2 min-h-[80px] w-full resize-y rounded border border-border p-2 text-[0.95rem]"
+            className="textarea mt-2 w-full"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Optional context for the audit log"
@@ -133,7 +139,7 @@ export function DecisionModal({ approval, onClose }: Props) {
         </label>
 
         {decideM.error && (
-          <div role="alert" className="text-[0.9rem] text-[#c62828]">
+          <div role="alert" className="text-[0.9rem]" style={{ color: "var(--danger)" }}>
             {decideM.error.message}
           </div>
         )}
@@ -141,7 +147,7 @@ export function DecisionModal({ approval, onClose }: Props) {
         <DialogFooter>
           <button
             type="button"
-            className={`${BUTTON_BASE} ${BUTTON_KIND.cancel}`}
+            className={BUTTON_KIND.cancel}
             onClick={onClose}
             disabled={busy}
           >
@@ -149,7 +155,7 @@ export function DecisionModal({ approval, onClose }: Props) {
           </button>
           <button
             type="button"
-            className={`${BUTTON_BASE} ${BUTTON_KIND.escalate}`}
+            className={BUTTON_KIND.escalate}
             onClick={() => submit("escalated")}
             disabled={busy}
           >
@@ -157,7 +163,7 @@ export function DecisionModal({ approval, onClose }: Props) {
           </button>
           <button
             type="button"
-            className={`${BUTTON_BASE} ${BUTTON_KIND.reject}`}
+            className={BUTTON_KIND.reject}
             onClick={() => submit("rejected")}
             disabled={busy}
           >
@@ -165,7 +171,7 @@ export function DecisionModal({ approval, onClose }: Props) {
           </button>
           <button
             type="button"
-            className={`${BUTTON_BASE} ${BUTTON_KIND.approve}`}
+            className={BUTTON_KIND.approve}
             onClick={() => submit("approved")}
             disabled={busy}
           >

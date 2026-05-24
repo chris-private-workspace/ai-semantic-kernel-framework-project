@@ -15,6 +15,11 @@
  *   at top — preserves chat-v2 layout when verification not active).
  *
  * Created: 2026-05-10 (Sprint 57.11 Day 3 / US-5)
+ * Last Modified: 2026-05-25
+ *
+ * Modification History (newest-first):
+ *   - 2026-05-25: FIX-015 — re-point shadcn-utility tokens (bg-muted/text-muted-foreground/border-border/etc.) → mockup verbatim classes/vars
+ *   - 2026-05-10: Initial creation (Sprint 57.11 Day 3 / US-5)
  *
  * Related:
  *   - ../../chat_v2/store/chatStore.ts (verifications + appendVerification)
@@ -31,43 +36,46 @@ export function VerificationPanel(): JSX.Element | null {
 
   return (
     <div
-      className="border-t border-border bg-muted/30 p-3"
+      className="p-3"
+      style={{ borderTop: "1px solid var(--border)", background: "var(--bg-2)" }}
       data-testid="verification-panel"
       aria-label="Verification panel"
     >
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <h3 className="subtle mb-2 text-xs font-semibold uppercase tracking-wide">
         Verification ({verifications.length})
       </h3>
       <ul className="space-y-2">
         {verifications.map((ev, idx) => {
           const passed = ev.type === "verification_passed";
-          const borderClass = passed
-            ? "border-l-4 border-green-500"
-            : "border-l-4 border-red-500";
           return (
             <li
               key={`${ev.type}-${idx}`}
-              className={`flex items-start gap-2 rounded bg-background p-2 ${borderClass}`}
+              className="card flex items-start gap-2 p-2"
+              style={{
+                borderLeft: `4px solid ${passed ? "var(--success)" : "var(--danger)"}`,
+              }}
               data-testid={`verification-entry-${idx}`}
             >
               <span aria-hidden className="mt-0.5 text-base">
                 {passed ? "✅" : "❌"}
               </span>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                <div className="row">
                   <span className="text-sm font-medium">{ev.data.verifier}</span>
                   <VerifierTypeBadge type={ev.data.verifier_type} />
                 </div>
                 {!passed && ev.data.reason && (
-                  <p className="mt-1 text-xs text-red-700">{ev.data.reason}</p>
+                  <p className="mt-1 text-xs" style={{ color: "var(--danger)" }}>
+                    {ev.data.reason}
+                  </p>
                 )}
                 {!passed && ev.data.suggested_correction && (
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="subtle mt-1 text-xs">
                     Suggested: {ev.data.suggested_correction}
                   </p>
                 )}
                 {passed && ev.data.score !== null && ev.data.score !== undefined && (
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="subtle mt-1 text-xs">
                     Score: {ev.data.score.toFixed(2)}
                   </p>
                 )}

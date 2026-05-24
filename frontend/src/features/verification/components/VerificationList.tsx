@@ -18,9 +18,10 @@
  *     - Prev / Next pagination footer
  *
  * Created: 2026-05-10 (Sprint 57.11 Day 3 §3.1)
- * Last Modified: 2026-05-24
+ * Last Modified: 2026-05-25
  *
  * Modification History (newest-first):
+ *   - 2026-05-25: FIX-015 — re-point shadcn-utility tokens (bg-card/text-muted-foreground/border-border/etc.) → mockup verbatim classes/vars
  *   - 2026-05-24: Sprint 57.33 Day 3 US-D1 — defensive ?? [] on items.length/map (4 sites L186/200/215/257; AD-Overview-PreExisting-Route-Crashes)
  *   - 2026-05-10: Initial creation (Sprint 57.11 Day 3 §3.1)
  *
@@ -104,27 +105,28 @@ export function VerificationList(): JSX.Element {
       {/* Filter form */}
       <form
         onSubmit={handleApply}
-        className="flex flex-wrap items-end gap-3 rounded border border-border bg-card p-3"
+        className="card flex flex-wrap items-end gap-3"
+        style={{ padding: 12 }}
       >
-        <label className="flex flex-col text-sm">
-          <span className="mb-1 text-xs font-medium text-muted-foreground">Session ID</span>
+        <label className="field">
+          <span className="field-label">Session ID</span>
           <input
             type="text"
             value={draftForm.session_id}
             onChange={(e) => setDraftForm({ ...draftForm, session_id: e.target.value })}
             placeholder="UUID..."
-            className="rounded border border-input bg-background px-2 py-1 text-sm"
+            className="input"
             data-testid="filter-session-id"
           />
         </label>
-        <label className="flex flex-col text-sm">
-          <span className="mb-1 text-xs font-medium text-muted-foreground">Verifier Type</span>
+        <label className="field">
+          <span className="field-label">Verifier Type</span>
           <select
             value={draftForm.verifier_type}
             onChange={(e) =>
               setDraftForm({ ...draftForm, verifier_type: e.target.value as VerifierType | "" })
             }
-            className="rounded border border-input bg-background px-2 py-1 text-sm"
+            className="select"
             data-testid="filter-verifier-type"
           >
             <option value="">Any</option>
@@ -133,14 +135,14 @@ export function VerificationList(): JSX.Element {
             <option value="external">External</option>
           </select>
         </label>
-        <label className="flex flex-col text-sm">
-          <span className="mb-1 text-xs font-medium text-muted-foreground">Passed</span>
+        <label className="field">
+          <span className="field-label">Passed</span>
           <select
             value={draftForm.passed}
             onChange={(e) =>
               setDraftForm({ ...draftForm, passed: e.target.value as FormState["passed"] })
             }
-            className="rounded border border-input bg-background px-2 py-1 text-sm"
+            className="select"
             data-testid="filter-passed"
           >
             <option value="any">Any</option>
@@ -148,17 +150,13 @@ export function VerificationList(): JSX.Element {
             <option value="false">Failed</option>
           </select>
         </label>
-        <button
-          type="submit"
-          className="rounded bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
-          data-testid="filter-apply"
-        >
+        <button type="submit" className="btn primary" data-testid="filter-apply">
           Apply
         </button>
         <button
           type="button"
           onClick={handleReset}
-          className="rounded border border-input bg-background px-3 py-1.5 text-sm"
+          className="btn outline"
           data-testid="filter-reset"
         >
           Reset
@@ -175,12 +173,21 @@ export function VerificationList(): JSX.Element {
       )}
 
       {query.isError && (
-        <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+        <div
+          className="card"
+          style={{
+            padding: 12,
+            borderColor: "oklch(from var(--danger) l c h / 0.4)",
+            background: "oklch(from var(--danger) l c h / 0.08)",
+            color: "var(--danger)",
+            fontSize: 13,
+          }}
+        >
           <p>Error: {query.error.message}</p>
           <button
             type="button"
             onClick={handleRetry}
-            className="mt-2 rounded bg-red-600 px-2 py-1 text-xs font-medium text-white"
+            className="btn danger mt-2"
             data-testid="error-retry"
           >
             Retry{retryClicked ? "ing..." : ""}
@@ -189,12 +196,12 @@ export function VerificationList(): JSX.Element {
       )}
 
       {query.isSuccess && (query.data.items ?? []).length === 0 && (
-        <div className="rounded border border-border bg-card p-6 text-center">
-          <p className="text-sm text-muted-foreground">No verification entries match the filters.</p>
+        <div className="card" style={{ padding: 24, textAlign: "center" }}>
+          <p className="subtle text-sm">No verification entries match the filters.</p>
           <button
             type="button"
             onClick={handleReset}
-            className="mt-2 rounded border border-input bg-background px-3 py-1 text-xs"
+            className="btn outline mt-2"
             data-testid="empty-reset"
           >
             Reset Filters
@@ -204,16 +211,16 @@ export function VerificationList(): JSX.Element {
 
       {query.isSuccess && (query.data.items ?? []).length > 0 && (
         <>
-          <div className="overflow-x-auto rounded border border-border">
-            <table className="min-w-full text-sm" data-testid="verification-table">
-              <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
+          <div className="card" style={{ padding: 0, overflowX: "auto" }}>
+            <table className="table" data-testid="verification-table">
+              <thead>
                 <tr>
-                  <th className="px-3 py-2">Timestamp</th>
-                  <th className="px-3 py-2">Session</th>
-                  <th className="px-3 py-2">Verifier</th>
-                  <th className="px-3 py-2">Type</th>
-                  <th className="px-3 py-2">Outcome</th>
-                  <th className="px-3 py-2">Reason</th>
+                  <th>Timestamp</th>
+                  <th>Session</th>
+                  <th>Verifier</th>
+                  <th>Type</th>
+                  <th>Outcome</th>
+                  <th>Reason</th>
                 </tr>
               </thead>
               <tbody>
@@ -223,31 +230,24 @@ export function VerificationList(): JSX.Element {
                     onClick={() =>
                       navigate(`/verification/timeline?session_id=${item.session_id}`)
                     }
-                    className="cursor-pointer border-t border-border hover:bg-muted/30"
                     data-testid={`row-${item.id}`}
                   >
-                    <td className="px-3 py-2 text-xs text-muted-foreground">
+                    <td className="subtle" style={{ fontSize: 11 }}>
                       {new Date(item.created_at_ms).toLocaleString()}
                     </td>
-                    <td className="px-3 py-2 font-mono text-xs">
+                    <td className="mono" style={{ fontSize: 11 }}>
                       {item.session_id.slice(0, 8)}…
                     </td>
-                    <td className="px-3 py-2">{item.verifier_name}</td>
-                    <td className="px-3 py-2">
+                    <td>{item.verifier_name}</td>
+                    <td>
                       <VerifierTypeBadge type={item.verifier_type} />
                     </td>
-                    <td className="px-3 py-2">
-                      <span
-                        className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
-                          item.passed
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
+                    <td>
+                      <span className={`badge ${item.passed ? "success" : "danger"}`}>
                         {item.passed ? "Passed" : "Failed"}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">
+                    <td className="subtle" style={{ fontSize: 11 }}>
                       {_truncate(item.reason, REASON_SNIPPET_MAX)}
                     </td>
                   </tr>
@@ -257,16 +257,16 @@ export function VerificationList(): JSX.Element {
           </div>
 
           {/* Pagination footer */}
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">
+          <div className="spread" style={{ fontSize: 13 }}>
+            <span className="subtle">
               Showing {offset + 1}–{offset + (query.data.items ?? []).length} of {query.data.total}
             </span>
-            <div className="flex gap-2">
+            <div className="row" style={{ gap: 8 }}>
               <button
                 type="button"
                 disabled={offset === 0}
                 onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-                className="rounded border border-input bg-background px-3 py-1 text-xs disabled:opacity-50"
+                className="btn outline"
                 data-testid="pagination-prev"
               >
                 Prev
@@ -275,7 +275,7 @@ export function VerificationList(): JSX.Element {
                 type="button"
                 disabled={!query.data.has_more}
                 onClick={() => setOffset(offset + PAGE_SIZE)}
-                className="rounded border border-input bg-background px-3 py-1 text-xs disabled:opacity-50"
+                className="btn outline"
                 data-testid="pagination-next"
               >
                 Next

@@ -13,9 +13,10 @@
  *   (text-[#hex]) — regression sentinel for any test asserting computed color.
  *
  * Created: 2026-05-04 (Sprint 53.5 Day 3)
- * Last Modified: 2026-05-09
+ * Last Modified: 2026-05-25
  *
  * Modification History (newest-first):
+ *   - 2026-05-25: FIX-015 — re-point shadcn-utility tokens (bg-muted/border-border/etc.) → mockup verbatim classes/vars
  *   - 2026-05-09: Sprint 57.9 US-2 Day 1 — Tailwind migration (drop inline styles)
  *   - 2026-05-04: Initial creation (Sprint 53.5 Day 3)
  *
@@ -50,18 +51,18 @@ function formatAge(sla: string): string {
 
 export function ApprovalList({ approvals, onSelect }: Props) {
   if (approvals.length === 0) {
-    return <p className="my-4 italic text-muted-foreground">No pending approvals.</p>;
+    return <p className="subtle my-4 italic">No pending approvals.</p>;
   }
   return (
-    <table className="w-full border-collapse font-sans text-[0.92rem]">
+    <table className="table">
       <thead>
         <tr>
-          <th className="border-b-2 border-border bg-muted/30 p-2 text-left">Tool</th>
-          <th className="border-b-2 border-border bg-muted/30 p-2 text-left">Risk</th>
-          <th className="border-b-2 border-border bg-muted/30 p-2 text-left">Requester</th>
-          <th className="border-b-2 border-border bg-muted/30 p-2 text-left">Reason</th>
-          <th className="border-b-2 border-border bg-muted/30 p-2 text-left">Time left</th>
-          <th className="border-b-2 border-border bg-muted/30 p-2 text-left">Action</th>
+          <th>Tool</th>
+          <th>Risk</th>
+          <th>Requester</th>
+          <th>Reason</th>
+          <th>Time left</th>
+          <th>Action</th>
         </tr>
       </thead>
       <tbody>
@@ -70,20 +71,20 @@ export function ApprovalList({ approvals, onSelect }: Props) {
           const reason = approval.payload.reason ?? "";
           return (
             <tr key={approval.request_id}>
-              <td className="border-b border-border p-2">{toolName}</td>
-              <td className="border-b border-border p-2">
+              <td>{toolName}</td>
+              <td>
                 <span className={`font-semibold ${RISK_COLOR_CLASS[approval.risk_level]}`}>
                   {approval.risk_level}
                 </span>
               </td>
-              <td className="border-b border-border p-2">{approval.requester}</td>
-              <td className="border-b border-border p-2">{reason}</td>
-              <td className="border-b border-border p-2">{formatAge(approval.sla_deadline)}</td>
-              <td className="border-b border-border p-2">
+              <td>{approval.requester}</td>
+              <td>{reason}</td>
+              <td>{formatAge(approval.sla_deadline)}</td>
+              <td>
                 <button
                   type="button"
                   onClick={() => onSelect(approval)}
-                  className="inline-flex items-center rounded border border-primary bg-background px-3 py-1 text-sm font-semibold text-primary hover:bg-primary/10"
+                  className="btn outline"
                 >
                   Review
                 </button>

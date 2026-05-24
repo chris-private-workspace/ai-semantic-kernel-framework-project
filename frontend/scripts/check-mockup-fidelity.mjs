@@ -71,7 +71,8 @@ const SCAN_DIRS = [path.join(FRONTEND, "src/features"), path.join(FRONTEND, "src
 // +3 from Sprint 57.29: page-overview.jsx verbatim oklch.
 // The not-yet-re-pointed governance + chat_v2 risk-colour maps still carry
 // hardcoded hex; Phase-2 re-point sprints lower this number when those land.
-const HEX_OKLCH_BASELINE = 51;
+// -1 from FIX-015: AuditLogViewer .btn outline swap retired one mockup-token hex literal.
+const HEX_OKLCH_BASELINE = 50;
 
 let failed = false;
 
