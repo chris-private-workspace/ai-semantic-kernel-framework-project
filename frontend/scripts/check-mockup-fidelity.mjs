@@ -28,6 +28,7 @@
  * Created: 2026-05-22 (Sprint 57.28 Day 3 US-D1)
  *
  * Modification History:
+ *   - 2026-05-24: Sprint 57.37 Day 3 — bump HEX_OKLCH_BASELINE 44→50 (6 verbatim `oklch(from var(--X) l c h / X)` literals from StateInspectorPage Sprint 57.37 Domain B re-point — carryover banner border+bg + error banner border+bg + selected version highlight + checkpoint icon bg per mockup page-platform.jsx:68+75; all derive from --primary/--warning/--danger/dynamic-cat design tokens, NOT raw colours; same vocabulary precedent as Sprint 57.30/57.35; within Day 0 D-DAY0-6 estimate +5-10)
  *   - 2026-05-24: Sprint 57.37 Day 1-2 — bump HEX_OKLCH_BASELINE 41→44 (3 verbatim `oklch(from <color> l c h / X)` literals from LoopVisualizer Sprint 57.37 verbatim port — filter pill background+border tints + selected event-row highlight per mockup page-governance.jsx:138-145+198-202; all derive from category color CSS vars / design tokens, NOT raw colours; same verbatim-token vocabulary precedent as Sprint 57.30/57.35)
  *   - 2026-05-24: Sprint 57.35 Day 4 — bump HEX_OKLCH_BASELINE 25→41 (16 verbatim `oklch(from var(--X) l c h / X)` token-vocabulary literals from auth verbatim port across /auth/{login,invite,mfa,register} — all derive from existing design tokens like --danger / --warning / --primary, NOT raw colours; same vocabulary precedent as Sprint 57.30 bump 21→25; mockup uses these inline tint patterns where styles-mockup.css doesn't define a named class for the alpha variant — verbatim-token usage, not drift)
  *   - 2026-05-23: Sprint 57.30 Day 2 — bump HEX_OKLCH_BASELINE 21→25 (4 verbatim oklch tints in InputBar error box + SessionList AP-2 demo banner — production-only widgets with no mockup line; using mockup-token vocabulary verbatim)
@@ -46,7 +47,13 @@ const LAYER2 = path.join(FRONTEND, "src/styles-mockup.css");
 const SCAN_DIRS = [path.join(FRONTEND, "src/features"), path.join(FRONTEND, "src/pages")];
 
 // Phase-1 baseline — offending lines in features/ + pages/ at Sprint 57.37
-// Day 1-2. +3 from Sprint 57.37: LoopVisualizer verbatim port introduced
+// Day 3. +6 from Sprint 57.37 Day 3: StateInspectorPage Domain B re-point
+// introduced `oklch(from var(--X) l c h / X)` literals for the carryover
+// banner (border+bg) + error banner (border+bg) + selected version row
+// highlight + checkpoint icon background (mockup page-platform.jsx:68+75).
+// All derive from --primary/--warning/--danger/dynamic-cat design tokens,
+// NOT raw colours.
+// +3 from Sprint 57.37 Day 1-2: LoopVisualizer verbatim port introduced
 // `oklch(from <color> l c h / X)` literals for filter pill background+border
 // tints + selected event-row highlight (mockup page-governance.jsx:138-145 +
 // 198-202). All derive from CSS-var category colours / --primary, NOT raw
@@ -63,7 +70,7 @@ const SCAN_DIRS = [path.join(FRONTEND, "src/features"), path.join(FRONTEND, "src
 // +3 from Sprint 57.29: page-overview.jsx verbatim oklch.
 // The not-yet-re-pointed governance + chat_v2 risk-colour maps still carry
 // hardcoded hex; Phase-2 re-point sprints lower this number when those land.
-const HEX_OKLCH_BASELINE = 44;
+const HEX_OKLCH_BASELINE = 50;
 
 let failed = false;
 

@@ -86,3 +86,58 @@ Vs plan §8 bottom-up Day 1 ~2 hr + Day 2 ~2-2.5 hr (combined ~4-4.5 hr) — abo
 - Cursor auto-advance logic: when live `rawEvents` grow & cursor was at/beyond previous length, cursor advances to new length so live mode "just works" without operator intervention; if operator scrubbed back, cursor stays put.
 - Inspector selection uses `events` (full array), not `filteredEvents`, so selection survives filter toggling. Returns undefined when selectedIndex points to a filtered-out event — inspector then shows empty-state until next row click.
 
+---
+
+## Day 3 — 2026-05-24 (Domain B: StateInspectorPage verbatim CSS re-point)
+
+### Accomplishments
+
+- **Modified**: `frontend/src/pages/state-inspector/StateInspectorPage.tsx` (~366 → ~430 lines; net ~+64 lines but full structural rewrite)
+  - **Dropped**: `TONE_CLASS: Record<Tone, string>` (10-key Tailwind-utility tone map) + `AUTHOR_TONE` Record + `AUTHOR_TEXT_CLASS` Record + `AUTHOR_BORDER_CLASS` Record + shadcn `Card`/`Badge`/`Stat`/`KvLine` Tailwind utility implementations
+  - **Adopted**: mockup verbatim classes `.page-head` / `.page-title` / `.page-sub` / `.route-pill` / `.page-actions` / `.grid-stats` / `.card` / `.card-head` / `.card-title` / `.card-sub` / `.card-body` / `.card-body.dense` / `.col` / `.row` / `.spread` / `.mono` / `.subtle` / `.muted` / `.tnum` / `.badge.memory` / `.btn` / `.btn.outline` per mockup page-platform.jsx:21-145
+  - **Inline mockup styles** (verbatim, module-scope constant refs): 15 constants — `STATE_PAGE_WRAPPER_STYLE` / `STATE_GRID_320_1FR_STYLE` / `CARRYOVER_BANNER_STYLE` / `ERROR_BANNER_STYLE` / `STAT_CARD_STYLE` / `STAT_LABEL_STYLE` / `STAT_VALUE_STYLE` / `STAT_UNIT_STYLE` / `VERSION_CHAIN_COL_STYLE` / `VERSION_LINEAGE_TICK_STYLE` / `VERSION_KV_COL_STYLE` / `VERSION_SECTION_LABEL_STYLE` / etc.
+  - **Preserved**: `useStateSnapshot(session_id)` hook call + carryover banner (now mockup-verbatim oklch tinted) + URL `?session_id=` param handling + all 4 KPI Stat + 10-version chain + current-state + diff view layout (Sprint 57.19 US-B3 backend wiring intact)
+  - **A11y**: version chain row divs now have `role="button"` + `tabIndex={0}` + `onKeyDown` Enter/Space handler (vs prior `<button>` element wrapper — equivalent semantics)
+  - **Lucide icons**: kept `Clock` / `Download` / `RefreshCw` / `Shield` (no mockup-class equivalent; mockup uses generic `<Icon name="...">` placeholder)
+- **Updated**: `frontend/scripts/check-mockup-fidelity.mjs` `HEX_OKLCH_BASELINE 44→50` (6 NEW verbatim oklch alpha-tints from Domain B; MHist + comment block updated)
+- **Verifies**:
+  - `npx tsc --noEmit` → exit 0
+  - `npm run test -- --run` → 464/464 passing (8/8 StateInspectorPage specs passed without any test edits — text-based assertions survived the class swap; no D-DAY0-1 spec update actually needed since text labels unchanged)
+  - `npm run check:mockup-fidelity` → exit 0 (50 lines vs baseline 50)
+  - `npm run lint` → exit 0
+
+### Drift findings Day 3
+
+| ID | Finding | Implication | Resolution |
+|----|---------|-------------|------------|
+| **D-DAY3-1** | StateInspectorPage spec did NOT require any update for Domain B class swap — Sprint 57.19 spec used text-based assertions (`getByText("Current version")` / `getAllByText("v11")` / `getByText(/durable\.pending_approval_ids/)` etc.) NOT class selectors. D-DAY0-1 prediction "Domain B spec update required" was over-conservative | Spec quality lesson: text-based assertions are class-swap-resilient (vs Sprint 57.36 D-DAY1-1 where Tailwind `border-red-500` class assertion broke under verbatim re-point); document in spec writing convention for Sprint 57.38+ | No code change needed; finding logged for retrospective Q1 |
+| **D-DAY3-2** | HEX_OKLCH_BASELINE rose +6 (vs +3 Day 1-2 + Day 0 D-DAY0-6 estimate +5-10) — total Sprint 57.37 delta +9 within high end of estimate | OK | Baseline 44→50; MHist + comment block updated |
+| **D-DAY3-3** | Mockup line ranges for `KvLine` (page-platform.jsx:148-153) and `STATE_VERSIONS` fixture (L8-19) used by `<StateInspector>` (L21-145) — port consumed mockup L8-145 not just L21-145 as Day 0 D-DAY0-2 noted ("L21-155") | Day 0 estimate tightened scope to L21-155, but the KvLine helper at L148 also needed verbatim port (mockup `.muted .mono` class pattern). Within-file scope creep <10 lines | Adopted KvLine helper as production-local component using mockup classes directly |
+
+### Scope shift summary
+
+- Net scope impact: ~0% (all 3 D-DAY3 findings ALIGN with plan; one positive surprise — D-DAY3-1 spec didn't need update)
+
+### Day 3 wall-clock ~1.5 hr
+
+Vs plan §8 bottom-up Day 3 ~2-2.5 hr — about 33% under bottom-up. Within calibration multiplier 0.50 expectation for Domain B `frontend-verbatim-css-repoint` class (8th app).
+
+### Sprint 57.37 totals (Day 0-3)
+
+- Day 0: ~1 hr (plan + checklist + 三-prong + before sweep)
+- Day 1-2 combined: ~3 hr (Domain A LoopVisualizer fixture/playback/filter/inspector/Vitest)
+- Day 3: ~1.5 hr (Domain B StateInspectorPage verbatim CSS swap)
+- **Total Day 0-3**: ~5.5 hr vs plan §8 calibrated commit ~5.5 hr — **exactly on calibrated budget** (Day 4 closeout still pending ~1.5 hr)
+
+### Sprint 57.37 verification snapshot (end of Day 3)
+
+| Check | Result |
+|-------|--------|
+| `npx tsc --noEmit` | ✓ exit 0 |
+| `npm run test -- --run` | ✓ 464/464 (456 baseline + 8 NEW LoopVisualizer specs) |
+| `npm run check:mockup-fidelity` | ✓ exit 0 (50/50 baseline; +9 over Sprint 57.37 ship: +3 Day 1-2 LoopVisualizer + +6 Day 3 StateInspector) |
+| `npm run lint` | ✓ exit 0 |
+| HEX_OKLCH_BASELINE | 41 → 50 (net +9 across 2 domains; vocabulary precedent Sprint 57.30/57.35) |
+| Vitest delta | +8 specs (all in LoopVisualizer.test.tsx; StateInspectorPage spec unchanged) |
+| Production file delta | LoopVisualizer.tsx ~+330 lines, StateInspectorPage.tsx ~+64 net lines, demoLoopEvents.ts ~+145 new lines |
+
