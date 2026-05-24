@@ -25,6 +25,7 @@
  * Created: 2026-05-20 (Sprint 57.26 Day 0) — supersedes the temporary frontend/diagnose-render.mjs
  *
  * Modification History:
+ *   - 2026-05-24: Sprint 57.39 — re-point OUT_DIR to sprint-57-39-governance-multipage-phase2 (4-domain batched: /governance + /verification re-point + /redaction + /error-policy PROP→real; 1st deliberate-test of `-with-extras` 0.65 baseline post-57.38 split)
  *   - 2026-05-24: Sprint 57.38 — re-point OUT_DIR to sprint-57-38-class-split-subagents-fullbleed-audit (reused for 3-domain batched sprint: Domain A class-split decision meta + Domain B /subagents Phase-2 verbatim re-point -with-extras 5th app per Day 0 D5 reclass + Domain C AD-FullBleed-Pages-Audit FIX-010 follow-up)
  *   - 2026-05-24: Sprint 57.37 — re-point OUT_DIR to sprint-57-37-loop-debug-state-inspector (reused for 2-domain batched sprint: Domain A /loop-debug full rebuild + Domain B /state-inspector Phase-2 verbatim re-point; 8th+9th apps; closes Sprint 57.36 §Frontend Mockup-Fidelity Hard Constraint gap)
  *   - 2026-05-24: Sprint 57.36 — re-point OUT_DIR to sprint-57-36-loop-debug-repoint (reused for /loop-debug Phase-2 verbatim re-point sweep; 7th app of epic; 3rd non-rich-dashboard shape — single-file scope; discriminates bimodal-by-shape vs scale-overhead variance hypotheses)
@@ -53,7 +54,7 @@ if (!["before", "after"].includes(MODE)) {
 const BASE = "http://localhost:3007";
 const VP = { width: 1440, height: 900 };
 const OUT_DIR = path.resolve(
-  `../claudedocs/4-changes/sprint-57-38-class-split-subagents-fullbleed-audit/screenshots/${MODE}`,
+  `../claudedocs/4-changes/sprint-57-39-governance-multipage-phase2/screenshots/${MODE}`,
 );
 fs.mkdirSync(OUT_DIR, { recursive: true });
 

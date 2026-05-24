@@ -4,7 +4,52 @@
 
 **Selection Rule**: User explicitly selects → draft plan kicks off Sprint XX.Y; otherwise items wait here indefinitely until selected or archived.
 
-**Updated**: 2026-05-24 (Sprint 57.38 follow-up FIX-011 + 3 systematic anti-patterns codified — user-reported `/state-inspector` outer padding (FIX-011 resolved) + `[v18 by orchestrator_loop]` baseline misalignment (AP-Phase2-B AD) + all-page buttons black borders (AP-Phase2-C AD). 3 NEW carryover ADs added below.)
+**Updated**: 2026-05-24 (Sprint 57.39 closed — Governance Category Multi-Page Phase-2 4-domain batched; Phase-2 epic 11/17 → 15/17 routes shipped / 2 🟡 Phase 58+ STRUCTURAL remaining; 5 NEW carryover ADs added below.)
+
+---
+
+## 🆕 Sprint 57.39 Carryover (2026-05-24 — Governance Category Multi-Page Phase-2 4-domain batched)
+
+Sprint 57.39 (`AD-Governance-Category-Multipage-Phase-2`) closed: 4-domain batched.
+
+- **Domain A `/governance`**: tab-shell verbatim CSS swap to `Tabs` mockup-ui primitive (commit `71088441`; 75 → 83 lines; backend wiring untouched)
+- **Domain B `/verification`**: same tab-shell pattern (commit `019fa12f`; 77 → 80 lines; Sprint 57.33 defensive `(items ?? []).length` guard intact in `VerificationList.tsx`)
+- **Domain C `/redaction`**: PROP→real port (commit `2eefffcd`; 1-line stub → 273 lines verbatim per `page-platform2.jsx:254 RedactionPage` + 6 NEW Vitest specs + AP-2 BackendGapBanner)
+- **Domain D `/error-policy`**: PROP→real port (commit `3d5b442e`; 1-line stub → 272 lines verbatim per `page-platform.jsx:426 ErrorPolicyPage` + 8 NEW Vitest specs + AP-2 BackendGapBanner)
+- **routes.config.ts cleanup** (commit `085dacec`): dropped `proposed: true` from `/redaction` + `/error-policy` rows
+- **22-route sweep** (Day 2.5 `e97cb05b`): 13 CHANGED / 9 IDENTICAL / 0 unexpected regression — 2 intended Day 1 (governance + verification) + 11 collateral sidebar PROP-badge cascade (consistent ~-1.9 KB delta)
+
+**1st deliberate-test data point for `-with-extras` 0.65 baseline**: sprint-aggregate ratio ≈0.41 BELOW band [0.85, 1.20] by 0.44. Root cause = code-implementer agent-delegation (6th + 7th consecutive) ~3-5× speedup vs human-rewrite estimates not modeled in baseline. KEEP 0.65 per `When to adjust` 3-sprint window rule (1-data-point insufficient).
+
+### Phase-2 epic progress
+
+- **11/17 → 15/17 Phase-2 routes shipped / 2 🟡 remaining**: only Phase 58+ STRUCTURAL: `/memory` + `/tenant-settings` (both need backend pair)
+- /governance + /verification are NEAR-PARITY shell-level only (child component re-point deferred — see new AD #47 below)
+- `/audit-log` still requires backend pair (Round 4 carryover; not part of this sprint per plan §1.3)
+
+### 🆕 5 NEW carryover ADs (Sprint 57.40+ candidates)
+
+47. **`AD-Governance-Verification-Child-Component-Re-Point-Phase58`** (D-DAY1-1) — Close NEAR-PARITY → PARITY gap for /governance + /verification by re-pointing child components (ApprovalsPage / AuditLogViewer / CorrectionTraceView / VerificationList / VerificationDetail) from Sprint 57.5/57.9-vintage Tailwind utility to verbatim mockup CSS. Estimated ~6-10 hr `-with-extras` 0.65 class.
+
+48. **`AD-Day0-Prong2-Child-Component-Tree-Depth-Audit`** (sprint-meta) — Extend Day 0 Prong 2 grep depth to include child-component tree mapping when production-vs-mockup structure may differ. Update `.claude/rules/sprint-workflow.md` §Step 2.5 with new sub-prong. Estimated ~1-2 hr.
+
+49. **`AD-RouteSweep-Coverage-Extend-PROP-Promoted-Pages`** (D-DAY2.5-1; sprint-meta + script change) — Extend `frontend/scripts/route-sweep.mjs` 22-route config to include all PROP-promoted routes (and ideally auto-derive from `routes.config.ts`). PROP→real promotion sprints currently lack before/after PNG evidence for newly-promoted routes. Estimated ~1-2 hr.
+
+50. **`AD-RouteSweep-Cwd-Relative-OUT_DIR-Foot-Gun-Fix`** (D4 Day 0; sprint-meta + script change) — Change `path.resolve('../...')` in `frontend/scripts/route-sweep.mjs` to `path.resolve(__dirname, '../...')` for script-relative OUT_DIR. Closes recurring foot-gun: running script from any cwd other than `frontend/` resolves OUT_DIR outside repo. Estimated ~15 min (3-line script change).
+
+51. **`AD-Sprint-Plan-Agent-Delegation-Factor-Modifier`** (Q4 #4 from retro; meta) — Quantify code-implementer agent-delegation speedup factor (~3-5×) for `-with-extras` and other classes; propose embedding as multiplier-on-multiplier in `.claude/rules/sprint-workflow.md` §Scope-class multiplier matrix (e.g., `-with-extras + agent-delegated` sub-class at 0.30-0.40 effective). Defer 2-3 sprint validation; if 57.40+ continues showing ratio < 0.7 → propose 0.65 → 0.35-0.40 lift OR sub-class split. Estimated ~2 hr.
+
+### Next sprint candidates (post-57.39)
+
+After Sprint 57.39, the Phase-2 epic non-STRUCTURAL backlog is mostly cleared. High-ROI next candidates:
+
+- **`AD-Governance-Verification-Child-Component-Re-Point-Phase58`** (close 2 NEAR-PARITY → PARITY gap; uses agent delegation pattern; ~3-5 hr actual with agent factor)
+- **`/audit-log` DRAFT→active** (paired with Cat 9 backend; medium-backend + medium-frontend joint sprint)
+- **`/admin-tenants` Phase-2** (`-simple` 0.50 3rd validation data point; ~1.5-2 hr with agent)
+- **`AD-Shadcn-Border-Token-Visual-Audit-Or-Align-To-Mockup`** Path A 1-line global micro-fix (~30 min)
+- **`AD-Inline-Font-Baseline-Alignment`** typography audit (~2-3 hr)
+- **Phase 58+ structural epic** `/memory` or `/tenant-settings` (~25-30 hr; needs backend pair)
+- **`AD-RouteSweep-Cwd-Relative-OUT_DIR-Foot-Gun-Fix`** (15 min micro-fix bundle candidate)
 
 ---
 

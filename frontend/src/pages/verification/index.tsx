@@ -21,9 +21,10 @@
  *   Tab nav uses NavLink with isActive callback for active highlighting.
  *
  * Created: 2026-04-29 (Sprint 49.1 placeholder)
- * Last Modified: 2026-05-10
+ * Last Modified: 2026-05-24
  *
  * Modification History (newest-first):
+ *   - 2026-05-24: Sprint 57.39 Domain B — verbatim CSS swap tab-shell per page-extras.jsx:829 VerificationPage (.tabs/.tab[data-active]); Sprint 57.33 defensive ?? [] guard in VerificationList.tsx preserved (out of scope here)
  *   - 2026-05-10: Sprint 57.13 US-B5 — pageTitle + tab labels via i18n t()
  *   - 2026-05-10: Sprint 57.13 US-A1 — gate via <RequireAuth> (was inline isAuthenticated() check)
  *   - 2026-05-10: Sprint 57.11 US-4 Day 2 — auth gate + AppShellV2 + 2-tab routes (real ship)
@@ -32,39 +33,41 @@
  * Related:
  *   - frontend/src/features/auth/components/RequireAuth.tsx (route gate)
  *   - frontend/src/components/AppShellV2.tsx (Sprint 57.8 US-1.3)
- *   - frontend/src/features/verification/components/VerificationList.tsx (Day 3 §3.1)
+ *   - frontend/src/features/verification/components/VerificationList.tsx (Day 3 §3.1; Sprint 57.33 defensive ?? [] guard sites L191/205/220/262)
  *   - frontend/src/features/verification/components/CorrectionTraceView.tsx (Day 3 §3.2)
  *   - frontend/src/i18n/locales/{en,zh-TW}/common.json (nav.verification + verification.tab.* keys)
+ *   - frontend/src/styles-mockup.css (.tabs / .tab[data-active] L590-610)
  */
 
 import { useTranslation } from "react-i18next";
-import { Navigate, NavLink, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { AppShellV2 } from "@/components/AppShellV2";
+import { Tabs } from "@/components/mockup-ui";
 import { RequireAuth } from "@/features/auth/components/RequireAuth";
 import { CorrectionTraceView } from "@/features/verification/components/CorrectionTraceView";
 import { VerificationList } from "@/features/verification/components/VerificationList";
 
-const tabClass = ({ isActive }: { isActive: boolean }): string =>
-  `px-4 py-2 text-sm font-medium ${
-    isActive
-      ? "border-b-2 border-primary text-primary"
-      : "text-muted-foreground hover:text-foreground"
-  }`;
-
 export default function VerificationPage(): JSX.Element {
   const { t } = useTranslation("common");
+  const location = useLocation();
+  const navigate = useNavigate();
+  // Derive active tab from URL pathname (URL-addressable, mirrors Sprint 57.9 governance pattern).
+  // AP-Phase2-C: visual layer fully owned by mockup .tab[data-active] CSS (L590-610) via mockup
+  // --border / --primary tokens — no shadcn border-border / border-primary Tailwind utilities.
+  const activeTab = location.pathname.includes("/timeline") ? "timeline" : "recent";
   return (
     <RequireAuth>
       <AppShellV2 pageTitle={t("nav.verification")}>
-        <nav className="mb-4 flex gap-2 border-b border-border" aria-label={t("verification.tabsLabel")}>
-          <NavLink to="recent" className={tabClass}>
-            {t("verification.tab.recent")}
-          </NavLink>
-          <NavLink to="timeline" className={tabClass}>
-            {t("verification.tab.correctionTrace")}
-          </NavLink>
-        </nav>
+        <Tabs
+          items={[
+            { id: "recent", label: t("verification.tab.recent") },
+            { id: "timeline", label: t("verification.tab.correctionTrace") },
+          ]}
+          value={activeTab}
+          onChange={(id) => navigate(id)}
+          ariaLabel={t("verification.tabsLabel")}
+        />
         <Routes>
           <Route index element={<Navigate to="recent" replace />} />
           <Route path="recent" element={<VerificationList />} />

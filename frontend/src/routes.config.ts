@@ -265,7 +265,6 @@ export const ROUTES: RouteEntry[] = [
     icon: EyeOff,
     category: "governance",
     active: true,
-    proposed: true,
     component: lazy(() => import("./pages/redaction")),
   },
   {
@@ -275,7 +274,6 @@ export const ROUTES: RouteEntry[] = [
     icon: AlertOctagon,
     category: "governance",
     active: true,
-    proposed: true,
     component: lazy(() => import("./pages/error-policy")),
   },
   // === Observability (5) ===
