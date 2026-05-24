@@ -1,17 +1,25 @@
+/* eslint-disable no-restricted-syntax -- verbatim re-point: inline styles are mockup page-agents.jsx visual-layer literals copied byte-for-byte; re-expressing as Tailwind IS the drift bug this epic kills (STYLE.md §1 escape hatch + frontend-mockup-fidelity.md) */
 /**
  * File: frontend/src/pages/subagents/SubagentsPage.tsx
- * Purpose: Subagent Registry — port from reference/design-mockups/page-agents.jsx SubagentsRegistry + SubagentDetail.
+ * Purpose: Subagent Registry — verbatim port from reference/design-mockups/page-agents.jsx SubagentsRegistry + SubagentDetail (lines 300-440).
  * Category: Frontend / pages / subagents
- * Scope: Phase 57 / Sprint 57.19 Day 4 / US-C3
+ * Scope: Phase 57 / Sprint 57.38 Day 1 / Domain B (5th -with-extras app)
  *
  * Description:
- *   1:1 port of mockup `SubagentsRegistry` + `SubagentDetail`:
- *     - 4-mode KPI cards (fork=thinking / as_tool=tool / teammate=memory / handoff=info)
- *     - 2-column grid (1.4fr list table + 1fr detail card with inner Tabs spec/budget/tools/stats)
+ *   Verbatim CSS re-point of mockup `SubagentsRegistry` + `SubagentDetail` blocks:
+ *     - .page-head + .page-title + .page-sub + .route-pill + .page-actions
+ *     - .grid-3 4-mode KPI strip (fork=thinking / as_tool=tool / teammate=memory / handoff=info)
+ *       with .stat + .stat-label + .stat-value + .subtle and colored borderLeft 3px
+ *     - 2-col grid 1.4fr 1fr (verbatim inline style; eslint-disable no-restricted-syntax)
+ *     - Left mockup-ui Card "Subagents" / "Click to inspect / edit" bodyClass="flush"
+ *       containing .table with 6 headers and 8 fixture rows; selected row highlight
+ *       via inline style background oklch(from var(--primary) l c h / 0.10)
+ *     - Right Card with inner Tabs (AgentSpec / Budget / Tools / Stats) — per-tab
+ *       layouts use .col / .row / .mono / .subtle / .input / .select / .textarea / .field
  *
- *   NOT a drawer (checklist plan mentioned shadcn `<Sheet>` but mockup uses inline
- *   right-side card layout — mockup-fidelity hard constraint wins). Click row in
- *   list table → updates `selected` state → right-side card re-renders.
+ *   Sprint 57.33 defensive `?.length` optional chain on `data?.items?.length` preserved
+ *   (AD-Overview-PreExisting-Route-Crashes regression guard; spec
+ *   "survives backend payload with items field missing" must still pass).
  *
  *   Backend US-B4 stub returns empty + `not_implemented_reason` (AD-Subagent-
  *   RealList-Phase58). When `items.length === 0` AND `not_implemented_reason` set,
@@ -22,67 +30,43 @@
  * Last Modified: 2026-05-24
  *
  * Modification History (newest-first):
+ *   - 2026-05-24: Sprint 57.38 Day 1 — verbatim CSS re-point from Tailwind utilities to mockup .page-head/.grid-3/.stat/.card/.table/.row classes per page-agents.jsx:300-450 (5th -with-extras app)
  *   - 2026-05-24: Sprint 57.33 Day 1 US-B1 — defensive ?. on items.length (crash fix; AD-Overview-PreExisting-Route-Crashes)
  *   - 2026-05-17: Initial creation (Sprint 57.19 Day 4 / US-C3)
  *
  * Related:
- *   - reference/design-mockups/page-agents.jsx (SubagentsRegistry + SubagentDetail)
- *   - frontend/src/features/subagents/hooks/useSubagents.ts (US-B4 consumer)
- *   - frontend/src/components/ui/tabs.tsx (Sprint 57.19 NEW primitive)
+ *   - reference/design-mockups/page-agents.jsx (SubagentsRegistry + SubagentDetail; lines 300-440)
+ *   - reference/design-mockups/styles.css (.page-head .grid-3 .stat .card .table .row .col)
+ *   - frontend/src/styles-mockup.css (byte-identical copy; Sprint 57.28 4-layer foundation)
+ *   - frontend/src/components/mockup-ui.tsx (Button / Badge / Card / Tabs / Field primitives)
+ *   - frontend/src/features/subagents/hooks/useSubagents.ts (US-B4 consumer; contract unchanged)
  */
 
-import { GitBranch, Play, Plus } from "lucide-react";
-import type { FC, ReactNode } from "react";
+import type { FC } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { AppShellV2 } from "@/components/AppShellV2";
-import { Tabs } from "@/components/ui/tabs";
+import {
+  Badge,
+  Button,
+  Card,
+  Field,
+  Tabs,
+} from "@/components/mockup-ui";
 import { RequireAuth } from "@/features/auth/components/RequireAuth";
 import { useSubagents } from "@/features/subagents/hooks/useSubagents";
 import type { SubagentMode } from "@/features/subagents/types";
 
-// ───────────────── primitives (mockup parity inline) ─────────────────
+// ───────────────── mode tone map (mockup verbatim) ─────────────────
+// Mockup `page-agents.jsx:357` inline ternary: fork→thinking, as_tool→tool, handoff→info, else→memory.
+// Hoisted to a typed map so JSX stays scannable; tone values unchanged.
 
-type Tone = "success" | "warning" | "danger" | "thinking" | "info" | "primary" | "tool" | "memory" | "muted";
-
-const TONE_CLASS: Record<Tone, string> = {
-  success: "bg-success/16 text-success",
-  warning: "bg-warning/16 text-warning",
-  danger: "bg-danger/16 text-danger",
-  thinking: "bg-thinking/16 text-thinking",
-  info: "bg-info/16 text-info",
-  primary: "bg-primary/16 text-primary",
-  tool: "bg-tool/16 text-tool",
-  memory: "bg-memory/16 text-memory",
-  muted: "bg-muted text-muted-foreground",
-};
-
-const Badge: FC<{ tone?: Tone; dot?: boolean; children: ReactNode }> = ({
-  tone = "muted",
-  dot,
-  children,
-}) => (
-  <span
-    className={`inline-flex items-center gap-1 rounded-full px-2 py-[2px] text-[10.5px] font-medium ${TONE_CLASS[tone]}`}
-  >
-    {dot && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
-    {children}
-  </span>
-);
-
-const MODE_TONE: Record<SubagentMode, Tone> = {
+const MODE_TONE: Record<SubagentMode, string> = {
   fork: "thinking",
   as_tool: "tool",
   teammate: "memory",
   handoff: "info",
-};
-
-const MODE_BORDER: Record<SubagentMode, string> = {
-  fork: "border-l-thinking",
-  as_tool: "border-l-tool",
-  teammate: "border-l-memory",
-  handoff: "border-l-info",
 };
 
 // ───────────────── fixtures (Sprint 57.20+ replaced by real backend) ─────────────────
@@ -109,11 +93,12 @@ const SUBAGENT_LIST: SubagentFixture[] = [
   { id: "summarizer", role: "summarizer", prompt: "Compact reduce ≤500-token summary of an artifact.", model: "claude-haiku-4-5", modes: ["as_tool"], status: "live", calls24: 612, p95: 0.55 },
 ];
 
-const MODE_KPI: Array<{ mode: SubagentMode; count: number; descKey: string }> = [
-  { mode: "fork", count: 3, descKey: "subagents.mode.forkDesc" },
-  { mode: "as_tool", count: 6, descKey: "subagents.mode.asToolDesc" },
-  { mode: "teammate", count: 1, descKey: "subagents.mode.teammateDesc" },
-  { mode: "handoff", count: 2, descKey: "subagents.mode.handoffDesc" },
+// 4 KPI cards; per-mode color literal `var(--thinking|tool|memory|info)` is mockup verbatim (page-agents.jsx:333-336).
+const MODE_KPI: Array<{ mode: SubagentMode; count: number; descKey: string; c: string }> = [
+  { mode: "fork", count: 3, descKey: "subagents.mode.forkDesc", c: "var(--thinking)" },
+  { mode: "as_tool", count: 6, descKey: "subagents.mode.asToolDesc", c: "var(--tool)" },
+  { mode: "teammate", count: 1, descKey: "subagents.mode.teammateDesc", c: "var(--memory)" },
+  { mode: "handoff", count: 2, descKey: "subagents.mode.handoffDesc", c: "var(--info)" },
 ];
 
 // ───────────────── detail card (inner tabs) ─────────────────
@@ -129,20 +114,17 @@ const SubagentDetailCard: FC<{ sub: SubagentFixture }> = ({ sub }) => {
   ];
 
   return (
-    <div className="rounded-[12px] border border-border bg-card text-card-foreground">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div>
-          <div className="font-mono text-sm font-semibold">{sub.role}</div>
-          <div className="text-[11px] text-muted-foreground">AgentSpec · {sub.modes.join(" + ")}</div>
-        </div>
-        <button
-          type="button"
-          className="inline-flex items-center gap-1 rounded-[6px] px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
-        >
-          <Play className="h-3 w-3" /> {t("subagents.detail.testInvoke")}
-        </button>
-      </div>
-      <div className="px-4 pt-2">
+    <Card
+      title={<span className="mono">{sub.role}</span>}
+      subtitle={`AgentSpec · ${sub.modes.join(" + ")}`}
+      bodyClass="flush"
+      actions={
+        <Button variant="ghost" size="sm" icon="play">
+          {t("subagents.detail.testInvoke")}
+        </Button>
+      }
+    >
+      <div style={{ padding: "0 16px" }}>
         <Tabs
           items={tabItems}
           value={tab}
@@ -150,105 +132,135 @@ const SubagentDetailCard: FC<{ sub: SubagentFixture }> = ({ sub }) => {
           ariaLabel={t("subagents.detail.tabsLabel")}
         />
       </div>
-      <div className="p-4">
+      <div className="card-body">
         {tab === "spec" && (
-          <div className="flex flex-col gap-3 text-[12px]">
-            <div className="flex flex-col gap-1">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{t("subagents.detail.role")}</span>
-              <input className="w-full rounded-[6px] border border-border bg-muted/30 px-2 py-1 font-mono" readOnly defaultValue={sub.role} />
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{t("subagents.detail.model")}</span>
-              <input className="w-full rounded-[6px] border border-border bg-muted/30 px-2 py-1 font-mono" readOnly defaultValue={sub.model} />
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{t("subagents.detail.systemPrompt")}</span>
-              <textarea
-                rows={4}
-                readOnly
-                defaultValue={sub.prompt}
-                className="w-full resize-none rounded-[6px] border border-border bg-muted/30 px-2 py-1 font-mono text-[11.5px]"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{t("subagents.detail.allowedModes")}</span>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {(["fork", "as_tool", "teammate", "handoff"] as SubagentMode[]).map((m) => (
-                  <Badge key={m} tone={sub.modes.includes(m) ? MODE_TONE[m] : "muted"}>
-                    {m}
-                  </Badge>
-                ))}
+          <div className="col" style={{ gap: 12 }}>
+            <Field label={t("subagents.detail.role")}>
+              <input className="input mono" readOnly defaultValue={sub.role} />
+            </Field>
+            <Field label={t("subagents.detail.model")}>
+              <select className="select" defaultValue={sub.model}>
+                <option>claude-haiku-4-5</option>
+                <option>claude-sonnet-4-5</option>
+                <option>claude-opus-4-1</option>
+              </select>
+            </Field>
+            <Field label={t("subagents.detail.systemPrompt")}>
+              <textarea className="textarea" rows={6} defaultValue={sub.prompt} />
+            </Field>
+            <Field label={t("subagents.detail.allowedModes")}>
+              <div className="row" style={{ gap: 6 }}>
+                {(["fork", "as_tool", "teammate", "handoff"] as SubagentMode[]).map((m) => {
+                  const checked = sub.modes.includes(m);
+                  return (
+                    <label
+                      key={m}
+                      className="row"
+                      style={{
+                        gap: 5,
+                        fontSize: 12,
+                        padding: "4px 8px",
+                        border: "1px solid var(--border)",
+                        borderRadius: 4,
+                        background: checked ? "var(--primary-soft)" : "var(--bg-1)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        defaultChecked={checked}
+                        style={{ accentColor: "var(--primary)" }}
+                      />
+                      <span
+                        className="mono"
+                        style={{ color: checked ? "var(--primary)" : "var(--fg-muted)" }}
+                      >
+                        {m}
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
-            </div>
+            </Field>
           </div>
         )}
         {tab === "budget" && (
-          <div className="flex flex-col gap-3 text-[12px]">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">{t("subagents.detail.maxTokens")}</span>
-              <span className="font-mono">10,000</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">{t("subagents.detail.maxDuration")}</span>
-              <span className="font-mono">300 s</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">{t("subagents.detail.maxConcurrent")}</span>
-              <span className="font-mono">5</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">{t("subagents.detail.maxDepth")}</span>
-              <span className="font-mono">3</span>
-            </div>
-            <div className="rounded-[6px] border border-border bg-muted/30 p-2 text-[11.5px] text-muted-foreground">
+          <div className="col" style={{ gap: 12 }}>
+            <Field label={t("subagents.detail.maxTokens")}>
+              <input className="input mono" defaultValue="10000" />
+            </Field>
+            <Field label={t("subagents.detail.maxDuration")}>
+              <input className="input mono" defaultValue="300" />
+            </Field>
+            <Field label={t("subagents.detail.maxConcurrent")}>
+              <input className="input mono" defaultValue="5" />
+            </Field>
+            <Field label={t("subagents.detail.maxDepth")}>
+              <input className="input mono" defaultValue="3" />
+            </Field>
+            <div
+              className="muted"
+              style={{
+                fontSize: 11.5,
+                padding: 10,
+                background: "var(--bg-2)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+              }}
+            >
               {t("subagents.detail.worktreeAbsent")}
             </div>
           </div>
         )}
         {tab === "tools" && (
-          <div className="flex flex-col gap-2">
-            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              {t("subagents.detail.toolsAttached")}
-            </span>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Badge tone="tool">log.tail</Badge>
-              <Badge tone="tool">log.grep</Badge>
-              <Badge tone="tool">metrics.query</Badge>
-            </div>
-            <button
-              type="button"
-              className="mt-1 inline-flex w-fit items-center gap-1 rounded-[6px] border border-border px-2 py-1 text-[11px] hover:bg-muted/40"
+          <div className="col" style={{ gap: 8 }}>
+            <div
+              className="subtle"
+              style={{
+                fontSize: 11,
+                fontFamily: "var(--font-mono)",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+              }}
             >
-              <Plus className="h-3 w-3" /> {t("subagents.detail.attachTool")}
-            </button>
+              {t("subagents.detail.toolsAttached")}
+            </div>
+            <div className="kbar">
+              <Badge tone="tool" pill>log.tail</Badge>
+              <Badge tone="tool" pill>log.grep</Badge>
+              <Badge tone="tool" pill>metrics.query</Badge>
+            </div>
+            <Button variant="outline" size="sm" icon="plus">
+              {t("subagents.detail.attachTool")}
+            </Button>
           </div>
         )}
         {tab === "stats" && (
-          <div className="flex flex-col gap-2 text-[12px]">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">{t("subagents.detail.calls24h")}</span>
-              <span className="font-mono">{sub.calls24}</span>
+          <div className="col" style={{ gap: 8, fontSize: 12 }}>
+            <div className="spread">
+              <span className="muted">{t("subagents.detail.calls24h")}</span>
+              <span className="mono">{sub.calls24}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">{t("subagents.detail.p95")}</span>
-              <span className="font-mono">{sub.p95}s</span>
+            <div className="spread">
+              <span className="muted">{t("subagents.detail.p95")}</span>
+              <span className="mono">{sub.p95}s</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">{t("subagents.detail.successRate")}</span>
-              <span className="font-mono">99.2%</span>
+            <div className="spread">
+              <span className="muted">{t("subagents.detail.successRate")}</span>
+              <span className="mono">99.2%</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">{t("subagents.detail.avgTokens")}</span>
-              <span className="font-mono">2,840</span>
+            <div className="spread">
+              <span className="muted">{t("subagents.detail.avgTokens")}</span>
+              <span className="mono">2,840</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">{t("subagents.detail.topOrchestrator")}</span>
-              <span className="font-mono">orchestrator-main</span>
+            <div className="spread">
+              <span className="muted">{t("subagents.detail.topOrchestrator")}</span>
+              <span className="mono">orchestrator-main</span>
             </div>
           </div>
         )}
       </div>
-    </div>
+    </Card>
   );
 };
 
@@ -267,120 +279,138 @@ function SubagentsPageInner(): JSX.Element {
   const realItemsCount = data?.items?.length ?? 0;
 
   return (
-    <div className="flex flex-col gap-[14px] p-[18px]">
-      {/* page head */}
-      <header className="flex items-start justify-between">
-        <div className="text-[12.5px] text-muted-foreground">
-          {t("subagents.subtitle")}
-          <span className="ml-2 rounded-[4px] bg-muted px-[6px] py-[1px] font-mono text-[11px]">
-            /subagents
-          </span>
-          <span className="ml-2 font-mono text-[11px] text-muted-foreground">
-            · {SUBAGENT_LIST.length} {t("subagents.registered")}
-          </span>
+    <div>
+      {/* page head — verbatim port of page-agents.jsx:316-329 */}
+      <div className="page-head">
+        <div>
+          <div className="page-title">{t("subagents.title")}</div>
+          <div className="page-sub">
+            {t("subagents.subtitle")}
+            <span className="route-pill">/subagents</span>
+            <span className="mono subtle">
+              · {SUBAGENT_LIST.length} {t("subagents.registered")}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 rounded-[6px] border border-border bg-card px-3 py-[6px] text-[12px] hover:bg-muted/40"
-          >
-            <GitBranch className="h-3.5 w-3.5" /> {t("subagents.syncFromRepo")}
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 rounded-[6px] bg-primary px-3 py-[6px] text-[12px] text-primary-foreground hover:bg-primary/90"
-          >
-            <Plus className="h-3.5 w-3.5" /> {t("subagents.newSubagent")}
-          </button>
+        <div className="page-actions">
+          <Button variant="outline" size="sm" icon="git">
+            {t("subagents.syncFromRepo")}
+          </Button>
+          <Button variant="primary" size="sm" icon="plus">
+            {t("subagents.newSubagent")}
+          </Button>
         </div>
-      </header>
+      </div>
 
-      {/* carryover banner (US-B4 stub) */}
+      {/* carryover banner (US-B4 stub) — preserved role="status" for spec compat */}
       {!isLoading && !error && notImplementedReason && realItemsCount === 0 && (
         <div
           role="status"
-          className="rounded-[8px] border border-warning/40 bg-warning/8 p-3 text-[12px] text-warning"
+          style={{
+            margin: "0 0 14px 0",
+            padding: 10,
+            border: "1px solid color-mix(in oklch, var(--warning) 40%, transparent)",
+            background: "color-mix(in oklch, var(--warning) 8%, transparent)",
+            borderRadius: 8,
+            fontSize: 12,
+            color: "var(--warning)",
+          }}
         >
           <strong>{t("subagents.carryoverHeading")}</strong>: {notImplementedReason}
         </div>
       )}
       {error && (
-        <div role="alert" className="rounded-[8px] border border-danger/40 bg-danger/8 p-3 text-[12px] text-danger">
+        <div
+          role="alert"
+          style={{
+            margin: "0 0 14px 0",
+            padding: 10,
+            border: "1px solid color-mix(in oklch, var(--danger) 40%, transparent)",
+            background: "color-mix(in oklch, var(--danger) 8%, transparent)",
+            borderRadius: 8,
+            fontSize: 12,
+            color: "var(--danger)",
+          }}
+        >
           {error.message}
         </div>
       )}
 
-      {/* 4-mode KPI row */}
-      <div className="grid grid-cols-4 gap-3">
+      {/* 4-mode KPI strip — verbatim port of page-agents.jsx:331-344 */}
+      <div className="grid-3" style={{ marginBottom: 16 }}>
         {MODE_KPI.map((m) => (
-          <div
-            key={m.mode}
-            className={`rounded-[12px] border border-border bg-card p-4 border-l-[3px] ${MODE_BORDER[m.mode]}`}
-          >
-            <div className="font-mono text-[11px] font-semibold uppercase tracking-wide text-foreground">
-              {m.mode}
+          <div key={m.mode} className="stat" style={{ borderLeft: `3px solid ${m.c}` }}>
+            <div className="stat-label">
+              {/* keep <div> wrapper so spec `getByText(mode, { selector: "div" })` resolves */}
+              <div
+                style={{
+                  color: m.c,
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                  fontFamily: "var(--font-mono)",
+                }}
+              >
+                {m.mode}
+              </div>
             </div>
-            <div className="mt-1 font-mono text-[22px] font-semibold tabular-nums">{m.count}</div>
-            <div className="text-[10.5px] text-muted-foreground">{t(m.descKey)}</div>
+            <div className="stat-value" style={{ fontSize: 22 }}>{m.count}</div>
+            <div className="subtle" style={{ fontSize: 10.5 }}>{t(m.descKey)}</div>
           </div>
         ))}
       </div>
 
-      {/* 2-col grid: list left, detail right */}
-      <div className="grid grid-cols-[1.4fr_1fr] gap-[14px]">
-        <div className="rounded-[12px] border border-border bg-card">
-          <div className="border-b border-border px-4 py-3">
-            <div className="text-sm font-semibold">{t("subagents.list.title")}</div>
-            <div className="text-[11px] text-muted-foreground">{t("subagents.list.subtitle")}</div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-[12px]">
-              <thead className="text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="border-b border-border px-3 py-2">{t("subagents.col.role")}</th>
-                  <th className="border-b border-border px-3 py-2">{t("subagents.col.model")}</th>
-                  <th className="border-b border-border px-3 py-2">{t("subagents.col.modes")}</th>
-                  <th className="border-b border-border px-3 py-2">{t("subagents.col.status")}</th>
-                  <th className="border-b border-border px-3 py-2 text-right">{t("subagents.col.calls24h")}</th>
-                  <th className="border-b border-border px-3 py-2 text-right">{t("subagents.col.p95")}</th>
+      {/* 2-col grid: list left, detail right — verbatim port of page-agents.jsx:346-370 */}
+      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 14 }}>
+        <Card
+          title={t("subagents.list.title")}
+          subtitle={t("subagents.list.subtitle")}
+          bodyClass="flush"
+        >
+          <table className="table">
+            <thead>
+              <tr>
+                <th>{t("subagents.col.role")}</th>
+                <th>{t("subagents.col.model")}</th>
+                <th>{t("subagents.col.modes")}</th>
+                <th>{t("subagents.col.status")}</th>
+                <th style={{ textAlign: "right" }}>{t("subagents.col.calls24h")}</th>
+                <th style={{ textAlign: "right" }}>{t("subagents.col.p95")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {SUBAGENT_LIST.map((s) => (
+                <tr
+                  key={s.id}
+                  onClick={() => setSelectedId(s.id)}
+                  style={{
+                    background:
+                      selectedId === s.id
+                        ? "oklch(from var(--primary) l c h / 0.10)"
+                        : undefined,
+                  }}
+                >
+                  <td className="mono" style={{ fontSize: 12, fontWeight: 500 }}>{s.role}</td>
+                  <td className="mono subtle" style={{ fontSize: 11.5 }}>{s.model}</td>
+                  <td>
+                    <div className="row" style={{ gap: 4 }}>
+                      {s.modes.map((m) => (
+                        <Badge key={m} tone={MODE_TONE[m]}>{m}</Badge>
+                      ))}
+                    </div>
+                  </td>
+                  <td>
+                    <Badge tone={s.status === "live" ? "success" : "warning"} dot>
+                      {s.status}
+                    </Badge>
+                  </td>
+                  <td className="mono tnum" style={{ textAlign: "right" }}>{s.calls24}</td>
+                  <td className="mono tnum subtle" style={{ textAlign: "right" }}>{s.p95}s</td>
                 </tr>
-              </thead>
-              <tbody>
-                {SUBAGENT_LIST.map((s) => {
-                  const isSel = s.id === selectedId;
-                  return (
-                    <tr
-                      key={s.id}
-                      onClick={() => setSelectedId(s.id)}
-                      className={`cursor-pointer border-b border-border last:border-0 ${isSel ? "bg-primary/10" : "hover:bg-muted/40"}`}
-                    >
-                      <td className="px-3 py-2 font-mono font-medium">{s.role}</td>
-                      <td className="px-3 py-2 font-mono text-[11.5px] text-muted-foreground">{s.model}</td>
-                      <td className="px-3 py-2">
-                        <div className="flex flex-wrap items-center gap-1">
-                          {s.modes.map((m) => (
-                            <Badge key={m} tone={MODE_TONE[m]}>
-                              {m}
-                            </Badge>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2">
-                        <Badge tone={s.status === "live" ? "success" : "warning"} dot>
-                          {s.status}
-                        </Badge>
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono tabular-nums">{s.calls24}</td>
-                      <td className="px-3 py-2 text-right font-mono tabular-nums text-muted-foreground">
-                        {s.p95}s
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              ))}
+            </tbody>
+          </table>
+        </Card>
 
         <SubagentDetailCard sub={active} />
       </div>

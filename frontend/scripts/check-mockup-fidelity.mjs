@@ -28,6 +28,7 @@
  * Created: 2026-05-22 (Sprint 57.28 Day 3 US-D1)
  *
  * Modification History:
+ *   - 2026-05-24: Sprint 57.38 Day 1 — bump HEX_OKLCH_BASELINE 50→51 (+1 verbatim `oklch(from var(--primary) l c h / 0.10)` literal from SubagentsPage Sprint 57.38 Domain B re-point — selected row highlight per mockup page-agents.jsx:352; derives from --primary design token, NOT raw colour; same vocabulary precedent as Sprint 57.30/57.35/57.37)
  *   - 2026-05-24: Sprint 57.37 Day 3 — bump HEX_OKLCH_BASELINE 44→50 (6 verbatim `oklch(from var(--X) l c h / X)` literals from StateInspectorPage Sprint 57.37 Domain B re-point — carryover banner border+bg + error banner border+bg + selected version highlight + checkpoint icon bg per mockup page-platform.jsx:68+75; all derive from --primary/--warning/--danger/dynamic-cat design tokens, NOT raw colours; same vocabulary precedent as Sprint 57.30/57.35; within Day 0 D-DAY0-6 estimate +5-10)
  *   - 2026-05-24: Sprint 57.37 Day 1-2 — bump HEX_OKLCH_BASELINE 41→44 (3 verbatim `oklch(from <color> l c h / X)` literals from LoopVisualizer Sprint 57.37 verbatim port — filter pill background+border tints + selected event-row highlight per mockup page-governance.jsx:138-145+198-202; all derive from category color CSS vars / design tokens, NOT raw colours; same verbatim-token vocabulary precedent as Sprint 57.30/57.35)
  *   - 2026-05-24: Sprint 57.35 Day 4 — bump HEX_OKLCH_BASELINE 25→41 (16 verbatim `oklch(from var(--X) l c h / X)` token-vocabulary literals from auth verbatim port across /auth/{login,invite,mfa,register} — all derive from existing design tokens like --danger / --warning / --primary, NOT raw colours; same vocabulary precedent as Sprint 57.30 bump 21→25; mockup uses these inline tint patterns where styles-mockup.css doesn't define a named class for the alpha variant — verbatim-token usage, not drift)
@@ -70,7 +71,7 @@ const SCAN_DIRS = [path.join(FRONTEND, "src/features"), path.join(FRONTEND, "src
 // +3 from Sprint 57.29: page-overview.jsx verbatim oklch.
 // The not-yet-re-pointed governance + chat_v2 risk-colour maps still carry
 // hardcoded hex; Phase-2 re-point sprints lower this number when those land.
-const HEX_OKLCH_BASELINE = 50;
+const HEX_OKLCH_BASELINE = 51;
 
 let failed = false;
 
