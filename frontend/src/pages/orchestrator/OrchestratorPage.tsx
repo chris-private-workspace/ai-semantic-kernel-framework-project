@@ -23,6 +23,7 @@
  * Last Modified: 2026-05-24
  *
  * Modification History (newest-first):
+ *   - 2026-05-24: Sprint 57.34 Day 3 — verbatim re-point: Tools + Subagents + Budgets + Policies tabs data-testid hooks (folded into Day 1 visual re-point per scope-shape; tab bodies use .table/.chip/.grid-main/.kbar/.thin-rule verbatim CSS)
  *   - 2026-05-24: Sprint 57.34 Day 2 — verbatim re-point: Config + Prompt tabs data-testid hooks + textarea verbatim defaultValue (folded into Day 1 visual re-point per scope-shape; tab bodies use .field/.input/.select/.textarea/.kbar verbatim CSS)
  *   - 2026-05-24: Sprint 57.34 Day 1 — verbatim re-point: page-head + grid-stats + Tabs structure + import mockup-ui primitives (drop local Badge/Stat/RiskBadge/TONE_CLASS/Field/Switch/inputBase/TextInput/Select)
  *   - 2026-05-17: Initial creation (Sprint 57.19 Day 3 / US-C2)
@@ -243,6 +244,7 @@ const SANDBOX_TONE: Record<ToolRow["sandbox"], string> = {
 const ToolsTab: FC = () => {
   const { t } = useTranslation();
   return (
+    <div data-testid="orchestrator-tools-tab">
     <Card
       title={t("orchestrator.tools.title")}
       subtitle={t("orchestrator.tools.subtitle")}
@@ -293,6 +295,7 @@ const ToolsTab: FC = () => {
         </tbody>
       </table>
     </Card>
+    </div>
   );
 };
 
@@ -323,6 +326,7 @@ const SUBAGENTS_FIXTURE: SubagentRow[] = [
 const SubagentsTab: FC = () => {
   const { t } = useTranslation();
   return (
+    <div data-testid="orchestrator-subagents-tab">
     <Card
       title={t("orchestrator.subagents.title")}
       subtitle={t("orchestrator.subagents.subtitle")}
@@ -375,6 +379,7 @@ const SubagentsTab: FC = () => {
         </tbody>
       </table>
     </Card>
+    </div>
   );
 };
 
@@ -390,7 +395,7 @@ const BUDGETS: { k: string; v: number; unit: string }[] = [
 const BudgetsTab: FC = () => {
   const { t } = useTranslation();
   return (
-    <div className="grid-main">
+    <div className="grid-main" data-testid="orchestrator-budgets-tab">
       <Card title={t("orchestrator.budgets.loop")} subtitle={t("orchestrator.budgets.loopSub")}>
         <div className="col" style={{ gap: 14 }}>
           {BUDGETS.map((b) => (
@@ -447,6 +452,7 @@ const BudgetsTab: FC = () => {
 const PoliciesTab: FC = () => {
   const { t } = useTranslation();
   return (
+    <div data-testid="orchestrator-policies-tab">
     <Card title={t("orchestrator.policies.title")}>
       <div className="col" style={{ gap: 12, maxWidth: 720 }}>
         <Field label="Default HITL policy for write tools">
@@ -489,6 +495,7 @@ const PoliciesTab: FC = () => {
         </Field>
       </div>
     </Card>
+    </div>
   );
 };
 
