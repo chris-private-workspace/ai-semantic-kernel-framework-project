@@ -4,9 +4,34 @@
 
 **Selection Rule**: User explicitly selects → draft plan kicks off Sprint XX.Y; otherwise items wait here indefinitely until selected or archived.
 
-**Updated**: 2026-05-24 (Sprint 57.36 closeout — /loop-debug Phase-2 re-point; **3rd shape data point reveals variance is MULTI-DIMENSIONAL** — bimodal-by-shape REJECTED + scale-overhead WEAKENED; NEW multi-dimensional-variance-watch AD)
+**Updated**: 2026-05-24 (Sprint 57.37 closeout — 2-domain batched: /loop-debug full rebuild closes 57.36 mockup-fidelity gap + /state-inspector Phase-2 re-point; user-reported empty-state RESOLVED; **3-consecutive-above-band lift trigger MET** for `frontend-verbatim-css-repoint` → NEW class-split-proposal AD candidate for Sprint 57.38)
 
 ---
+
+## 🆕 Sprint 57.37 Carryover (2026-05-24 — 2-domain batched: /loop-debug full rebuild + /state-inspector Phase-2)
+
+Sprint 57.37 (`AD-LoopDebug-Full-Rebuild-And-StateInspector-Repoint`) closed: 2-domain batched. **Domain A /loop-debug full mockup-fidelity rebuild** closes Sprint 57.36 §Frontend Mockup-Fidelity Hard Constraint gap — 18-event fixture (`_fixtures/demoLoopEvents.ts` NEW) + playback strip (cursor/play/pause/scrubber/speed 1×/4×/8×/16×) + filter pills (6 categories) + LoopInspector right pane (KvRow + HITL Policy + Raw payload) + corrected AP-2 DEMO DATA banner. **User-reported `/loop-debug` empty-state issue FULLY RESOLVED** (after.png shows visual parity with mockup `localhost:8080/#loop-debug`). **Domain B /state-inspector** Phase-2 verbatim CSS re-point per `page-platform.jsx:21-155` preserves Sprint 57.19 US-B3 backend wiring. 22-route sweep **18 IDENTICAL + 4 CHANGED** (loop-debug +63,405 B fixture-rich +66%; state-inspector -14,681 B verbatim simpler; chat-v2 **0 B PERFECT cascade**; auth-callback -68 B + overview +138 B noise). 4 gates green. Vitest **464/464** (+8 NEW Domain A specs; D-DAY3-1 Domain B spec class-swap-resilient — NO update needed). HEX_OKLCH_BASELINE 41→50 within Day 0 D-DAY0-6 estimate. Sprint total ratio ~1.0 IN BAND middle (2-domain HYBRID averaging). Agent-assisted Day 1-3 (4th consecutive code-implementer; ~4.5 hr wall-clock). Updates:
+
+- ✅ **RESOLVED: Sprint 57.36 §Frontend Mockup-Fidelity Hard Constraint gap on /loop-debug** — fixture demo + 4 mockup widgets shipped per CLAUDE.md rule "後端尚未支援的 widget → 仍依 mockup 視覺實作，data 用 fixture"
+- ✅ **RESOLVED: User-reported `/loop-debug` empty-state UX issue 2026-05-24** — page now visually parity with mockup
+
+- 🆕 **NEW DECISION CANDIDATE: `AD-Sprint-Plan-frontend-verbatim-css-repoint-class-split-proposal`** — Domain B 4th non-rich data point 1.33 ABOVE band; **3-consecutive-above-band lift trigger MET** (57.35=1.7 + 57.36=1.42 + 57.37B=1.33; 4-pt non-rich mean 1.36). Per `When to adjust` rule (3+ consecutive > 1.20 → raise multiplier). **Two options for Sprint 57.38 retro decision**:
+  - **Option 1**: class-wide baseline lift 0.50 → 0.60 (simpler; over-corrects truly simple 57.34 baseline)
+  - **Option 2 (recommended)**: class split `-simple` (0.50): pure 1-file CSS swap no extras (Sprint 57.34 baseline 1.0 in-band) vs `-with-extras` (0.65): + any of {AP-2 banner, dual-mount, playback/filter/inspector widgets, verbatim oklch-heavy port with HEX_OKLCH_BASELINE bumps, multi-file batched > 3 files} (Sprints 57.35/57.36/57.37B mean 1.48)
+
+- 🔄 **Updated: `AD-Sprint-Plan-frontend-verbatim-css-repoint-multi-dimensional-variance-watch`** (Sprint 57.36 NEW) — 4th non-rich data point empirically confirms multi-D hypothesis; closed either Option 1 or Option 2 in Sprint 57.38
+
+- 🔄 **Updated: `AD-Sprint-Plan-frontend-verbatim-css-repoint-baseline-lift`** (Sprint 57.31 NEW) — alternative lift path; closed either Option 1 or Option 2 in Sprint 57.38
+
+- 🆕 **Convention candidate (D-DAY3-1 positive surprise)**: Vitest spec class-swap-resilience — prefer `getByText` / `getByRole` / `data-testid` over class-name selectors. Codify in `.claude/rules/sprint-workflow.md` OR `docs/rules-on-demand/frontend-react.md`. StateInspectorPage spec needed NO update during Sprint 57.37 Day 3 verbatim port — saved ~10-15 min spec adapt time.
+
+- 🆕 **Lesson**: Calibration ratio formula clarification — `actual / calibrated` (NOT `actual / bottom-up`); codify in sprint-workflow.md to prevent agent prediction errors like Sprint 57.37 Day 3 estimate
+
+- 🆕 **Tracking**: `/overview` + `/auth-callback` recurring noise pattern in route-sweep PNGs (overview +138 B Sprint 57.37 / +70 B Sprint 57.36; auth-callback -68 B Sprint 57.37 first occurrence) — investigate if persists 3+ sprints; likely time-relative text or PNG AA variance
+
+- 🎯 **Phase-2 epic progress**: 7+1 routes shipped (7 Phase-2 routes + AuthShell + LoopVisualizer dual-mount + StateInspectorPage full re-point) / **7 🟡 routes remaining** (governance / admin-tenants / tenant-settings STRUCTURAL Phase 58+ / memory STRUCTURAL Phase 58+ / compaction + 3 unblocked-by-57.33 PROP stubs)
+
+- 🔍 **Drift findings** (Day 0-3): D-DAY0-1..7 (Day 0 verifications) / D-DAY1-1 (TS forEach→for-loop) / D-DAY2-1..3 (17 lint fixes + baseline +3 + fixture 18 events) / D-DAY3-1..3 (spec NO update positive surprise + baseline +6 + KvLine helper <10 line creep)
 
 ## 🆕 Sprint 57.36 Carryover (2026-05-24 — /loop-debug Phase-2)
 

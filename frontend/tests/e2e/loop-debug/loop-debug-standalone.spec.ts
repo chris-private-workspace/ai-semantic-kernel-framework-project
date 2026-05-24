@@ -40,7 +40,7 @@ test.describe("Sprint 57.12 US-8 — /loop-debug standalone page", () => {
     await expect(page).toHaveURL(/\/auth\/login/);
   });
 
-  test("authenticated visit renders AppShellV2 + LoopVisualizer standalone empty state", async ({
+  test("authenticated visit renders AppShellV2 + LoopVisualizer standalone (fixture demo events when no chat-v2 session)", async ({
     page,
   }) => {
     await seedAuthJwt(page);
@@ -49,9 +49,13 @@ test.describe("Sprint 57.12 US-8 — /loop-debug standalone page", () => {
     // AppShellV2 page-level title (sticky header h1).
     await expect(page.getByRole("heading", { level: 1, name: "Loop Debug" })).toBeVisible();
 
-    // LoopVisualizer standalone empty state (fresh tab: no chat-v2 session run yet).
-    await expect(
-      page.getByText(/No loop events yet\. Start a chat-v2 session/i),
-    ).toBeVisible();
+    // Sprint 57.37 Day 1-2 — LoopVisualizer standalone now loads DEMO_LOOP_EVENTS
+    // fixture when `useChatStore.rawEvents.length === 0 && mode === "standalone"`
+    // (closes Sprint 57.36 §Frontend Mockup-Fidelity Hard Constraint gap per CLAUDE.md rule).
+    // Verify the new fixture-mode rendering rather than the prior "No loop events yet" empty copy:
+    //  1. mockup `LoopDebugHeader` title "Loop Visualizer" (page-governance.jsx:122)
+    //  2. AP-2 BackendGapBanner with the "DEMO DATA" disclosure (data-testid="backend-gap-banner")
+    await expect(page.getByText(/Loop Visualizer/)).toBeVisible();
+    await expect(page.getByTestId("backend-gap-banner")).toBeVisible();
   });
 });
