@@ -111,8 +111,9 @@ test.describe("Sprint 57.11 US-6 — Verification page real ship", () => {
     await page.goto("/verification");
 
     // Auth gate passed; AppShellV2 renders + 2 tabs visible
-    await expect(page.getByRole("link", { name: "Recent" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Correction Trace" })).toBeVisible();
+    // Sprint 57.39: tab-shell swapped to mockup-ui Tabs primitive (role="tab" not role="link")
+    await expect(page.getByRole("tab", { name: "Recent" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Correction Trace" })).toBeVisible();
 
     // VerificationList rendered + 2 rows visible
     await expect(page.getByTestId("verification-table")).toBeVisible();
