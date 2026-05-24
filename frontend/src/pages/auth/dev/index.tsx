@@ -1,46 +1,51 @@
 /**
  * File: frontend/src/pages/auth/dev/index.tsx
- * Purpose: DEV-only dev-login page extracted from prior login DevLoginSection (Sprint 57.23 US-B3).
+ * Purpose: DEV-only dev-login page — verbatim re-point per mockup AuthDev (Sprint 57.35 US-B3).
  * Category: Frontend / pages / auth
- * Scope: Phase 57 / Sprint 57.23 US-B3 (extract from login + mockup-direct rebuild)
+ * Scope: Phase 57 / Sprint 57.23 US-B3 (initial extract + mockup-direct HSL-translated) → Sprint 57.35 US-B3 (Phase-2 verbatim-CSS re-point)
  *
  * Description:
- *   Sprint 57.23 US-B3 NEW per `reference/design-mockups/page-extras.jsx:109-152`:
- *     - risk-high warning card at top (banner pattern matches HITL severity card visual)
- *     - Card with 3 fields: Assume identity (select 4 fixtures) + Tenant (select 3 fixtures) + Role (4 read-only badges)
- *     - Continue-as primary button → POST /api/v1/auth/dev-login (tenant_code + email)
- *     - On success: useAuthStore.bootstrap() → consumePostLoginRedirect()
+ *   Sprint 57.35 US-B3 verbatim re-point per `reference/design-mockups/page-extras.jsx:109-152`:
+ *     - Drop Tailwind translations of mockup `.hitl-card[data-severity="risk-high"]` + `.hitl-card-bar`
+ *       + `.hitl-head` + `.icon-ring` (Sprint 57.23 used `rounded-lg border-destructive/40 bg-destructive/5`
+ *       Tailwind translation; verbatim CSS classes already exist in styles-mockup.css L845-869).
+ *     - Drop shadcn Card/CardContent/Button/Badge in favour of mockup-ui (Card emits `.card`/`.card-body`).
+ *     - 3 fields use mockup-ui Field + `.select` verbatim per mockup L122-144.
+ *     - Role badges use mockup-ui Badge with `tone="primary"` for selected (matches mockup L141).
+ *     - `.hr` separator class verbatim (L145).
+ *     - Continue Button uses mockup-ui `iconRight="arrow_right"`.
  *
- *   Production-build gate: App.tsx wraps `<Route>` in `{import.meta.env.DEV && ...}` so
- *   production bundle excludes route entirely. `npm run build && grep "auth/dev" dist/`
- *   should return 0 lines (R8 mitigation; verified Day 4 closeout).
+ *   Production-build gate (App.tsx route is DEV-only): unchanged.
  *
- *   Behavioral logic preserved from prior login DevLoginSection (Sprint 57.13 US-A4):
+ *   Behavioral logic preserved (Sprint 57.13 US-A4):
  *     - fetchWithAuth POST with tenant_code + email URLSearchParams
  *     - Cookie set by backend; bootstrap() re-reads via /auth/me
- *     - 404 maps to errorDisabled (DEV_LOGIN=true gating at backend)
+ *     - 404 maps to errorDisabled
  *
  * Created: 2026-05-18 (Sprint 57.23 US-B3)
+ * Last Modified: 2026-05-24
  *
  * Modification History:
+ *   - 2026-05-24: Sprint 57.35 US-B3 — verbatim re-point per page-extras.jsx:109-152 (closes Sprint 57.23 vintage HSL-translation drift)
  *   - 2026-05-18: Initial creation (Sprint 57.23 US-B3) — extracted from login + mockup-direct AuthDev port
  *
  * Related:
  *   - backend/src/api/v1/auth.py:dev_login (POST /api/v1/auth/dev-login)
- *   - frontend/src/pages/auth/login/index.tsx (Sprint 57.23 US-B2 — removed embedded DevLoginSection; links to /auth/dev)
+ *   - frontend/src/pages/auth/login/index.tsx (links to /auth/dev)
  *   - frontend/src/features/auth/store/authStore.ts (bootstrap)
  *   - frontend/src/features/auth/services/authService.ts (consumePostLoginRedirect)
  *   - frontend/src/i18n/locales/{en,zh-TW}/auth.json (auth.dev.* namespace)
  *   - reference/design-mockups/page-extras.jsx:109-152 (AuthDev canonical visual source)
  */
 
-import { AlertTriangle, ArrowRight, ShieldAlert } from "lucide-react";
+/* eslint-disable no-restricted-syntax -- verbatim re-point: inline-style literals + var(--warning) bridge copied byte-for-byte from mockup page-extras.jsx:109-152 (STYLE.md §1 escape hatch + Sprint 57.31 Hybrid Tailwind+inline color bridge precedent) */
+
 import { type ChangeEvent, type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import { AuthShell } from "@/components/AuthShell";
-import { Badge, Button, Card, CardContent } from "@/components/ui";
+import { Badge, Button, Card, Field, Icon } from "@/components/mockup-ui";
 import {
   consumePostLoginRedirect,
   fetchWithAuth,
@@ -118,95 +123,100 @@ export default function DevLoginPage() {
       footer={
         <span>
           {t("dev.footer").replace("DEV_LOGIN=true", "")}{" "}
-          <span className="font-mono">DEV_LOGIN=true</span>
+          <span className="mono">DEV_LOGIN=true</span>
         </span>
       }
     >
-      {/* Sprint 57.23 mockup AuthDev L111-120: risk-high warning card */}
-      <div
-        data-severity="risk-high"
-        className="relative rounded-lg border border-destructive/40 bg-destructive/5 p-4"
-      >
-        <div className="absolute left-0 top-0 bottom-0 w-0.5 rounded-l-lg bg-destructive" aria-hidden />
-        <div className="mb-2 flex flex-row items-center gap-2 text-[13.5px] font-semibold text-destructive">
-          <ShieldAlert size={13} aria-hidden />
+      {/* Sprint 57.35 verbatim per mockup L111-120: risk-high warning card */}
+      <div className="hitl-card" data-severity="risk-high" style={{ margin: 0 }}>
+        <div className="hitl-card-bar" />
+        <div className="hitl-head">
+          <span className="icon-ring">
+            <Icon name="warn" size={13} />
+          </span>
           {t("dev.warningTitle")}
         </div>
-        <div className="text-[12.5px] text-fg-muted">{t("dev.warningBody")}</div>
+        <div style={{ fontSize: 12.5, color: "var(--fg-muted)" }}>
+          {t("dev.warningBody")}
+        </div>
       </div>
 
       <Card>
-        <CardContent className="p-6">
-          <form className="flex flex-col gap-[14px]" onSubmit={submit}>
-            {error ? (
-              <div
-                role="alert"
-                className="flex items-start gap-2 rounded border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
-              >
-                <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-                <span>{error}</span>
-              </div>
-            ) : null}
-
-            <div className="flex flex-col gap-1">
-              <label htmlFor="dev-identity" className="text-[12px] font-medium text-fg-muted">
-                {t("dev.identityLabel")}
-              </label>
-              <select
-                id="dev-identity"
-                value={identityValue}
-                onChange={(e: ChangeEvent<HTMLSelectElement>) => setIdentityValue(e.target.value)}
-                className="h-9 rounded-md border border-border bg-background px-2 text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {IDENTITIES.map((i) => (
-                  <option key={i.value} value={i.value}>
-                    {i.email} · {i.role}
-                  </option>
-                ))}
-              </select>
+        <form className="col" style={{ gap: 14 }} onSubmit={submit}>
+          {error ? (
+            <div
+              role="alert"
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 8,
+                padding: 10,
+                borderRadius: 6,
+                border: "1px solid oklch(from var(--danger) l c h / 0.4)",
+                background: "oklch(from var(--danger) l c h / 0.1)",
+                color: "var(--danger)",
+                fontSize: 12.5,
+              }}
+            >
+              <Icon name="warn" size={14} style={{ marginTop: 1, flexShrink: 0 }} />
+              <span>{error}</span>
             </div>
+          ) : null}
 
-            <div className="flex flex-col gap-1">
-              <label htmlFor="dev-tenant" className="text-[12px] font-medium text-fg-muted">
-                {t("dev.tenantLabel")}
-              </label>
-              <select
-                id="dev-tenant"
-                value={tenantValue}
-                onChange={(e: ChangeEvent<HTMLSelectElement>) => setTenantValue(e.target.value)}
-                className="h-9 rounded-md border border-border bg-background px-2 text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {TENANTS.map((tn) => (
-                  <option key={tn.value} value={tn.value}>
-                    {tn.label}
-                  </option>
-                ))}
-              </select>
+          <Field label={t("dev.identityLabel")}>
+            <select
+              id="dev-identity"
+              className="select"
+              value={identityValue}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => setIdentityValue(e.target.value)}
+              style={{ height: 34, fontSize: 13 }}
+            >
+              {IDENTITIES.map((i) => (
+                <option key={i.value} value={i.value}>
+                  {i.email} · {i.role}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label={t("dev.tenantLabel")}>
+            <select
+              id="dev-tenant"
+              className="select"
+              value={tenantValue}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => setTenantValue(e.target.value)}
+              style={{ height: 34, fontSize: 13 }}
+            >
+              {TENANTS.map((tn) => (
+                <option key={tn.value} value={tn.value}>
+                  {tn.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label={t("dev.roleLabel")}>
+            <div className="row" style={{ gap: 6 }}>
+              {ROLES.map((r) => (
+                <Badge key={r} tone={r === identity.role ? "primary" : ""}>
+                  {r}
+                </Badge>
+              ))}
             </div>
+          </Field>
 
-            <div className="flex flex-col gap-1">
-              <span className="text-[12px] font-medium text-fg-muted">{t("dev.roleLabel")}</span>
-              <div className="flex flex-row gap-1.5">
-                {ROLES.map((r) => (
-                  <Badge
-                    key={r}
-                    variant={r === identity.role ? "default" : "secondary"}
-                    aria-pressed={r === identity.role}
-                  >
-                    {r}
-                  </Badge>
-                ))}
-              </div>
-            </div>
+          <div className="hr" style={{ margin: "2px 0" }} />
 
-            <div className="my-0.5 h-px bg-border" aria-hidden />
-
-            <Button type="submit" size="lg" disabled={busy} className="w-full text-[13.5px]">
-              {busy ? t("dev.submitting") : t("dev.continueAs", { email: identity.email })}
-              <ArrowRight size={16} className="ml-1" />
-            </Button>
-          </form>
-        </CardContent>
+          <Button
+            type="submit"
+            variant="primary"
+            data-size="lg"
+            iconRight="arrow_right"
+            disabled={busy}
+          >
+            {busy ? t("dev.submitting") : t("dev.continueAs", { email: identity.email })}
+          </Button>
+        </form>
       </Card>
     </AuthShell>
   );

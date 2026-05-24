@@ -53,10 +53,13 @@ describe("DevLoginPage", () => {
     // Warning card
     expect(screen.getByText(/Dev login — non-production only/i)).toBeInTheDocument();
     expect(screen.getByText(/Skips SAML \/ MFA/i)).toBeInTheDocument();
-    // 3 fields
-    expect(screen.getByLabelText(/Assume identity/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Tenant/i)).toBeInTheDocument();
-    expect(screen.getByText(/Role/i)).toBeInTheDocument();
+    // 3 fields — Sprint 57.35 verbatim re-point uses mockup `.field` + `.field-label` (div, not <label htmlFor>).
+    // Assert by visible label text + control existence; semantically equivalent to prior getByLabelText contract.
+    expect(screen.getByText(/Assume identity/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Tenant$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Role$/i)).toBeInTheDocument();
+    // The 2 selects are present
+    expect(document.querySelectorAll("select").length).toBe(2);
     // Continue button shows selected identity email
     expect(screen.getByRole("button", { name: /Continue as jamie@acme.com/i })).toBeInTheDocument();
   });

@@ -1,36 +1,42 @@
 /**
  * File: frontend/src/pages/auth/login/index.tsx
- * Purpose: Login entry — mockup-direct rewrite per Sprint 57.23 US-B2 (3 SSO outline placeholders + email + Continue).
+ * Purpose: Login entry — verbatim re-point per mockup AuthLogin (Sprint 57.35 US-B2).
  * Category: Frontend / pages / auth
- * Scope: Phase 57 / Sprint 57.7 → US-B9 (AuthShell + Tailwind) → Sprint 57.23 US-B2 (mockup-direct rewrite)
+ * Scope: Phase 57 / Sprint 57.7 → US-B9 (AuthShell + Tailwind) → Sprint 57.23 US-B2 (mockup-direct rewrite — HSL-translated) → Sprint 57.35 US-B2 (Phase-2 verbatim-CSS re-point)
  *
  * Description:
- *   Sprint 57.23 US-B2 rewrite per `reference/design-mockups/page-extras.jsx:27-57`:
- *     - Card with "Sign in" 18px + subtitle 12.5px
- *     - 3 SSO outline buttons (SAML / Microsoft / Google) disabled with tooltip
- *       "Enterprise SSO via WorkOS roadmap" — wired by AD-WorkOS-Multi-IdP-Phase58
- *     - "or" divider with muted lines
- *     - Work email input (13.5px) — currently visual-only (Continue still kicks WorkOS OIDC redirect)
- *     - Continue PRIMARY button → preserves existing `handleLogin` (window.location WorkOS redirect)
- *     - MFA hint footer (SAML 2.0 / OIDC · MFA required by tenant policy)
- *     - dev-login link → /auth/dev (extracted Sprint 57.23 US-B3 from prior DevLoginSection)
+ *   Sprint 57.35 US-B2 verbatim re-point per `reference/design-mockups/page-extras.jsx:27-57`:
+ *     - Drop Tailwind utility translations (the Sprint 57.23 vintage `flex flex-col gap-4 p-6`
+ *       + `justify-start text-[13.5px]` + Tailwind divider et al.) in favour of mockup
+ *       verbatim CSS classes from `styles-mockup.css`.
+ *     - Use `mockup-ui` Button (emits `btn outline` / `btn primary`) + Card (emits `card`/`card-body`)
+ *       + Field (emits `.field`/`.field-label`) + Icon (mockup `shield`/`globe`/`git` SVG set).
+ *     - `.input` for Work email; `.row` + `subtle` + `mono` for hints; verbatim `or` divider per L38-42.
+ *     - 3 SSO buttons remain disabled (visual only — AD-WorkOS-Multi-IdP-Phase58 wiring).
+ *     - dev-login orange link: `<span className="mono" style={{ color: "var(--warning)" }}>`
+ *       (Hybrid Tailwind+inline color bridge per Sprint 57.31 precedent; required because
+ *       `var(--warning)` is dynamic-theme and styles-mockup.css has no `.dev-login` class).
+ *     - "Continue" Button uses mockup-ui `iconRight="arrow_right"` (no lucide-react ArrowRight).
  *
- *   AuthShell footer slot: "By signing in you agree to the Terms · Privacy"
+ *   AuthShell footer slot: "By signing in you agree to the Terms · Privacy".
  *
  *   Preserved:
  *     - `handleLogin` window.location WorkOS redirect (with redirect_to)
  *     - `setPostLoginRedirect` flow
- *     - `?error=` param surface via ErrorAlert (same UX shape)
+ *     - `?error=` param surface via ErrorAlert (same UX shape; visual swap only)
+ *     - i18n keys + DEV gate for dev-link
  *
- *   Removed Sprint 57.23:
- *     - `<h1>IPA Platform V2 — Sign In</h1>` (mockup intentional no-heading)
- *     - Embedded DevLoginSection (extracted to /auth/dev per US-B3)
+ *   Removed Sprint 57.35:
+ *     - shadcn `Button` / `Card` / `CardContent` (replaced by mockup-ui)
+ *     - lucide-react icon imports (replaced by mockup-ui Icon SVG set)
+ *     - Tailwind utility translations of mockup `.btn outline`/`.btn primary`/`.input`/etc.
  *
  * Created: 2026-05-09 (Sprint 57.7 Day 2 PM)
- * Last Modified: 2026-05-18
+ * Last Modified: 2026-05-24
  *
  * Modification History:
- *   - 2026-05-18: Sprint 57.23 Day 4 — gate dev-link with import.meta.env.DEV (R8 hardening; route was already gated in App.tsx)
+ *   - 2026-05-24: Sprint 57.35 US-B2 — verbatim re-point per page-extras.jsx:27-57 (closes Sprint 57.23 vintage HSL-translation drift)
+ *   - 2026-05-18: Sprint 57.23 Day 4 — gate dev-link with import.meta.env.DEV (R8 hardening)
  *   - 2026-05-18: Sprint 57.23 US-B2 — mockup-direct rewrite (3 SSO disabled + email + Continue; extract DevLoginSection)
  *   - 2026-05-10: Sprint 57.13 US-B9 — <AuthShell> + <Card> + <Button>; drop inline styles
  *   - 2026-05-10: Sprint 57.13 US-B5 — i18n the strings (auth namespace)
@@ -39,20 +45,22 @@
  *
  * Related:
  *   - backend/src/api/v1/auth.py:login (WorkOS OIDC redirect endpoint)
- *   - frontend/src/components/AuthShell.tsx (Sprint 57.23 mockup full-screen centered)
+ *   - frontend/src/components/AuthShell.tsx (Sprint 57.35 verbatim re-point)
+ *   - frontend/src/components/mockup-ui.tsx (Button/Card/Field/Icon primitives)
  *   - frontend/src/pages/auth/dev/index.tsx (Sprint 57.23 US-B3 extracted DevLoginSection)
  *   - frontend/src/features/auth/services/authService.ts (setPostLoginRedirect)
  *   - frontend/src/i18n/locales/{en,zh-TW}/auth.json (auth.login.* / auth.dev.* namespaces)
  *   - reference/design-mockups/page-extras.jsx:27-57 (AuthLogin canonical visual source)
  */
 
-import { AlertTriangle, ArrowRight, Globe, ShieldCheck } from "lucide-react";
+/* eslint-disable no-restricted-syntax -- verbatim re-point: inline-style literals + var(--warning) color bridge copied byte-for-byte from mockup page-extras.jsx:27-57 (STYLE.md §1 escape hatch + Sprint 57.31 Hybrid Tailwind+inline color bridge precedent) */
+
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { AuthShell } from "@/components/AuthShell";
-import { Button, Card, CardContent } from "@/components/ui";
+import { Button, Card, Field, Icon } from "@/components/mockup-ui";
 import { setPostLoginRedirect } from "@/features/auth/services/authService";
 
 function ErrorAlert({ message }: { message: string }) {
@@ -60,9 +68,19 @@ function ErrorAlert({ message }: { message: string }) {
   return (
     <div
       role="alert"
-      className="flex items-start gap-2 rounded border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+      style={{
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 8,
+        padding: 10,
+        borderRadius: 6,
+        border: "1px solid oklch(from var(--danger) l c h / 0.4)",
+        background: "oklch(from var(--danger) l c h / 0.1)",
+        color: "var(--danger)",
+        fontSize: 12.5,
+      }}
     >
-      <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+      <Icon name="warn" size={14} style={{ marginTop: 1, flexShrink: 0 }} />
       <span>
         <strong>{t("errorTitle")}:</strong> {message}
       </span>
@@ -86,20 +104,31 @@ export default function LoginPage() {
     window.location.href = `/api/v1/auth/login?redirect_to=${encodeURIComponent(redirectTo)}`;
   };
 
-  // Sprint 57.23 US-B2: AD-WorkOS-Multi-IdP-Phase58 placeholders (3 SSO buttons disabled with tooltip)
-  const ssoButtons = [
-    { id: "saml", icon: ShieldCheck, label: t("login.sso.saml") },
-    { id: "microsoft", icon: Globe, label: t("login.sso.microsoft") },
-    { id: "google", icon: Globe, label: t("login.sso.google") },
+  // Sprint 57.35 US-B2: AD-WorkOS-Multi-IdP-Phase58 placeholders — 3 SSO buttons disabled
+  // (visual verbatim per mockup L35-37; mockup-ui Icon names = mockup `shield`/`globe`/`git` set)
+  const ssoButtons: Array<{ id: string; icon: "shield" | "globe" | "git"; label: string }> = [
+    { id: "saml", icon: "shield", label: t("login.sso.saml") },
+    { id: "microsoft", icon: "globe", label: t("login.sso.microsoft") },
+    { id: "google", icon: "git", label: t("login.sso.google") },
   ];
 
   return (
-    <AuthShell footer={t("login.footer")}>
+    <AuthShell
+      footer={
+        <span>
+          {t("login.footer")}
+        </span>
+      }
+    >
       <Card>
-        <CardContent className="flex flex-col gap-4 p-6">
+        <div className="col" style={{ gap: 16 }}>
           <div>
-            <div className="mb-1 text-lg font-semibold">{t("login.title")}</div>
-            <div className="text-[12.5px] text-fg-muted">{t("login.subtitle")}</div>
+            <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>
+              {t("login.title")}
+            </div>
+            <div className="muted" style={{ fontSize: 12.5 }}>
+              {t("login.subtitle")}
+            </div>
           </div>
 
           {errorMessage ? <ErrorAlert message={errorMessage} /> : null}
@@ -108,53 +137,86 @@ export default function LoginPage() {
             <Button
               key={sso.id}
               variant="outline"
-              size="lg"
+              data-size="lg"
+              icon={sso.icon}
               disabled
               aria-disabled="true"
               title={t("login.sso.comingSoonTooltip")}
-              className="justify-start text-[13.5px]"
             >
-              <sso.icon size={16} className="mr-1" />
               {sso.label}
             </Button>
           ))}
 
-          <div className="my-1 flex flex-row items-center gap-2">
-            <div className="h-px flex-1 bg-border" aria-hidden />
-            <span className="text-[11px] text-fg-subtle">{t("login.orDivider")}</span>
-            <div className="h-px flex-1 bg-border" aria-hidden />
+          <div className="row" style={{ gap: 8, margin: "4px 0" }}>
+            <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+            <span className="subtle" style={{ fontSize: 11 }}>
+              {t("login.orDivider")}
+            </span>
+            <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label htmlFor="login-email" className="text-[12px] font-medium text-fg-muted">
-              {t("login.workEmail")}
-            </label>
+          <Field label={t("login.workEmail")}>
             <input
               id="login-email"
               type="email"
+              className="input"
               placeholder={t("login.workEmailPlaceholder")}
-              className="h-9 rounded-md border border-border bg-background px-3 text-[13.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              style={{ height: 36, fontSize: 13.5 }}
             />
-          </div>
+          </Field>
 
-          <Button type="button" onClick={handleLogin} size="lg" className="w-full text-[13.5px]">
+          <Button
+            type="button"
+            variant="primary"
+            data-size="lg"
+            iconRight="arrow_right"
+            onClick={handleLogin}
+          >
             {t("login.continue")}
-            <ArrowRight size={16} className="ml-1" />
           </Button>
 
-          <div className="flex flex-row items-center justify-center gap-1.5 text-[11px] text-fg-subtle">
-            <ShieldCheck size={11} aria-hidden />
+          <div
+            className="row subtle"
+            style={{ fontSize: 11, justifyContent: "center", gap: 6 }}
+          >
+            <Icon name="shield" size={11} />
             <span>{t("login.mfaHint")}</span>
           </div>
-        </CardContent>
+        </div>
       </Card>
 
-      {/* Sprint 57.23 Day 4 R8 hardening: gate dev-link with DEV flag (route was already gated in App.tsx; this hides the link too in prod build) */}
-      {import.meta.env.DEV && (
-        <Link to="/auth/dev" className="text-center text-[11px] text-fg-subtle hover:text-foreground">
-          {t("login.devLink")}
-        </Link>
-      )}
+      {/* Sprint 57.23 Day 4 R8 hardening preserved: gate dev-link with DEV flag.
+          Sprint 57.35 verbatim re-point: split existing `devLink` i18n string around
+          the "dev-login" token to apply the mockup `mono` + var(--warning) accent on it
+          (mockup page-extras.jsx:54). Falls back to plain text if the token is absent
+          (e.g. translation overrides). */}
+      {import.meta.env.DEV &&
+        (() => {
+          const raw = t("login.devLink");
+          const token = "dev-login";
+          const idx = raw.indexOf(token);
+          const before = idx >= 0 ? raw.slice(0, idx) : raw;
+          const after = idx >= 0 ? raw.slice(idx + token.length) : "";
+          return (
+            <Link
+              to="/auth/dev"
+              style={{
+                fontSize: 11,
+                color: "var(--fg-subtle)",
+                textAlign: "center",
+                textDecoration: "none",
+              }}
+            >
+              {before}
+              {idx >= 0 && (
+                <span className="mono" style={{ color: "var(--warning)" }}>
+                  {token}
+                </span>
+              )}
+              {after}
+            </Link>
+          );
+        })()}
     </AuthShell>
   );
 }

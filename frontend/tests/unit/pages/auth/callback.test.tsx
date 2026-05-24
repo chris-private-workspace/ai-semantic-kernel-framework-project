@@ -54,14 +54,18 @@ describe("CallbackPage", () => {
   });
 
   it("shows an alert EmptyState + 'Back to login' link when ?error= is present", () => {
-    const { container } = renderCallback("/auth/callback?error=" + encodeURIComponent("vendor said no"));
+    renderCallback("/auth/callback?error=" + encodeURIComponent("vendor said no"));
     expect(screen.getByRole("alert")).toBeInTheDocument();
     expect(screen.getByText("vendor said no")).toBeInTheDocument();
     const backLink = screen.getByRole("link", { name: /Back to login/i });
     expect(backLink).toHaveAttribute("href", "/auth/login");
-    // Sprint 57.23 US-B1: AuthShell's 1 wrapper gradient inline style allowed.
-    expect(container.querySelectorAll("[style]:not([data-testid='auth-shell'])")).toHaveLength(0);
-    // ?error short-circuits before bootstrap → no fetch.
+    // Sprint 57.35 US-B1: AuthShell verbatim re-point uses mockup-direct inline-style literals
+    // (gradient + 400px column + brand row + footer text) per styles-mockup.css contract.
+    // The no-inline-style assertion (Sprint 57.23 vintage) is dropped as it asserted a now-superseded
+    // Tailwind translation; AuthShell intentionally carries verbatim inline-style literals (STYLE.md §1
+    // escape hatch + frontend-mockup-fidelity.md verbatim-CSS rule).
+    //
+    // The behavioral assertion remains: ?error short-circuits before bootstrap → no fetch.
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
