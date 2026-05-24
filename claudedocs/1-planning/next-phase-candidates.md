@@ -4,11 +4,30 @@
 
 **Selection Rule**: User explicitly selects → draft plan kicks off Sprint XX.Y; otherwise items wait here indefinitely until selected or archived.
 
-**Updated**: 2026-05-24 (Sprint 57.34 closeout — /orchestrator Phase-2 verbatim re-point; 1st non-rich-dashboard shape in epic; **bimodal-by-shape signal emerging** → NEW shape-bimodal-watch AD; 2nd validation of `frontend-verbatim-css-repoint` 0.50 lifted baseline)
+**Updated**: 2026-05-24 (Sprint 57.35 closeout — AuthShell + 7 auth routes Phase-2 re-point; closes Sprint 57.23 vintage epic gap; user-reported /auth/login drift RESOLVED; **bimodal-by-shape WEAKENED, scale-overhead 2nd variance driver** — NEW scale-overhead-watch AD)
 
 ---
 
-## 🆕 Sprint 57.34 Carryover (2026-05-24 — /orchestrator Phase-2)
+## 🆕 Sprint 57.35 Carryover (2026-05-24 — AuthShell + 7 auth routes Phase-2)
+
+Sprint 57.35 (`AD-Auth-Shell-And-Pages-Verbatim-Repoint`) closed: 8 files (1 AuthShell + 7 auth routes) re-pointed to mockup verbatim — **6th Phase-2 epic app**; user-reported `/auth/login` drift 2026-05-24 (SSO unstyled / Continue no fill / `dev-login` orange missing) **fully RESOLVED**; **closes Sprint 57.23 vintage HSL-translation epic gap** on auth routes (CLAUDE.md §Frontend Mockup-Fidelity Hard Constraint warning). 22-route sweep **0 regressions** on other 14 routes. 5 gates green. Vitest **456/456 baseline preserved** (4 spec files updated `getByLabelText` → `getByText`+id selectors for mockup-ui Field DOM change; behavioral test intent preserved). Agent-assisted Day 1-3 via code-implementer agent. ~7-7.5 hr human-equivalent effort. Updates:
+
+- ✅ **RESOLVED — Sprint 57.23 vintage HSL-translation epic gap on auth routes** (CLAUDE.md §Frontend Mockup-Fidelity Hard Constraint warning) — fully closed by this sprint.
+
+- 🆕 **AD-Sprint-Plan-frontend-verbatim-css-repoint-scale-overhead-watch** — Sprint 57.35 ratio ~1.65-1.75 ABOVE [0.85, 1.20] band by ~0.45-0.55 (8-file batched sprint). Combined with 57.34 (1-file ≈1.0 in band) + 57.35 (8-file ~1.7 above band), both non-rich-dashboard but vastly different ratios — **file-count + Vitest-spec-update overhead emerging as 2nd variance driver** (not pure shape-driven). If Sprint 57.36+ multi-file sprints again > 1.20 → propose **file-count surcharge** in calibration multiplier (e.g. 0.50 + 0.05/extra-file beyond ~3). KEEP 0.50 baseline this iteration per `When to adjust` 3-sprint window rule (3-pt span 0.40/1.0/1.7 inconclusive).
+
+- 🔄 **Updated AD-Sprint-Plan-frontend-verbatim-css-repoint-shape-bimodal-watch** (Sprint 57.34 NEW) — bimodal-by-shape hypothesis **WEAKENED but not REJECTED**. 2 non-rich data points (57.34 vs 57.35) span ratio 1.0 to 1.7, suggesting shape is NOT the dominant variance driver; file-count is. Broaden to **scale-and-shape watch**; don't propose class split until 4th data point discriminates.
+
+- 🔄 **Updated AD-Sprint-Plan-frontend-verbatim-css-repoint-baseline-lift** (Sprint 57.31 NEW) — 3rd validation data point logged. 0.50 baseline still appropriate for typical 1-file re-points.
+
+- 📚 **Lessons logged**:
+  - File-count + Vitest-spec-update overhead may be 2nd variance driver beyond shape; budget per-file linearly for multi-file sprints
+  - Vitest spec update budget when primitive API changes (e.g. `<label>` → `<div>`); 30-60 min per primitive switch
+  - Mockup-internal drift: `page-extras.jsx:13` AuthShell width 400px vs sibling `page-auth-extras.jsx:13` AuthShellX 420px — designate canonical source in `reference/design-mockups/AGENTS.md`
+
+- 🔍 **Drift findings** (Day 1-3): D-DAY1-1 (AuthShell width 420→400 mockup truth) / D-DAY2-1 (register plan label a11y aria-label added) / D-DAY2-2 (register demo banner recast as `.hitl-card[data-severity="risk-medium"]`) / D-DAY3-1 (expired Badge tone="warning" per mockup)
+
+## Sprint 57.34 Carryover (2026-05-24 — /orchestrator Phase-2)
 
 Sprint 57.34 (`AD-Orchestrator-Verbatim-Repoint`) closed: `/orchestrator` re-pointed to mockup verbatim — **1st non-rich-dashboard shape** in the Phase-2 epic (prior 4 = rich operator dashboards). 22-route sweep **0 regressions** on other 21 routes. 5 gates green. Vitest 456/456 baseline preserved. Agent-assisted Day 1-3 via code-implementer agent (per CLAUDE.md Tool Optimization). 3 mockup-ui primitives promoted (Tabs / Field / Switch). OrchestratorPage 644 → 605 net –39 lines (drop ~150 lines of local primitives + Tailwind translations; add mockup-ui imports + verbatim CSS classes + data-testid hooks). ~3-4 hr human-equivalent effort. Carryover updates:
 
