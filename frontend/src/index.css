@@ -6,9 +6,11 @@
  * imported in main.tsx AFTER this file). This file is reduced to:
  *   - the Tailwind v4 import + config bridge
  *   - the shadcn-system tokens the not-yet-re-pointed pages still consume (retired
- *     page-by-page in the Phase 2 re-point epic). The shadcn `--primary` / `--border`
- *     were renamed `--sc-primary` / `--sc-border` to de-collide with the same-named
- *     mockup tokens that styles-mockup.css provides verbatim in oklch.
+ *     page-by-page in the Phase 2 re-point epic). `--sc-primary` is renamed from
+ *     shadcn `--primary` to de-collide with the same-named mockup token that
+ *     styles-mockup.css provides verbatim in oklch. (FIX-012 retired `--sc-border`
+ *     entirely — the global `* { border-color }` consumer + tailwind.config `border`
+ *     utility now reference `--border` directly from styles-mockup.css.)
  *   - `html { font-size: 13px }` — kept (mockup styles.css is px-only, D-PRE-3) so the
  *     not-yet-re-pointed Tailwind-rem pages stay compact through Phase 1.
  * The Sprint 57.18/57.20 HSL approximations of the mockup tokens are RETIRED — the
@@ -19,6 +21,7 @@
  * `class="dark"` kept for the shadcn `.dark` token scope during the transition.
  *
  * Modification History:
+ *   - 2026-05-25: FIX-012 — retire --sc-border; * { border-color } + tailwind border → var(--border)
  *   - 2026-05-22: Sprint 57.28 — verbatim-CSS foundation switch: retire mockup-system HSL approximations; de-collide --primary/--border → --sc-*; drop dead body block
  *   - 2026-05-21: Sprint 57.26 — root font-size 13px baseline + --radius rem→px + body line-height (foundation-fidelity)
  *   - 2026-05-17: Sprint 57.20 Day 1 — add mockup token tree + density mechanism + Geist/Noto Sans TC wire + body font-family
@@ -31,11 +34,13 @@
 
 @layer base {
   /* shadcn-system tokens — consumed by the not-yet-re-pointed pages; retired
-     page-by-page in the Phase 2 re-point epic. `--sc-primary` / `--sc-border`
-     are renamed from `--primary` / `--border` to de-collide with the same-named
-     mockup tokens (styles-mockup.css provides those verbatim in oklch).
-     Semantic *-foreground are production-only (the mockup has no -foreground
-     variant); the base --success/--warning/... come verbatim from styles-mockup.css. */
+     page-by-page in the Phase 2 re-point epic. `--sc-primary` is renamed from
+     shadcn `--primary` to de-collide with the same-named mockup token
+     (styles-mockup.css provides it verbatim in oklch). FIX-012 retired
+     `--sc-border` (the global `* { border-color }` + tailwind `border` utility
+     now reference `--border` directly from styles-mockup.css). Semantic
+     *-foreground are production-only (the mockup has no -foreground variant);
+     the base --success/--warning/... come verbatim from styles-mockup.css. */
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
@@ -49,7 +54,6 @@
     --destructive-foreground: 210 40% 98%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --sc-border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --success-foreground: 0 0% 100%;
@@ -74,7 +78,6 @@
     --destructive-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-    --sc-border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
   }
@@ -82,7 +85,7 @@
 
 @layer base {
   * {
-    border-color: hsl(var(--sc-border));
+    border-color: var(--border);
   }
   /* Sprint 57.26 baseline, kept by Sprint 57.28 (D-PRE-3 — mockup styles.css is
      px-only) so the not-yet-re-pointed Tailwind-rem pages stay compact through

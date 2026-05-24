@@ -5,6 +5,7 @@
  * Scope: Phase 57 / Sprint 57.7 US-B1 (Frontend Foundation 1/N install)
  *
  * Modification History:
+ *   - 2026-05-25: FIX-012 — retire --sc-border; border utility → var(--border) verbatim
  *   - 2026-05-22: Sprint 57.28 — Layer 4 bridge rework: mockup tokens hsl(var(--X))→var(--X) (oklch); de-collide --primary/--border → --sc-*
  *   - 2026-05-16: Sprint 57.18 — +7 semantic tokens + 4 risk levels + Geist font (closes AD-Style-Token-Config-Audit)
  *   - 2026-05-09: Initial creation (Sprint 57.7 US-B1 Day 2 PM)
@@ -21,9 +22,11 @@ const config: Config = {
         // Sprint 57.28 Layer 4 — two bridge styles co-exist during the Phase 1→2
         // transition: shadcn-system tokens (HSL, src/index.css) keep `hsl(var(--X))`;
         // mockup tokens (oklch, verbatim src/styles-mockup.css) use bare `var(--X)`.
-        // shadcn --primary/--border are de-collided as --sc-primary/--sc-border.
+        // shadcn --primary is de-collided as --sc-primary (FIX-012 retired
+        // --sc-border; `border` utility now references --border directly from
+        // styles-mockup.css — the global `* { border-color }` does the same).
         // --- shadcn-system (HSL) — retired page-by-page in the Phase 2 re-point epic ---
-        border: "hsl(var(--sc-border))",
+        border: "var(--border)",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",

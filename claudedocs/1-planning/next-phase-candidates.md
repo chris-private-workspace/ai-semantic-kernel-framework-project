@@ -46,7 +46,7 @@ After Sprint 57.39, the Phase-2 epic non-STRUCTURAL backlog is mostly cleared. H
 - **`AD-Governance-Verification-Child-Component-Re-Point-Phase58`** (close 2 NEAR-PARITY → PARITY gap; uses agent delegation pattern; ~3-5 hr actual with agent factor)
 - **`/audit-log` DRAFT→active** (paired with Cat 9 backend; medium-backend + medium-frontend joint sprint)
 - **`/admin-tenants` Phase-2** (`-simple` 0.50 3rd validation data point; ~1.5-2 hr with agent)
-- **`AD-Shadcn-Border-Token-Visual-Audit-Or-Align-To-Mockup`** Path A 1-line global micro-fix (~30 min)
+- ~~**`AD-Shadcn-Border-Token-Visual-Audit-Or-Align-To-Mockup`** Path A 1-line global micro-fix~~ ✅ DONE 2026-05-25 via FIX-012 (Path A applied; see §Sprint 57.38 Follow-up Carryover for resolution detail)
 - **`AD-Inline-Font-Baseline-Alignment`** typography audit (~2-3 hr)
 - **Phase 58+ structural epic** `/memory` or `/tenant-settings` (~25-30 hr; needs backend pair)
 - **`AD-RouteSweep-Cwd-Relative-OUT_DIR-Foot-Gun-Fix`** (15 min micro-fix bundle candidate)
@@ -74,10 +74,7 @@ User-reported via screenshots after Sprint 57.38 PR #176 merge `44489aba`:
 
 - 🆕 **`AD-State-Inspector-Outer-Padding-Wrapper-Fix`** — ✅ RESOLVED by FIX-011 (logged for trace)
 - 🆕 **`AD-Inline-Font-Baseline-Alignment`** — needs typography audit + targeted fix(es) on mockup pages with mixed-font inline spans (e.g. `/state-inspector` detail title, possibly others); recommended fix shape: `display: inline-flex; align-items: baseline` on outer row span. Estimated ~2-3 hr; mid-priority. Class: `sprint-meta + micro-fix` 0.65 candidate.
-- 🆕 **`AD-Shadcn-Border-Token-Visual-Audit-Or-Align-To-Mockup`** — decide between:
-  - **Path A** (1-line global fix): align `--sc-border` value to `--border` in `index.css`. Pros: every shadcn-system page instantly visually closer to mockup. Cons: violates Sprint 57.28 4-layer dual-track design intent.
-  - **Path B** (completeness): continue Phase-2 epic re-point until all 6 🟡 routes done; shadcn token usage naturally disappears.
-  - Recommended: **B**, but A is acceptable transitional fix.
+- ✅ **`AD-Shadcn-Border-Token-Visual-Audit-Or-Align-To-Mockup`** — RESOLVED 2026-05-25 via **FIX-012** (user chose Path A as transitional fix). Both consumer sites retargeted at mockup `--border` (`index.css:85` global `* { border-color }` + `tailwind.config.ts:26` `border` utility); `--sc-border` declarations fully retired (0 residual code references). Sprint 57.28 4-layer dual-track partially relaxed (only `--sc-primary` remains as de-collided shadcn token). Path B Phase-2 epic completion still proceeds independently — Path A does NOT substitute for finishing the remaining 2 🟡 STRUCTURAL routes. See `claudedocs/4-changes/bug-fixes/FIX-012-shadcn-border-token-align-to-mockup.md`.
 - 🆕 **Sister-bug observation**: FIX-010 (`/loop-debug` fullBleed prop drop) + FIX-011 (`/state-inspector` outer padding wrapper) form a recurring **layout-class production-only artifact** class. Each Phase-2 re-point sprint Day 0 Prong 1 should grep for these artifacts on the target page BEFORE Day 1 code.
 
 ### Why Sprint 57.38 Day 2.1 audit missed Issue 1
