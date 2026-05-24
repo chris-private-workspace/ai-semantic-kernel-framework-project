@@ -43,7 +43,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { AuthShell } from "@/components/AuthShell";
-import { Button, Card, Icon } from "@/components/mockup-ui";
+import { Card, Icon } from "@/components/mockup-ui";
 import { consumePostLoginRedirect } from "@/features/auth/services/authService";
 import { useAuthStore } from "@/features/auth/store/authStore";
 
@@ -114,14 +114,18 @@ export default function CallbackPage() {
               <div style={{ fontSize: 15, fontWeight: 600 }}>{t("errorTitle")}</div>
               <div className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>{errorMessage}</div>
             </div>
-            <Button variant="outline" data-size="lg">
-              <Link
-                to="/auth/login"
-                style={{ color: "inherit", textDecoration: "none" }}
-              >
-                {t("backToLogin")}
-              </Link>
-            </Button>
+            {/* FIX-Sprint-57-35 CI: render Link as button directly (mockup .btn .btn-outline classes)
+                — previous Button>Link nesting triggered `nested-interactive` + `no-focusable-content`
+                a11y violations (axe: button has no focusable content when all content is inside the
+                nested anchor). Mockup .btn class works on <a> element too. */}
+            <Link
+              to="/auth/login"
+              className="btn btn-outline"
+              data-size="lg"
+              style={{ textDecoration: "none" }}
+            >
+              {t("backToLogin")}
+            </Link>
           </div>
         </Card>
       </AuthShell>
