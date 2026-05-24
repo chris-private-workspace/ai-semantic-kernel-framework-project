@@ -47,7 +47,7 @@ After Sprint 57.39, the Phase-2 epic non-STRUCTURAL backlog is mostly cleared. H
 - **`/audit-log` DRAFT→active** (paired with Cat 9 backend; medium-backend + medium-frontend joint sprint)
 - **`/admin-tenants` Phase-2** (`-simple` 0.50 3rd validation data point; ~1.5-2 hr with agent)
 - ~~**`AD-Shadcn-Border-Token-Visual-Audit-Or-Align-To-Mockup`** Path A 1-line global micro-fix~~ ✅ DONE 2026-05-25 via FIX-012 (Path A applied; see §Sprint 57.38 Follow-up Carryover for resolution detail)
-- **`AD-Inline-Font-Baseline-Alignment`** typography audit (~2-3 hr)
+- ~~**`AD-Inline-Font-Baseline-Alignment`** typography audit~~ ✅ DONE 2026-05-25 via FIX-013 (documented case; B/C dispositioned Skip per Karpathy §3)
 - **Phase 58+ structural epic** `/memory` or `/tenant-settings` (~25-30 hr; needs backend pair)
 - **`AD-RouteSweep-Cwd-Relative-OUT_DIR-Foot-Gun-Fix`** (15 min micro-fix bundle candidate)
 
@@ -73,7 +73,7 @@ User-reported via screenshots after Sprint 57.38 PR #176 merge `44489aba`:
 ### 🆕 NEW carryover ADs (Sprint 57.39+)
 
 - 🆕 **`AD-State-Inspector-Outer-Padding-Wrapper-Fix`** — ✅ RESOLVED by FIX-011 (logged for trace)
-- 🆕 **`AD-Inline-Font-Baseline-Alignment`** — needs typography audit + targeted fix(es) on mockup pages with mixed-font inline spans (e.g. `/state-inspector` detail title, possibly others); recommended fix shape: `display: inline-flex; align-items: baseline` on outer row span. Estimated ~2-3 hr; mid-priority. Class: `sprint-meta + micro-fix` 0.65 candidate.
+- ✅ **`AD-Inline-Font-Baseline-Alignment`** — RESOLVED 2026-05-25 via **FIX-013** for the FIX-011 §Issue 2 documented case (`StateInspectorPage` card title row `CARD_TITLE_ROW_STYLE` adds `alignItems: "baseline"`). Day 0 audit dispositioned Candidate B (CostBurnChart legend — plain inline `<span>`, no flex) + Candidate C (IncidentsCard row — compound badge+text children where `center` is correct) as Skip per Karpathy §3. Closes AP-Phase2-B deferred fix from FIX-011. See `claudedocs/4-changes/bug-fixes/FIX-013-inline-font-baseline-alignment.md`.
 - ✅ **`AD-Shadcn-Border-Token-Visual-Audit-Or-Align-To-Mockup`** — RESOLVED 2026-05-25 via **FIX-012** (user chose Path A as transitional fix). Both consumer sites retargeted at mockup `--border` (`index.css:85` global `* { border-color }` + `tailwind.config.ts:26` `border` utility); `--sc-border` declarations fully retired (0 residual code references). Sprint 57.28 4-layer dual-track partially relaxed (only `--sc-primary` remains as de-collided shadcn token). Path B Phase-2 epic completion still proceeds independently — Path A does NOT substitute for finishing the remaining 2 🟡 STRUCTURAL routes. See `claudedocs/4-changes/bug-fixes/FIX-012-shadcn-border-token-align-to-mockup.md`.
 - 🆕 **Sister-bug observation**: FIX-010 (`/loop-debug` fullBleed prop drop) + FIX-011 (`/state-inspector` outer padding wrapper) form a recurring **layout-class production-only artifact** class. Each Phase-2 re-point sprint Day 0 Prong 1 should grep for these artifacts on the target page BEFORE Day 1 code.
 

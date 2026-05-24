@@ -22,9 +22,10 @@
  *     - When no session_id provided: render full mockup fixture (no live data).
  *
  * Created: 2026-05-17 (Sprint 57.19 Day 4 / US-C4)
- * Last Modified: 2026-05-24
+ * Last Modified: 2026-05-25
  *
  * Modification History (newest-first):
+ *   - 2026-05-25: FIX-013 — CARD_TITLE_ROW_STYLE alignItems: baseline (Issue 2 mixed-font drift)
  *   - 2026-05-24: FIX-011 — drop production-only padding:18 on outer wrapper (mockup has no outer wrapper; .content padding sufficed; the extra 18px stacked ~46px effective vs mockup 28px)
  *   - 2026-05-24: Sprint 57.37 Day 3 — verbatim CSS re-point per page-platform.jsx:21-155 (closes Sprint 57.19 vintage HSL-translation drift; drops TONE_CLASS Record + bg-X/16/text-X Tailwind utility patterns + shadcn token classes; adopts mockup verbatim .page-head/.grid-stats/.card/.col/.spread/.mono/.subtle/.tnum + verbatim oklch alpha-tints)
  *   - 2026-05-17: Initial creation (Sprint 57.19 Day 4 / US-C4)
@@ -127,7 +128,12 @@ const DIFF_PRE_STYLE = {
 };
 
 const RIGHT_COL_STYLE = { display: "flex", flexDirection: "column" as const, gap: 14 };
-const CARD_TITLE_ROW_STYLE = { gap: 6 };
+// FIX-013: alignItems: "baseline" overrides .row's default `align-items: center` so
+// mixed-font children (Geist Mono "v18" + Noto Sans TC "by" + Geist Mono "<by-user>")
+// align by glyph baseline instead of metric-box center — fixes visual drift on mockup
+// page-platform.jsx:97 title row when production's Geist Mono + Noto Sans TC pairing
+// (different ascender:descender ratios from mockup's reference Menlo + system sans).
+const CARD_TITLE_ROW_STYLE = { gap: 6, alignItems: "baseline" };
 const CARD_TITLE_MONO_STYLE = { fontFamily: "var(--font-mono)" };
 const CURRENT_BY_MONO_STYLE = { fontFamily: "var(--font-mono)" };
 const GRID_2_STYLE = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 };
