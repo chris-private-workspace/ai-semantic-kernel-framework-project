@@ -25,6 +25,7 @@
  * Created: 2026-05-20 (Sprint 57.26 Day 0) — supersedes the temporary frontend/diagnose-render.mjs
  *
  * Modification History:
+ *   - 2026-05-24: Sprint 57.34 — re-point OUT_DIR to sprint-57-34-orchestrator-repoint (reused for /orchestrator Phase-2 verbatim CSS re-point sweep; 1st non-rich-dashboard shape in epic)
  *   - 2026-05-24: Sprint 57.33 — re-point OUT_DIR to sprint-57-33-page-bug-fix (reused for 3-route crash-fix sweep: /subagents + /memory + /verification)
  *   - 2026-05-23: Sprint 57.32 — re-point OUT_DIR to sprint-57-32-sla-dashboard-repoint (reused for /sla-dashboard Phase-2 re-point sweep)
  *   - 2026-05-23: Sprint 57.31 — re-point OUT_DIR to sprint-57-31-cost-dashboard-repoint (reused for /cost-dashboard Phase-2 re-point sweep)
@@ -48,7 +49,7 @@ if (!["before", "after"].includes(MODE)) {
 const BASE = "http://localhost:3007";
 const VP = { width: 1440, height: 900 };
 const OUT_DIR = path.resolve(
-  `../claudedocs/4-changes/sprint-57-33-page-bug-fix/screenshots/${MODE}`,
+  `../claudedocs/4-changes/sprint-57-34-orchestrator-repoint/screenshots/${MODE}`,
 );
 fs.mkdirSync(OUT_DIR, { recursive: true });
 
