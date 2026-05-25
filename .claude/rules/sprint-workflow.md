@@ -8,6 +8,7 @@
 **Status**: Active
 
 > **Modification History**
+> - 2026-05-25: Sprint 57.42 retro — ACTIVATE Option A `agent_factor` 0.55 (closes AD-Sprint-Plan-Agent-Delegation-Factor-Modifier as activated; 5 cross-class data points; 4 consecutive mockup-strict-rebuild < 0.7 = activation criteria FULLY MET)
 > - 2026-05-25: Bundle Item #4 — propose Agent Delegation Factor Modifier (matrix proposal, pending 2-3 sprint validation) + §Before Commit lint must be non-silent (closes AD-Sprint-Plan-Agent-Delegation-Factor-Modifier as proposal + AD-Pre-Push-Lint-Silent-Suppression-Anti-Pattern)
 > - 2026-05-25: AD-Plan-5 fold-in §Step 2.5 Prong 2.5 Child Component Tree Depth Audit (closes AD-Day0-Prong2-Child-Component-Tree-Depth-Audit; Sprint 57.39 D-DAY1-1 + FIX-015 evidence)
 > - 2026-05-18: Sprint 57.22 — add §Sprint Closeout CLAUDE.md+MEMORY.md update policy (closes REFACTOR-001 Step 2)
@@ -73,6 +74,14 @@ Plan §Workload (or equivalent header) **must** state estimate in this three-seg
 **Why**: Three consecutive ~50% over-estimate sprints (53.4 + 53.5 + 53.6) showed bottom-up estimates consistently double actual; without calibration, sprint commitments were inflated and "banked" hours obscured velocity tracking.
 
 **First plan to apply**: Sprint 53.7 itself (`sprint-53-7-plan.md` §Workload).
+
+#### Four-segment form when `agent_factor` applies (Sprint 57.43+ — ACTIVATED 2026-05-25 per Sprint 57.42 retro)
+
+When the sprint anticipates code-implementer agent-delegation as the primary Day 1 mechanism (≥ 80% of Day 1 work via agent), Plan §Workload **must** use the four-segment form:
+
+> Bottom-up est ~X hr → class-calibrated commit ~Y hr (mult Z) → agent-adjusted commit ~Y' hr (agent_factor 0.55)
+
+where `Y' = Y × 0.55 = X × Z × 0.55`. See §Active Agent Delegation Factor Modifier below for full formula, evidence, rollback rule, and tracking discipline.
 
 #### Scope-class multiplier matrix (Sprint 57.6+ — closes AD-Reality-10 + AD-Sprint-Plan-7)
 
@@ -145,62 +154,80 @@ Per AD-Sprint-Plan-4 (logged Sprint 55.3) + 4-sprint window evidence,one-multipl
 - 2026-05-10: Sprint 57.7 Day 4 — +1 NEW row `iam-frontend-spike` 0.60 HYBRID weighted blend 1-data-point baseline (closes AD-Sprint-Plan-9)
 - 2026-05-08: Sprint 57.6 Day 4 — add scope-class multiplier matrix (closes AD-Reality-10);+2 NEW rows `reality-check` 0.85 1-data-point baseline (closes AD-Sprint-Plan-7) + `reality-gap-fix` 0.50 1-data-point baseline (NEW AD-Sprint-Plan-8 pending 2-3 sprint validation)
 
-#### Proposed Agent Delegation Factor Modifier (PENDING VALIDATION — 2026-05-25 Item #4 of post-Sprint-57.39 4-AD micro-fix sequence)
+#### Active Agent Delegation Factor Modifier (ACTIVATED 2026-05-25 — Sprint 57.42 retro structural decision per `AD-Sprint-Plan-Agent-Delegation-Factor-Modifier`)
 
-**Status**: **PROPOSAL — NOT yet active**. Logged per `AD-Sprint-Plan-Agent-Delegation-Factor-Modifier` (Sprint 57.39 retro Q4 #4); requires 2-3 sprint validation before applying to any active baseline. Existing matrix entries above are UNCHANGED by this proposal.
+**Status**: **ACTIVE — Option A multiplicative `agent_factor` coefficient with mid-band start `0.55`**. Closes `AD-Sprint-Plan-Agent-Delegation-Factor-Modifier`. Activation criteria FULLY MET at Sprint 57.42 retro Q4 (5 cross-class data points + 4 consecutive `mockup-strict-rebuild` agent-delegated < 0.7).
 
-**Hypothesis**: code-implementer agent-delegated frontend work shows ~3-5× speedup vs the human-rewrite cadence the bottom-up estimates assume. Existing per-class multipliers (0.45-0.85) bake in a human-cadence haircut; agent-delegated sprints consistently undershoot the calibrated band lower edge because the haircut isn't enough.
+**Hypothesis (validated)**: code-implementer agent-delegated frontend work shows ~3-5× speedup vs the human-rewrite cadence the bottom-up estimates assume. Existing per-class multipliers (0.45-0.85) bake in a human-cadence haircut; agent-delegated sprints consistently undershoot the calibrated band lower edge because the haircut isn't enough. Validated by 5 data points below.
 
-**Evidence accumulating** (2 data points):
+**Activation evidence** (5 data points across 2 classes):
 
 | Sprint / FIX | Class | Delegation | Ratio actual/committed | Ratio actual/bottom-up | Implied agent vs human speedup |
 |--------------|-------|------------|------------------------|------------------------|--------------------------------|
-| Sprint 57.39 | `-with-extras` (0.65 baseline) | 6th+7th consecutive code-implementer (4-domain batched) | **0.41** (BELOW [0.85, 1.20] band by 0.44) | 0.27 | ~3.7× |
-| FIX-015 (post-hoc) | bundled FIX (no calibration class) | code-implementer 6 child re-point | n/a (no class) | bottom-up 6-10 hr / actual ~25 min ≈ 0.04 | ~24-40× (outlier — surgical token-swap) |
+| Sprint 57.39 | `-with-extras` (0.65) | 6th+7th consecutive code-implementer (4-domain batched) | **0.41** ↓ band -0.44 | 0.27 | ~3.7× |
+| FIX-015 (post-hoc) | bundled FIX (no class) | code-implementer 6 child re-point | n/a (no class) | **~0.04** | ~24-40× (outlier — surgical token-swap) |
+| Sprint 57.40 | `frontend-mockup-strict-rebuild` (0.60) | 7th consecutive code-implementer | **0.36** ↓ band -0.49 | 0.21 | ~4.7× |
+| Sprint 57.41 | `frontend-mockup-strict-rebuild` (0.60) | 8th+9th consecutive code-implementer | **0.18** ↓ band -0.67 | 0.10 | ~10× (Day 2 ~3.4 min outlier) |
+| Sprint 57.42 | `frontend-mockup-strict-rebuild` (0.60) | 10th+11th consecutive code-implementer | **0.33** ↓ band -0.52 | 0.20 | ~5× |
 
-**Proposed embedding (Option A then B fallback)**:
+4-consecutive `mockup-strict-rebuild` agent-delegated mean **~0.29** (excluding 57.39 cross-class point).
 
-**Option A — Multiplicative agent_factor coefficient** (1 new global coefficient; cleanest):
+**Formula** (applies from Sprint 57.43+ onwards):
 
 ```
 effective_calibrated_hours = bottom_up × scope_class_multiplier × agent_factor
 
 where agent_factor = {
   human (default):      1.0
-  agent-delegated:      0.50-0.60  (proposed start at 0.55 mid-band)
+  agent-delegated:      0.55   (mid-band; activated 2026-05-25 per Sprint 57.42 retro)
 }
 ```
 
-Equivalent combined ratio for `-with-extras` 0.65 base × 0.55 agent_factor ≈ **0.36** (close to AD spec's "0.30-0.40 effective" target).
+**When `agent-delegated` applies**: ≥ 80% of Day 1 work via code-implementer agent (or equivalent). 20-79% = `partial` (apply `agent_factor = 0.75` linear interpolation; record explicit tag in retro Q2). < 20% = `human` (apply `agent_factor = 1.0`; existing class multiplier alone).
 
-Pros: 1 new global coefficient; doesn't require splitting every active class; trivial matrix change
-Cons: assumes uniform speedup across classes; reality may differ by file count / structural complexity / mockup-truth availability
+**Equivalent combined ratios under `agent_factor = 0.55`**:
 
-**Option B — Per-class sub-class split** (fallback if Option A undershoots for specific classes):
+| Class | Base mult | × 0.55 | Predicted band hit (vs historical actuals) |
+|-------|-----------|--------|---------------------------------------------|
+| `frontend-mockup-strict-rebuild` 0.60 | 0.60 | **0.33** | Sprint 57.42 actual 0.33 (bullseye); 57.40 actual 0.36 (within ±0.03); 57.41 outlier 0.18 (-0.15; Day 2 anomaly) |
+| `frontend-verbatim-css-repoint -with-extras` 0.65 | 0.65 | **0.36** | Sprint 57.39 actual 0.41 (within ±0.05) |
+| `frontend-verbatim-css-repoint -simple` 0.50 | 0.50 | **0.275** | not yet validated under agent-delegation |
+| `medium-frontend` 0.65 | 0.65 | **0.36** | not yet validated |
 
-Add `+ agent-delegated` sub-row for each high-volume class:
-- `-with-extras` (0.65; human) + `-with-extras + agent-delegated` (0.30-0.40)
-- `frontend-mockup-strict-rebuild` (0.60; human) + `... + agent-delegated` (0.25-0.35)
-- `frontend-verbatim-css-repoint -simple` (0.50; human) + `... + agent-delegated` (0.25-0.30)
+3 of 4 historical agent-delegated data points within ±0.05 of prediction; Sprint 57.41 outlier reflects Day 2 anomalously short wall-clock (~3.4 min), not modifier mis-spec.
 
-Pros: per-class precision; matches existing matrix granularity
-Cons: doubles row count for active classes; higher maintenance overhead
+**Rollback rule** (3-sprint window — parallel to existing `When to adjust the multiplier` discipline):
+- If activated factor produces **2 sprints with `actual/committed-with-agent-factor` ratio < 0.7** → tighten to `0.45`
+- If activated factor produces **1 sprint with ratio > 1.20** → roll back to `0.65` (single-data-point caution)
+- If activated factor produces **≥ 2 sprints with ratio > 1.20** → roll back to `1.0` (drop the modifier — agent delegation didn't actually accelerate; class-multiplier alone sufficient)
 
-**Recommended**: Option A first (1 conservative coefficient, 1 sprint validation), fallback to Option B if Option A produces ratio < 0.7 or > 1.20 for ≥ 2 specific classes.
+**Escalation to Option B** (per-class sub-class split — fallback if Option A undershoots specific classes):
+- If `0.55` produces ratio < 0.7 OR > 1.20 for **≥ 2 specific classes** over 3-sprint window → switch from Option A to Option B per-class split (add `+ agent-delegated` sub-row for each high-volume class; proposed baseline ranges: `-with-extras` 0.30-0.40 / `mockup-strict-rebuild` 0.25-0.35 / `verbatim-css-repoint -simple` 0.25-0.30; matches existing matrix granularity)
 
-**Activation rule** (3-sprint window — parallel to existing `When to adjust the multiplier` discipline):
-- ≥ 3 consecutive sprints with agent-delegated ratio < 0.7 AND consistent delegation pattern (≥ 80% of Day 1 work via agent) → **activate Option A** with `agent_factor = 0.55` (mid-band conservative start)
-- If activated factor produces 2 sprints with ratio < 0.7 → tighten to 0.45
-- If activated factor produces 1 sprint with ratio > 1.20 → roll back to 0.65 (single-data-point caution); ≥ 2 sprints > 1.20 → roll back to 1.0 (drop the modifier — agent delegation didn't actually accelerate that class)
+**Tracking discipline** (MANDATORY from Sprint 57.43+):
 
-**Current state**: **2 data points (57.39 + FIX-015) — INSUFFICIENT for activation**. Continue accumulating evidence per Sprint 57.39 retro Q4 #4 deferral.
-
-**Tracking discipline going forward**: each future agent-delegated sprint MUST record in retrospective Q2:
+Each agent-delegated sprint MUST record in retrospective Q2:
 1. `actual/bottom-up` ratio (existing)
-2. `actual/committed` ratio (existing)
-3. **NEW**: explicit `agent-delegated: yes / no / partial` tag (the running window can then be computed without ambiguity)
+2. `actual/committed` ratio (now `committed = bottom_up × scope_class_mult × agent_factor`)
+3. **NEW**: explicit `agent-delegated: yes / no / partial` tag (≥ 80% = `yes`; 20-79% = `partial`; < 20% = `no`)
 
-**Why this proposal matters**: 5 of the last 6 sprints (57.34 / 57.35 / 57.36 / 57.37B / 57.39) used code-implementer agent delegation as the primary Day 1 mechanism. The current matrix treats them as human-rewrite work, producing systematic ratio-below-band signals that look like "calibration drift" when they're actually "missing agent_factor coefficient". Activating Option A would correctly attribute the speedup AND reset the matrix to track real calibration drift (not delegation-vs-human-cadence drift).
+Sprint plan §Workload Calibration MUST state estimate in the **four-segment form** when agent delegation is anticipated:
+
+> Bottom-up est ~X hr → class-calibrated commit ~Y hr (mult Z) → agent-adjusted commit ~Y' hr (agent_factor 0.55)
+
+where `Y' = Y × 0.55 = X × Z × 0.55`. See §Workload Calibration §Four-segment form above.
+
+**First validation sprint**: **Sprint 57.43** (whichever direction chosen — `/admin-tenants` or `/tenant-settings` rebuild are both `mockup-strict-rebuild` 0.60 class, currently scheduled to use `agent_factor = 0.55`). 1st validation data point will appear in Sprint 57.43 retro Q2; 3-sprint rollback window opens.
+
+**Activation history**:
+- 2026-05-24 (Sprint 57.39 Day 3): proposed (1st-2nd data points 57.39 + FIX-015 — INSUFFICIENT for activation, deferred 2-3 sprint validation)
+- 2026-05-25 (Sprint 57.40 Day 3): 3rd data point (activation rule technically met but spans classes; defer 1 sprint for in-class 4th data point)
+- 2026-05-25 (Sprint 57.41 Day 3): 4th data point (still only 2 consecutive mockup-strict-rebuild < 0.7; KEEP proposal status; flag Sprint 57.42 retro as MANDATORY structural decision)
+- **2026-05-25 (Sprint 57.42 retro Q4)**: 5th cross-class data point + 4 consecutive `mockup-strict-rebuild` < 0.7 (0.36 / 0.18 / 0.33) → **activation FULLY MET** → ACTIVATED via Option A `agent_factor = 0.55`
+
+**Why this activation matters**: pre-activation, the matrix treated agent-delegated sprints as human-rewrite work, producing systematic ratio-below-band signals that looked like "calibration drift" when they were actually "missing agent_factor coefficient" (4 consecutive `mockup-strict-rebuild` ratios 0.36 / 0.18 / 0.33 + Sprint 57.39 `-with-extras` 0.41 all below band). Activating Option A correctly attributes the speedup AND resets the matrix to track real per-class calibration drift (independent of delegation-vs-human-cadence drift). Post-activation, the existing per-class multipliers stay UNCHANGED — they remain calibrated to the human-rewrite cadence; `agent_factor` is a separate orthogonal coefficient applied on top.
+
+**Note on `frontend-mockup-strict-rebuild` baseline lift proposal**: A separate carryover AD (`AD-Sprint-Plan-frontend-mockup-strict-rebuild-baseline-lift`) proposes lifting the `mockup-strict-rebuild` class multiplier from 0.60 → 0.40-0.45. **This proposal is SUPERSEDED by `agent_factor = 0.55` activation**: the systematic below-band signal was the agent-delegation factor, not class-level calibration drift. KEEP 0.60 baseline for `mockup-strict-rebuild`; the new effective ratio under agent-delegation will be 0.60 × 0.55 = 0.33 (matches Sprint 57.42 actual bullseye). If Sprint 57.43+ data points under combined `0.60 × 0.55` still consistently undershoot, then class-level recalibration would be the next move per existing `When to adjust the multiplier` rule.
 
 ---
 

@@ -4,7 +4,7 @@
 
 **Selection Rule**: User explicitly selects → draft plan kicks off Sprint XX.Y; otherwise items wait here indefinitely until selected or archived.
 
-**Updated**: 2026-05-25 (Sprint 57.42 closed — /memory Memory Layers matrix full mockup-fidelity rebuild closes drift audit 2026-05-25 #2 priority CATASTROPHIC; 6 NEW carryover ADs added below; Phase-2 epic reality 19 PARITY + 1 NEAR-PARITY + 2 CATASTROPHIC remaining; `AD-Sprint-Plan-Agent-Delegation-Factor-Modifier` activation criteria FULLY MET — Sprint 57.43 retro structural decision MANDATORY; `frontend-mockup-strict-rebuild` 3-consecutive-below-band lower-trigger MET — propose Sprint 57.43 baseline lift 0.60→0.40-0.45.)
+**Updated**: 2026-05-25 (Sprint 57.42 closed + closeout follow-up `chore/agent-delegation-factor-activate` — /memory Memory Layers matrix full mockup-fidelity rebuild closes drift audit 2026-05-25 #2 priority CATASTROPHIC; 6 NEW carryover ADs added below; Phase-2 epic reality 19 PARITY + 1 NEAR-PARITY + 2 CATASTROPHIC remaining; **✅ `AD-Sprint-Plan-Agent-Delegation-Factor-Modifier` ACTIVATED 2026-05-25** via Option A multiplicative `agent_factor = 0.55` (see `.claude/rules/sprint-workflow.md §Active Agent Delegation Factor Modifier`); **`AD-Sprint-Plan-frontend-mockup-strict-rebuild-baseline-lift` proposal SUPERSEDED** by `agent_factor` activation — KEEP 0.60 class baseline; effective ratio under agent-delegation now 0.60 × 0.55 = 0.33.)
 
 ---
 
@@ -25,7 +25,7 @@ Sprint 57.42 (`AD-Memory-Layers-Matrix-Rebuild`) ✅ **CLOSED**: single-domain r
 - **3-way evidence pair**: BEFORE 71.4 KB / AFTER 173.9 KB / MOCKUP 189.4 KB → **AFTER = 92% of MOCKUP** (structural PARITY confirmed)
 - **24-route sweep cleanest of Phase-2 epic**: 20 IDENTICAL + 4 CHANGED (1 INTENDED `/memory` +144% + 3 sub-300-byte noise auth-callback -23 / chat-v2 -19 / overview -38) + 0 unintended regressions (lowest noise + lowest regression count of class history)
 - **Class `frontend-mockup-strict-rebuild` 0.60 8th data point ratio ~0.33** — BELOW band by 0.52; 8-pt mean 0.71 lower band edge; **last 3 = 3 of 3 < 0.7 → `When to adjust` lower-trigger MET ✅** → propose Sprint 57.43 baseline lift 0.60 → 0.40-0.45
-- **🔴 Critical**: `AD-Sprint-Plan-Agent-Delegation-Factor-Modifier` 5th cross-class data point — **activation criteria FULLY MET** (4 consecutive mockup-strict-rebuild agent-delegated < 0.7: 57.40 0.36 + 57.41 0.18 + 57.42 0.33 + 57.39 -with-extras 0.41 + FIX-015 outlier); **Sprint 57.43 retro structural decision MANDATORY**
+- ✅ **`AD-Sprint-Plan-Agent-Delegation-Factor-Modifier`** — **CLOSED 2026-05-25** via Option A multiplicative `agent_factor = 0.55` (Sprint 57.42 closeout follow-up `chore/agent-delegation-factor-activate` branch). 5 cross-class data points (57.39 0.41 + FIX-015 outlier + 57.40 0.36 + 57.41 0.18 + 57.42 0.33) + 4 consecutive `mockup-strict-rebuild` < 0.7 = activation criteria FULLY MET. See `.claude/rules/sprint-workflow.md §Active Agent Delegation Factor Modifier` for formula + rollback rule + tracking discipline. First validation: Sprint 57.43 retro Q2.
 
 ### Phase-2 epic progress (post Sprint 57.42)
 
@@ -44,7 +44,7 @@ Sprint 57.42 (`AD-Memory-Layers-Matrix-Rebuild`) ✅ **CLOSED**: single-domain r
 
 ### Carryover from Sprint 57.41 (still open as of Sprint 57.42 closeout)
 
-- **🔴 `AD-Sprint-Plan-Agent-Delegation-Factor-Modifier`** — Sprint 57.42 contributes 5th cross-class data point; **activation criteria FULLY MET** (5 data points across 2 classes; 4 consecutive mockup-strict-rebuild agent-delegated < 0.7); **Sprint 57.43 retro structural decision MANDATORY** (Option A multiplicative `agent_factor` 0.55 coefficient OR Option B per-class sub-class split)
+- ✅ **`AD-Sprint-Plan-Agent-Delegation-Factor-Modifier`** — **CLOSED 2026-05-25** via Option A multiplicative `agent_factor = 0.55` (Sprint 57.42 closeout follow-up; 5 cross-class data points + 4 consecutive mockup-strict-rebuild < 0.7 = activation FULLY MET). See top of file `Updated` field + `.claude/rules/sprint-workflow.md §Active Agent Delegation Factor Modifier`.
 - `AD-Verification-Out-Of-Scope-Components-Phase2-C-Mop-Up` — 2 residue sites in VerificationPanel.tsx (chat-v2) + CorrectionTraceView.tsx (/timeline) — still out-of-scope
 - `AD-Verification-Filter-Form-Phase58-Migrate` / `AD-Verification-Backend-Claim-Evidence-Extension` / `AD-Verification-Failure-Kinds-+-Flaky-Checks-Aggregation-Endpoints` — Sprint 57.41 Phase 58+ carryover continues
 
@@ -141,7 +141,7 @@ Root cause: code-implementer agent-delegation 7th consecutive ~40 min wall-clock
 
 58. 🆕 **`AD-RouteSweep-Envelope-Mock-Convention`** (Day 2 audit-report carryover) — codify in `frontend-mockup-fidelity.md` or `testing.md`: any endpoint returning envelope shape (e.g. `{items, total, has_more}`) needs explicit sweep mock entry; default `[]` is only safe for list-shaped endpoints. Grep-pattern + example. Est ~30 min.
 
-59. 🆕 **`AD-Sprint-Plan-Agent-Delegation-Factor-Modifier` PROMOTION CANDIDATE** (Sprint 57.40 Q2/Q4 #1) — accumulated 3 data points (57.39=0.41 + FIX-015 outlier + 57.40=0.36) all agent-delegated < 0.7 across 2 classes (`-with-extras` + `mockup-strict-rebuild`). Activation rule technically met but spans classes. Defer 1 more sprint for 4th data point in either class before structurally changing matrix. Recommendation: promote to active candidate at Sprint 57.41 plan §Workload Calibration discussion. Est ~2 hr to activate.
+59. ✅ **`AD-Sprint-Plan-Agent-Delegation-Factor-Modifier`** — **CLOSED 2026-05-25** via Option A multiplicative `agent_factor = 0.55` (Sprint 57.42 closeout follow-up `chore/agent-delegation-factor-activate` branch). 5 cross-class data points (57.39 0.41 + FIX-015 outlier + 57.40 0.36 + 57.41 0.18 + 57.42 0.33) + 4 consecutive `mockup-strict-rebuild` < 0.7 = activation criteria FULLY MET at Sprint 57.42 retro Q4. See top of file `Updated` field + `.claude/rules/sprint-workflow.md §Active Agent Delegation Factor Modifier`. Actual ~1 hr (calibration class `audit-cycle / docs / template` 0.40 — within estimate).
 
 ---
 
@@ -180,7 +180,9 @@ Sprint 57.39 (`AD-Governance-Category-Multipage-Phase-2`) closed: 4-domain batch
 
 50. ✅ **`AD-RouteSweep-Cwd-Relative-OUT_DIR-Foot-Gun-Fix`** — RESOLVED 2026-05-25 via **FIX-014**. ESM `__dirname` derivation via `fileURLToPath(import.meta.url)` + `path.resolve(__dirname, '../../claudedocs/...')` makes OUT_DIR cwd-invariant. Smoke-tested from non-project-root cwd; resolution correctly lands at `<project>/claudedocs/4-changes/<slug>/screenshots/<mode>/`. See `claudedocs/4-changes/bug-fixes/FIX-014-route-sweep-cwd-relative-outdir.md`.
 
-51. ✅ **`AD-Sprint-Plan-Agent-Delegation-Factor-Modifier`** — RESOLVED 2026-05-25 via **`chore(rules)` Item #4 bundle** (proposal logged, NOT activated). `.claude/rules/sprint-workflow.md §Scope-class multiplier matrix` adds new subsection **Proposed Agent Delegation Factor Modifier (PENDING VALIDATION)** with: (a) Hypothesis (agent ~3-5× human speedup), (b) Evidence table (57.39 ratio 0.41 + FIX-015 effective ~0.04), (c) Option A multiplicative `agent_factor` coefficient (0.50-0.60 mid-band) — recommended start, (d) Option B per-class sub-class split — fallback if Option A undershoots specific classes, (e) Activation rule (3-sprint window, parallel to existing `When to adjust`), (f) Tracking discipline (mandatory `agent-delegated: yes/no/partial` tag in retrospective Q2). **Activation requires 2-3 more sprint data points**; current 2 data points insufficient per existing 3-sprint window rule. Continue accumulating evidence. See sprint-workflow.md §Scope-class multiplier matrix §Proposed Agent Delegation Factor Modifier.
+51. ✅ **`AD-Sprint-Plan-Agent-Delegation-Factor-Modifier`** — **RESOLVED twice 2026-05-25** (same day, 2-step closure):
+    1. **Step 1 — PROPOSAL** via `chore(rules)` Item #4 bundle (2026-05-25 morning): `.claude/rules/sprint-workflow.md §Scope-class multiplier matrix` adds **Proposed Agent Delegation Factor Modifier (PENDING VALIDATION)** subsection (Hypothesis + 2-data-point Evidence table + Option A 0.50-0.60 + Option B fallback + Activation rule 3-sprint window + Tracking discipline). 2 data points (57.39 + FIX-015) — INSUFFICIENT for activation.
+    2. **Step 2 — ACTIVATED** via `chore/agent-delegation-factor-activate` branch (2026-05-25 — Sprint 57.42 closeout follow-up): 5th cross-class data point reached at Sprint 57.42 retro Q4 (57.39 0.41 + FIX-015 + 57.40 0.36 + 57.41 0.18 + 57.42 0.33; 4 consecutive `mockup-strict-rebuild` < 0.7) = **activation criteria FULLY MET**. Selected **Option A multiplicative `agent_factor = 0.55`** (mid-band conservative). §Proposed block replaced with §Active block + §Workload Calibration §Four-segment form added. First validation: Sprint 57.43 retro Q2. See sprint-workflow.md §Active Agent Delegation Factor Modifier.
 
 ### Next sprint candidates (post-57.39)
 
