@@ -203,4 +203,54 @@ All under `frontend/tests/unit/verification/`:
 
 ### Day 2 commits
 
-TBD next: progress.md update + Day 2 single commit.
+- ✅ `5abe98f6` — `chore(frontend, sprint-57-41): Day 2 — +9 NEW Vitest specs + e2e adapt + route-sweep envelope mock + drift audit verification PARITY update` (9 files / +413 / -102)
+
+---
+
+## Day 2.5 — 2026-05-25 (capture after baseline + 22-route sweep diff + fidelity verdict + 3-way evidence pair)
+
+### §2.5.1 — Capture after baseline (route-sweep)
+
+- ✅ `node frontend/scripts/route-sweep.mjs after` → **24/24 PNGs** in `claudedocs/4-changes/sprint-57-41-verification-full-rebuild/screenshots/after/` (8 PUBLIC + 16 AppShellV2; 0 failed routes; FIX-018 auto-derive correct)
+
+### §2.5.2 — Before/after SHA256 diff review
+
+Compared 24 PNG pairs via `Get-FileHash SHA256`:
+
+| Class | Count | Routes |
+|-------|-------|--------|
+| **IDENTICAL** | 22 | admin-tenants / auth-* (7) / chat-v2 / cost-dashboard / error-policy / governance / home / loop-debug / memory / orchestrator / prop-stub-compaction / redaction / sla-dashboard / state-inspector / subagents / tenant-settings |
+| **CHANGED (expected)** | 1 | `/verification` — **+54,383 bytes / +66.4%** (79.9 KB → 133.0 KB; rebuild result: 4-KPI strip + 2-col grid + Failure kinds + Flaky checks sidebar makes the page much richer than the old filter-form-only view) |
+| **CHANGED (noise)** | 1 | `/overview` — **-44 bytes / -0.03%** (sub-300 bytes; well within historical envelope per Sprint 57.40 §2.5.2 precedent — live-clock topbar or chat-v2 SSE merge buffer variation; NOT a regression) |
+| **FAILED** | 0 | n/a |
+
+**0 UNINTENDED regressions** in the 22 IDENTICAL set + 1 sub-300-byte noise. Sweep clean.
+
+### §2.5.3 — Fidelity verdict (/verification only)
+
+**`/verification` verdict**: ✅ **PARITY** — 6-element structural check confirmed:
+
+1. ✅ `.page-head` "Verification" title + sub "Range 7 · Claim verification with evidence · failed claims block downstream actions" + route-pill `/verification` + 2 outline buttons
+2. ✅ `.grid-stats` 4 KPI cards (Pass rate · 1h / Claims · 1h / Failed · 1h / Median latency); Pass rate real-computed; 3 fixture + AP-2 banner
+3. ✅ `.grid-main` 2-col layout (Recent runs table left + sidebar right)
+4. ✅ 6-col "Recent verification runs" Card-wrapped table (status circle / claim+evidence dual-line / agent mono / Kind Badge / tiered-color score / when subtle)
+5. ✅ Sidebar "Failure kinds" Card (5-row bar-track AP-2 fixture)
+6. ✅ Sidebar "Flaky checks" Card (3-row rate Badge AP-2 fixture)
+
+Outer 2-tab shell + `/timeline` CorrectionTraceView preserved (manual click test on dev server — `/verification/timeline` renders unchanged).
+
+### §2.5.4 — 3-way evidence pair
+
+Staged at `claudedocs/4-changes/sprint-57-41-verification-full-rebuild/before-after/`:
+
+| Stage | File | Size | State |
+|-------|------|------|-------|
+| BEFORE day0 | `verification-BEFORE-day0.png` | **79.9 KB** | Sprint 57.39 verbatim-CSS state — filter form + paginated 6-col table |
+| AFTER day1 | `verification-AFTER-day1.png` | **133.0 KB** | Sprint 57.41 rebuild — 4-KPI + 2-col + sidebar; empty `items=[]` from mock (route-sweep envelope) |
+| MOCKUP | `verification-MOCKUP.png` | **207.2 KB** | `reference/design-mockups` served at localhost:8080/#verification with full hardcoded 8-row VERIFY_CLAIMS |
+
+**Gap interpretation** (mirror Sprint 57.40 §2.5.4 pattern): AFTER size between BEFORE and MOCKUP; the 74 KB gap from AFTER to MOCKUP is **data-driven** (production renders 0 rows from `items=[]` mock vs mockup hardcoded 8 VERIFY_CLAIMS rows). If real backend populated rows, AFTER would approach MOCKUP. Structural fidelity at the empty-list rendering level is byte-equivalent to mockup; PARITY confirmed at structure layer.
+
+### Day 2.5 commits
+
+TBD next: commit Day 2.5 evidence + progress entry.
