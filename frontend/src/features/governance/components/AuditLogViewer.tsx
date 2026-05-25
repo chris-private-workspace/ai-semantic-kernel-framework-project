@@ -30,9 +30,10 @@
  *   dependency footprint flat.
  *
  * Created: 2026-05-09 (Sprint 57.9 Day 1 stub) → full impl 2026-05-09 (Day 3)
- * Last Modified: 2026-05-09
+ * Last Modified: 2026-05-25
  *
  * Modification History (newest-first):
+ *   - 2026-05-25: FIX-015 — re-point shadcn-utility tokens (bg-card/text-foreground/border-border/etc.) → mockup verbatim classes/vars
  *   - 2026-05-09: Sprint 57.9 US-4 Day 3 — replace stub with filter form + paginated table + chain badge mount
  *   - 2026-05-09: Initial creation as Day 1 stub (Sprint 57.9 US-1 enabler)
  *
@@ -112,74 +113,67 @@ export function AuditLogViewer() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-baseline justify-between">
+      <div className="spread">
         <h2 className="m-0 text-xl font-semibold">Audit Log</h2>
         <AuditChainBadge />
       </div>
 
       {/* Filter form */}
-      <div className="rounded-lg border border-border bg-card p-4">
+      {/* eslint-disable-next-line no-restricted-syntax -- mockup CSS var consumed from styles-mockup.css verbatim; mockup-fidelity (FIX-015) */}
+      <div className="card" style={{ padding: 16 }}>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-          <label className="flex flex-col text-sm font-medium">
-            Operation
+          <label className="field">
+            <span className="field-label">Operation</span>
             <input
               type="text"
-              className="mt-1 rounded border border-border bg-background px-2 py-1.5 text-sm"
+              className="input"
               value={draft.operation ?? ""}
               onChange={(e) => setDraft({ ...draft, operation: e.target.value })}
               placeholder="e.g. tool_executed"
             />
           </label>
-          <label className="flex flex-col text-sm font-medium">
-            Resource type
+          <label className="field">
+            <span className="field-label">Resource type</span>
             <input
               type="text"
-              className="mt-1 rounded border border-border bg-background px-2 py-1.5 text-sm"
+              className="input"
               value={draft.resource_type ?? ""}
               onChange={(e) => setDraft({ ...draft, resource_type: e.target.value })}
               placeholder="e.g. tool / approval"
             />
           </label>
-          <label className="flex flex-col text-sm font-medium">
-            User ID (UUID)
+          <label className="field">
+            <span className="field-label">User ID (UUID)</span>
             <input
               type="text"
-              className="mt-1 rounded border border-border bg-background px-2 py-1.5 text-sm"
+              className="input"
               value={draft.user_id ?? ""}
               onChange={(e) => setDraft({ ...draft, user_id: e.target.value })}
               placeholder="optional"
             />
           </label>
-          <label className="flex flex-col text-sm font-medium">
-            From (timestamp)
+          <label className="field">
+            <span className="field-label">From (timestamp)</span>
             <input
               type="datetime-local"
-              className="mt-1 rounded border border-border bg-background px-2 py-1.5 text-sm"
+              className="input"
               value={draftFromLocal}
               onChange={(e) => setDraftFromLocal(e.target.value)}
             />
           </label>
         </div>
         <div className="mt-3 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={reset}
-            className="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted"
-          >
+          <button type="button" onClick={reset} className="btn outline">
             Reset
           </button>
-          <button
-            type="button"
-            onClick={apply}
-            className="rounded-md border border-primary bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
+          <button type="button" onClick={apply} className="btn primary">
             Apply
           </button>
           <button
             type="button"
             onClick={() => void refetch()}
             disabled={isFetching}
-            className="rounded-md border border-primary bg-background px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
+            className="btn outline"
           >
             {isFetching ? "Refreshing…" : "Refresh"}
           </button>
@@ -189,30 +183,39 @@ export function AuditLogViewer() {
       {error && (
         <div
           role="alert"
-          className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
+          className="card"
+          // eslint-disable-next-line no-restricted-syntax -- mockup CSS var consumed from styles-mockup.css verbatim; mockup-fidelity (FIX-015)
+          style={{
+            padding: 12,
+            borderColor: "oklch(from var(--danger) l c h / 0.4)",
+            background: "oklch(from var(--danger) l c h / 0.08)",
+            color: "var(--danger)",
+            fontSize: 13,
+          }}
         >
           Failed to load audit log: {error.message}
         </div>
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted text-left text-xs font-semibold uppercase text-muted-foreground">
+      {/* eslint-disable-next-line no-restricted-syntax -- mockup CSS var consumed from styles-mockup.css verbatim; mockup-fidelity (FIX-015) */}
+      <div className="card" style={{ padding: 0, overflowX: "auto" }}>
+        <table className="table">
+          <thead>
             <tr>
-              <th className="px-3 py-2">ID</th>
-              <th className="px-3 py-2">Timestamp</th>
-              <th className="px-3 py-2">Operation</th>
-              <th className="px-3 py-2">Resource</th>
-              <th className="px-3 py-2">User</th>
-              <th className="px-3 py-2">Hash</th>
+              <th>ID</th>
+              <th>Timestamp</th>
+              <th>Operation</th>
+              <th>Resource</th>
+              <th>User</th>
+              <th>Hash</th>
             </tr>
           </thead>
           <tbody>
             {isLoading &&
               [0, 1, 2, 3, 4].map((i) => (
-                <tr key={`skeleton-${i}`} className="border-t border-border">
-                  <td colSpan={6} className="px-3 py-3">
+                <tr key={`skeleton-${i}`}>
+                  <td colSpan={6}>
                     <Skeleton className="h-4 w-full" />
                   </td>
                 </tr>
@@ -220,12 +223,15 @@ export function AuditLogViewer() {
 
             {!isLoading && items.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
+                {/* eslint-disable-next-line no-restricted-syntax -- mockup verbatim layout (text-align/padding); mockup-fidelity (FIX-015) */}
+                <td colSpan={6} className="subtle" style={{ textAlign: "center", padding: "24px 12px" }}>
                   No audit log entries match the current filter.{" "}
                   <button
                     type="button"
                     onClick={reset}
-                    className="font-semibold text-primary hover:underline"
+                    className="font-semibold hover:underline"
+                    // eslint-disable-next-line no-restricted-syntax -- mockup CSS var consumed from styles-mockup.css verbatim; mockup-fidelity (FIX-015)
+                    style={{ color: "var(--primary)", background: "transparent", border: 0, cursor: "pointer" }}
                   >
                     Reset filters
                   </button>
@@ -235,22 +241,25 @@ export function AuditLogViewer() {
 
             {!isLoading &&
               items.map((entry) => (
-                <tr key={entry.id} className="border-t border-border hover:bg-muted/30">
-                  <td className="px-3 py-2 font-mono">{entry.id}</td>
-                  <td className="px-3 py-2">{_formatTs(entry.timestamp_ms)}</td>
-                  <td className="px-3 py-2">{entry.operation}</td>
-                  <td className="px-3 py-2">
+                <tr key={entry.id}>
+                  <td className="mono">{entry.id}</td>
+                  <td>{_formatTs(entry.timestamp_ms)}</td>
+                  <td>{entry.operation}</td>
+                  <td>
                     {entry.resource_type}
                     {entry.resource_id && (
-                      <span className="ml-1 text-xs text-muted-foreground">
+                      /* eslint-disable-next-line no-restricted-syntax -- mockup verbatim font-size (11px); mockup-fidelity (FIX-015) */
+                      <span className="subtle ml-1" style={{ fontSize: 11 }}>
                         ({entry.resource_id})
                       </span>
                     )}
                   </td>
-                  <td className="px-3 py-2 font-mono text-xs">
-                    {entry.user_id ?? <span className="text-muted-foreground">—</span>}
+                  {/* eslint-disable-next-line no-restricted-syntax -- mockup verbatim font-size (11px); mockup-fidelity (FIX-015) */}
+                  <td className="mono" style={{ fontSize: 11 }}>
+                    {entry.user_id ?? <span className="subtle">—</span>}
                   </td>
-                  <td className="px-3 py-2 font-mono text-xs">
+                  {/* eslint-disable-next-line no-restricted-syntax -- mockup verbatim font-size (11px); mockup-fidelity (FIX-015) */}
+                  <td className="mono" style={{ fontSize: 11 }}>
                     {_shortHash(entry.current_log_hash)}
                   </td>
                 </tr>
@@ -260,17 +269,19 @@ export function AuditLogViewer() {
       </div>
 
       {/* Pagination footer */}
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
+      {/* eslint-disable-next-line no-restricted-syntax -- mockup verbatim font-size (13px); mockup-fidelity (FIX-015) */}
+      <div className="spread subtle" style={{ fontSize: 13 }}>
         <span>
           {items.length === 0 ? "No entries" : `Showing ${rangeStart}–${rangeEnd}`}
           {hasMore && <span className="ml-1">(more available)</span>}
         </span>
-        <div className="flex gap-2">
+        {/* eslint-disable-next-line no-restricted-syntax -- mockup verbatim gap (8px); mockup-fidelity (FIX-015) */}
+        <div className="row" style={{ gap: 8 }}>
           <button
             type="button"
             onClick={goPrev}
             disabled={offset <= 0 || isFetching}
-            className="rounded-md border border-border bg-background px-3 py-1 text-sm font-medium hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn outline"
           >
             Prev
           </button>
@@ -278,7 +289,7 @@ export function AuditLogViewer() {
             type="button"
             onClick={goNext}
             disabled={!hasMore || isFetching}
-            className="rounded-md border border-border bg-background px-3 py-1 text-sm font-medium hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn outline"
           >
             Next
           </button>

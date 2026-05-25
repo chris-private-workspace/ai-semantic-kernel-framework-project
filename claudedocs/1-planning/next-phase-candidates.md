@@ -29,7 +29,9 @@ Sprint 57.39 (`AD-Governance-Category-Multipage-Phase-2`) closed: 4-domain batch
 
 ### 🆕 5 NEW carryover ADs (Sprint 57.40+ candidates)
 
-47. **`AD-Governance-Verification-Child-Component-Re-Point-Phase58`** (D-DAY1-1) — Close NEAR-PARITY → PARITY gap for /governance + /verification by re-pointing child components (ApprovalsPage / AuditLogViewer / CorrectionTraceView / VerificationList / VerificationDetail) from Sprint 57.5/57.9-vintage Tailwind utility to verbatim mockup CSS. Estimated ~6-10 hr `-with-extras` 0.65 class.
+47. ✅ **`AD-Governance-Verification-Child-Component-Re-Point-Phase58`** — RESOLVED 2026-05-25 via **FIX-015** (6 child component re-point with agent delegation; ~25 min wall-clock). Day 0 grep scope adjusted from AD spec: 5 listed → final 6 files (ApprovalsPage already clean / VerificationDetail renamed to VerificationPanel / +ApprovalList +DecisionModal NEW findings). Token-level swap shadcn-utility (`bg-card`/`text-foreground`/`border-border`/`bg-muted`/`text-muted-foreground`) → mockup verbatim (`.card`/`.table`/`.btn`/`.badge`/`.field`/`.input`/`.subtle`/`.mono`/`.row`). HEX_OKLCH_BASELINE tightened 51→50. Vitest 478/478 + mockup-fidelity ✓ + build ✓ + tsc 0. Phase-2 epic 15/17 → 17/17 non-STRUCTURAL routes (2 🟡 STRUCTURAL `/memory` + `/tenant-settings` remain Phase 58+). See `claudedocs/4-changes/bug-fixes/FIX-015-governance-verification-child-component-repoint.md`.
+
+47.5. 🆕 **`AD-ApprovalList-Risk-Color-Tailwind-Hex-Sentinels`** (FIX-015 carryover) — `ApprovalList.tsx` L33-39 keeps 4 Tailwind arbitrary-value hex classes (`text-[#2e7d32]` / `text-[#ed6c02]` / `text-[#d84315]` / `text-[#b71c1c]`) as **test sentinels** per existing inline comment. Out of scope for FIX-015 token-swap. A future **risk-tone normalization sprint** should map these to `var(--risk-low | --risk-medium | --risk-high | --risk-critical)` (mockup risk tokens already in styles-mockup.css). Coordinate with `chat_v2` risk-color map normalization (existing check-mockup-fidelity.mjs L72 comment). Estimated ~30-45 min bundled with chat_v2 map. Class: `frontend-refactor-mechanical` 0.80 candidate.
 
 48. **`AD-Day0-Prong2-Child-Component-Tree-Depth-Audit`** (sprint-meta) — Extend Day 0 Prong 2 grep depth to include child-component tree mapping when production-vs-mockup structure may differ. Update `.claude/rules/sprint-workflow.md` §Step 2.5 with new sub-prong. Estimated ~1-2 hr.
 
@@ -43,7 +45,7 @@ Sprint 57.39 (`AD-Governance-Category-Multipage-Phase-2`) closed: 4-domain batch
 
 After Sprint 57.39, the Phase-2 epic non-STRUCTURAL backlog is mostly cleared. High-ROI next candidates:
 
-- **`AD-Governance-Verification-Child-Component-Re-Point-Phase58`** (close 2 NEAR-PARITY → PARITY gap; uses agent delegation pattern; ~3-5 hr actual with agent factor)
+- ~~**`AD-Governance-Verification-Child-Component-Re-Point-Phase58`**~~ ✅ DONE 2026-05-25 via FIX-015 (6 child component re-point + HEX_OKLCH_BASELINE 51→50; ~25 min agent wall-clock; closes Phase-2 epic NEAR-PARITY → PARITY for /governance + /verification)
 - **`/audit-log` DRAFT→active** (paired with Cat 9 backend; medium-backend + medium-frontend joint sprint)
 - **`/admin-tenants` Phase-2** (`-simple` 0.50 3rd validation data point; ~1.5-2 hr with agent)
 - ~~**`AD-Shadcn-Border-Token-Visual-Audit-Or-Align-To-Mockup`** Path A 1-line global micro-fix~~ ✅ DONE 2026-05-25 via FIX-012 (Path A applied; see §Sprint 57.38 Follow-up Carryover for resolution detail)

@@ -20,9 +20,10 @@
  *   Empty/missing states: 404 / null sessionId → "No correction trace..."
  *
  * Created: 2026-05-10 (Sprint 57.11 Day 3 §3.2)
- * Last Modified: 2026-05-24
+ * Last Modified: 2026-05-25
  *
  * Modification History (newest-first):
+ *   - 2026-05-25: FIX-015 — re-point shadcn-utility tokens (bg-card/text-muted-foreground/border-border/etc.) → mockup verbatim classes/vars
  *   - 2026-05-24: Sprint 57.33 Day 3 US-D2 — defensive ?? [] on entries (_groupByTurn input + .length; AD-Overview-PreExisting-Route-Crashes)
  *   - 2026-05-10: Initial creation (Sprint 57.11 Day 3 §3.2)
  *
@@ -67,11 +68,9 @@ export function CorrectionTraceView(): JSX.Element {
 
   if (sessionId === null) {
     return (
-      <div
-        className="rounded border border-border bg-card p-6 text-center"
-        data-testid="trace-no-session"
-      >
-        <p className="text-sm text-muted-foreground">
+      // eslint-disable-next-line no-restricted-syntax -- mockup verbatim layout (padding/text-align); mockup-fidelity (FIX-015)
+      <div className="card" style={{ padding: 24, textAlign: "center" }} data-testid="trace-no-session">
+        <p className="subtle text-sm">
           Select a session from the Recent tab to view its correction trace.
         </p>
       </div>
@@ -92,10 +91,12 @@ export function CorrectionTraceView(): JSX.Element {
     const is404 = query.error.message.includes("No verification entries");
     return (
       <div
-        className="rounded border border-border bg-card p-6 text-center"
+        className="card"
+        // eslint-disable-next-line no-restricted-syntax -- mockup verbatim layout (padding/text-align); mockup-fidelity (FIX-015)
+        style={{ padding: 24, textAlign: "center" }}
         data-testid={is404 ? "trace-empty" : "trace-error"}
       >
-        <p className="text-sm text-muted-foreground">
+        <p className="subtle text-sm">
           {is404 ? `No correction trace for session ${sessionId.slice(0, 8)}…` : query.error.message}
         </p>
       </div>
@@ -106,48 +107,52 @@ export function CorrectionTraceView(): JSX.Element {
 
   return (
     <div className="space-y-6" data-testid="correction-trace">
-      <div className="text-sm text-muted-foreground">
-        Session <span className="font-mono">{sessionId.slice(0, 8)}…</span> /{" "}
+      <div className="subtle text-sm">
+        Session <span className="mono">{sessionId.slice(0, 8)}…</span> /{" "}
         {(query.data.entries ?? []).length} entries
       </div>
       {Array.from(groupedByTurn.entries()).map(([turnIndex, entries]) => (
         <div key={turnIndex} data-testid={`turn-${turnIndex}`}>
-          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <h4 className="subtle mb-2 text-xs font-semibold uppercase tracking-wide">
             Turn {turnIndex}
           </h4>
           <ul className="space-y-2">
             {entries.map((entry) => {
-              const borderClass = entry.passed
-                ? "border-l-4 border-green-500"
-                : "border-l-4 border-red-500";
               return (
                 <li
                   key={entry.id}
-                  className={`rounded bg-card p-3 ${borderClass}`}
+                  className="card p-3"
+                  // eslint-disable-next-line no-restricted-syntax -- mockup verbatim border-left + var(--success|--danger); mockup-fidelity (FIX-015)
+                  style={{
+                    borderLeft: `4px solid ${entry.passed ? "var(--success)" : "var(--danger)"}`,
+                  }}
                   data-testid={`entry-${entry.id}`}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="row">
                     <span aria-hidden className="text-base">
                       {entry.passed ? "✅" : "❌"}
                     </span>
                     <span className="text-sm font-medium">{entry.verifier_name}</span>
                     <VerifierTypeBadge type={entry.verifier_type} />
                     {entry.correction_attempt > 0 && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="subtle text-xs">
                         (correction #{entry.correction_attempt})
                       </span>
                     )}
                   </div>
                   {!entry.passed && entry.reason && (
-                    <p className="mt-1 text-xs text-red-700">{entry.reason}</p>
+                    /* eslint-disable-next-line no-restricted-syntax -- mockup CSS var consumed from styles-mockup.css verbatim; mockup-fidelity (FIX-015) */
+                    <p className="mt-1 text-xs" style={{ color: "var(--danger)" }}>
+                      {entry.reason}
+                    </p>
                   )}
                   {!entry.passed && entry.suggested_correction && (
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="subtle mt-1 text-xs">
                       Suggested: {entry.suggested_correction}
                     </p>
                   )}
                   {entry.score !== null && entry.score !== undefined && (
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="subtle mt-1 text-xs">
                       Score: {entry.score.toFixed(2)}
                     </p>
                   )}
