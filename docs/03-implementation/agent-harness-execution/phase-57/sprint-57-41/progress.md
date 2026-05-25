@@ -253,4 +253,32 @@ Staged at `claudedocs/4-changes/sprint-57-41-verification-full-rebuild/before-af
 
 ### Day 2.5 commits
 
-TBD next: commit Day 2.5 evidence + progress entry.
+- ✅ `26bc64cf` — `chore(sprint-57-41): Day 2.5 — after-baseline 24 PNGs + 22 IDENTICAL/2 CHANGED diff + /verification PARITY verdict + 3-way evidence pair` (28 files / +51 / -1)
+
+---
+
+## Day 3 — 2026-05-25 (closeout)
+
+Full retrospective Q1-Q7 narrative + calibration matrix update + memory subfile + CLAUDE.md + next-phase-candidates.md are at `retrospective.md` (single-source per `.claude/rules/sprint-workflow.md §Sprint Closeout Update Policy`).
+
+### Quick summary
+
+| Closeout artifact | Status |
+|-------------------|--------|
+| `retrospective.md` Q1-Q7 + calibration | ✅ written |
+| `.claude/rules/sprint-workflow.md §Scope-class multiplier matrix` | ✅ 7th data point + MHist Sprint 57.41 Day 3 entry |
+| `memory/project_phase57_41_verification_full_rebuild.md` | ✅ subfile created |
+| `memory/MEMORY.md` pointer | ✅ quality pointer added (~750 char incl. detail-keywords; within "quality > 300" principle per Sprint Closeout Policy) |
+| `claudedocs/1-planning/next-phase-candidates.md` | ✅ NEW Sprint 57.41 carryover section + 6 NEW Phase-58 ADs (#60-65) + AD #50 closed |
+| `CLAUDE.md` minimal touch (Current Sprint row + Last Updated footer) | ✅ per §Sprint Closeout Update Policy navigator-only |
+| Drift audit report `/verification` ✅ PARITY | ✅ (Day 2 §2.5; included in `5abe98f6`) |
+
+### Calibration ratio — 7th data point
+
+- Bottom-up ~14 hr → calibrated 0.60 = ~8.5 hr → actual ~1.5 hr → **ratio ~0.18** (deepest below-band of class history; 7-pt mean 0.76 at lower band edge)
+- 4th cross-class data point for `AD-Sprint-Plan-Agent-Delegation-Factor-Modifier` — activation criteria MET; propose Sprint 57.42 retro structural evaluation
+- KEEP 0.60 baseline per `When to adjust` rule (only 2 of last 3 < 0.7; not 3-consecutive trigger)
+
+### Day 3 commits
+
+TBD: final closeout commit + push (user auth required) + PR open

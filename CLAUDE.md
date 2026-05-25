@@ -70,7 +70,7 @@ Build enterprise AI agent teams that work like **human professional teams** — 
 | Attribute | Value |
 |-----------|-------|
 | **Phase** | V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend ongoing (Phase 57+) |
-| **Current Sprint** | Sprint 57.40 closed 2026-05-25 (PR pending) — /governance Approvals view full mockup-fidelity rebuild closes drift audit 2026-05-25 #3 priority CATASTROPHIC. Detail in `memory/project_phase57_40_governance_full_rebuild.md`. Next: see `claudedocs/1-planning/next-phase-candidates.md` (post-audit reality 17 PARITY + 1 NEAR-PARITY + 4 🔴 CATASTROPHIC remaining: /memory + /verification + /admin-tenants + /tenant-settings) |
+| **Current Sprint** | Sprint 57.41 closed 2026-05-25 (PR pending) — /verification recent view full mockup-fidelity rebuild closes drift audit 2026-05-25 #2 priority CATASTROPHIC. Detail in `memory/project_phase57_41_verification_full_rebuild.md`. Next: see `claudedocs/1-planning/next-phase-candidates.md` (Phase-2 reality post-rebuild 18 PARITY + 1 NEAR-PARITY + 3 🔴 CATASTROPHIC remaining: /memory + /admin-tenants + /tenant-settings) |
 | **Sprint History** | See [`memory/MEMORY.md`](memory/MEMORY.md) §Recent Sprints + per-sprint subfile `memory/project_phase57_XX_*.md` + retrospective.md under `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-XX/` |
 | **Pending / Next Phase** | See [`claudedocs/1-planning/next-phase-candidates.md`](claudedocs/1-planning/next-phase-candidates.md) |
 | **Roadmap** | Phase 49-55 V2 ✅ / Phase 56-58 SaaS Stage 1 3/3 ✅ / Phase 57+ Frontend ongoing |
@@ -625,7 +625,7 @@ V1 完整 CLAUDE.md 已保留於 `CLAUDE.backup.md`。如需查閱 V1 架構（M
 
 ---
 
-**Last Updated**: 2026-05-25 (Sprint 57.40 — /governance Approvals view full mockup-fidelity rebuild closes drift audit 2026-05-25 #3 priority CATASTROPHIC; 5 NEW components + KvRow primitive + 15 NEW Vitest + envelope mock fix + 6th data point for `frontend-mockup-strict-rebuild` 0.60 ratio ~0.36); see `memory/` for sprint history
+**Last Updated**: 2026-05-25 (Sprint 57.41 — /verification recent view full mockup-fidelity rebuild closes drift audit 2026-05-25 #2 priority CATASTROPHIC; 6 NEW components + VerificationList orphan delete 299 lines + 9 NEW Vitest + envelope mock 2nd application + 7th data point for `frontend-mockup-strict-rebuild` 0.60 ratio ~0.18 deepest below band; `AD-Sprint-Plan-Agent-Delegation-Factor-Modifier` 4th cross-class data point activation criteria MET); see `memory/` for sprint history
 **Project Start**: 2025-11-14
 **V2 Authority**: `docs/03-implementation/agent-harness-planning/` (21 docs — 20 規劃 + 1 review)
 **V1 Reference**: `CLAUDE.backup.md` + `docs/07-analysis/V9/00-index.md`

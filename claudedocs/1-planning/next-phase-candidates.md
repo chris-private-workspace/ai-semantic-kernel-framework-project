@@ -4,7 +4,45 @@
 
 **Selection Rule**: User explicitly selects → draft plan kicks off Sprint XX.Y; otherwise items wait here indefinitely until selected or archived.
 
-**Updated**: 2026-05-25 (Sprint 57.40 closed — /governance Approvals view full mockup-fidelity rebuild closes drift audit 2026-05-25 #3 priority CATASTROPHIC; 9 NEW carryover ADs added below; Phase-2 epic post-audit reality 17 PARITY + 1 NEAR-PARITY + 4 CATASTROPHIC remaining.)
+**Updated**: 2026-05-25 (Sprint 57.41 closed — /verification recent view full mockup-fidelity rebuild closes drift audit 2026-05-25 #2 priority CATASTROPHIC; 6 NEW carryover ADs added below; Phase-2 epic reality 18 PARITY + 1 NEAR-PARITY + 3 CATASTROPHIC remaining; `AD-Sprint-Plan-Agent-Delegation-Factor-Modifier` activation criteria MET — propose Sprint 57.42 retro structural evaluation.)
+
+---
+
+## 🆕 Sprint 57.41 Carryover (2026-05-25 — /verification recent view Full Mockup-Fidelity Rebuild)
+
+Sprint 57.41 (`AD-Verification-Catastrophic-Rebuild`) ✅ **CLOSED**: single-domain rebuild closes drift audit 2026-05-25 #2 priority `/verification` 🔴 CATASTROPHIC verdict.
+
+- **6 NEW components** (under `frontend/src/features/verification/components/`): VerificationPageHeader (rename Sprint 57.40 ApprovalsPageHeader) / VerificationStatsStrip (rename + Pass rate compute swap) / VerificationRunsTable (NEW 6-col with claim+evidence dual-line + adaptItem mapping) / FailureKindsCard (NEW 5-row bar-track AP-2) / FlakyChecksCard (NEW 3-row rate Badge AP-2) / VerificationView (NEW container)
+- **VerificationList.tsx orphan-deleted 299 lines** per Karpathy §3 (filter form retired; carryover `AD-Verification-Filter-Form-Phase58-Migrate`)
+- **route swap**: `pages/verification/index.tsx` `recent` Route element swapped; outer 2-tab + `/timeline` CorrectionTraceView preserved
+- **+9 NEW Vitest specs** (5 files; 489→498; +112-225% over +5-8 target)
+- **route-sweep `/verification/recent` envelope mock**: 2nd application of `AD-RouteSweep-Envelope-Mock-Convention`
+- **HEX_OKLCH_BASELINE 46 unchanged** (estimated +2-4 bump didn't materialize — verbatim-CSS protocol correct; components use `var(--*)` refs)
+- **e2e adapt**: 3 obsolete filter-form tests deleted + 2 NEW mockup-shape view tests added (D-DAY0-3 resolution)
+- **drift audit report `/verification` verdict 🔴 → ✅ PARITY**; summary 17→18 PARITY / 4→3 CATASTROPHIC
+- **3-way evidence pair**: BEFORE 79.9 KB / AFTER 133.0 KB / MOCKUP 207.2 KB
+- **22-route sweep cleanest of Phase-2 epic**: 22 IDENTICAL + 1 expected CHANGED (`/verification` +66.4%) + 1 sub-300-byte noise (`/overview` -44 bytes) + 0 unintended regressions
+- **Class `frontend-mockup-strict-rebuild` 0.60 7th data point ratio ~0.18** — deepest below-band of class history; 7-pt mean 0.76; last 3 only 2 < 0.7 → KEEP 0.60 per 3-sprint window rule (need 3+ consecutive)
+- **🔴 Critical**: `AD-Sprint-Plan-Agent-Delegation-Factor-Modifier` 4th cross-class data point — **activation criteria MET** (57.39 0.41 + FIX-015 outlier + 57.40 0.36 + 57.41 0.18 all agent-delegated < 0.7); propose Sprint 57.42 retro structural evaluation
+
+### Phase-2 epic progress (post Sprint 57.41)
+
+- Pre-Sprint 57.41: 17 PARITY + 1 NEAR-PARITY + 4 🔴 CATASTROPHIC
+- **Post Sprint 57.41**: **18 PARITY + 1 NEAR-PARITY + 3 🔴 CATASTROPHIC** remaining (`/memory` + `/admin-tenants` + `/tenant-settings`)
+
+### 🆕 6 NEW carryover ADs (Sprint 57.42+ candidates; ordered by ROI / priority)
+
+60. 🆕 **`AD-Memory-Layers-Matrix-Rebuild`** — `/memory` matrix grid rebuild ~10-15 hr. **Highest ROI of remaining 3 CATASTROPHIC** (next sprint candidate).
+61. 🆕 **`AD-AdminTenants-Tenants-Table-Rebuild`** — `/admin-tenants` tenants table rebuild ~12-15 hr.
+62. 🆕 **`AD-TenantSettings-6-Tab-Rebuild`** — `/tenant-settings` 6-tab rebuild ~15-20 hr. **Largest scope of remaining 3 CATASTROPHIC.**
+63. 🆕 **`AD-Verification-Filter-Form-Phase58-Migrate`** — Sprint 57.41 retired filter form per Karpathy §3 (mockup has none). Phase 58+ admin filter UI on `/verification/admin` separate route OR collapsible `<details>` panel.
+64. 🆕 **`AD-Verification-Backend-Claim-Evidence-Extension`** — Backend `VerificationLogItem` lacks structured `claim` / `evidence` / `kind`; mapped best-effort via Sprint 57.41 `adaptItem()`. Phase 58+ backend schema extension.
+65. 🆕 **`AD-Verification-Failure-Kinds-+-Flaky-Checks-Aggregation-Endpoints`** — Sprint 57.41 sidebar Failure kinds + Flaky checks are AP-2 fixtures. Phase 58+ backend `GET /verifications/stats/{failure-kinds,flaky-checks}` endpoints.
+
+### Carryover from Sprint 57.40 (still open as of Sprint 57.41 closeout)
+
+- `AD-Sprint-Plan-Agent-Delegation-Factor-Modifier` — Sprint 57.41 contributes 4th cross-class data point; activation criteria now MET; **propose Sprint 57.42 retro structural evaluation** (Option A multiplicative `agent_factor` 0.55 coefficient OR Option B per-class sub-class split)
+- `AD-Verification-Out-Of-Scope-Components-Phase2-C-Mop-Up` — 2 residue sites in VerificationPanel.tsx (chat-v2) + CorrectionTraceView.tsx (/timeline) out-of-scope for Sprint 57.41
 
 ---
 
@@ -37,7 +75,7 @@ Root cause: code-implementer agent-delegation 7th consecutive ~40 min wall-clock
 
 ### 🆕 9 NEW carryover ADs (Sprint 57.41+ candidates; ordered by ROI per audit Recommendations 1-6)
 
-50. 🆕 **`AD-Verification-Catastrophic-Rebuild`** — `/verification` rebuild to mockup 4-KPI + 2-col Recent verification runs + Failure modes/Policy checks sidebar. Class `frontend-mockup-strict-rebuild` 0.60. Est ~8-10 hr. **Highest pattern-reuse ROI**: 4 of Sprint 57.40's 5 NEW components (StatsStrip / FilterTabs / DetailPane / EmptyTab) transfer with mild rename to verification surface.
+50. ✅ ~~**`AD-Verification-Catastrophic-Rebuild`**~~ — **CLOSED Sprint 57.41** (this rebuild). `/verification` rebuild to mockup 4-KPI + 2-col Recent verification runs + Failure modes + Flaky checks sidebar. Class `frontend-mockup-strict-rebuild` 0.60. Final actual 1.5 hr / committed 8.5 hr / ratio 0.18 (deepest below band; agent-delegated 8th+9th consecutive). Pattern reuse hit: 2 of Sprint 57.40's 5 NEW (PageHeader + StatsStrip) transferred via rename + 4 NEW unique (RunsTable + FailureKindsCard + FlakyChecksCard + View container). See `memory/project_phase57_41_verification_full_rebuild.md` for detail.
 
 51. 🆕 **`AD-ChatV2-Inspector-Tab-Rename`** — Inspector tab vocabulary rename `Turn/Trace/Memory/Tree` → mockup `Run/Tools/Memory/Verify`. Class `frontend-refactor-mechanical` 0.50. Est ~30 min (quick win).
 
