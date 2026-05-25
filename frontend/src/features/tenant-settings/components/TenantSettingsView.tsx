@@ -1,139 +1,121 @@
 /**
  * File: frontend/src/features/tenant-settings/components/TenantSettingsView.tsx
- * Purpose: Read-only view of tenant settings — TanStack-driven container for /tenant-settings/{id}.
+ * Purpose: Tenant Settings page inner view — 6-tab router (General/Flags/Quotas/HITL/Members/Danger).
  * Category: Frontend / tenant-settings / components
- * Scope: Phase 57 / Sprint 57.3 US-4 → Sprint 57.9 US-6 Day 4 (TanStack hook) → Sprint 57.16 Tailwind migration
+ * Scope: Phase 57 / Sprint 57.44 Day 1 (mockup-fidelity rebuild)
  *
  * Description:
- *   Sprint 57.9 US-6 Day 4: replaced manual useEffect + loadData orchestration
- *   with `useTenantSettings` TanStack Query hook.
- *   Sprint 57.13 US-A2: tenant_id from the authenticated session
- *   (authStore.tenant.id) — page is wrapped in <RequireAuth>.
- *   Sprint 57.16 (AD-Inline-Style-Cleanup-Sweep-Round2): inline styles →
- *   Tailwind utility classes; state/plan badge helpers now return Tailwind
- *   class strings (57.15 vocab `bg-success` / `bg-warning` /
- *   `bg-muted-foreground` / `bg-primary` — visual continuity with
- *   admin-tenants TenantListTable).
+ *   Sprint 57.44 full rebuild: replaces Sprint 57.16-vintage single-card dl/dt
+ *   readonly view + TenantSettingsEditForm toggle with the mockup 6-tab IA from
+ *   `page-admin.jsx:411-621`. PageHeader renders title + mono display_name +
+ *   route-pill + plan Badge; Tabs primitive drives 6-tab switching; each tab
+ *   component renders its own Card grid.
  *
- *   Edit toggle button switches to TenantSettingsEditForm. Loading skeleton +
- *   error retry UX. State + Plan rendered as colored badges.
+ *   Backend wire: useTenantSettings(tenantId) feeds display_name / code / plan
+ *   into PageHeader + GeneralTab. GeneralTab's display_name field is the ONLY
+ *   field PATCH-able via backend (TenantUpdateRequest); all other tabs render
+ *   _fixtures.ts data + BackendGapBanner per AP-2 honesty (D-DAY0-4 Option A
+ *   fixture-first decision).
  *
- * Created: 2026-05-07 (Sprint 57.3 Day 3)
- * Last Modified: 2026-05-11
+ *   Outer layout (AppShellV2 + RequireAuth) lives in pages/tenant-settings/
+ *   index.tsx and is unchanged.
+ *
+ * Created: 2026-05-07 (Sprint 57.3 Day 3 — initial readonly view)
+ * Last Modified: 2026-05-26
  *
  * Modification History (newest-first):
- *   - 2026-05-11: Sprint 57.16 — inline styles → Tailwind utility classes; stateBadgeColor/planBadgeColor → *Class fns (AD-Inline-Style-Cleanup-Sweep-Round2)
+ *   - 2026-05-26: Sprint 57.44 — full rewrite to 6-tab mockup IA (drop EditForm + JSON dump + dl/dt view)
+ *   - 2026-05-11: Sprint 57.16 — inline styles → Tailwind utility classes; stateBadgeColor/planBadgeColor → *Class fns
  *   - 2026-05-10: Sprint 57.13 US-A2 — tenant_id from authStore.tenant.id (was URL ?tenant_id=)
  *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — migrate to useTenantSettings TanStack hook (drop store loadData)
  *   - 2026-05-07: Initial creation (Sprint 57.3 Day 3)
+ *
+ * Related:
+ *   - reference/design-mockups/page-admin.jsx L411-621
+ *   - ../hooks/useTenantSettings.ts (display_name / code / plan source)
+ *   - ./TenantSettingsPageHeader.tsx + ./tabs/*
+ *   - frontend/src/components/mockup-ui.tsx (Tabs primitive)
  */
 
 import { useState } from "react";
 
-import { cn } from "../../../lib/utils";
+import { Tabs } from "../../../components/mockup-ui";
 import { useAuthStore } from "../../auth/store/authStore";
 import { useTenantSettings } from "../hooks/useTenantSettings";
-import { TenantPlan, TenantState } from "../types";
-import { TenantSettingsEditForm } from "./TenantSettingsEditForm";
+import { TenantSettingsPageHeader } from "./TenantSettingsPageHeader";
+import { DangerZoneTab } from "./tabs/DangerZoneTab";
+import { FeatureFlagsTab } from "./tabs/FeatureFlagsTab";
+import { GeneralTab } from "./tabs/GeneralTab";
+import { HITLPoliciesTab } from "./tabs/HITLPoliciesTab";
+import { MembersTab } from "./tabs/MembersTab";
+import { QuotasTab } from "./tabs/QuotasTab";
 
-function stateBadgeClass(state: TenantState): string {
-  switch (state) {
-    case TenantState.ACTIVE:
-      return "bg-success";
-    case TenantState.PROVISIONING:
-    case TenantState.REQUESTED:
-      return "bg-warning";
-    case TenantState.SUSPENDED:
-    case TenantState.ARCHIVED:
-    default:
-      return "bg-muted-foreground";
-  }
-}
+type TabId = "general" | "flags" | "quotas" | "hitl" | "members" | "danger";
 
-function planBadgeClass(plan: TenantPlan): string {
-  return plan === TenantPlan.ENTERPRISE ? "bg-primary" : "bg-muted-foreground";
-}
+const TAB_ITEMS = [
+  { id: "general", label: "General" },
+  { id: "flags", label: "Feature Flags", count: 14 },
+  { id: "quotas", label: "Quotas" },
+  { id: "hitl", label: "HITL Policies" },
+  { id: "members", label: "Members", count: 8 },
+  { id: "danger", label: "Danger Zone" },
+];
 
-const BADGE_CLASS = "rounded-sm px-2 py-0.5 text-[0.85rem] text-white";
-
-export function TenantSettingsView() {
+export function TenantSettingsView(): JSX.Element {
   const tenantId = useAuthStore((s) => s.tenant?.id ?? "");
-  const [editing, setEditing] = useState(false);
+  const [tab, setTab] = useState<TabId>("general");
 
   const { data, isLoading, error, refetch } = useTenantSettings(tenantId);
 
-  return (
-    <div className="p-8 font-sans">
-      <p className="text-sm text-muted-foreground">Configuration for your tenant.</p>
+  if (!tenantId) {
+    return (
+      <div>
+        <p className="muted">No tenant in your session.</p>
+      </div>
+    );
+  }
 
-      {!tenantId && <p className="text-danger">No tenant in your session.</p>}
+  if (isLoading) {
+    return (
+      <div>
+        <p className="muted">Loading tenant settings…</p>
+      </div>
+    );
+  }
 
-      {isLoading && tenantId && <p className="italic">Loading tenant settings…</p>}
-
-      {error && (
-        <div className="mt-4 border border-danger p-4 text-danger">
+  if (error) {
+    return (
+      <div>
+        {/* eslint-disable-next-line no-restricted-syntax -- inline-style minor error banner */}
+        <div style={{ padding: 14, border: "1px solid var(--danger)", borderRadius: "var(--radius)", color: "var(--danger)" }}>
           <p>Error: {error.message}</p>
-          <button onClick={() => void refetch()}>Retry</button>
+          <button className="btn outline" onClick={() => void refetch()}>Retry</button>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {data && !isLoading && !error && !editing && (
-        <div className="mt-6">
-          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2">
-            <dt className="font-semibold">Tenant ID</dt>
-            <dd className="m-0 font-mono">{data.id}</dd>
+  if (!data) return <div />;
 
-            <dt className="font-semibold">Code</dt>
-            <dd className="m-0 font-mono">{data.code}</dd>
-
-            <dt className="font-semibold">Display Name</dt>
-            <dd className="m-0">{data.display_name}</dd>
-
-            <dt className="font-semibold">State</dt>
-            <dd className="m-0">
-              <span className={cn(BADGE_CLASS, stateBadgeClass(data.state))}>{data.state}</span>
-            </dd>
-
-            <dt className="font-semibold">Plan</dt>
-            <dd className="m-0">
-              <span className={cn(BADGE_CLASS, planBadgeClass(data.plan))}>{data.plan}</span>
-            </dd>
-
-            <dt className="font-semibold">Created</dt>
-            <dd className="m-0">{data.created_at}</dd>
-
-            <dt className="font-semibold">Updated</dt>
-            <dd className="m-0">{data.updated_at}</dd>
-          </dl>
-
-          <details className="mt-4">
-            <summary className="cursor-pointer">Provisioning + Onboarding progress (JSON)</summary>
-            <pre className="bg-muted p-3 text-[0.85rem]">
-              {JSON.stringify(
-                {
-                  provisioning_progress: data.provisioning_progress,
-                  onboarding_progress: data.onboarding_progress,
-                  meta_data: data.meta_data,
-                },
-                null,
-                2,
-              )}
-            </pre>
-          </details>
-
-          <button className="mt-6 px-4 py-2" onClick={() => setEditing(true)}>
-            Edit
-          </button>
-        </div>
-      )}
-
-      {data && editing && (
-        <TenantSettingsEditForm
-          tenantId={tenantId}
-          initialData={data}
-          onDone={() => setEditing(false)}
-        />
-      )}
+  return (
+    <div>
+      <TenantSettingsPageHeader
+        displayName={data.display_name}
+        code={data.code}
+        plan={data.plan}
+      />
+      <Tabs
+        items={TAB_ITEMS}
+        value={tab}
+        onChange={(id) => setTab(id as TabId)}
+        ariaLabel="Tenant settings sections"
+      />
+      {tab === "general" && <GeneralTab data={data} />}
+      {tab === "flags" && <FeatureFlagsTab />}
+      {tab === "quotas" && <QuotasTab />}
+      {tab === "hitl" && <HITLPoliciesTab />}
+      {tab === "members" && <MembersTab />}
+      {tab === "danger" && <DangerZoneTab />}
     </div>
   );
 }
