@@ -195,6 +195,71 @@ Agent chose Option A: deleted `DecisionModal.tsx` per Karpathy §3 "你的改動
 
 ---
 
-## Day 2 — 2026-05-25 (planned) — Vitest specs + route-sweep mock fix + threshold update + drift audit report update
+## Day 2 — 2026-05-25 — Vitest specs + route-sweep mock fix + mockup-fidelity threshold + drift audit report update
 
-*To be filled during/after Day 2 work.*
+### 2.1 Vitest existing-spec migration — N/A
+
+Plan §2.1 expected adapting `ApprovalList.test.tsx` + `ApprovalsPage.test.tsx`. **Neither exists** in `frontend/tests/unit/governance/` — the 5 governance specs there are all hook / Audit* tests, unrelated to the Day 1 rebuild surface. No migration needed.
+
+### 2.2 NEW Vitest specs — 15 NEW tests (target was +4-8 → **188-375%**)
+
+| Spec file | Tests | Coverage focus |
+|-----------|------:|---------------|
+| `tests/unit/governance/ApprovalsStatsStrip.test.tsx` | 4 | 4 KPI labels render / Active queue derives from `approvals.length` / 0 fallback when undefined / AP-2 BackendGapBanner present declaring fixture |
+| `tests/unit/governance/ApprovalDetailPane.test.tsx` | 5 | empty placeholder when null / 7 KvRow labels + request_id mono / Approve→onApprove / Reject→onReject / Approve-with-edits + Escalate AP-2 alert stubs |
+| `tests/unit/governance/ApprovalsFilterTabs.test.tsx` | 4 | 5 mockup-verbatim labels / Active count derives from prop / aria-selected toggles / onChange dispatches tab id |
+| `tests/unit/governance/ApprovalsEmptyTab.test.tsx` | 2 | Card + AP-2 banner for approved tab / 4-case label dispatch for approved/rejected/expired/policies |
+| **Total** | **15** | |
+
+**Vitest totals**: 478 (Day 1) → **493/493** (Day 2 +15). Time on green: 1.46s for the 4 new spec files; 14.0s full suite.
+
+**D-DAY2-1 — Minor mid-Day fix**: `ApprovalDetailPane.test.tsx` initial draft used `getByText(/PII access/i)` for `payload.reason` assertion; reality the text appears twice (Card subtitle via `sessionTitle.slice(0, 80)` + Agent rationale field). Switched to `getAllByText(...).length >= 1` to express the intent (rationale visible somewhere) without over-constraining the mockup-driven dual-surface design. Class-swap resilience principle (Sprint 57.37 D-DAY3-1) preserved.
+
+### 2.3 D-DAY0-1 fix — route-sweep `/governance/approvals` envelope-shape mock
+
+**Edit**: `frontend/scripts/route-sweep.mjs` — added inside the existing `/api/v1/` broad handler, alongside `cost-summary` / `sla-report` URL-dispatch siblings:
+
+```js
+const APPROVALS_LIST = { items: [], total: 0, has_more: false };
+// ... inside ctx.route(/\/api\/v1\//, (r) => { ... })
+if (/\/governance\/approvals/.test(url)) return json(APPROVALS_LIST);
+```
+
+**MHist entry added**. `node scripts/route-sweep.mjs before --list-only` smoke test: 16 AppShellV2 routes (15 real + 1 PROP rep) intact, derive logic unchanged.
+
+### 2.4 mockup-fidelity threshold update — 45 → 46
+
+`check-mockup-fidelity.mjs` live count = 46 (Day 1 ApprovalList row-highlight inline `oklch(from var(--primary) l c h / 0.08)` added on L112, mockup-verbatim per `page-governance.jsx:347`).
+
+**Edit**: `HEX_OKLCH_BASELINE` 45 → 46 + MHist entry following the Sprint 57.30/57.35/57.37/57.38 mockup-token-vocabulary precedent (derives from `--primary` design token, NOT raw colour). Guard now PASSED (`✓ grep guard: 46 hardcoded hex/oklch lines (baseline 46)`).
+
+Plan §3.6 envelope target was ≤51; actual 46 is well within (delta only +1 from Day 0 baseline).
+
+### 2.5 Drift audit report update — `/governance` → ✅ PARITY
+
+Updated `claudedocs/5-status/drift-audit-2026-05-25/audit-report.md`:
+
+- **Verdict summary**: 16 PARITY → **17 PARITY** / 5 CATASTROPHIC → **4 CATASTROPHIC**
+- **Per-page table row 15** (`/governance`): 🔴 CATASTROPHIC → ✅ PARITY (post-rebuild) with note linking to Sprint 57.40 Day 1 deliverables
+- **Key finding #5** (the "runtime data-fetch error"): marked ✅ RESOLVED with the D-DAY1-2 root-cause explanation + tooling lesson (envelope-shape endpoints need explicit sweep mocks)
+- **Recommendations**: struck #1 + #3 (both closed by Sprint 57.40); promoted remaining to 1–6
+- **Carryover ADs**: closed `AD-Governance-Catastrophic-Rebuild-And-Bug-Fix`; added NEW `AD-RouteSweep-Envelope-Mock-Convention` (codify lesson into `testing.md` or `frontend-mockup-fidelity.md`)
+
+### Day 2 totals
+
+| Metric | Day 1 baseline | Day 2 actual | Δ |
+|--------|---------------:|-------------:|---|
+| Vitest | 478 | **493** | +15 |
+| mockup-fidelity guard | 45 baseline / 46 live (FAIL) | 46/46 (**PASS**) | bump baseline +1 |
+| Files touched (NEW) | — | 4 Vitest specs | |
+| Files touched (EDIT) | — | route-sweep.mjs / check-mockup-fidelity.mjs / audit-report.md / progress.md | |
+| LLM SDK leak | N/A frontend | N/A | unchanged |
+
+### Day 2 calibration data
+
+Bottom-up estimate ~3.0 hr. Actual wall-clock ~50 min (mostly Vitest writes + verifying + 1 mid-flight failure rebound). Ratio ~0.28 — **4th consecutive `AD-Sprint-Plan-Agent-Delegation-Factor-Modifier` evidence data point** (57.39 0.41 + FIX-015 ~0.04 + 57.40 D1 ~0.25 + 57.40 D2 ~0.28). Note: Day 2 was **not** agent-delegated; speedup vs estimate came from the surface being narrow (4 stateless / pure-presentation components) plus existing test pattern (`useApprovals.test.tsx` + `QuickActionsStrip.test.tsx` templates).
+
+### Day 2 commit reference
+
+- `<TBD-Day-2-commit>` — Day 2 Vitest specs + route-sweep mock fix + mockup-fidelity threshold + audit report update + progress.md Day 2 entry
+

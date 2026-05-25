@@ -28,6 +28,7 @@
  * Created: 2026-05-22 (Sprint 57.28 Day 3 US-D1)
  *
  * Modification History:
+ *   - 2026-05-25: Sprint 57.40 Day 2 — bump HEX_OKLCH_BASELINE 45→46 (+1 verbatim `oklch(from var(--primary) l c h / 0.08)` literal from ApprovalList Sprint 57.40 Day 1 rebuild — selected row highlight per mockup page-governance.jsx:347; derives from --primary token, NOT raw colour; same vocabulary precedent as Sprint 57.30/57.35/57.37/57.38)
  *   - 2026-05-24: Sprint 57.38 Day 1 — bump HEX_OKLCH_BASELINE 50→51 (+1 verbatim `oklch(from var(--primary) l c h / 0.10)` literal from SubagentsPage Sprint 57.38 Domain B re-point — selected row highlight per mockup page-agents.jsx:352; derives from --primary design token, NOT raw colour; same vocabulary precedent as Sprint 57.30/57.35/57.37)
  *   - 2026-05-24: Sprint 57.37 Day 3 — bump HEX_OKLCH_BASELINE 44→50 (6 verbatim `oklch(from var(--X) l c h / X)` literals from StateInspectorPage Sprint 57.37 Domain B re-point — carryover banner border+bg + error banner border+bg + selected version highlight + checkpoint icon bg per mockup page-platform.jsx:68+75; all derive from --primary/--warning/--danger/dynamic-cat design tokens, NOT raw colours; same vocabulary precedent as Sprint 57.30/57.35; within Day 0 D-DAY0-6 estimate +5-10)
  *   - 2026-05-24: Sprint 57.37 Day 1-2 — bump HEX_OKLCH_BASELINE 41→44 (3 verbatim `oklch(from <color> l c h / X)` literals from LoopVisualizer Sprint 57.37 verbatim port — filter pill background+border tints + selected event-row highlight per mockup page-governance.jsx:138-145+198-202; all derive from category color CSS vars / design tokens, NOT raw colours; same verbatim-token vocabulary precedent as Sprint 57.30/57.35)
@@ -76,7 +77,7 @@ const SCAN_DIRS = [path.join(FRONTEND, "src/features"), path.join(FRONTEND, "src
 // + ApprovalList RISK_COLOR_CLASS (4 lines) + AuditChainBadge valid-state (1 line) swapped
 // to `var(--risk-X)` Tailwind arbitrary-value-with-typed-hint pattern. (chat_v2 risk map
 // was already migrated pre-FIX-017 — only the L72 comment historical reference remains.)
-const HEX_OKLCH_BASELINE = 45;
+const HEX_OKLCH_BASELINE = 46;
 
 let failed = false;
 

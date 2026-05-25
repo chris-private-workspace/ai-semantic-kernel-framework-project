@@ -25,6 +25,7 @@
  * Created: 2026-05-20 (Sprint 57.26 Day 0) — supersedes the temporary frontend/diagnose-render.mjs
  *
  * Modification History:
+ *   - 2026-05-25: Sprint 57.40 Day 2 D-DAY0-1 fix — add `/governance/approvals` specific mock returning {items, total, has_more} PendingListResponse shape (default [] fallback tripped rebuilt ApprovalsPage TanStack)
  *   - 2026-05-25: Sprint 57.40 Day 0 — re-point OUT_DIR to sprint-57-40-governance-full-rebuild (single-domain rebuild: /governance Approvals view full mockup-fidelity rebuild; closes drift audit 2026-05-25 #3 priority)
  *   - 2026-05-25: FIX-018 — APPSHELL_ROUTES auto-derived from routes.config.ts (closes AD-RouteSweep-Auto-Derive; eliminates FIX-016-class manual-sync gap)
  *   - 2026-05-25: FIX-016 — APPSHELL_ROUTES +/redaction +/error-policy (PROP→real coverage gap)
@@ -202,6 +203,15 @@ const SLA_REPORT = {
   violations_count: 2,
 };
 
+// Sprint 57.40 D-DAY0-1 — `/governance/approvals` returns `PendingListResponse`
+// shape `{items, total, has_more}` (see backend `api/v1/governance/router.py`).
+// The default `[]` fallback tripped the rebuilt ApprovalsPage (TanStack threw
+// "data is undefined" because `governanceService.listPending` reads
+// `body.items`). The audit PNG captured 2026-05-25 showed the red error banner
+// — that was a sweep-mock artifact, NOT a production bug. Dispatched inside
+// the broad /api/v1/ handler alongside cost-summary / sla-report.
+const APPROVALS_LIST = { items: [], total: 0, has_more: false };
+
 async function capture(ctx, route, slug) {
   const page = await ctx.newPage();
   try {
@@ -243,6 +253,7 @@ console.log("-- AppShellV2 (mocked auth) --");
       r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(obj) });
     if (/\/cost-summary/.test(url)) return json(COST_SUMMARY);
     if (/\/sla-report/.test(url)) return json(SLA_REPORT);
+    if (/\/governance\/approvals/.test(url)) return json(APPROVALS_LIST);
     // default — list-shaped endpoints tolerate an empty array
     return r.fulfill({ status: 200, contentType: "application/json", body: "[]" });
   });
