@@ -241,7 +241,51 @@ Comparable to Sprint 57.43 (22 IDENTICAL + 1 INTENDED + 2 noise + 0 unintended).
 
 **AC5 threshold byte-proxy**: per Sprint 57.43 precedent, accept AFTER as structurally faithful given +43% expansion reflects mockup 6-tab IA add (mockup line count 411-621 ≈ 210 lines mostly tab content; AFTER captures all 6 tabs + active General tab content; ratio reasonable proxy).
 
-### Remaining for Next Step
+---
 
-- Day 2.5 closeout commit (route-sweep AFTER PNGs + 3-way evidence + progress.md update)
-- Day 3 — retrospective Q1-Q7 + matrix MHist + `agent_factor 0.55` 2nd validation **MANDATORY** structural decision + memory subfile + CLAUDE.md sync + push + PR
+## Day 3 — 2026-05-26 — Retrospective + Matrix MHist + `agent_factor` 2nd Validation Structural Decision + Memory + Closeout
+
+### Today's Accomplishments
+
+- ✅ **retrospective.md written** (~270 lines; Q1-Q7 with Q7 N/A SKIP per cohort precedent; Q4 documents `agent_factor` rollback rule structural decision)
+- ✅ **Sprint-workflow.md 5 edits applied**:
+  - Class matrix row 10th data point (data points cell + mean cell)
+  - Formula block tightened `agent_factor` 0.55 → **0.45 effective Sprint 57.45+**
+  - Equivalent ratios table updated for 0.45
+  - Activation history Sprint 57.44 entry (MANDATORY rollback rule decision documented)
+  - MHist top entry (Sprint 57.44 1-line within E501 budget)
+- ✅ **Memory subfile** `project_phase57_44_tenant_settings_rebuild.md` written + moved to user memory dir
+- ✅ **MEMORY.md pointer entry** added (top of `Project — Recent Sprints (Phase 57+)`)
+- ✅ **CLAUDE.md minimal touch** — Current Sprint row + Last Updated footer (Phase-2 epic FULL CLEAN milestone + `agent_factor` tighten decision)
+- ✅ **route-sweep.mjs MHist** — 1-line Sprint 57.44 OUT_DIR re-point entry
+
+### `agent_factor` 2nd Validation Structural Decision (MANDATORY)
+
+| Metric | Value |
+|--------|-------|
+| Sprint 57.43 1st validation ratio (at activated 0.55) | 0.41 BELOW band by 0.44 |
+| Sprint 57.44 2nd validation ratio (at activated 0.55) | **~0.20** BELOW band by **~0.65** |
+| 2-validation mean ratio | ~0.305 (far below band lower edge) |
+| Rollback rule trigger | "2 sprints with ratio < 0.7 → tighten to 0.45" — **MET ✅** |
+| **Decision EXECUTED** | tighten `agent_factor` **0.55 → 0.45** effective **Sprint 57.45+** |
+| Class-split escalation (Option B) | NOT triggered yet (single-class `mockup-strict-rebuild` signal); maintained Option A |
+| Predicted Sprint 57.45 ratio under 0.45 | ~0.24 (still likely BELOW band) |
+| Flag for Sprint 57.46 retro | if 0.45 also < 0.7 → evaluate 0.45 → 0.35 OR Option B per-class split |
+
+### Final Sprint metrics
+
+| Metric | Value |
+|--------|-------|
+| Branch | `feature/sprint-57-44-tenant-settings-rebuild` |
+| Commits Day 0/1/2/2.5/3 | 5 total (8b2aab41 / 34668565 / 4a1bdbb9 / Day 2.5 / Day 3 pending) |
+| Vitest delta | 514 → **561** (+47; +287-487% over plan +12 target) |
+| Build / Lint / LLM SDK leak | green / 0 errors / 0 |
+| HEX_OKLCH_BASELINE | 46 unchanged (**5th consecutive +0**) |
+| Route-sweep | **20 IDENTICAL + 1 INTENDED +43% + 3 noise + 0 unintended** |
+| Class data point | 10th `frontend-mockup-strict-rebuild` 0.60 |
+| **Phase-2 epic** | **🎉 21 PARITY + 1 NEAR-PARITY + 0 CATASTROPHIC — FULL CLEAN ✅** |
+
+### Next steps
+
+- Day 3.5 closeout commit + push + open PR
+- Future sprint candidates per retrospective.md Q5 (rolling planning — no pre-write of Sprint 57.45 plan per §6 discipline)

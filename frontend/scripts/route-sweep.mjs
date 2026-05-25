@@ -25,6 +25,7 @@
  * Created: 2026-05-20 (Sprint 57.26 Day 0) — supersedes the temporary frontend/diagnose-render.mjs
  *
  * Modification History:
+ *   - 2026-05-26: Sprint 57.44 Day 0 — re-point OUT_DIR to sprint-57-44-tenant-settings-rebuild (single-domain rebuild: /tenant-settings 6-tab IA — General/FeatureFlags/Quotas/HITLPolicies/Members/DangerZone; closes last CATASTROPHIC verdict + 🎉 Phase-2 epic FULL CLEAN; 2nd validation sprint under agent_factor = 0.55 → MANDATORY tighten 0.55 → 0.45)
  *   - 2026-05-25: Sprint 57.43 Day 0 — re-point OUT_DIR to sprint-57-43-admin-tenants-rebuild (single-domain rebuild: /admin-tenants page-head + 4 KPI stats + 9-col tenants table; closes drift audit 2026-05-25 #1 priority CATASTROPHIC post Sprint 57.42 /memory close; 1st validation sprint under newly ACTIVATED agent_factor = 0.55)
  *   - 2026-05-25: Sprint 57.42 Day 0 — re-point OUT_DIR to sprint-57-42-memory-matrix-rebuild (single-domain rebuild: /memory Memory Layers 5x3 matrix + TimeTravelScrubber + bottom 2-col grid; closes drift audit 2026-05-25 #2 priority CATASTROPHIC)
  *   - 2026-05-25: Sprint 57.41 Day 2 D-DAY0-1 fix — add `/api/v1/verification/recent` specific mock returning {items, total, has_more, next_offset, page_size} VerificationLogPage envelope (default [] fallback would trip useVerificationRecent TanStack on `data.items === undefined`; 2nd application of envelope-mock convention, AD-RouteSweep-Envelope-Mock-Convention)
