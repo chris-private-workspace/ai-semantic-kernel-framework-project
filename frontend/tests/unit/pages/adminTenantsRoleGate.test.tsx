@@ -68,8 +68,11 @@ describe("AdminTenantsPage role gate", () => {
     setAuthed(["user", "platform_admin"]);
     renderPage();
     expect(screen.queryByText(/需要平台管理員權限/)).toBeNull();
-    // AdminTenantsContent's intro copy
-    expect(screen.getByText(/platform-admin scope/i)).toBeInTheDocument();
+    // Sprint 57.43 mockup-fidelity rebuild — AdminTenantsView renders the
+    // verbatim TenantsPageHeader (route-pill `/admin/tenants` is unique to the
+    // page header; "Tenants" plain text also appears in sidebar nav).
+    expect(screen.getByText("/admin/tenants")).toBeInTheDocument();
+    expect(screen.getByText(/All tenants/)).toBeInTheDocument();
   });
 
   it("admin role also counts as platform-admin", () => {

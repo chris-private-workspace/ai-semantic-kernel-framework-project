@@ -15,9 +15,9 @@
 
 | Verdict | Count | Pages |
 |---------|:-----:|-------|
-| ✅ **PARITY** | 19 | 7 auth (login + callback + register + invite + mfa + expired + dev) / 7 ops (overview + orchestrator + subagents + loop-debug + state-inspector + **memory ⭐ (post Sprint 57.42)**) + 3 governance (governance ⭐ + redaction + error-policy) + 2 dashboards (cost-dashboard + sla-dashboard) + **verification ⭐ (post Sprint 57.41)** |
+| ✅ **PARITY** | 20 | 7 auth (login + callback + register + invite + mfa + expired + dev) / 7 ops (overview + orchestrator + subagents + loop-debug + state-inspector + **memory ⭐ (post Sprint 57.42)**) + 3 governance (governance ⭐ + redaction + error-policy) + 2 dashboards (cost-dashboard + sla-dashboard) + **verification ⭐ (post Sprint 57.41)** + **admin-tenants ⭐ (post Sprint 57.43)** |
 | 🟡 **NEAR-PARITY** | 1 | chat-v2 (Inspector tab name divergence) |
-| 🔴 **CATASTROPHIC drift** | 2 | **admin-tenants / tenant-settings** (post Sprint 57.42 /memory rebuild) |
+| 🔴 **CATASTROPHIC drift** | 1 | **tenant-settings** (post Sprint 57.43 /admin-tenants rebuild) |
 | 🟣 **PROP-by-design** | 1 | compaction representative (intentional ComingSoonPlaceholder, NOT drift) |
 
 ---
@@ -46,7 +46,7 @@
 | 18 | `/error-policy` | ✅ PARITY | Error Policy + 4 KPI + 4-class taxonomy + Retry budget + Circuit breakers table | Pixel-perfect match; AP-2 banner intentional | none — Sprint 57.39 Phase-2 clean |
 | 19 | `/cost-dashboard` | ✅ PARITY | Cost Ledger + 4 KPI + Spend over time area chart + Spend by category + Spend by tenant table + Provider mix | Pixel-perfect match; AP-2 banner intentional | none — Sprint 57.31 Phase-2 clean |
 | 20 | `/sla-dashboard` | ✅ PARITY | SLA Dashboard + 4 KPI + Latency distribution + SLO status sidebar + Top slow ops table + Error rate by service | Pixel-perfect match; AP-2 banner intentional | none — Sprint 57.32 Phase-2 clean |
-| 21 | `/admin-tenants` | 🔴 **CATASTROPHIC** | Tenants + 4 KPI (Active tenants / Total seats / Agents / Anomalies) + **9-col tenants table** with 9 rows (TENANT/PLAN/REGION/SEATS/AGENTS/RUNS/STATUS/CREATED) | Only filter form (State/Plan/Search) + "No tenants match current filter" + pagination "0-0 of 0" | **FULL REBUILD** — known CLAUDE.md 🟡 STRUCTURAL Phase 58+ #1 |
+| 21 | `/admin-tenants` | ✅ **PARITY** (post-rebuild) | Tenants + 4 KPI (Active tenants / Total seats / Agents / Anomalies) + **9-col tenants table** with 8 rows (TENANT/PLAN/REGION/SEATS/AGENTS/RUNS/STATUS/CREATED) | **Same** — Sprint 57.43 Day 1 full rebuild ships 5 NEW components (TenantsPageHeader / TenantsStatsStrip / TenantsTable / AdminTenantsView + KvRow-style avatar cell inline) + verbatim `_fixtures.ts` mockup port (TENANTS_FIXTURE 8 entries + STATS_FIXTURE 4 entries + TABLE_SUBTITLE) + 6 vintage components orphan-deleted per Karpathy §3 + Day 2 ships 5 NEW Vitest specs (481→514 / +33 NEW, +312-560% over +5-8 target) + AP-2 BackendGapBanner declaring `TenantListItem` schema gap (5 of 9 columns) deferred Phase 58+ via `AD-AdminTenants-Backend-Schema-Extension` | **none** — Sprint 57.43 holds clean |
 | 22 | `/tenant-settings` | 🔴 **CATASTROPHIC** | Tenant Settings + tenant chip + **6-tab nav** (General/Feature Flags 14/Quotas/HITL Policies/Members 8/Danger Zone) + 2-col General form + Identity & SSO sidebar | Plain `Tenant ID / Code / Display Name / State / Plan / Created / Updated / Provisioning JSON / Edit` field list | **FULL REBUILD** — known CLAUDE.md 🟡 STRUCTURAL Phase 58+ #2 |
 | 23 | `/compaction` (PROP rep) | 🟣 by design | Context Compaction + 4 KPI + Recent compactions table + Strategy mix sidebar | ComingSoonPlaceholder ("Coming Soon — design is in design/operator-portal/page-platform.jsx") | **not a drift** — PROP active=true+proposed=true intentionally renders placeholder; PROP→real promotion is the work |
 
@@ -64,6 +64,8 @@ The initial audit confirmed that **5 production pages were fundamentally differe
 
 **Post Sprint 57.42 (this report's third follow-up sprint)**: `/memory` rebuilt → **19 PARITY + 1 NEAR-PARITY + 2 CATASTROPHIC remaining** (admin-tenants / tenant-settings).
 
+**Post Sprint 57.43 (this report's fourth follow-up sprint)**: `/admin-tenants` rebuilt → **20 PARITY + 1 NEAR-PARITY + 1 CATASTROPHIC remaining** (tenant-settings only).
+
 ### 2. Two NEW catastrophic drift findings (not previously tracked)
 
 | Page | Why it slipped through | Implication |
@@ -75,8 +77,8 @@ The initial audit confirmed that **5 production pages were fundamentally differe
 
 | Page | Status |
 |------|--------|
-| `/admin-tenants` | CLAUDE.md known 🟡 STRUCTURAL Phase 58+ #1 — confirmed CATASTROPHIC |
-| `/tenant-settings` | CLAUDE.md known 🟡 STRUCTURAL Phase 58+ #2 — confirmed CATASTROPHIC; also matches Sprint 57.22 audit `6-tab architectural finding` |
+| ~~`/admin-tenants`~~ | ✅ **RESOLVED Sprint 57.43** — full rebuild ships 5 NEW components + verbatim `_fixtures.ts` port + AP-2 BackendGapBanner; backend schema extension deferred Phase 58+ (`AD-AdminTenants-Backend-Schema-Extension`) |
+| `/tenant-settings` | CLAUDE.md known 🟡 STRUCTURAL Phase 58+ #2 — confirmed CATASTROPHIC; also matches Sprint 57.22 audit `6-tab architectural finding` — **last remaining CATASTROPHIC** |
 
 ### 4. One NEAR-PARITY drift (low-priority fix)
 
@@ -110,7 +112,7 @@ This is also a tooling lesson: any new endpoint that returns an envelope shape (
 | ~~`/memory` Memory Layers 5×N matrix rebuild~~ | ✅ **RESOLVED Sprint 57.42** | ~~10-15 hr~~ actual ~5-5.5 hr human-eq (agent ~40 min) | frontend-mockup-strict-rebuild 0.60 (8th data point) |
 | `/governance` runtime error fix + rebuild | 🔴 CATASTROPHIC | ~12-15 hr (fix bug ~2-3 hr + rebuild ~10-12 hr) | frontend-page-bug-fix 0.45 + frontend-mockup-strict-rebuild 0.60 |
 | `/verification` rebuild | 🔴 CATASTROPHIC | ~8-10 hr | frontend-mockup-strict-rebuild 0.60 |
-| `/admin-tenants` rebuild | 🔴 CATASTROPHIC | ~12-15 hr | frontend-mockup-strict-rebuild 0.60 + backend list endpoint already exists |
+| ~~`/admin-tenants` rebuild~~ | ✅ **RESOLVED Sprint 57.43** | ~~12-15 hr~~ actual ~3 hr human-eq (agent ~5 min Day 1) | frontend-mockup-strict-rebuild 0.60 (9th data point) × `agent_factor = 0.55` (1st validation of newly ACTIVATED modifier per Sprint 57.42 retro) |
 | `/tenant-settings` 6-tab rebuild | 🔴 CATASTROPHIC | ~15-20 hr | frontend-mockup-strict-rebuild 0.60 (6-tab is largest scope) |
 | **Total** | | **~58-75 hr** | bottom-up sum — 6-8 sprints at 8 hr/sprint pace |
 
@@ -129,9 +131,9 @@ After calibration multiplier (~0.55-0.65 frontend-mockup-strict-rebuild evidence
 | ~~3~~ | ~~**`/governance` rebuild**~~ | ✅ **RESOLVED Sprint 57.40 Day 1** — 5 NEW components + ApprovalsPage restructure + ApprovalList 7-col; agent-delegated ~1.2 hr wall-clock |
 | ~~4~~ | ~~**`/verification` rebuild**~~ (4 KPI + 2-col + sidebar) | ✅ **RESOLVED Sprint 57.41** — 5 NEW components (PageHeader/StatsStrip/RunsTable/FailureKindsCard/FlakyChecksCard) + REBUILT VerificationView shell + VerificationList orphan-deleted (Karpathy §3); Day 2 ships 5 NEW Vitest specs (489→498 / +9 NEW) + e2e adapt + route-sweep envelope mock (2nd application of `AD-RouteSweep-Envelope-Mock-Convention`) |
 | ~~5~~ | ~~**`/memory` Memory Layers matrix rebuild**~~ | ✅ **RESOLVED Sprint 57.42** — 6 NEW components + verbatim `_fixtures.ts` + outer 2-tab DROP + backward-compat redirects + 11 orphan deletes (6 source + 5 specs); agent-delegated ~40 min wall-clock |
-| ~~6~~ → 2 | **`/admin-tenants` rebuild** | Backend GET endpoint already wired; pure frontend work; ~12-15 hr |
-| ~~7~~ → 3 | **`/tenant-settings` 6-tab rebuild** | Largest scope; mostly form work; ~15-20 hr |
-| ~~8~~ → 4 | Update CLAUDE.md routes-shipped count + carryover list | Honest status reflection; post Sprint 57.42 reality is **19-20/22** if we count audit re-verified pages |
+| ~~6~~ | ~~**`/admin-tenants` rebuild**~~ | ✅ **RESOLVED Sprint 57.43** — 5 NEW components (TenantsPageHeader/TenantsStatsStrip/TenantsTable/AdminTenantsView + avatar cell inline) + verbatim `_fixtures.ts` mockup port (TENANTS_FIXTURE 8 + STATS_FIXTURE 4 + TABLE_SUBTITLE) + 6 vintage orphan-deletes (Karpathy §3) + AP-2 banner declaring `TenantListItem` schema gap deferred Phase 58+; agent-delegated ~5 min wall-clock Day 1 vs ~3 hr human-equivalent (1st validation of newly ACTIVATED `agent_factor = 0.55` per Sprint 57.42 retro Q4); Day 2 ships 5 NEW Vitest specs (481→514 / +33 NEW) |
+| ~~7~~ → 2 | **`/tenant-settings` 6-tab rebuild** | Largest scope; mostly form work; ~15-20 hr — **last remaining CATASTROPHIC** |
+| ~~8~~ → 3 | Update CLAUDE.md routes-shipped count + carryover list | Honest status reflection; post Sprint 57.43 reality is **20-21/22** if we count audit re-verified pages |
 
 ---
 
@@ -146,18 +148,20 @@ After calibration multiplier (~0.55-0.65 frontend-mockup-strict-rebuild evidence
 
 ---
 
-## Carryover ADs from this audit (post Sprint 57.41)
+## Carryover ADs from this audit (post Sprint 57.43)
 
-1. ✅ **`AD-Memory-Layers-Matrix-Rebuild`** — **CLOSED Sprint 57.42**: full rebuild ships Day 1 via agent-delegated 6 NEW components (MemoryPageHeader / TimeTravelScrubber 24h interactive playback / MemoryMatrix 5×3 grid with cursor-aware visibility filter / RecentMemoryOpsCard / GdprErasureCard / MemoryView) + verbatim `_fixtures.ts` mockup port (SCOPES / TIME_SCALES / MEMORY_ENTRIES / TIME_TRAVEL_MARKS / MEMORY_OPS_TIMELINE / RECENT_MEMORY_OPS / TOTAL_ENTRIES) + outer 2-tab DROP per §1.4 Option B + backward-compat redirects (/memory/recent + /memory/by-scope → /memory) + 11 orphan deletes (3 vintage components + 3 vintage hooks + 4 Vitest specs + 1 e2e per Karpathy §3) + 1-line `ButtonVariant` widen for mockup-required `"warning" + "danger"` variants. Day 2 ships 5-6 NEW Vitest specs (474 → ~479-482 target) + drift audit report update. Class: `frontend-mockup-strict-rebuild` 0.60 (8th data point); agent-delegated 10th consecutive code-implementer ~40 min wall-clock vs ~5-5.5 hr human-equivalent → 5th cross-class data point for `AD-Sprint-Plan-Agent-Delegation-Factor-Modifier` (activation criteria fully met). Verified PARITY.
+1. ✅ **`AD-AdminTenants-Catastrophic-Rebuild`** — **CLOSED Sprint 57.43**: full rebuild ships Day 1 via agent-delegated 5 NEW components (TenantsPageHeader / TenantsStatsStrip / TenantsTable / AdminTenantsView + avatar-cell inline) + verbatim `_fixtures.ts` mockup port (TENANTS_FIXTURE 8 entries + STATS_FIXTURE 4 entries + TABLE_SUBTITLE) + 6 vintage components orphan-deleted (Karpathy §3) + AP-2 BackendGapBanner declaring `TenantListItem` schema gap (5 of 9 mockup columns: seats/region/agents/runs24/status) deferred Phase 58+ via `AD-AdminTenants-Backend-Schema-Extension`. Day 2 ships 5 NEW Vitest specs (481→514 / +33 NEW, +312-560% over +5-8 target) + drift audit report 8-edit update. Class: `frontend-mockup-strict-rebuild` 0.60 (9th data point) × `agent_factor = 0.55` (1st validation of newly ACTIVATED modifier per Sprint 57.42 retro Q4 activation decision); agent-delegated 11th consecutive code-implementer ~5 min wall-clock Day 1 vs ~3 hr human-equivalent. Verified PARITY.
+
+2. ✅ **`AD-Memory-Layers-Matrix-Rebuild`** — **CLOSED Sprint 57.42**: full rebuild ships Day 1 via agent-delegated 6 NEW components (MemoryPageHeader / TimeTravelScrubber 24h interactive playback / MemoryMatrix 5×3 grid with cursor-aware visibility filter / RecentMemoryOpsCard / GdprErasureCard / MemoryView) + verbatim `_fixtures.ts` mockup port (SCOPES / TIME_SCALES / MEMORY_ENTRIES / TIME_TRAVEL_MARKS / MEMORY_OPS_TIMELINE / RECENT_MEMORY_OPS / TOTAL_ENTRIES) + outer 2-tab DROP per §1.4 Option B + backward-compat redirects (/memory/recent + /memory/by-scope → /memory) + 11 orphan deletes (3 vintage components + 3 vintage hooks + 4 Vitest specs + 1 e2e per Karpathy §3) + 1-line `ButtonVariant` widen for mockup-required `"warning" + "danger"` variants. Day 2 ships 5-6 NEW Vitest specs (474 → ~479-482 target) + drift audit report update. Class: `frontend-mockup-strict-rebuild` 0.60 (8th data point); agent-delegated 10th consecutive code-implementer ~40 min wall-clock vs ~5-5.5 hr human-equivalent → 5th cross-class data point for `AD-Sprint-Plan-Agent-Delegation-Factor-Modifier` (activation criteria fully met). Verified PARITY.
 2. ✅ **`AD-Governance-Catastrophic-Rebuild-And-Bug-Fix`** — **CLOSED Sprint 57.40**: (a) "data-fetch runtime bug" turned out to be a route-sweep mock fixture artifact (D-DAY1-2) — fixed in `/governance/approvals` specific mock; (b) full rebuild ships Sprint 57.40 Day 1 via agent-delegated 5 NEW components + ApprovalsPage restructure + ApprovalList 7-col upgrade. Verified PARITY.
 3. ✅ **`AD-Verification-Catastrophic-Rebuild`** — **CLOSED Sprint 57.41**: full rebuild ships Day 1 via agent-delegated 5 NEW components (PageHeader/StatsStrip/RunsTable/FailureKindsCard/FlakyChecksCard) + REBUILT VerificationView shell + VerificationList.tsx + VerificationList.test.tsx orphan-deleted (Karpathy §3). Day 2 ships 5 NEW Vitest specs (489→498 / +9 NEW, +112-225% over +4-8 target) + e2e adapt + route-sweep envelope mock (2nd application of `AD-RouteSweep-Envelope-Mock-Convention`). Verified PARITY.
 4. 🆕 **`AD-ChatV2-Inspector-Tab-Rename`** — rename Inspector tab vocabulary `Turn/Trace/Memory/Tree` → mockup `Run/Tools/Memory/Verify`. ~30 min. Class: `frontend-refactor-mechanical` 0.50.
-5. 🆕 **`AD-CLAUDE-md-Frontend-Status-Realignment`** — update `Phase 57+ 11/17 routes shipped / 2 🟡 STRUCTURAL remaining` to honest count after this audit. **Post Sprint 57.41**: STRUCTURAL list is **3** (`/memory` + `/admin-tenants` + `/tenant-settings`); Phase-2 epic count moves toward 13-16/17 depending on whether the audit pages count as "shipped".
+5. 🆕 **`AD-CLAUDE-md-Frontend-Status-Realignment`** — update `Phase 57+ 11/17 routes shipped / 2 🟡 STRUCTURAL remaining` to honest count after this audit. **Post Sprint 57.43**: STRUCTURAL list is **1** (only `/tenant-settings` remains); Phase-2 epic count moves toward 16-19/17 (re-verified pages + 4 audit rebuilds: governance/verification/memory/admin-tenants).
 6. ✅ **`AD-Sprint-57.23-Auth-Spot-Check-Complete`** — Sprint 57.23 + 57.35 rebuild verified PARITY on 4/7 auth routes; 3 not-yet-individually-verified follow-up trivial (~5 min spot-check).
 7. 🆕 **`AD-RouteSweep-Envelope-Mock-Convention`** (Sprint 57.40 D-DAY1-2 lesson; 2nd application Sprint 57.41 D-DAY0-1) — add a `testing.md` or `frontend-mockup-fidelity.md` note: any backend endpoint returning an envelope shape (e.g. `{items, total, has_more}`) needs an explicit sweep mock entry in `route-sweep.mjs`; the default `[]` is only safe for list-shaped endpoints. Codify with grep pattern + example to prevent future false-positive red banners in audit captures. **2nd application validation**: Sprint 57.41 applied this preemptively at Day 0 (not reactively post-audit), proving the pattern transfers cleanly to subsequent envelope-shaped endpoints.
 
 ---
 
 **Author**: Claude Opus 4.7 (1M context) via 23-pair side-by-side audit
-**Date**: 2026-05-25 (initial); updated 2026-05-25 Sprint 57.40 Day 2 closeout; updated 2026-05-25 Sprint 57.41 Day 2 closeout; updated 2026-05-25 Sprint 57.42 Day 2 closeout
-**Status**: Sprint 57.42 closed `/memory` Memory Layers matrix rebuild (drift audit 2026-05-25 #2 priority CATASTROPHIC verdict). Remaining **2 CATASTROPHIC** (admin-tenants / tenant-settings) + 1 NEAR-PARITY (chat-v2 Inspector tab rename ~30 min quick win) awaits user prioritization (see Recommendations).
+**Date**: 2026-05-25 (initial); updated 2026-05-25 Sprint 57.40 Day 2 closeout; updated 2026-05-25 Sprint 57.41 Day 2 closeout; updated 2026-05-25 Sprint 57.42 Day 2 closeout; updated 2026-05-25 Sprint 57.43 Day 2 closeout
+**Status**: Sprint 57.43 closed `/admin-tenants` rebuild (drift audit 2026-05-25 #1 remaining-priority CATASTROPHIC verdict). Remaining **1 CATASTROPHIC** (`/tenant-settings` only — 6-tab largest scope) + 1 NEAR-PARITY (chat-v2 Inspector tab rename ~30 min quick win) awaits user prioritization (see Recommendations). 4 of 5 originally-identified CATASTROPHIC drifts now CLOSED across Sprints 57.40-57.43 (governance / verification / memory / admin-tenants).
