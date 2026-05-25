@@ -25,6 +25,7 @@
  * Created: 2026-05-20 (Sprint 57.26 Day 0) — supersedes the temporary frontend/diagnose-render.mjs
  *
  * Modification History:
+ *   - 2026-05-25: FIX-016 — APPSHELL_ROUTES +/redaction +/error-policy (PROP→real coverage gap)
  *   - 2026-05-25: FIX-014 — OUT_DIR cwd-relative → __dirname-relative (Sprint 57.39 D4 foot-gun)
  *   - 2026-05-24: Sprint 57.39 — re-point OUT_DIR to sprint-57-39-governance-multipage-phase2 (4-domain batched: /governance + /verification re-point + /redaction + /error-policy PROP→real; 1st deliberate-test of `-with-extras` 0.65 baseline post-57.38 split)
  *   - 2026-05-24: Sprint 57.38 — re-point OUT_DIR to sprint-57-38-class-split-subagents-fullbleed-audit (reused for 3-domain batched sprint: Domain A class-split decision meta + Domain B /subagents Phase-2 verbatim re-point -with-extras 5th app per Day 0 D5 reclass + Domain C AD-FullBleed-Pages-Audit FIX-010 follow-up)
@@ -78,8 +79,11 @@ const PUBLIC_ROUTES = [
   ["/auth/dev", "auth-dev"],
 ];
 
-// AppShellV2 routes — 13 real pages + 1 PROP stub representative (/compaction;
-// the other 13 PROP stubs all render the same ComingSoonPlaceholder shell).
+// AppShellV2 routes — 15 real pages + 1 PROP stub representative (/compaction;
+// the other 11 PROP stubs all render the same ComingSoonPlaceholder shell).
+// FIX-016: +/redaction +/error-policy (Sprint 57.39 PROP→real promotion gap;
+// previously stuck at 13 real + missed Sprint 57.39 deliberate-test PNG evidence).
+// Future auto-derive from routes.config.ts is AD-RouteSweep-Auto-Derive candidate.
 const APPSHELL_ROUTES = [
   ["/overview", "overview"],
   ["/chat-v2", "chat-v2"],
@@ -90,6 +94,8 @@ const APPSHELL_ROUTES = [
   ["/state-inspector", "state-inspector"],
   ["/governance", "governance"],
   ["/verification", "verification"],
+  ["/redaction", "redaction"],
+  ["/error-policy", "error-policy"],
   ["/cost-dashboard", "cost-dashboard"],
   ["/sla-dashboard", "sla-dashboard"],
   ["/admin-tenants", "admin-tenants"],
