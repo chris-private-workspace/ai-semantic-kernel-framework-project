@@ -72,7 +72,11 @@ const SCAN_DIRS = [path.join(FRONTEND, "src/features"), path.join(FRONTEND, "src
 // The not-yet-re-pointed governance + chat_v2 risk-colour maps still carry
 // hardcoded hex; Phase-2 re-point sprints lower this number when those land.
 // -1 from FIX-015: AuditLogViewer .btn outline swap retired one mockup-token hex literal.
-const HEX_OKLCH_BASELINE = 50;
+// -5 from FIX-017: governance risk-colour map normalization — Badge cva variants (4 lines)
+// + ApprovalList RISK_COLOR_CLASS (4 lines) + AuditChainBadge valid-state (1 line) swapped
+// to `var(--risk-X)` Tailwind arbitrary-value-with-typed-hint pattern. (chat_v2 risk map
+// was already migrated pre-FIX-017 — only the L72 comment historical reference remains.)
+const HEX_OKLCH_BASELINE = 45;
 
 let failed = false;
 

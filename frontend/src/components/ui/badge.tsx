@@ -35,11 +35,15 @@ const badgeVariants = cva(
         secondary: "border-transparent bg-secondary text-secondary-foreground",
         outline: "border-border text-foreground",
         destructive: "border-transparent bg-destructive text-destructive-foreground",
-        // STYLE.md §3 risk palette (hex matches features/governance/components/ApprovalCard.tsx).
-        "risk-low": "border-transparent bg-[#2e7d32]/10 text-[#2e7d32]",
-        "risk-medium": "border-transparent bg-[#ed6c02]/10 text-[#ed6c02]",
-        "risk-high": "border-transparent bg-[#d84315]/10 text-[#d84315]",
-        "risk-critical": "border-transparent bg-[#b71c1c]/10 text-[#b71c1c]",
+        // STYLE.md §3 risk palette → mockup --risk-X tokens (FIX-017 normalization
+        // from Sprint 53.5 hex sentinels). styles-mockup.css L20-23 owns the
+        // oklch values; this Badge component now consumes them via Tailwind
+        // arbitrary value with `color:` type hint (supports the `/10` opacity
+        // modifier exactly like the original hex literals did).
+        "risk-low": "border-transparent bg-[color:var(--risk-low)]/10 text-[color:var(--risk-low)]",
+        "risk-medium": "border-transparent bg-[color:var(--risk-medium)]/10 text-[color:var(--risk-medium)]",
+        "risk-high": "border-transparent bg-[color:var(--risk-high)]/10 text-[color:var(--risk-high)]",
+        "risk-critical": "border-transparent bg-[color:var(--risk-critical)]/10 text-[color:var(--risk-critical)]",
       },
     },
     defaultVariants: { variant: "default" },

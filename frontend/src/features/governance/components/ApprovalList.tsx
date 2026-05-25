@@ -16,6 +16,7 @@
  * Last Modified: 2026-05-25
  *
  * Modification History (newest-first):
+ *   - 2026-05-25: FIX-017 — RISK_COLOR_CLASS hex sentinels (#2e7d32/#ed6c02/#d84315/#b71c1c) → var(--risk-X)
  *   - 2026-05-25: FIX-015 — re-point shadcn-utility tokens (bg-muted/border-border/etc.) → mockup verbatim classes/vars
  *   - 2026-05-09: Sprint 57.9 US-2 Day 1 — Tailwind migration (drop inline styles)
  *   - 2026-05-04: Initial creation (Sprint 53.5 Day 3)
@@ -31,12 +32,15 @@ type Props = {
   onSelect: (approval: ApprovalSummary) => void;
 };
 
-// Preserve exact 53.5 palette via Tailwind arbitrary-value class (test sentinel).
+// FIX-017: re-point Sprint 53.5 hex sentinels (#2e7d32/#ed6c02/#d84315/#b71c1c)
+// to mockup --risk-X tokens. styles-mockup.css L20-23 owns the oklch values;
+// Tailwind arbitrary value with `color:` type hint preserves the class-lookup
+// API shape (consumers use RISK_COLOR_CLASS[level] unchanged).
 const RISK_COLOR_CLASS: Record<RiskLevelLabel, string> = {
-  LOW: "text-[#2e7d32]",
-  MEDIUM: "text-[#ed6c02]",
-  HIGH: "text-[#d84315]",
-  CRITICAL: "text-[#b71c1c]",
+  LOW: "text-[color:var(--risk-low)]",
+  MEDIUM: "text-[color:var(--risk-medium)]",
+  HIGH: "text-[color:var(--risk-high)]",
+  CRITICAL: "text-[color:var(--risk-critical)]",
 };
 
 function formatAge(sla: string): string {

@@ -88,9 +88,12 @@ describe("components/ui — Badge", () => {
     expect((container.firstChild as HTMLElement).className).toContain("bg-primary");
   });
 
-  it("risk-critical variant uses the STYLE.md §3 hex", () => {
+  it("risk-critical variant maps to mockup --risk-critical token", () => {
+    // FIX-017: assertion updated from Sprint 53.5 hex sentinel `#b71c1c` to
+    // the mockup `var(--risk-critical)` token; styles-mockup.css L23 owns
+    // the oklch value (≈ #B71C1C; same visual intent).
     const { container } = render(<Badge variant="risk-critical">CRITICAL</Badge>);
-    expect((container.firstChild as HTMLElement).className).toContain("#b71c1c");
+    expect((container.firstChild as HTMLElement).className).toContain("var(--risk-critical)");
   });
 });
 

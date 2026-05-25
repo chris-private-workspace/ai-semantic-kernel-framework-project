@@ -24,6 +24,7 @@
  * Created: 2026-05-09 (Sprint 57.9 Day 3 US-5)
  *
  * Modification History (newest-first):
+ *   - 2026-05-25: FIX-017 — valid-state badge hex sentinels (#2e7d32) → var(--risk-low) tokens
  *   - 2026-05-09: Initial creation (Sprint 57.9 US-5)
  *
  * Related:
@@ -74,7 +75,7 @@ export function AuditChainBadge() {
       {!error && isFetched && data && data.valid && (
         <span
           role="status"
-          className="rounded-md bg-[#2e7d32]/10 px-2 py-1 text-xs font-semibold text-[#2e7d32]"
+          className="rounded-md bg-[color:var(--risk-low)]/10 px-2 py-1 text-xs font-semibold text-[color:var(--risk-low)]"
         >
           ✓ Valid · {data.total_entries} entries
         </span>
