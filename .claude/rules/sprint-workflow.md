@@ -8,6 +8,7 @@
 **Status**: Active
 
 > **Modification History**
+> - 2026-05-25: Bundle Item #4 — propose Agent Delegation Factor Modifier (matrix proposal, pending 2-3 sprint validation) + §Before Commit lint must be non-silent (closes AD-Sprint-Plan-Agent-Delegation-Factor-Modifier as proposal + AD-Pre-Push-Lint-Silent-Suppression-Anti-Pattern)
 > - 2026-05-25: AD-Plan-5 fold-in §Step 2.5 Prong 2.5 Child Component Tree Depth Audit (closes AD-Day0-Prong2-Child-Component-Tree-Depth-Audit; Sprint 57.39 D-DAY1-1 + FIX-015 evidence)
 > - 2026-05-18: Sprint 57.22 — add §Sprint Closeout CLAUDE.md+MEMORY.md update policy (closes REFACTOR-001 Step 2)
 > - 2026-05-06: Sprint 57.1 — fold-in §Step 2.5 Prong 3 Schema Verify (closes AD-Plan-4 promotion)
@@ -140,6 +141,63 @@ Per AD-Sprint-Plan-4 (logged Sprint 55.3) + 4-sprint window evidence,one-multipl
 - 2026-05-09: Sprint 57.8 Day 4 — +1 NEW row `frontend-arch-spike` 0.50 HYBRID weighted blend 1-data-point baseline (NEW AD-Sprint-Plan-10 propose split greenfield/reuse-ship)
 - 2026-05-10: Sprint 57.7 Day 4 — +1 NEW row `iam-frontend-spike` 0.60 HYBRID weighted blend 1-data-point baseline (closes AD-Sprint-Plan-9)
 - 2026-05-08: Sprint 57.6 Day 4 — add scope-class multiplier matrix (closes AD-Reality-10);+2 NEW rows `reality-check` 0.85 1-data-point baseline (closes AD-Sprint-Plan-7) + `reality-gap-fix` 0.50 1-data-point baseline (NEW AD-Sprint-Plan-8 pending 2-3 sprint validation)
+
+#### Proposed Agent Delegation Factor Modifier (PENDING VALIDATION — 2026-05-25 Item #4 of post-Sprint-57.39 4-AD micro-fix sequence)
+
+**Status**: **PROPOSAL — NOT yet active**. Logged per `AD-Sprint-Plan-Agent-Delegation-Factor-Modifier` (Sprint 57.39 retro Q4 #4); requires 2-3 sprint validation before applying to any active baseline. Existing matrix entries above are UNCHANGED by this proposal.
+
+**Hypothesis**: code-implementer agent-delegated frontend work shows ~3-5× speedup vs the human-rewrite cadence the bottom-up estimates assume. Existing per-class multipliers (0.45-0.85) bake in a human-cadence haircut; agent-delegated sprints consistently undershoot the calibrated band lower edge because the haircut isn't enough.
+
+**Evidence accumulating** (2 data points):
+
+| Sprint / FIX | Class | Delegation | Ratio actual/committed | Ratio actual/bottom-up | Implied agent vs human speedup |
+|--------------|-------|------------|------------------------|------------------------|--------------------------------|
+| Sprint 57.39 | `-with-extras` (0.65 baseline) | 6th+7th consecutive code-implementer (4-domain batched) | **0.41** (BELOW [0.85, 1.20] band by 0.44) | 0.27 | ~3.7× |
+| FIX-015 (post-hoc) | bundled FIX (no calibration class) | code-implementer 6 child re-point | n/a (no class) | bottom-up 6-10 hr / actual ~25 min ≈ 0.04 | ~24-40× (outlier — surgical token-swap) |
+
+**Proposed embedding (Option A then B fallback)**:
+
+**Option A — Multiplicative agent_factor coefficient** (1 new global coefficient; cleanest):
+
+```
+effective_calibrated_hours = bottom_up × scope_class_multiplier × agent_factor
+
+where agent_factor = {
+  human (default):      1.0
+  agent-delegated:      0.50-0.60  (proposed start at 0.55 mid-band)
+}
+```
+
+Equivalent combined ratio for `-with-extras` 0.65 base × 0.55 agent_factor ≈ **0.36** (close to AD spec's "0.30-0.40 effective" target).
+
+Pros: 1 new global coefficient; doesn't require splitting every active class; trivial matrix change
+Cons: assumes uniform speedup across classes; reality may differ by file count / structural complexity / mockup-truth availability
+
+**Option B — Per-class sub-class split** (fallback if Option A undershoots for specific classes):
+
+Add `+ agent-delegated` sub-row for each high-volume class:
+- `-with-extras` (0.65; human) + `-with-extras + agent-delegated` (0.30-0.40)
+- `frontend-mockup-strict-rebuild` (0.60; human) + `... + agent-delegated` (0.25-0.35)
+- `frontend-verbatim-css-repoint -simple` (0.50; human) + `... + agent-delegated` (0.25-0.30)
+
+Pros: per-class precision; matches existing matrix granularity
+Cons: doubles row count for active classes; higher maintenance overhead
+
+**Recommended**: Option A first (1 conservative coefficient, 1 sprint validation), fallback to Option B if Option A produces ratio < 0.7 or > 1.20 for ≥ 2 specific classes.
+
+**Activation rule** (3-sprint window — parallel to existing `When to adjust the multiplier` discipline):
+- ≥ 3 consecutive sprints with agent-delegated ratio < 0.7 AND consistent delegation pattern (≥ 80% of Day 1 work via agent) → **activate Option A** with `agent_factor = 0.55` (mid-band conservative start)
+- If activated factor produces 2 sprints with ratio < 0.7 → tighten to 0.45
+- If activated factor produces 1 sprint with ratio > 1.20 → roll back to 0.65 (single-data-point caution); ≥ 2 sprints > 1.20 → roll back to 1.0 (drop the modifier — agent delegation didn't actually accelerate that class)
+
+**Current state**: **2 data points (57.39 + FIX-015) — INSUFFICIENT for activation**. Continue accumulating evidence per Sprint 57.39 retro Q4 #4 deferral.
+
+**Tracking discipline going forward**: each future agent-delegated sprint MUST record in retrospective Q2:
+1. `actual/bottom-up` ratio (existing)
+2. `actual/committed` ratio (existing)
+3. **NEW**: explicit `agent-delegated: yes / no / partial` tag (the running window can then be computed without ambiguity)
+
+**Why this proposal matters**: 5 of the last 6 sprints (57.34 / 57.35 / 57.36 / 57.37B / 57.39) used code-implementer agent delegation as the primary Day 1 mechanism. The current matrix treats them as human-rewrite work, producing systematic ratio-below-band signals that look like "calibration drift" when they're actually "missing agent_factor coefficient". Activating Option A would correctly attribute the speedup AND reset the matrix to track real calibration drift (not delegation-vs-human-cadence drift).
 
 ---
 
@@ -818,7 +876,7 @@ Every commit must pass:
      - One-stop wrapper invokes 6 V2 lints with correct `--root` args (check_ap1: `backend/src` / check_promptbuilder: default `backend/src/agent_harness` / 4 auto-discover)
      - Exit 0 = all 6 green; non-zero = `<failed>/6` with per-script line summary
      - Replaces the prior 6 separate invocations (which silently mis-passed when `--root` arg mismatched script expectation — see Sprint 53.7 Day 0 drift D1)
-   - Frontend: `npm run lint && npm run build`
+   - Frontend: `npm run lint && npm run build` — **MUST run WITHOUT `--silent` flag** (Sprint 57.40 closes AD-Pre-Push-Lint-Silent-Suppression-Anti-Pattern). FIX-015 PR #183 CI failed in 30s with 28 ESLint `no-restricted-syntax` errors that local `npm run lint --silent` swallowed; the `--silent` flag suppresses lint error output along with package-manager noise. **Never** use `--silent` for the pre-push lint check; if you want clean output, redirect with `2>&1 | tail -20` instead (preserves errors while trimming noise).
 
 3. **Tests Passing**
    - Backend: `pytest` (>= 80% coverage for new code)
