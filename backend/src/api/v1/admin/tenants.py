@@ -46,6 +46,7 @@ Created: 2026-05-06 (Sprint 56.1 Day 1)
 Last Modified: 2026-05-10
 
 Modification History:
+    - 2026-05-26: Sprint 57.48 Day 1 — +4 admin GET endpoints HITL+FF+Quotas+RateLimits
     - 2026-05-26: Sprint 57.47 Day 1 — LIST 7→12 + region filter + members GET (AD-AdminT-Ext)
     - 2026-05-26: Sprint 57.46 Day 1 — +5 SaaS settings fields (closes AD-TenantSettings-Schema-Ext)
     - 2026-05-10: Sprint 57.13 US-A3 — /{tenant_id} dep → require_tenant_match_or_platform_admin
@@ -77,9 +78,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from agent_harness._contracts.hitl import RiskLevel
 from infrastructure.db.audit_helper import append_audit
+from infrastructure.db.models.feature_flag import FeatureFlag
 from infrastructure.db.models.identity import Tenant, TenantPlan, TenantState, User
 from infrastructure.db.session import get_db_session
+from platform_layer.governance.hitl.policy_store import DBHITLPolicyStore
 from platform_layer.identity.auth import (
     require_admin_platform_role,
     require_tenant_match_or_platform_admin,
@@ -91,6 +95,7 @@ from platform_layer.tenant.onboarding import (
     InvalidOnboardingStepError,
     OnboardingTracker,
 )
+from platform_layer.tenant.plans import PlanLoader, get_plan_loader
 from platform_layer.tenant.provisioning import ProvisioningError, ProvisioningWorkflow
 
 router = APIRouter(prefix="/admin/tenants", tags=["admin", "tenants"])
@@ -655,3 +660,371 @@ async def list_tenant_members(
         limit=limit,
         offset=offset,
     )
+
+
+# =====================================================================
+# Sprint 57.48 Track A — HITLPolicies admin GET (closes AD-TenantSettings-HITLPolicies-Backend)
+# =====================================================================
+# D-DAY0-2 pivot: DBHITLPolicyStore.get(tenant_id) returns SINGLE composite
+# HITLPolicy (not list). Project into a list of per-RiskLevel entries so
+# the frontend HITLPoliciesTab (mockup _fixtures.ts HITL_POLICIES: 4 rows
+# keyed by risk) consumes a familiar shape. If no per-tenant policy row
+# exists, return empty list (frontend will fall back to fixture; AP-2 ok).
+
+
+class HITLPolicyItem(BaseModel):
+    """Per-risk-level entry projected from DBHITLPolicyStore composite policy.
+
+    Sprint 57.48 Track A — closes AD-TenantSettings-HITLPolicies-Backend.
+
+    Composite policy shape from HITLPolicy dataclass:
+        auto_approve_max_risk / require_approval_min_risk / reviewer_groups_by_risk
+        / sla_seconds_by_risk
+
+    Projection rule (per risk level in {LOW, MEDIUM, HIGH, CRITICAL}):
+        - policy = "auto" if risk <= auto_approve_max_risk else
+                   "always_ask" if risk >= require_approval_min_risk else
+                   "ask_once"
+        - reviewers = reviewer_groups_by_risk.get(risk, []) joined by " + "
+        - sla_seconds = sla_seconds_by_risk.get(risk) (None when unset)
+    """
+
+    risk: str  # "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+    policy: str  # "auto" | "ask_once" | "always_ask"
+    sla_seconds: int | None
+    reviewers: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class HITLPolicyListResponse(BaseModel):
+    """Paginated response for tenant HITL policy entries."""
+
+    items: list[HITLPolicyItem]
+    total: int
+    limit: int
+    offset: int
+
+
+_RISK_ORDER: dict[RiskLevel, int] = {
+    RiskLevel.LOW: 0,
+    RiskLevel.MEDIUM: 1,
+    RiskLevel.HIGH: 2,
+    RiskLevel.CRITICAL: 3,
+}
+
+
+def _project_hitl_policy_to_items(policy: Any) -> list[HITLPolicyItem]:
+    """Project composite HITLPolicy → list[HITLPolicyItem] (one per RiskLevel).
+
+    Returns empty list if `policy` is None (no per-tenant row in DB).
+    """
+    if policy is None:
+        return []
+    items: list[HITLPolicyItem] = []
+    auto_max = _RISK_ORDER[policy.auto_approve_max_risk]
+    require_min = _RISK_ORDER[policy.require_approval_min_risk]
+    for risk in (RiskLevel.CRITICAL, RiskLevel.HIGH, RiskLevel.MEDIUM, RiskLevel.LOW):
+        rank = _RISK_ORDER[risk]
+        if rank <= auto_max:
+            policy_kind = "auto"
+        elif rank >= require_min:
+            policy_kind = "always_ask"
+        else:
+            policy_kind = "ask_once"
+        reviewers_list = policy.reviewer_groups_by_risk.get(risk, [])
+        reviewers = " + ".join(reviewers_list) if reviewers_list else ""
+        sla_seconds = policy.sla_seconds_by_risk.get(risk)
+        items.append(
+            HITLPolicyItem(
+                risk=risk.value,
+                policy=policy_kind,
+                sla_seconds=sla_seconds,
+                reviewers=reviewers,
+            )
+        )
+    return items
+
+
+def _session_factory_from(session: AsyncSession) -> Any:
+    """Build a callable yielding async-context-manager around an existing session.
+
+    DBHITLPolicyStore expects `session_factory()` to return an async context
+    manager that yields an AsyncSession. In API handlers we already have a
+    bound session via Depends; wrap it for store consumption.
+    """
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def _factory() -> Any:
+        yield session
+
+    return _factory
+
+
+@router.get(
+    "/{tenant_id}/hitl-policies",
+    response_model=HITLPolicyListResponse,
+    dependencies=[Depends(require_admin_platform_role)],
+)
+async def list_tenant_hitl_policies(
+    tenant_id: UUID,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db_session),
+) -> HITLPolicyListResponse:
+    """List HITL policy entries (per-RiskLevel projection) for this tenant.
+
+    Returns 4 items (one per RiskLevel) when a per-tenant policy row exists,
+    or 0 items when no override is configured (frontend falls back to mockup
+    fixture per AP-2 honesty rule).
+    """
+    await _load_tenant_or_404(db, tenant_id)
+
+    store = DBHITLPolicyStore(session_factory=_session_factory_from(db))
+    policy = await store.get(tenant_id)
+    all_items = _project_hitl_policy_to_items(policy)
+
+    total = len(all_items)
+    page = all_items[offset : offset + limit]
+    return HITLPolicyListResponse(items=page, total=total, limit=limit, offset=offset)
+
+
+# =====================================================================
+# Sprint 57.48 Track B — FeatureFlags admin GET (closes AD-TenantSettings-FF-AdminGet)
+# =====================================================================
+# D-DAY0-3 pivot: feature_flags is a global registry (name PK + default_enabled
+# + tenant_overrides JSONB). Per-tenant resolved value = tenant_overrides[str(tid)]
+# if present else default_enabled. We expose every registered flag with the
+# resolved-for-tenant value (so the frontend FeatureFlagsTab shows tenant-effective
+# state across all 8+ flags).
+
+
+class FeatureFlagItem(BaseModel):
+    """Tenant-resolved feature flag projection.
+
+    `value` is the boolean effective for this tenant after applying
+    tenant_overrides over default_enabled.
+    """
+
+    name: str
+    value: bool
+    default_enabled: bool
+    overridden: bool
+    description: str | None
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class FeatureFlagListResponse(BaseModel):
+    items: list[FeatureFlagItem]
+    total: int
+    limit: int
+    offset: int
+
+
+@router.get(
+    "/{tenant_id}/feature-flags",
+    response_model=FeatureFlagListResponse,
+    dependencies=[Depends(require_admin_platform_role)],
+)
+async def list_tenant_feature_flags(
+    tenant_id: UUID,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db_session),
+) -> FeatureFlagListResponse:
+    """List feature flags with per-tenant resolved values.
+
+    Order: name ASC (stable for UI rendering).
+    Returns every registered flag; each item carries the tenant-effective
+    boolean plus an `overridden` flag indicating whether a tenant-specific
+    value differs from the default.
+    """
+    await _load_tenant_or_404(db, tenant_id)
+
+    base_stmt = select(FeatureFlag).order_by(FeatureFlag.name.asc())
+    count_stmt = select(func.count()).select_from(base_stmt.subquery())
+    total_raw = (await db.execute(count_stmt)).scalar()
+    total = int(total_raw or 0)
+
+    page_stmt = base_stmt.limit(limit).offset(offset)
+    rows = (await db.execute(page_stmt)).scalars().all()
+
+    tid_key = str(tenant_id)
+    items: list[FeatureFlagItem] = []
+    for ff in rows:
+        override = ff.tenant_overrides.get(tid_key) if ff.tenant_overrides else None
+        effective = bool(override) if override is not None else ff.default_enabled
+        items.append(
+            FeatureFlagItem(
+                name=ff.name,
+                value=effective,
+                default_enabled=ff.default_enabled,
+                overridden=override is not None,
+                description=ff.description,
+                updated_at=ff.updated_at,
+            )
+        )
+
+    return FeatureFlagListResponse(items=items, total=total, limit=limit, offset=offset)
+
+
+# =====================================================================
+# Sprint 57.48 Track C — Quotas admin GET (closes AD-TenantSettings-Quotas-Backend)
+# =====================================================================
+# D-DAY0-4 pivot: platform_layer/tenant/quota.py is Redis-only (current
+# token counter). Structured quota *config* lives in
+# PlanLoader.get_plan(plan_name).quota (PlanQuota dataclass: tokens_per_day
+# / cost_usd_per_day / sessions_per_user_concurrent / api_keys_max). Project
+# 4 quota fields as items; current_usage left null (tokens current usage
+# would require Redis access we don't gate this admin endpoint on — Phase 58+
+# can wire if needed).
+
+
+class QuotaItem(BaseModel):
+    """Per-resource quota projection from PlanQuota."""
+
+    resource: str  # "tokens_per_day" / "cost_usd_per_day" / etc.
+    limit: float  # int promoted to float for cost_usd_per_day uniformity
+    unit: str  # "tokens" | "usd" | "sessions" | "keys"
+    period: str  # "day" | "concurrent"
+    current_usage: float | None  # null when not tracked at admin layer
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class QuotaListResponse(BaseModel):
+    items: list[QuotaItem]
+    total: int
+    limit: int
+    offset: int
+
+
+_QUOTA_RESOURCE_META: list[tuple[str, str, str]] = [
+    # (attr, unit, period)
+    ("tokens_per_day", "tokens", "day"),
+    ("cost_usd_per_day", "usd", "day"),
+    ("sessions_per_user_concurrent", "sessions", "concurrent"),
+    ("api_keys_max", "keys", "concurrent"),
+]
+
+
+def _project_plan_quota_to_items(plan_quota: Any) -> list[QuotaItem]:
+    items: list[QuotaItem] = []
+    for attr, unit, period in _QUOTA_RESOURCE_META:
+        raw = getattr(plan_quota, attr, None)
+        if raw is None:
+            continue
+        items.append(
+            QuotaItem(
+                resource=attr,
+                limit=float(raw),
+                unit=unit,
+                period=period,
+                current_usage=None,
+            )
+        )
+    return items
+
+
+@router.get(
+    "/{tenant_id}/quotas",
+    response_model=QuotaListResponse,
+    dependencies=[Depends(require_admin_platform_role)],
+)
+async def list_tenant_quotas(
+    tenant_id: UUID,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db_session),
+) -> QuotaListResponse:
+    """List quotas (per-resource projection of PlanQuota) for this tenant.
+
+    Source of truth: tenant.plan → PlanLoader.get_plan(name).quota. Returns
+    4 items (one per PlanQuota field). current_usage is null at this admin
+    layer; Phase 58+ may wire Redis counters if the UI needs live readouts.
+    """
+    tenant = await _load_tenant_or_404(db, tenant_id)
+
+    loader: PlanLoader = get_plan_loader()
+    try:
+        plan = loader.get_plan(tenant.plan.value)
+    except Exception:
+        # Unknown plan name → return empty list rather than 500. Defensive.
+        return QuotaListResponse(items=[], total=0, limit=limit, offset=offset)
+
+    all_items = _project_plan_quota_to_items(plan.quota)
+    total = len(all_items)
+    page = all_items[offset : offset + limit]
+    return QuotaListResponse(items=page, total=total, limit=limit, offset=offset)
+
+
+# =====================================================================
+# Sprint 57.48 Track D — RateLimits admin GET (closes AD-TenantSettings-RateLimits-Backend)
+# =====================================================================
+# D-DAY0-5 + Day 0.8 Option A locked: no existing rate_limit module in
+# backend/src/. Project from tenant.meta_data["rate_limits"] JSON list;
+# fall back to DEFAULT_RATE_LIMITS (mirrors _fixtures.ts RATE_LIMITS shape)
+# when meta_data carries nothing. Real persistence deferred Phase 58+.
+
+
+class RateLimitItem(BaseModel):
+    label: str
+    value: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RateLimitListResponse(BaseModel):
+    items: list[RateLimitItem]
+    total: int
+    limit: int
+    offset: int
+
+
+DEFAULT_RATE_LIMITS: list[dict[str, str]] = [
+    {"label": "API requests", "value": "100 / min"},
+    {"label": "Tool calls", "value": "1,000 / min"},
+    {"label": "SSE connections", "value": "50 concurrent"},
+]
+
+
+@router.get(
+    "/{tenant_id}/rate-limits",
+    response_model=RateLimitListResponse,
+    dependencies=[Depends(require_admin_platform_role)],
+)
+async def list_tenant_rate_limits(
+    tenant_id: UUID,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db_session),
+) -> RateLimitListResponse:
+    """List rate-limit entries for this tenant.
+
+    Source: tenant.meta_data["rate_limits"] (list of {label, value}); falls
+    back to DEFAULT_RATE_LIMITS (3 items mirroring frontend fixture) when
+    no override is configured. Phase 58+ may swap meta_data for a dedicated
+    `tenant_rate_limits` table if persistence requirements grow.
+    """
+    tenant = await _load_tenant_or_404(db, tenant_id)
+
+    raw = tenant.meta_data.get("rate_limits") if tenant.meta_data else None
+    if not isinstance(raw, list) or not raw:
+        raw = DEFAULT_RATE_LIMITS
+
+    items: list[RateLimitItem] = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        label = str(entry.get("label", ""))
+        value = str(entry.get("value", ""))
+        if not label:
+            continue
+        items.append(RateLimitItem(label=label, value=value))
+
+    total = len(items)
+    page = items[offset : offset + limit]
+    return RateLimitListResponse(items=page, total=total, limit=limit, offset=offset)

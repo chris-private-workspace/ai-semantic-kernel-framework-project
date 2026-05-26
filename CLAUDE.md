@@ -70,7 +70,7 @@ Build enterprise AI agent teams that work like **human professional teams** — 
 | Attribute | Value |
 |-----------|-------|
 | **Phase** | V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend ongoing (Phase 57+) |
-| **Current Sprint** | Sprint 57.47 closed 2026-05-26 (PR pending) — Phase 58+ Backend Schema Extension wave: Track A admin-tenants LIST TenantListItem 7→12 + region filter CLOSES 🔴 BLOCKING AD-AdminTenants-Backend-Schema-Extension + Track B Day 0.8b 6-tab audit + MEMBERS cheapest-tab impl. +20 NEW pytest tests (168→188). **`agent_factor = 0.65` 1st validation ratio ~0.27 < 0.7 KEEP single-data-point caution**; pendulum 1.60→0.27 strengthens AD-AgentFactor-Sub-Class-Calibration. Detail in `memory/project_phase57_47_admin_tenants_list_schema_extension.md`. Next: see `claudedocs/1-planning/next-phase-candidates.md` (4 deferred TenantSettings tabs sorted by scope HITL/FF/Quotas/RateLimits / AD-AgentFactor-Sub-Class-Calibration 2nd validation Sprint 57.48+) |
+| **Current Sprint** | Sprint 57.48 closed 2026-05-26 (PR pending) — **5-track wave shipped 5 ADs** (largest single-sprint AD count of Phase 57+): TenantSettings HITLPolicies + FF + Quotas + RateLimits Option A + AP-4 lint detector false-positive fix → 9/9 V2 lints GREEN. +29 NEW pytest tests (188→217). **`agent_factor` 2nd consec < 0.7 → Option B sub-class split ESCALATED ACTIVATED**: NEW table `mechanical-single-domain` 0.45 + `mixed-multidomain-bundle` 0.65 + `partial` 0.75 + `human` 1.0. CLOSES AD-AgentFactor-Sub-Class-Calibration. Detail in `memory/project_phase57_48_tenant_settings_backend_completion_wave.md`. Next: see `claudedocs/1-planning/next-phase-candidates.md` (AD-TenantSettings-Frontend-Real-Backend-Migration / AD-Lint-Detector-Code-Aware-Masking-Rule / AD-AgentFactor-Sub-Class-Validation Sprint 57.49+) |
 | **Sprint History** | See [`memory/MEMORY.md`](memory/MEMORY.md) §Recent Sprints + per-sprint subfile `memory/project_phase57_XX_*.md` + retrospective.md under `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-XX/` |
 | **Pending / Next Phase** | See [`claudedocs/1-planning/next-phase-candidates.md`](claudedocs/1-planning/next-phase-candidates.md) |
 | **Roadmap** | Phase 49-55 V2 ✅ / Phase 56-58 SaaS Stage 1 3/3 ✅ / Phase 57+ Frontend ongoing |
@@ -625,7 +625,7 @@ V1 完整 CLAUDE.md 已保留於 `CLAUDE.backup.md`。如需查閱 V1 架構（M
 
 ---
 
-**Last Updated**: 2026-05-26 (Sprint 57.47 — Phase 58+ Backend Schema Extension wave + `agent_factor = 0.65` 1st validation ratio ~0.27 KEEP single-data-point caution); see `memory/` for sprint history
+**Last Updated**: 2026-05-26 (Sprint 57.48 — 5-track TenantSettings Backend Completion Wave + AP-4 hygiene; 5 ADs closed; `agent_factor` Option B sub-class split ACTIVATED); see `memory/` for sprint history
 **Project Start**: 2025-11-14
 **V2 Authority**: `docs/03-implementation/agent-harness-planning/` (21 docs — 20 規劃 + 1 review)
 **V1 Reference**: `CLAUDE.backup.md` + `docs/07-analysis/V9/00-index.md`
