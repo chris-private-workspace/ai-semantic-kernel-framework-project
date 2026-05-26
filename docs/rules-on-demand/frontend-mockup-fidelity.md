@@ -171,4 +171,115 @@ grep -rln "border-border\|\bborder\s+border-" frontend/src/pages/<route>/ fronte
 
 ---
 
-**維護責任**：每個 frontend sprint kickoff 必讀本檔；Code reviewer 以 DoD 5 條 + 鐵律 7 條 + Phase-2 anti-patterns 3 條為 PR 強制檢查項。
+## 🛡️ Mockup File is Canonical (AuditDocSync Rule)
+
+> **加入版本**：Sprint 57.46（2026-05-26）；closes `AD-MockupFidelity-AuditDocSync-Rule`（source: Sprint 57.45 NEW carryover）。
+
+當 audit-derived 文件（`audit-report.md` / drift-audit / NEAR-PARITY / CATASTROPHIC verdict 等）聲明 component X 有 property Y，但 mockup 來源檔顯示 property Z：
+
+**Mockup file wins. Audit doc 更新對齊 mockup，**不是**反向。**
+
+### Why this rule exists
+
+Audit doc 是**衍生資料**（從 mockup screenshot + 頁面 read-through 由人手抄錄）。一旦 Sprint N 的 audit doc 寫成「tab order 是 A/B/C/D」，Sprint N+1, N+2, ... 都引用該 audit doc 而不再回去看 mockup 來源。**Transcription errors（手抄誤）會 propagate forward 跨多個 sprint 不被挑戰**。
+
+**Sprint 57.45 evidence**：audit row 9 聲明 /chat-v2 Inspector tabs 應為「Run / Tools / Memory / Verify」，但 mockup `reference/design-mockups/page-chat.jsx:378-381` 實際是「Turn / Trace / Memory / Tree」。Audit doc 從 Sprint 57.22 起 transcription error 持續 propagate **23 個 sprint 不被挑戰**，直到 Path B audit overrule 才被 grep 驗證出。
+
+### Day 0 Prong 2 enforcement
+
+每個 drift-audit / Phase-2 re-point 的 Day 0 Prong 2 grep **必須**包含：
+
+1. **直接讀 mockup 來源檔**（例：`reference/design-mockups/page-*.jsx`）
+2. **將 audit doc 聲明用 grep 對照來源檔**
+3. **若有 discrepancy → audit doc 是錯的；更新 audit doc 對齊 mockup；調查 transcription error 何時被引入**
+
+**Grep query template**：
+```bash
+# 例：audit doc 聲明 /chat-v2 tabs = "Run/Tools/Memory/Verify"
+grep -n "Tab\|tab" reference/design-mockups/page-chat.jsx
+# 若實際 mockup 顯示的是 "Turn/Trace/Memory/Tree" → audit doc transcription error
+# 立即修正 audit doc + 添加 inline note + log carryover AD
+```
+
+### Audit doc update protocol
+
+當發現 audit doc transcription error：
+
+- **加 inline note**：`<!-- Sprint XX.Y Day 0 Prong 2: row N claim was transcription error; mockup shows X -->`
+- **更新 verdict**：若 mockup 與 production 實際一致，將 NEAR-PARITY / CATASTROPHIC → PARITY
+- **Cross-reference**：將完整 root cause 寫入 Sprint XX.Y retrospective
+- **Log carryover AD**：若 pattern 表示更廣的 audit-corpus integrity 問題，新增 carryover AD
+
+### Why this rule is hard-loaded as rule corpus (not Sprint 57.45 case study only)
+
+**因為 audit-derivative 文件數量持續增長**（每個 drift audit / Phase-2 sweep 都產生新 audit doc），手抄錯誤累積機率每 sprint 增加。Sprint 57.22 → 57.45 之間累積了 23 sprint 的 propagation，光是檢查 production 跟 audit doc 對齊**並不足夠**——必須把 mockup 來源檔作為 canonical source 來打通。
+
+### 跨參考
+
+- `.claude/rules/sprint-workflow.md` §Step 2.5 Prong 2 — content verify methodology（grep 對照 source claim）
+- Sprint 57.45 retrospective — Path B audit overrule 案例完整 narrative
+- Sprint 57.22 retrospective — transcription error 引入點（原始 Sprint /chat-v2 audit）
+
+---
+
+**維護責任**：每個 frontend sprint kickoff 必讀本檔；Code reviewer 以 DoD 5 條 + 鐵律 7 條 + Phase-2 anti-patterns 3 條 + AuditDocSync 1 條為 PR 強制檢查項。
+
+---
+
+## 📸 Mockup Capture Method
+
+> **加入版本**：Sprint 57.46（2026-05-26）；closes `AD-MockupCapture-Method-Resolution`（source: Sprint 57.43+ AD-MockupCapture-03+04 carryover）；formalizes existing convention.
+
+要 capture mockup 的真實畫面（為了與 production 1:1 比對 / 為 audit-report.md 提供 evidence），**統一方法 = Option B static file serve**。
+
+### 為什麼是 Option B
+
+- Mockup 本身就是 standalone React UMD + babel-standalone CDN，**可以**用 `python -m http.server` 直接 serve
+- 比 file:// 可靠（file:// 下 babel-standalone fails on CORS / SRI for unpkg CDN scripts → blank black PNG）
+- 比 byte-proxy / JSX transpile 簡單（不需額外 build step）
+- 比 real-browser screenshot service 快（local，無 network）
+
+### 標準命令
+
+```bash
+# Terminal 1: serve mockup（在 reference/design-mockups/ 內或上層皆可）
+cd reference/design-mockups
+python -m http.server 8080
+
+# Terminal 2: 跑 Playwright sweep（從 frontend/）
+cd frontend
+node scripts/mockup-sweep.mjs
+
+# 輸出：claudedocs/5-status/drift-audit-2026-05-25/screenshots/mockup/*.png
+# 24 個 PNG（auth 7 + ops 7 + governance 4 + observability 2 + admin 2 + PROP 1 + 1 alt）
+# 每個 1440×900 viewport
+```
+
+### Script 細節
+
+- **檔案**：`frontend/scripts/mockup-sweep.mjs`
+- **method**：透過 `window.location.hash` SPA 切換而**非**每 route 重新 `goto`（mockup 是 SPA，hash routing；first goto + 8s babel-compile wait → subsequent hash nav 各 900ms）
+- **bypass file://**：硬編 `BASE_URL = "http://localhost:8080/index.html"` 對應 Option B serve
+- **output dir**：`claudedocs/5-status/drift-audit-2026-05-25/screenshots/mockup/`（與同期 `production/` sweep 並列方便對比）
+
+### 何時跑
+
+- 任何 drift audit / Phase-2 re-point sprint 的 Day 0 Prong 2 或 Day 2.5（pre-merge）證據捕捉
+- Mockup 來源更新後（e.g. 設計師調整 page-*.jsx）→ 重跑取得新 baseline
+
+### 不建議的 alternatives
+
+- ❌ **file:// + Playwright** — babel-standalone CDN fail，PNG 是黑色 blank
+- ❌ **JSX transpile to HTML** — 增加 build step，不需要（mockup 已能用 babel-standalone 直接跑）
+- ❌ **headless Chrome real browser screenshot service** — overkill，慢，需 network
+
+### 跨參考
+
+- `frontend/scripts/mockup-sweep.mjs` — 完整 source（22 routes + hash SPA nav）
+- `frontend/scripts/route-sweep.mjs` — sibling production-side sweep（與 mockup-sweep 共用 slug naming）
+- CLAUDE.md §Frontend Mockup-Fidelity Hard Constraint — 提到 `python -m http.server` 為 canonical method
+
+---
+
+**Modification History**:
+- 2026-05-26: Sprint 57.46 — add §AuditDocSync Rule + §Mockup Capture Method (closes 2 carryover ADs)
