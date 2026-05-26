@@ -120,40 +120,42 @@
 ## Day 2 — Closeout (parent assistant)
 
 ### 2.1 Validation
-- [ ] Full backend pytest suite passing (no regressions)
-- [ ] Full frontend Vitest suite passing (no regressions)
-- [ ] 9/9 V2 lints preserved
+- [x] Full backend pytest suite passing (no regressions; 224 PASS / +7)
+- [x] Full frontend Vitest suite passing (no regressions; 607 PASS / +9)
+- [x] 9/9 V2 lints preserved (final sweep 1.00s)
 
 ### 2.2 Retrospective
-- [ ] Write `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-50/retrospective.md`
-- [ ] Q1-Q7 6 必答 format
-- [ ] **Q4: 2nd validation under `mechanical-single-domain` 0.45 sub-class** — ratio + rollback rule decision (KEEP / tighten 0.45→0.35 / roll back 0.45→0.65 / escalate to Option B tier-2 refinement)
-- [ ] **Q4: `medium-backend` 0.80 5th data point** logged
-- [ ] Q5 carryover candidate list (rolling — no specific next-sprint tasks)
+- [x] Write `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-50/retrospective.md`
+- [x] Q1-Q7 6 必答 format
+- [x] **Q4: 2nd validation under `mechanical-single-domain` 0.45 sub-class** — ratio 0.58 BELOW band by 0.27; 2nd consec < 0.7 → ROLLBACK RULE MET → **ACTIVATE Option B tier-2 refinement** (pattern-reuse-heavy 0.30 + greenfield 0.50)
+- [x] **Q4: `medium-backend` 0.80 5th data point** logged (ratio 0.27; 5-pt mean 0.52; confound resolved by tier-2 sub-class layer)
+- [x] Q5 carryover candidate list (rolling — Top 3 candidates: #76 Lint Detector rule / #82 ORM File Path Risk Style / Pause)
 
 ### 2.3 sprint-workflow.md updates
-- [ ] File MHist entry
-- [ ] Matrix MHist entry (`medium-backend` 5th data point + 2nd validation result for sub-class)
-- [ ] §Active Activation history entry (Sprint 57.50 2nd validation under NEW sub-class table)
+- [x] File MHist entry (1-line)
+- [x] Matrix MHist entry (`medium-backend` 0.80 row updated to 5 data points: 55.5/55.6/57.47/57.48/57.50; status note updated re tier-2 confound resolution)
+- [x] §Active Activation history entry (Sprint 57.50 retro Q4 — 2nd validation under NEW sub-class + tier-2 ESCALATION ACTIVATION)
+- [x] §Active sub-class table replaced with tier-2 split (`mechanical-pattern-reuse-heavy` 0.30 + `mechanical-greenfield` 0.50 + `mixed-multidomain-bundle` 0.65 UNCHANGED + partial 0.75 + human 1.0; History trail extended)
 
 ### 2.4 Memory + index
-- [ ] `memory/project_phase57_50_*.md` subfile
-- [ ] MEMORY.md pointer entry (~250-300 char quality pointer per REFACTOR-001 + Sprint Closeout Policy)
+- [x] `memory/project_phase57_50_tenant_settings_identity_fixture_cleanup.md` subfile
+- [x] MEMORY.md pointer entry (~quality pointer; subfile link + 1-sentence topic + keywords)
 
 ### 2.5 CLAUDE.md
-- [ ] Current Sprint row + Last Updated footer (navigator-only per Sprint Closeout Policy; do NOT pack sprint-by-sprint retro detail)
+- [x] Current Sprint row updated (Sprint 57.49 → Sprint 57.50; navigator-only per Sprint Closeout Policy)
+- [x] Last Updated footer updated (Sprint 57.50 — 3 ADs closed + 2nd validation + tier-2 ESCALATED)
 
 ### 2.6 next-phase-candidates.md (REFACTOR-001 single-source for open items)
-- [ ] Update `Updated` header (single line — add Sprint 57.50 closeout note)
-- [ ] Append Sprint 57.50 carryover ADs (new + continuing) at top of file per existing format
+- [x] Update `Updated` header (Sprint 57.50 closeout note; demoted Sprint 57.43-49 batch to "Previous Updated")
+- [x] Append Sprint 57.50 carryover section at TOP of file per existing format (3 ADs closed + 4 NEW carryovers + tier-2 ESCALATION table + Top 3 candidates)
 
-### 2.7 PR + merge
+### 2.7 PR + merge (post-commit; user action)
 - [ ] Push branch + open PR
-- [ ] Touch `.github/workflows/backend-ci.yml` header comment if needed (paths-filter workaround for backend changes — should fire naturally with backend code touched this sprint, but verify)
+- [ ] Backend code touched this sprint — Backend-CI + V2 Lints should fire naturally; no paths-filter workaround needed
 - [ ] Wait CI green
 - [ ] User merges
 - [ ] Local cleanup
 
 ### 2.8 Final
-- [ ] Day 2 commit: `chore(sprint-57-50): Day 2 retro + closeout`
-- [ ] All checklist items `[x]` or 🚧 with reason
+- [ ] Day 2 commit: `chore(sprint-57-50): Day 2 retro + closeout (tier-2 ESCALATION)`
+- [x] All checklist items `[x]` (Day 0 + Day 1) or 🚧 (Day 2.7 PR + merge pending user action)

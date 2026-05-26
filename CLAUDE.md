@@ -70,7 +70,7 @@ Build enterprise AI agent teams that work like **human professional teams** — 
 | Attribute | Value |
 |-----------|-------|
 | **Phase** | V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend ongoing (Phase 57+) |
-| **Current Sprint** | Sprint 57.49 closed 2026-05-26 (PR pending) — dual-track frontend migration wave: Track A TenantSettings 5-tab fixture→real backend (5 NEW TanStack hooks + 5 service funcs + per-tab adapter projection) + Track B AdminTenants Members drawer NEW. +37 NEW Vitest (561→598; +264% over target); 9/9 V2 lints preserved; mockup-fidelity DUAL CLEAN milestone preserved. **1st validation NEW `mechanical-single-domain` 0.45 sub-class agent_factor ratio ~0.14 < 0.7** → KEEP single-data-point caution; pattern-reuse 24× speedup observed (highest). Detail in `memory/project_phase57_49_frontend_backend_migration_wave.md`. Next: see `claudedocs/1-planning/next-phase-candidates.md` (AD-AgentFactor-Tier-2-Refinement-Proposal / AD-TenantSettings-IdentityFixture-Cleanup / AD-AgentFactor-Sub-Class-Validation Sprint 57.50+) |
+| **Current Sprint** | Sprint 57.50 closed 2026-05-26 (PR pending) — single-track 1-hr hygiene sprint closes `AD-TenantSettings-IdentityFixture-Cleanup` (Sprint 57.49 carryover) via Option A fixture-projection (mirror Sprint 57.48 Track D RateLimits): NEW `GET /admin/tenants/{tenant_id}/identity` + `TenantIdentityResponse` Pydantic + `DEFAULT_IDENTITY` constant + NEW `useTenantIdentity` TanStack hook + GeneralTab.tsx Identity Card refactor + softened BackendGapBanner. Backend +7 pytest (217→224) / Frontend +9 Vitest (598→607); 9/9 V2 lints preserved; mockup-fidelity DUAL CLEAN milestone preserved. **2nd validation `mechanical-single-domain` 0.45 ratio 0.58 (2nd consec < 0.7) → Option B tier-2 ESCALATED ACTIVATED**: NEW `mechanical-pattern-reuse-heavy` 0.30 + `mechanical-greenfield` 0.50 effective Sprint 57.51+ (parallel Sprint 57.38+57.48 precedent). 22nd consecutive code-implementer agent delegation. Detail in `memory/project_phase57_50_tenant_settings_identity_fixture_cleanup.md`. Next: see `claudedocs/1-planning/next-phase-candidates.md` (AD-AgentFactor-Tier-2-Sub-Class-Validation-Sprint-57.51 / AD-Lint-Detector-Code-Aware-Masking-Rule / AD-TenantSettings-Identity-Persistence-Phase58) |
 | **Sprint History** | See [`memory/MEMORY.md`](memory/MEMORY.md) §Recent Sprints + per-sprint subfile `memory/project_phase57_XX_*.md` + retrospective.md under `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-XX/` |
 | **Pending / Next Phase** | See [`claudedocs/1-planning/next-phase-candidates.md`](claudedocs/1-planning/next-phase-candidates.md) |
 | **Roadmap** | Phase 49-55 V2 ✅ / Phase 56-58 SaaS Stage 1 3/3 ✅ / Phase 57+ Frontend ongoing |
@@ -625,7 +625,7 @@ V1 完整 CLAUDE.md 已保留於 `CLAUDE.backup.md`。如需查閱 V1 架構（M
 
 ---
 
-**Last Updated**: 2026-05-26 (Sprint 57.49 — Frontend → Backend Real-Data Migration Wave; 2 ADs closed; 1st validation NEW `mechanical-single-domain` 0.45 sub-class ratio 0.14 KEEP); see `memory/` for sprint history
+**Last Updated**: 2026-05-26 (Sprint 57.50 — TenantSettings Identity Fixture Cleanup 1-hr hygiene; 3 ADs closed; 2nd validation `mechanical-single-domain` 0.45 ratio 0.58 → Option B tier-2 ESCALATED: `pattern-reuse-heavy` 0.30 + `greenfield` 0.50 effective Sprint 57.51+); see `memory/` for sprint history
 **Project Start**: 2025-11-14
 **V2 Authority**: `docs/03-implementation/agent-harness-planning/` (21 docs — 20 規劃 + 1 review)
 **V1 Reference**: `CLAUDE.backup.md` + `docs/07-analysis/V9/00-index.md`
