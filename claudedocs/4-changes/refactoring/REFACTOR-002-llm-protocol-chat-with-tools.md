@@ -104,3 +104,9 @@ result = await self._llm_service.chat_with_tools(
 
 - Sprint 144: AgentHandler Function Calling (created the workaround)
 - Feedback: [feedback_check_existing_before_building.md](../../../.claude/projects/.../memory/feedback_check_existing_before_building.md)
+
+---
+
+## Modification History
+
+- 2026-05-26: Sprint 57.52 — renumbered 001→002 (closes AD-REFACTOR-Numbering-Collision; Sprint 57.51 Day 0.8 BONUS observation: 2 files shared REFACTOR-001 prefix; this older Phase 35-38/Sprint 144 era file gets renumbered to REFACTOR-002; newer Sprint 57.22 audit file `REFACTOR-001-claude-md-memory-md-bloat-audit.md` retains REFACTOR-001 as canonical reference per `sprint-workflow.md §Sprint Closeout` policy)
