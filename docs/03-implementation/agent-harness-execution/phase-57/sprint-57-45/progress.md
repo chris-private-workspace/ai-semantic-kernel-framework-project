@@ -151,7 +151,53 @@ This is the **cleanest sweep of any Phase-2 epic sprint** — `/chat-v2.png` lit
 
 24 AFTER PNGs + progress.md update will be committed as Day 2.5 closeout.
 
-### Remaining for Next Step
+---
 
-- Day 2.5 closeout commit (24 AFTER PNGs + progress.md update)
-- Day 3 — retro + matrix MHist + **`agent_factor = 0.45` 1st validation** + memory + CLAUDE.md sync + push + PR
+## Day 3 — 2026-05-26 — Retrospective + Matrix MHist + Memory + DUAL CLEAN Closeout
+
+### Today's Accomplishments
+
+- ✅ **retrospective.md written** — Q1-Q7 with Q7 N/A SKIP per cohort precedent (6 consecutive)
+- ✅ **Sprint-workflow.md 4 edits applied**:
+  - `frontend-refactor-mechanical` matrix row 3rd data point (57.45=~1.5 / 3-pt mean ~1.7)
+  - Activation history Sprint 57.45 entry — **NOTE: `agent_factor = 0.45` 1st validation NOT generated** (Path B = no agent delegation; agent_factor = 1.0 applied; validation deferred to Sprint 57.46+)
+  - MHist top entry (Sprint 57.45 1-line within E501 budget)
+  - Row narrative append (3rd app under 0.80 1st validation post-AD-Sprint-Plan-13)
+- ✅ **Memory subfile** `project_phase57_45_chatv2_inspector_tab_path_b.md` written (user-dir)
+- ✅ **MEMORY.md pointer entry** added (top of `Project — Recent Sprints (Phase 57+)`)
+- ✅ **CLAUDE.md minimal touch** — Current Sprint row + Last Updated footer (DUAL CLEAN milestone + agent_factor validation deferred)
+- ✅ **route-sweep.mjs MHist** — 1-line Sprint 57.45 OUT_DIR re-point entry
+
+### Critical Day 3 Q4 Decision
+
+**`agent_factor = 0.45` 1st validation NOT generated**:
+- Path B selection (0 code change) → `agent-delegated: NO` → `agent_factor = 1.0` applied
+- Tightened 0.45 formula remains active for future agent-delegated sprints
+- Validation deferred to Sprint 57.46+
+- NEW carryover `AD-Sprint-Plan-Agent-Delegation-Factor-Sprint-57.46-FirstValidation`
+
+**`frontend-refactor-mechanical 0.80` 3rd data point**:
+- Ratio ~1.5 OVER band by 0.30 (1st validation post-AD-Sprint-Plan-13 lift)
+- 3-pt mean ~1.7 (3 of 3 OVER band) BUT first 2 were at 0.50 baseline
+- Small-scope variance (~30 min sprint) plausibly explains 1.5
+- **KEEP 0.80**; flag Sprint 57.46+ for 4th data point
+
+### Final Sprint metrics
+
+| Metric | Value |
+|--------|-------|
+| Branch | `feature/sprint-57-45-chatv2-inspector-tab-rename` |
+| Commits Day 0/1/2.5/3 | 4 total (f75c3db3 / Day 0.8 / be95a4ec / Day 2.5 / Day 3 pending) |
+| Vitest delta | 561 **unchanged** (0 code change → 0 spec change) |
+| Build / Lint / LLM SDK leak | green / 0 errors / 0 (untouched) |
+| HEX_OKLCH_BASELINE | 47 **unchanged** (no new oklch literals) |
+| Route-sweep | **22 IDENTICAL + 0 INTENDED + 2 noise + 0 unintended** (cleanest of Phase-2 epic) |
+| Class data point | 3rd `frontend-refactor-mechanical 0.80`; ratio ~1.5 |
+| agent_factor data point | **NONE generated** (Path B; deferred to Sprint 57.46+) |
+| **Phase-2 epic + NEAR-PARITY** | **🎉 22/22 PARITY + 0 NEAR-PARITY + 0 CATASTROPHIC — DUAL CLEAN milestone** |
+| Drift-audit-2026-05-25 | **FULLY CLEARED** in 6 sprints (57.40-57.45) |
+
+### Next steps
+
+- Day 3.5 closeout commit + push + open PR
+- Future sprint candidates per retrospective.md Q5 (rolling planning — no pre-write of Sprint 57.46 plan per §6 discipline)

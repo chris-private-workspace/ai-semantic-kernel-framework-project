@@ -25,6 +25,7 @@
  * Created: 2026-05-20 (Sprint 57.26 Day 0) — supersedes the temporary frontend/diagnose-render.mjs
  *
  * Modification History:
+ *   - 2026-05-26: Sprint 57.45 Day 0 — re-point OUT_DIR to sprint-57-45-chatv2-inspector-tab-rename (single-domain Path B audit overrule: /chat-v2 Inspector tab NEAR-PARITY OVERRULED via Day 0 Prong 2 grep evidence; canonical mockup matched production exactly; 0 code change docs-only closure; 🎉 Phase-2 epic + NEAR-PARITY clean DUAL milestone; full drift-audit-2026-05-25 cleared in 6 sprints 57.40-45; agent_factor 0.45 1st validation NOT generated — Path B no agent delegation)
  *   - 2026-05-26: Sprint 57.44 Day 0 — re-point OUT_DIR to sprint-57-44-tenant-settings-rebuild (single-domain rebuild: /tenant-settings 6-tab IA — General/FeatureFlags/Quotas/HITLPolicies/Members/DangerZone; closes last CATASTROPHIC verdict + 🎉 Phase-2 epic FULL CLEAN; 2nd validation sprint under agent_factor = 0.55 → MANDATORY tighten 0.55 → 0.45)
  *   - 2026-05-25: Sprint 57.43 Day 0 — re-point OUT_DIR to sprint-57-43-admin-tenants-rebuild (single-domain rebuild: /admin-tenants page-head + 4 KPI stats + 9-col tenants table; closes drift audit 2026-05-25 #1 priority CATASTROPHIC post Sprint 57.42 /memory close; 1st validation sprint under newly ACTIVATED agent_factor = 0.55)
  *   - 2026-05-25: Sprint 57.42 Day 0 — re-point OUT_DIR to sprint-57-42-memory-matrix-rebuild (single-domain rebuild: /memory Memory Layers 5x3 matrix + TimeTravelScrubber + bottom 2-col grid; closes drift audit 2026-05-25 #2 priority CATASTROPHIC)
