@@ -4,7 +4,9 @@
 
 **Selection Rule**: User explicitly selects → draft plan kicks off Sprint XX.Y; otherwise items wait here indefinitely until selected or archived.
 
-**Updated**: 2026-05-26 (Sprint 57.53 closed — **Checkpointer test tenant isolation pre-existing fail FIX** closes `AD-Checkpointer-Test-Tenant-Isolation-PreExisting-Fail-Investigation` (Sprint 57.51+57.52 trail carryover); Option A enriched with Sprint 57.12 `§Committed-Row Cleanup Pattern` lift to agent_harness scope (NEW `backend/tests/integration/agent_harness/conftest.py` ~120 lines mirrors `api/conftest.py` verbatim); 0 modifications to existing files; pytest baseline restored to **1760 PASS + 0 fail** (was 1759 + 1 PRE-EXISTING fail); H1-H6 hypothesis methodology (5 REFUTED + 1 PLAUSIBLE) + D-DAY0-9 NEW MAJOR finding (Sprint 57.12 precedent discovery); **`medium-backend` 0.80 6th data point ratio 0.83 in band lower edge** (cleaner signal under human 1.0 factor); **`mechanical-greenfield` 0.50 1st validation NOT GENERATED** (parent-assistant-direct per Sprint 57.45 Path B precedent → `agent_factor = 1.0` applied; carryover renamed Sprint-57.54); 1 AD CLOSED + 4 NEW carryovers; 25-sprint code-implementer chain BROKEN (parent-assistant-direct shape); DUAL CLEAN 22/22 PARITY preserved 9 consecutive 57.45-57.53.)
+**Updated**: 2026-05-26 (Sprint 57.54 closed — **HITLPolicies WRITE-side ship Phase 58.x portfolio item** closes `AD-AgentFactor-Tier-3-Validation-Sprint-57.54` (Sprint 57.53 carryover); Day 0 critical pivot at plan-drafting time corrected "NEW table" misframing → true gap = WRITE side only (table + ORM + RLS + GET endpoint + frontend read hook ALL exist since Sprint 55.3 + 57.48 + 57.49); sequential agent delegation Track A backend (~25 min) + Track B frontend (~25 min); `DBHITLPolicyStore.put()` upsert via `pg_insert.on_conflict_do_update` (1st usage in repo D-DAY0-13 NOTABLE) + PUT endpoint + 12 NEW pytest (1760→**1772 PASS** exact target) + `HITL_PUT_%` cleanup sweep (Sprint 57.12+57.53 pattern extension); `useHITLPoliciesSave` mutation hook (mirror `useTenantSettingsSave` Sprint 57.9) + HITLPoliciesTab edit mode + softened BackendGapBanner copy + 10 NEW Vitest (607→**617 PASS**); **TIER-3 1ST VALIDATION `mechanical-greenfield` 0.50 ratio ~1.37-2.0 ABOVE band** by 0.17-0.8 → KEEP single-data-point caution + flag Sprint 57.55+ 2nd validation; root cause: greenfield design (~2× speedup) vs port (~5×); `medium-backend` 0.80 **7th data point ratio ~1.0 IN BAND middle** (class baseline holds when confound stripped at tier-3 sub-class layer; KEEP); `medium-frontend` 0.65 3rd data point continues; 1 AD CLOSED + 3 NEW carryovers; DUAL CLEAN 22/22 PARITY preserved **10 consecutive 57.45-57.54**; 14th+15th consecutive code-implementer agent (chain re-extended post 57.53 break); Day 0+1 commit `f2f95b11` (14 files +1933/-18).)
+
+**Previous Updated**: 2026-05-26 (Sprint 57.53 closed — **Checkpointer test tenant isolation pre-existing fail FIX** closes `AD-Checkpointer-Test-Tenant-Isolation-PreExisting-Fail-Investigation` (Sprint 57.51+57.52 trail carryover); Option A enriched with Sprint 57.12 `§Committed-Row Cleanup Pattern` lift to agent_harness scope (NEW `backend/tests/integration/agent_harness/conftest.py` ~120 lines mirrors `api/conftest.py` verbatim); 0 modifications to existing files; pytest baseline restored to **1760 PASS + 0 fail** (was 1759 + 1 PRE-EXISTING fail); H1-H6 hypothesis methodology (5 REFUTED + 1 PLAUSIBLE) + D-DAY0-9 NEW MAJOR finding (Sprint 57.12 precedent discovery); **`medium-backend` 0.80 6th data point ratio 0.83 in band lower edge** (cleaner signal under human 1.0 factor); **`mechanical-greenfield` 0.50 1st validation NOT GENERATED** (parent-assistant-direct per Sprint 57.45 Path B precedent → `agent_factor = 1.0` applied; carryover renamed Sprint-57.54); 1 AD CLOSED + 4 NEW carryovers; 25-sprint code-implementer chain BROKEN (parent-assistant-direct shape); DUAL CLEAN 22/22 PARITY preserved 9 consecutive 57.45-57.53.)
 
 **Previous Updated**: 2026-05-26 (Sprint 57.52 closed — **triple-AD audit/docs hygiene bundle continuation** (Track A `AD-Day0-Prong2-Oklch-Delta-Grep` + Track B `AD-REFACTOR-Numbering-Collision` + Track C `AD-Stale-Docstring-Karpathy-3-Cleanup-Pattern`) — 0 production code change; 5 files +593/-0; 1 git mv rename 88% similarity; 24th consecutive code-implementer agent delegation; **2nd validation tier-2 `mixed-multidomain-bundle` 0.65 sub-class agent_factor** ratio ~1.7-2.0 ABOVE band by 0.5-0.8 = 2nd rollback-trigger > 1.20 (Sprint 57.51=1.49 + 57.52=~1.85) → **ROLLBACK RULE MET → Option B tier-3 SPLIT ACTIVATED** effective Sprint 57.53+: NEW `-mechanical` 0.65 UNCHANGED + `-non-mechanical` 1.0 NEW (Sprint 57.51 + 57.52 retroactively validate cleanly at 1.0); `audit-cycle/docs/template` 0.40 3rd data point 3-pt mean 1.13 IN band middle KEEP (3-sprint window complete; class calibration mature); 3 ADs CLOSED + CLOSES AD-AgentFactor-Tier-2-MixedBundle-Validation-Sprint-57.52 via tier-3 ACTIVATION; 2 NEW carryover ADs (AD-Checkpointer-Test-Tenant-Isolation-PreExisting-Fail-Investigation Sprint 57.53 user-confirmed scope + AD-AgentFactor-Tier-3-Validation-Sprint-57.53); mockup-fidelity DUAL CLEAN 22/22 PARITY preserved through 8 consecutive sprints 57.45-57.52.)
 
@@ -18,7 +20,90 @@
 
 ---
 
-## 🆕 Sprint 57.53 Carryover (2026-05-26 — Checkpointer Test Tenant Isolation Pre-Existing Fail FIX; Sprint 57.12 `§Committed-Row Cleanup Pattern` Lift)
+## 🆕 Sprint 57.54 Carryover (2026-05-26 — HITLPolicies WRITE-side ship; Phase 58.x portfolio item; tier-3 `mechanical-greenfield` 0.50 1st validation)
+
+Sprint 57.54 (single greenfield NEW component-pair via sequential agent delegation Track A backend + Track B frontend) ✅ **CLOSED**: 1 carryover AD closed (`AD-AgentFactor-Tier-3-Validation-Sprint-57.54` Sprint 57.53 carryover; 1st validation generated under agent-delegated mode).
+
+### Sprint scope (true gap = WRITE side after Day 0 critical pivot)
+
+**Original framing (WRONG)**: Phase 58.x = NEW table + Alembic. **Day 0 Prong 2 content verify at plan-drafting time** revealed table + ORM + RLS + read-only `DBHITLPolicyStore.get` + GET endpoint + frontend read hook ALL exist since Sprint 55.3 (Alembic 0013) + 57.48 (admin GET) + 57.49 (frontend tab). **True gap = WRITE side only**:
+
+**Backend Track A** (~25 min agent wall-clock; 14th consecutive code-implementer):
+- NEW `DBHITLPolicyStore.put(tenant_id, policy)` upsert via `pg_insert.on_conflict_do_update` (**1st usage of pattern in repo** D-DAY0-13 NOTABLE; LOW risk under V2 PostgreSQL-only stance)
+- NEW Pydantic `HITLPolicyUpsertRequest` (`extra="forbid"` + `field_validator` on risk enums) + `HITLPolicyUpsertResponse`
+- NEW `PUT /api/v1/admin/tenants/{tenant_id}/hitl-policies` endpoint (composite write; reuses `_load_tenant_or_404` + `_session_factory_from` + `_project_hitl_policy_to_items` for response.items cache hydration)
+- 12 NEW pytest tests covering auth/404/upsert-create/upsert-update/projection/422 risk enum/422 extra field/multi-tenant isolation/idempotency/persistence verify/empty dicts
+- `tests/integration/api/conftest.py` extended with `HITL_PUT_%` LIKE cleanup sweep (parallels Sprint 57.12 + 57.53 `§Committed-Row Cleanup Pattern` at sibling scope)
+
+**Frontend Track B** (~25 min agent wall-clock; 15th consecutive):
+- NEW `saveHITLPolicies` service func (PUT pattern mirror of `updateTenantSettings`)
+- NEW `useHITLPoliciesSave` TanStack mutation hook (mirror `useTenantSettingsSave` Sprint 57.9 precedent verbatim; invalidates `HITL_POLICIES_QUERY_KEY_BASE` on success)
+- NEW `HITLPolicyUpsertRequest`/`HITLPolicyUpsertResponse` TypeScript types
+- HITLPoliciesTab edit mode (Edit/Cancel/Save buttons + per-risk reviewer/SLA inputs + reverse-projection items→composite draft seed + softened BackendGapBanner copy + error display)
+- 10 NEW Vitest tests (3 hook + 2 service + 5 tab; +10 vs plan +5-8 target justified for full edit-mode state coverage)
+
+### Validation (9/9 GREEN)
+
+- pytest **1772 PASS + 4 skip + 0 fail** (+12 NEW; exact target)
+- mypy --strict **0/310 errors**
+- 9/9 V2 lints **GREEN** (incl. HEX_OKLCH 47 preserved via `check_ap4_frontend_placeholder.py`)
+- Vitest **617 PASS / 0 fail** (+10 NEW)
+- Vite build clean (3.36s); tsc strict 0 errors; ESLint 0 errors
+- LLM SDK leak 0
+
+### Calibration outcome (TIER-3 1ST VALIDATION)
+
+- Bottom-up ~3.5 hr → class-calibrated ~2.8 hr (mult 0.80) → agent-adjusted ~1.4 hr (factor 0.50 `mechanical-greenfield` tier-3)
+- Actual estimated total ~2.7-2.9 hr (Day 0+1 ~1.92 hr + Day 2 ~0.7-1.0 hr)
+- **Ratio actual/agent-adjusted ≈ ~2.0** ABOVE band [0.85, 1.20] by ~0.8 (Day 0+1 only sub-validation ~1.37 ABOVE by 0.17) = **1st rollback-trigger > 1.20 candidate**
+- Ratio actual/class-committed ≈ ~1.0 ✅ IN BAND middle (`medium-backend` 0.80 class baseline holds cleanly when confound stripped at tier-3 sub-class layer)
+- **Decision per Sprint 57.52 retro Q4 single-data-point caution rule**: **KEEP `mechanical-greenfield` 0.50** + flag Sprint 57.55+ for 2nd validation
+
+**Root cause analysis**: Sprint 57.40-44 mockup-strict-rebuild was pure mechanical port (~5× speedup vs human); Sprint 57.54 is single greenfield NEW feature with backend upsert design + Pydantic write schema decisions + frontend edit-mode UX (~2× speedup not ~5×). The 0.50 baseline may be too aggressive for true greenfield work; sub-class refinement candidate `mechanical-greenfield-port-style` (0.45) vs `mechanical-greenfield-design-decisions` (0.65) — defer to 2nd-3rd data point evidence.
+
+### Class baseline tracking
+
+- `medium-backend` 0.80 **7th data point ratio ~1.0 ✅ IN BAND middle** (7-pt mean 0.63; last 3 only 1/3 < 0.7 lower-trigger NOT MET; **KEEP** — Sprint 57.50/57.53 retro Q4 prediction validated 2x: when agent_factor confound stripped at sub-class layer, class baseline holds cleanly for human-pace + agent residual captured at tier-3)
+- `medium-frontend` 0.65 **3rd data point** confound persists; 4-pt mean ~0.56 below band; `AD-medium-frontend-Baseline-Recalibration` continues for Sprint 57.55+ 5th data point
+
+### 14th + 15th consecutive code-implementer agent delegation
+
+Sprint 57.40-50 chain extends from 13 to 15 consecutive delegations. Sprint 57.53 was parent-assistant-direct (chain broken at 13 historical). Sprint 57.54 resumes pattern with sequential Track A + Track B delegation.
+
+### Mockup-fidelity DUAL CLEAN milestone PRESERVED
+
+22/22 PARITY (Sprint 57.45 milestone) preserved through **10 consecutive sprints 57.45-57.54**. Edit mode UI additions used existing token references only; HEX_OKLCH baseline 47 unchanged; AP-2 banner intact + AP-4 frontend placeholder lint GREEN.
+
+### Carryover ADs after Sprint 57.54
+
+**NEW for Sprint 57.55+**:
+- **`AD-AgentFactor-Tier-3-Validation-Sprint-57.55`** (highest priority — 2nd validation needed under `mechanical-greenfield` 0.50; candidate substrates: 3 remaining Phase 58.x WRITE-side ADs FeatureFlags/Quotas/RateLimits)
+- **`AD-Day0-Prong1-Test-Glob-Multi-Pattern`** (Q3 Lesson 1 codification — D-DAY0-1 Glob false-negative: `__tests__/` convention NOT used in repo; actual layout `frontend/tests/unit/<feature>/` mirror; codify multi-pattern test file glob in `.claude/rules/sprint-workflow.md §Step 2.5 Prong 1`)
+- **`AD-Phase58-Persistence-WriteSide-Pattern-Template`** (Q3 Lesson 2 codification — Sprint 57.54 pattern reusable as template for FeatureFlags/Quotas/RateLimits WRITE sprints; if batched 4-track → `mechanical-pattern-reuse-heavy` 0.30 candidate; if single domain at a time → continue `mechanical-greenfield` 0.50 2nd validation)
+- **`AD-Sub-Class-Greenfield-Port-vs-Design-Refinement`** (CONDITIONAL — Q4 root cause analysis; split `mechanical-greenfield` 0.50 into `-port-style` 0.45 vs `-design-decisions` 0.65 if 2-3 consecutive > 1.20 patterns surface)
+
+**Phase 58.x portfolio CONTINUES** (3 remaining WRITE-side ADs):
+- `AD-TenantSettings-FeatureFlags-Backend-Persistence-WriteSide`
+- `AD-TenantSettings-Quotas-Backend-Persistence-WriteSide`
+- `AD-TenantSettings-RateLimits-Backend-Persistence-WriteSide`
+
+(All can use Sprint 57.54 pattern as template per `AD-Phase58-Persistence-WriteSide-Pattern-Template`. Sprint 57.55+ candidate substrate decision: pick one of these → 2nd validation data point; OR batch 2-3 → likely shifts class to `mechanical-pattern-reuse-heavy` 0.30 sub-class.)
+
+**Sprint 57.53 carryover items CONTINUE**:
+- `AD-Plan-Workload-AgentDelegation-Explicit-Field-Codification` — Sprint 57.54 successfully filled the field at plan time; ready to codify into `sprint-workflow.md §Workload Calibration §Four-segment form` as MANDATORY field after Sprint 57.55 also fills cleanly
+- `AD-Test-Cleanup-Pattern-Shared-Helper` — Sprint 57.54 Track A naturally extended Sprint 57.12 + 57.53 trail; helper extraction (separate `tests/common/cleanup.py`) still deferred Phase 58.x; pattern now battle-tested across 3 scopes
+- `AD-MediumBackend-AICadence-Recalibration` — Sprint 57.54 7th data point at ratio ~1.0 IN BAND middle (cleaner signal continues); no action this sprint
+
+**Phase 58.x portfolio (full)** — see prior carryover sections for all open ADs:
+- HITLPolicies off-platform channel routing (Slack/email/SMS) — `AD-HITLPolicies-OffPlatformChannelRouting` (Phase 58+ deeper extension)
+- HITLPolicies optimistic concurrency / If-Match — `AD-HITLPolicies-OptimisticConcurrency` (CONDITIONAL if Sprint 57.55+ surfaces concurrent edit race)
+- HITLPolicies audit_log entry on change — `AD-HITLPolicies-AuditLogOnChange` (CONDITIONAL)
+- TenantSettings Identity persistence — `AD-TenantSettings-Identity-Persistence-Phase58` (Sprint 57.50 carryover; full SSO admin schema scope)
+- Mockup capture visual diff pipeline — `AD-MockupCapture-Frontend-Visual-Diff-Pipeline` (Phase 58+)
+
+---
+
+## Sprint 57.53 Carryover (2026-05-26 — Checkpointer Test Tenant Isolation Pre-Existing Fail FIX; Sprint 57.12 `§Committed-Row Cleanup Pattern` Lift)
 
 Sprint 57.53 (single-track investigation+fix sprint) ✅ **CLOSED**: 1 carryover AD closed (`AD-Checkpointer-Test-Tenant-Isolation-PreExisting-Fail-Investigation` Sprint 57.51+57.52 trail). Pytest baseline restored to **1760 PASS + 0 fail** (was 1759 + 1 PRE-EXISTING fail).
 

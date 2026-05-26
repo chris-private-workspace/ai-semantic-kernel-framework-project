@@ -126,57 +126,55 @@
 - [x] LLM SDK leak scan — **0** (covered by V2 lint #5 `check_llm_sdk_leak.py` in `run_all.py` GREEN sweep)
 - [x] `git status --short` confirms 9 modified + 4 untracked files (plan + checklist + progress + 3 backend + 5 frontend + 1 NEW useHITLPoliciesSave.ts + 1 NEW useHITLPoliciesSave.test.tsx)
 
-### 1.4 Day 1 commit (pending)
-- [ ] Commit message: `feat(sprint-57-54): Day 0 + Day 1 — HITLPolicies WRITE side ship (DBHITLPolicyStore.put + PUT upsert endpoint + frontend edit mode + useHITLPoliciesSave mutation hook; Phase 58.x portfolio item; mechanical-greenfield 0.50 1st validation under tier-3 sub-class table)`
-- [ ] Includes plan + checklist + progress (Day 0 三-prong + Day 1 backend + frontend) + 3 backend source files + 5 frontend source files + test files (+ NEW conftest.py extension for HITL_PUT_% sweep)
+### 1.4 Day 1 commit ✅ DONE
+- [x] Commit **`f2f95b11`** (14 files / +1933 / -18): `feat(sprint-57-54): Day 0 + Day 1 — HITLPolicies WRITE side ship (DBHITLPolicyStore.put + PUT upsert endpoint + frontend edit mode + useHITLPoliciesSave mutation hook; Phase 58.x portfolio item; mechanical-greenfield 0.50 1st validation under tier-3 sub-class table)`
+- [x] Includes plan + checklist + progress (Day 0 三-prong + Day 1 backend + frontend) + 4 modified backend (incl. conftest.py HITL_PUT_% sweep) + 4 modified frontend + 2 NEW frontend (useHITLPoliciesSave.ts + .test.tsx) + 3 sprint artifacts
 
 ---
 
 ## Day 2 — Closeout (parent assistant)
 
-### 2.1 Validation
-- [ ] Full backend pytest suite passing (commit-time: 1770-1772 PASS + 0 fail)
-- [ ] Full frontend Vitest suite passing (commit-time: 612-615 PASS)
-- [ ] 9/9 V2 lints preserved (commit-time)
-- [ ] All edited files have MHist 1-line entry (per AD-Lint-MHist-Verbosity ≤100 char budget); NEW useHITLPoliciesSave.ts has full header MHist section
+### 2.1 Validation ✅
+- [x] Full backend pytest suite passing: **1772 PASS + 4 skip + 0 fail** (61.86s)
+- [x] Full frontend Vitest suite passing: **617 PASS / 0 fail**
+- [x] 9/9 V2 lints preserved (0.98s; incl. HEX_OKLCH check_ap4_frontend_placeholder.py GREEN)
+- [x] All edited files have MHist 1-line entry (per AD-Lint-MHist-Verbosity ≤100 char budget); NEW useHITLPoliciesSave.ts has full header MHist section
 
-### 2.2 Retrospective
-- [ ] Written `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-54/retrospective.md`
-- [ ] Q1-Q6 6 必答 format per Sprint 57.52 + 57.53 precedent
-- [ ] **Q2 (didn't go well + actuals)**: record actual delegation mode (confirm `agent-delegated: yes` vs reclassify `partial` if any track diverges) — codifies plan §6 4-segment form explicit field per Sprint 57.53 carryover AD
-- [ ] **Q3 (lessons)**: 3-5 generalizable lessons; candidate themes:
-  - Phase 58.x WRITE-side pattern reusability for FeatureFlags/Quotas/RateLimits (same `pg_insert.on_conflict_do_update` + service func + mutation hook + tab edit mode shape)
-  - Plan-time Day 0 Prong 2 grep saved "NEW table" misframing → matters per AD-Plan-3 promotion ROI
-  - Backend track → frontend track sequential agent delegation handoff (type contract drift risk; if any, propose AD)
-- [ ] **Q4 (calibration)**: `medium-backend` 0.80 7th data point ratio (track), `medium-frontend` 0.65 3rd data point ratio (track), **`mechanical-greenfield` 0.50 1st validation ratio** (PRIMARY — single-data-point caution rule); narrate direction-of-drift + Sprint 57.55+ 2nd validation flag
-- [ ] Q5 Top 3 carryover candidates (incl. AD-AgentFactor-Tier-3-Validation-Sprint-57.55 + remaining Phase 58.x persistence ADs + any NEW from this sprint)
-- [ ] Q7 Design note extract: N/A SKIP (feature ship NOT spike; same precedent as Sprint 57.10 / 57.47-53)
+### 2.2 Retrospective ✅
+- [x] Written `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-54/retrospective.md`
+- [x] Q1-Q7 6必答 format per Sprint 57.52 + 57.53 precedent (Q7 N/A SKIP — feature ship NOT spike)
+- [x] **Q2 (didn't go well + actuals)**: Day 0 D-DAY0-1 Glob false-negative (`__tests__/` vs actual `frontend/tests/unit/`) + plan §6 bottom-up 25% generous + `pg_insert` first usage learning curve + Vitest +10 vs target +5-8 plan estimate miss
+- [x] **Q3 (lessons)**: 4 generalizable lessons documented (Day 0 multi-pattern test glob / Phase 58.x WRITE-side pattern template / `pg_insert.on_conflict_do_update` updated_at rotation / Vitest count = state transitions × assertion types)
+- [x] **Q4 (calibration)**: `mechanical-greenfield` 0.50 **1st validation ratio ~1.37-2.0 ABOVE band** by 0.17-0.8 → KEEP single-data-point caution + flag Sprint 57.55+ for 2nd validation; root cause: greenfield design (~2× speedup) vs port (~5×); `medium-backend` 0.80 7th data point ~1.0 IN BAND middle KEEP; `medium-frontend` 0.65 3rd data point continues
+- [x] Q5 Top 3 carryover candidates documented (AD-AgentFactor-Tier-3-Validation-Sprint-57.55 + Phase 58.x portfolio continuation 3 remaining + AD-medium-frontend-Baseline-Recalibration) + 3 NEW carryover ADs (Lesson 1+2 codifications + CONDITIONAL refinement)
+- [x] Q6 Solo-Dev Policy Validation noted
+- [x] Q7 Design note extract: N/A SKIP (feature ship per precedent)
 
-### 2.3 sprint-workflow.md updates
-- [ ] File MHist 1-line entry (newest-first; L11 prepended)
-- [ ] Matrix `medium-backend` 0.80 row updated to 7 data points (55.5=1.14 + 55.6=0.92 + 57.47=0.16 + 57.48=0.11 + 57.50=0.27 + 57.53=0.83 + 57.54=TBD; 7-pt mean recompute; KEEP per 3-sprint window rule unless lower-trigger emerges)
-- [ ] Matrix `medium-frontend` 0.65 row updated to 3 data points (57.13=0.95-1.0 + 57.49=0.064 + 57.54=TBD; 3-sprint window evaluation eligible if any 3-consec same-direction pattern)
-- [ ] §Active Activation history entry inserted after Sprint 57.53 retro Q4 (Sprint 57.54 retro Q4 — **`mechanical-greenfield` 0.50 1st validation** ratio = TBD; KEEP per single-data-point caution rule; flag Sprint 57.55+ for 2nd validation)
-- [ ] (Conditional) sub-class table refinement: N/A this sprint — single-data-point caution rule applies; only 2 consecutive same-direction data points trigger structural action
+### 2.3 sprint-workflow.md updates ✅
+- [x] File MHist 1-line entry prepended (≤100 char budget)
+- [x] Matrix `medium-backend` 0.80 row updated to 7 data points (57.54≈1.0; 7-pt mean 0.63; last 3 only 1/3 < 0.7 lower-trigger NOT MET; KEEP)
+- [x] Matrix `medium-frontend` 0.65 row updated to 4 data points (Sprint 57.13 retroactively added per memory subfile; 57.54≈0.32 frontend sub-portion; 4-pt mean ~0.56 below band edge by 0.09; KEEP per 3-sprint window rule)
+- [x] §Active Activation history entry inserted after Sprint 57.53 retro Q4 (Sprint 57.54 retro Q4 — `mechanical-greenfield` 0.50 1st validation ABOVE band single-data-point caution KEEP + root cause analysis + 3 NEW carryovers)
+- [x] Sub-class table refinement: N/A this sprint per single-data-point caution rule (2 consec required for structural action)
 
-### 2.4 Memory + index
-- [ ] `memory/project_phase57_54_hitl_policies_write_endpoint.md` subfile created (full retro highlights + calibration + Sprint 57.53 carryover CLOSED + Phase 58.x portfolio progress + Sprint 57.55+ carryover ADs + agent-delegated yes confirmation)
-- [ ] MEMORY.md pointer entry inserted at TOP of §Project — Recent Sprints (~300 char quality pointer per Sprint Closeout Policy)
+### 2.4 Memory + index ✅
+- [x] `memory/project_phase57_54_hitl_policies_write_endpoint.md` subfile created (full retro highlights + calibration + Sprint 57.53 carryover CLOSED + Phase 58.x portfolio progress + Sprint 57.55+ carryover ADs + agent-delegated yes confirmation)
+- [x] MEMORY.md pointer entry inserted at TOP of §Project — Recent Sprints (per Sprint Closeout Policy quality pointer principle)
 
-### 2.5 CLAUDE.md
-- [ ] Current Sprint row updated (Sprint 57.53 → Sprint 57.54; navigator-only per Sprint Closeout Policy; AD-AgentFactor-Tier-3-Validation-Sprint-57.54 CLOSED + carryover summary + Phase 58.x portfolio progress)
-- [ ] Last Updated footer updated (Sprint 57.54 closeout note; HITLPolicies WRITE side ship + 1st validation tier-3 `mechanical-greenfield` 0.50 result)
+### 2.5 CLAUDE.md ✅
+- [x] Current Sprint row updated (Sprint 57.53 → Sprint 57.54; navigator-only per Sprint Closeout Policy; AD-AgentFactor-Tier-3-Validation-Sprint-57.54 CLOSED + carryover summary + Phase 58.x portfolio progress note)
+- [x] Last Updated footer updated (Sprint 57.54 closeout note)
 
-### 2.6 next-phase-candidates.md (REFACTOR-001 single-source for open items)
-- [ ] `Updated` header updated to Sprint 57.54 closeout note; demoted Sprint 57.53 to "Previous Updated"
-- [ ] NEW Sprint 57.54 Carryover section appended at TOP (1 AD CLOSED + N NEW carryovers + Highlights)
-- [ ] Demoted previous Sprint 57.53 Carryover section (removed 🆕 marker)
-- [ ] Marked `AD-AgentFactor-Tier-3-Validation-Sprint-57.54` as CLOSED
-- [ ] Phase 58.x portfolio progress note: HITLPolicies WRITE side CLOSED; 3 remaining (FeatureFlags / Quotas / RateLimits)
+### 2.6 next-phase-candidates.md (REFACTOR-001 single-source for open items) ✅
+- [x] `Updated` header updated to Sprint 57.54 closeout note; demoted Sprint 57.53 to "Previous Updated"
+- [x] NEW Sprint 57.54 Carryover section appended at TOP (1 AD CLOSED + 3 NEW carryovers + Phase 58.x portfolio progress + class baseline tracking + 10 consecutive DUAL CLEAN milestone)
+- [x] Demoted previous Sprint 57.53 Carryover section (removed 🆕 marker)
+- [x] Marked `AD-AgentFactor-Tier-3-Validation-Sprint-57.54` as CLOSED
+- [x] Phase 58.x portfolio progress note: HITLPolicies WRITE side CLOSED; 3 remaining (FeatureFlags / Quotas / RateLimits)
 
-### 2.7 CHANGE-024
-- [ ] `claudedocs/4-changes/feature-changes/CHANGE-024-hitl-policies-write-endpoint.md` created per CLAUDE.md `4-changes/` convention
-- [ ] Format: Problem (read-only state) / Root cause (Phase 58+ deferred since Sprint 57.49) / Solution (WRITE side ship — backend upsert + frontend edit mode) / Verification (test names + manual smoke) / Impact (backend + frontend; BackendGapBanner copy soften)
+### 2.7 CHANGE-024 ✅
+- [x] `claudedocs/4-changes/feature-changes/CHANGE-024-hitl-policies-write-endpoint.md` created per CLAUDE.md `4-changes/` convention
+- [x] Format: Problem (read-only state) / Root cause (Phase 58+ deferred since Sprint 55.3 + 57.48 + 57.49) / Solution (WRITE side ship — backend upsert + frontend edit mode + 12+10 tests) / Verification (test counts + lint results) / Impact (14 files / +1933 / -18) / Lessons captured (4 lessons codification candidates)
 
 ### 2.8 PR + merge (post-commit; user action)
 - [ ] Push branch + open PR (awaiting user authorization at Day 2 commit closeout)
