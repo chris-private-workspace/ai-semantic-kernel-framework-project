@@ -1,7 +1,7 @@
 """
 File: backend/tests/integration/agent_harness/conftest.py
-Purpose: Autouse cleanup fixture for committed-row leaks affecting agent_harness integration tests
-         (sibling to tests/integration/api/conftest.py §Committed-Row Cleanup Pattern from Sprint 57.12).
+Purpose: Autouse cleanup fixture for committed-row leaks in agent_harness integration tests
+         (sibling to tests/integration/api/conftest.py §Committed-Row Cleanup Pattern).
 Category: Tests / 范疇 7 (state_mgmt)
 Scope: Phase 57 / Sprint 57.53
 
@@ -43,7 +43,7 @@ Created: 2026-05-26 (Sprint 57.53)
 Last Modified: 2026-05-26
 
 Modification History:
-    - 2026-05-26: Sprint 57.53 — initial creation (closes AD-Checkpointer-Test-Tenant-Isolation-PreExisting-Fail)
+    - 2026-05-26: Sprint 57.53 — initial creation (closes AD-Checkpointer-Tenant-Isolation)
 
 Related:
     - tests/integration/api/conftest.py (Sprint 57.12 parent pattern)
