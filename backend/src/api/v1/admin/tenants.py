@@ -46,6 +46,7 @@ Created: 2026-05-06 (Sprint 56.1 Day 1)
 Last Modified: 2026-05-10
 
 Modification History:
+    - 2026-05-26: Sprint 57.46 Day 1 — +5 SaaS settings fields (closes AD-TenantSettings-Schema-Ext)
     - 2026-05-10: Sprint 57.13 US-A3 — /{tenant_id} dep → require_tenant_match_or_platform_admin
     - 2026-05-07: Sprint 57.4 — add GET "" list endpoint (US-1 closes D1)
     - 2026-05-07: Sprint 57.3 Day 2 — add PATCH /{id} + TenantUpdateRequest + audit chain (US-2)
@@ -71,7 +72,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -377,8 +378,9 @@ async def advance_onboarding_step(
 class TenantResponse(BaseModel):
     """Read-only response for GET /admin/tenants/{tenant_id}.
 
-    Mirrors all 10 ORM fields of the Tenant model. Used as response_model
-    for both GET (US-1) and PATCH (US-2 — caller sees post-update state).
+    Mirrors all 15 ORM fields of the Tenant model (10 baseline + 5 SaaS settings
+    added Sprint 57.46). Used as response_model for both GET (US-1) and PATCH
+    (US-2 — caller sees post-update state).
     """
 
     id: UUID
@@ -389,6 +391,12 @@ class TenantResponse(BaseModel):
     provisioning_progress: dict[str, Any]
     onboarding_progress: dict[str, Any]
     meta_data: dict[str, Any]
+    # Sprint 57.46 Day 1 — SaaS settings extension
+    region: str
+    locale: str
+    retention_days: int
+    sso_enabled: bool
+    seats: int
     created_at: datetime
     updated_at: datetime
 
@@ -415,12 +423,28 @@ async def get_tenant(
     return TenantResponse.model_validate(tenant)
 
 
+_REGION_VALUES = ("apac", "emea", "americas", "global")
+# BCP-47 locale code regex: 2-3 alpha lang + optional 2-3 alpha/digit region
+# (e.g. "en", "en-US", "zh-Hant", "zh-CN"). Conservative — covers the cases
+# we serve; broader BCP-47 tags can be added if real usage demands them.
+_LOCALE_PATTERN = r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,4})?$"
+
+
 class TenantUpdateRequest(BaseModel):
     """Partial update request for PATCH /admin/tenants/{tenant_id}.
 
-    Only display_name + meta_data are editable. Pydantic extra='forbid'
-    rejects any other field with 422 (per US-2 immutable field guard for
-    id / code / state / plan / created_at / updated_at / progress fields).
+    Editable fields (Sprint 57.46 extends 2 → 7):
+        - display_name (Sprint 57.3 baseline)
+        - meta_data (Sprint 57.3 baseline)
+        - region (Sprint 57.46 — apac / emea / americas / global)
+        - locale (Sprint 57.46 — BCP-47 conservative regex)
+        - retention_days (Sprint 57.46 — 1-3650 / 10 years max)
+        - sso_enabled (Sprint 57.46 — bool)
+        - seats (Sprint 57.46 — ≥1)
+
+    Pydantic extra='forbid' still rejects any other field with 422 (per US-2
+    immutable field guard for id / code / state / plan / created_at /
+    updated_at / progress fields).
 
     State transitions go through TenantLifecycle.transition (per
     VALID_TRANSITIONS lifecycle.py:63); plan upgrades go through
@@ -429,8 +453,26 @@ class TenantUpdateRequest(BaseModel):
 
     display_name: str | None = Field(None, min_length=1, max_length=256)
     meta_data: dict[str, Any] | None = None
+    region: str | None = Field(None, max_length=32)
+    locale: str | None = Field(None, max_length=16, pattern=_LOCALE_PATTERN)
+    retention_days: int | None = Field(None, ge=1, le=3650)
+    sso_enabled: bool | None = None
+    seats: int | None = Field(None, ge=1)
 
     model_config = ConfigDict(extra="forbid")
+
+    @field_validator("region")
+    @classmethod
+    def _validate_region(cls, v: str | None) -> str | None:
+        """Restrict region to a small whitelist.
+
+        Pydantic Literal would also work, but staying with str|None keeps the
+        OpenAPI schema looking like a free-text field (we may extend the set
+        in Phase 58+ for APAC sub-regions). Runtime check is sufficient.
+        """
+        if v is not None and v not in _REGION_VALUES:
+            raise ValueError(f"region must be one of {_REGION_VALUES}, got {v!r}")
+        return v
 
 
 @router.patch("/{tenant_id}", response_model=TenantResponse)
@@ -468,6 +510,38 @@ async def update_tenant(
         new_values["meta_data"] = request.meta_data
         tenant.meta_data = request.meta_data
         changed_fields.append("meta_data")
+
+    # Sprint 57.46 Day 1 — 5 SaaS settings fields (closes
+    # AD-TenantSettings-Backend-Schema-Extension)
+    if request.region is not None and request.region != tenant.region:
+        old_values["region"] = tenant.region
+        new_values["region"] = request.region
+        tenant.region = request.region
+        changed_fields.append("region")
+
+    if request.locale is not None and request.locale != tenant.locale:
+        old_values["locale"] = tenant.locale
+        new_values["locale"] = request.locale
+        tenant.locale = request.locale
+        changed_fields.append("locale")
+
+    if request.retention_days is not None and request.retention_days != tenant.retention_days:
+        old_values["retention_days"] = tenant.retention_days
+        new_values["retention_days"] = request.retention_days
+        tenant.retention_days = request.retention_days
+        changed_fields.append("retention_days")
+
+    if request.sso_enabled is not None and request.sso_enabled != tenant.sso_enabled:
+        old_values["sso_enabled"] = tenant.sso_enabled
+        new_values["sso_enabled"] = request.sso_enabled
+        tenant.sso_enabled = request.sso_enabled
+        changed_fields.append("sso_enabled")
+
+    if request.seats is not None and request.seats != tenant.seats:
+        old_values["seats"] = tenant.seats
+        new_values["seats"] = request.seats
+        tenant.seats = request.seats
+        changed_fields.append("seats")
 
     if not changed_fields:
         # No-op — return current state without writing audit entry.

@@ -137,7 +137,11 @@ async def test_get_tenant_happy_path(db_session: AsyncSession) -> None:
 
 
 async def test_get_tenant_response_shape(db_session: AsyncSession) -> None:
-    """Response keys match TenantResponse 10-field schema exactly."""
+    """Response keys match TenantResponse 15-field schema exactly.
+
+    Sprint 57.46 extended TenantResponse from 10 → 15 fields by adding 5
+    SaaS settings columns (region/locale/retention_days/sso_enabled/seats).
+    """
     t = await seed_tenant(db_session, code="SHAPE_TEST")
     app = _build_app(db_session=db_session)
     transport = ASGITransport(app=app)
@@ -154,6 +158,12 @@ async def test_get_tenant_response_shape(db_session: AsyncSession) -> None:
         "provisioning_progress",
         "onboarding_progress",
         "meta_data",
+        # Sprint 57.46 — 5 SaaS settings columns
+        "region",
+        "locale",
+        "retention_days",
+        "sso_enabled",
+        "seats",
         "created_at",
         "updated_at",
     }

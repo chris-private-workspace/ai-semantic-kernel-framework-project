@@ -29,6 +29,7 @@ Created: 2026-04-29 (Sprint 49.2 Day 1.5)
 Last Modified: 2026-05-05
 
 Modification History:
+    - 2026-05-26: Sprint 57.46 — Tenant +5 SaaS cols (closes AD-TenantSettings-Schema-Ext)
     - 2026-05-05: Sprint 56.1 Day 1 — Tenant ENHANCE: state/plan Enum + progress JSONB (D1)
     - 2026-04-29: Initial creation (Sprint 49.2 Day 1.5)
 
@@ -46,12 +47,14 @@ from typing import Any
 from uuid import UUID as PyUUID
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
 )
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import (
     ForeignKey,
     Index,
+    Integer,
     PrimaryKeyConstraint,
     String,
     Text,
@@ -137,6 +140,32 @@ class Tenant(Base):
         JSONB,
         nullable=False,
         server_default=text("'{}'::jsonb"),
+    )
+    # Sprint 57.46 — +5 SaaS settings cols (closes AD-TenantSettings-Schema-Ext)
+    region: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        server_default=text("'global'"),
+    )
+    locale: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        server_default=text("'en-US'"),
+    )
+    retention_days: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default=text("90"),
+    )
+    sso_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("FALSE"),
+    )
+    seats: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default=text("5"),
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
