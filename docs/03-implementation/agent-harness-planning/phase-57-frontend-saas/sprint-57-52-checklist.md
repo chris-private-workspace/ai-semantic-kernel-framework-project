@@ -39,7 +39,7 @@
 
 ### 0.9 Branch + Day 0 commit
 - [x] Branch `feature/sprint-57-52-audit-docs-hygiene-bundle-continuation` created from main `6327e597`
-- [ ] Day 0 + Day 1 combined commit (per Sprint 57.46/47/48/49/50/51 small-scope precedent)
+- [x] Day 0 + Day 1 combined commit `bfa010f1` (per Sprint 57.46/47/48/49/50/51 small-scope precedent)
 
 ---
 
@@ -88,51 +88,53 @@
 - [x] `git diff --stat HEAD` confirms: 2 files changed / 9 insertions / 0 deletions — `.claude/rules/sprint-workflow.md` +3 lines (2 table rows + 1 MHist) + REFACTOR-001 → REFACTOR-002 rename (R 100%) with +6 line MHist section; **0 .py / .ts / .tsx files touched** ✅
 
 ### 1.5 Day 1 commit
-- [ ] Commit: `feat(sprint-57-52): Day 0 + Day 1 — Triple-AD audit/docs hygiene bundle continuation (Track A constraint-delta grep + Track B REFACTOR renumber + Track C stale-docstring rule)`
-- [ ] Includes plan + checklist + progress (Day 0 三-prong + Day 1) + 2 sprint-workflow.md table extensions + 1 file rename
+- [x] Commit `bfa010f1`: `feat(sprint-57-52): Day 0 + Day 1 — Triple-AD audit/docs hygiene bundle continuation` (5 files +593/-0; rename 88% similarity)
+- [x] Includes plan + checklist + progress (Day 0 三-prong + Day 1) + 2 sprint-workflow.md table extensions + 1 file rename (REFACTOR-001 → REFACTOR-002 + new MHist section)
 
 ---
 
 ## Day 2 — Closeout (parent assistant)
 
 ### 2.1 Validation
-- [ ] Full backend pytest suite passing (no regressions; 1759 PASS baseline preserved)
-- [ ] Full frontend Vitest suite passing (no regressions; 607 PASS baseline preserved)
-- [ ] 9/9 V2 lints preserved
-- [ ] No production code change confirmed via `git diff --stat`
+- [x] Full backend pytest suite passing (commit-time: 1759 PASS + 4 skip + 1 PRE-EXISTING fail flagged Q5)
+- [x] Full frontend Vitest suite passing (commit-time: 607 PASS preserved Sprint 57.51 baseline)
+- [x] 9/9 V2 lints preserved (commit-time)
+- [x] No production code change confirmed via `git diff --stat` (commit `bfa010f1` shows only `.md` files + 1 rename)
 
 ### 2.2 Retrospective
-- [ ] Write `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-52/retrospective.md`
-- [ ] Q1-Q7 6 必答 format
-- [ ] **Q4: 2nd validation under tier-2 `mixed-multidomain-bundle` 0.65 sub-class** — log ratio actual/committed-with-agent-factor; if also > 1.20 → MANDATORY structural decision (rollback 0.65 → 1.0 OR tier-3 sub-class split `-mechanical` keep 0.65 vs `-non-mechanical` propose 1.0)
-- [ ] **Q4: `audit-cycle/docs/template` 0.40 3rd data point** completes 3-sprint window; log 3-pt mean; trigger `When to adjust` if 3+ consecutive < 0.7 or > 1.20
-- [ ] Q5 carryover candidate list (Sprint 57.53 = AD-Checkpointer-Test-Tenant-Isolation-PreExisting-Fail investigation; conditional ADs from Q4 structural decisions)
-- [ ] Q7 Design note extract: N/A SKIP (audit-cycle/docs/template not spike; same precedent as Sprint 57.10/57.47-51)
+- [x] Write `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-52/retrospective.md`
+- [x] Q1-Q7 6 必答 format
+- [x] **Q4: 2nd validation under tier-2 `mixed-multidomain-bundle` 0.65 sub-class** — ratio actual/committed-with-agent-factor ~1.7-2.0 ABOVE band by 0.5-0.8 = 2nd rollback-trigger > 1.20 (Sprint 57.51=1.49 + 57.52=~1.85) → **ROLLBACK RULE MET → Option B tier-3 SPLIT ACTIVATED**: `-mechanical` 0.65 UNCHANGED + `-non-mechanical` 1.0 NEW effective Sprint 57.53+
+- [x] **Q4: `audit-cycle/docs/template` 0.40 3rd data point** completes 3-sprint window; 3-pt mean **1.13 IN band middle**; KEEP per `When to adjust` rule — class calibration mature
+- [x] Q5 carryover candidate list (Top 3: AD-Checkpointer investigation Sprint 57.53 / Phase 58.x TenantSettings persistence / Pause)
+- [x] Q7 Design note extract: N/A SKIP (audit-cycle/docs/template not spike; same precedent as Sprint 57.10/57.47-51)
 
 ### 2.3 sprint-workflow.md updates
-- [ ] File MHist entry (1-line)
-- [ ] Matrix MHist entry (`audit-cycle/docs/template` 0.40 row updated to 3 data points: 57.10 + 57.51 + 57.52; status note re 3-sprint window evaluation)
-- [ ] §Active Activation history entry (Sprint 57.52 retro Q4 — `mixed-multidomain-bundle` 0.65 tier-2 2nd validation + structural decision)
+- [x] File MHist entry (1-line; L11 newest-first)
+- [x] Matrix MHist entry (`audit-cycle/docs/template` 0.40 row updated to 3 data points: 57.10=1.63 + 57.51=0.97 + 57.52=~0.75; mean 1.13 in band; KEEP; 3-sprint window evaluation COMPLETE)
+- [x] §Active Activation history entry inserted after Sprint 57.51 retro Q4 (Sprint 57.52 retro Q4 — `mixed-multidomain-bundle` 0.65 tier-2 2nd validation → tier-3 SPLIT ACTIVATED)
+- [x] §Active sub-class table updated (mixed-multidomain-bundle row replaced with `-mechanical` 0.65 + `-non-mechanical` 1.0)
+- [x] §Active History trail line extended with Sprint 57.52 tier-3 split
 
 ### 2.4 Memory + index
-- [ ] `memory/project_phase57_52_audit_docs_hygiene_continuation.md` subfile
-- [ ] MEMORY.md pointer entry (TOP)
+- [x] `memory/project_phase57_52_audit_docs_hygiene_continuation.md` subfile created
+- [x] MEMORY.md pointer entry inserted at TOP of §Project — Recent Sprints
 
 ### 2.5 CLAUDE.md
-- [ ] Current Sprint row updated (Sprint 57.51 → Sprint 57.52; navigator-only per Sprint Closeout Policy)
-- [ ] Last Updated footer updated
+- [x] Current Sprint row updated (Sprint 57.51 → Sprint 57.52; navigator-only per Sprint Closeout Policy)
+- [x] Last Updated footer updated (Sprint 57.52 closeout note; tier-3 SPLIT ACTIVATED)
 
 ### 2.6 next-phase-candidates.md (REFACTOR-001 single-source for open items)
-- [ ] Update `Updated` header (Sprint 57.52 closeout note; demoted Sprint 57.51 to "Previous Updated")
-- [ ] Append Sprint 57.52 carryover section at TOP per existing format
+- [x] Update `Updated` header (Sprint 57.52 closeout note; demoted Sprint 57.51 to "Previous Updated")
+- [x] Append Sprint 57.52 carryover section at TOP (3 ADs closed + tier-3 SPLIT ACTIVATED + 2 NEW carryovers + Top 3 candidates)
 
 ### 2.7 PR + merge (post-commit; user action)
-- [ ] Push branch + open PR
-- [ ] Touch `.github/workflows/backend-ci.yml` header IF CI doesn't fire (paths-filter workaround precedent; Sprint 57.51 didn't need it)
-- [ ] Wait CI green
-- [ ] User merges
-- [ ] Local cleanup
+- [ ] 🚧 Push branch + open PR (awaiting user authorization)
+- [ ] Touch `.github/workflows/backend-ci.yml` header IF CI doesn't fire (paths-filter workaround precedent; Sprint 57.51 PR #201 didn't need it)
+- [ ] 🚧 Wait CI green
+- [ ] 🚧 User merges
+- [ ] 🚧 Local cleanup
 
 ### 2.8 Final
-- [ ] Day 2 commit: `chore(sprint-57-52): Day 2 retro + closeout (mixed-multidomain-bundle 0.65 tier-2 2nd validation + audit-cycle/docs/template 0.40 3rd data point)`
-- [ ] All Day 0-2.6 checklist items `[x]` or 🚧 (Day 2.7 PR + merge pending user action)
+- [ ] Day 2 commit: `chore(sprint-57-52): Day 2 retro + closeout (mixed-multidomain-bundle 0.65 tier-2 2nd validation → tier-3 SPLIT ACTIVATED + audit-cycle/docs/template 0.40 3rd data point KEEP)`
+- [x] All Day 0-2.6 checklist items `[x]`; Day 2.7 PR + merge 🚧 pending user authorization; Day 2.8 final commit pending
