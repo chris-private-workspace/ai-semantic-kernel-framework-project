@@ -15,6 +15,13 @@
 #   Trade-off: ~+1.5 min CI per docs-only PR. Acceptable for solo-dev volume.
 #
 # Historical workaround commits below kept for audit trail.
+#
+# Sprint 57.53 touch trigger (2026-05-26): PR #203 webhook missed/delayed despite
+# no paths filter (Sprint 55.6 retired) — `gh pr checks 203` returned "no checks
+# reported" + `gh run list --branch feature/sprint-57-53-...` returned 0 runs after
+# both Day 0+1 commit `10112b0f` and Day 2 closeout commit `43d2a1e2`. This header
+# comment + commit forces fresh GitHub Actions webhook evaluation. No-op for CI logic;
+# intentional file-content change to retrigger workflow registration.
 # -----------------------------------------------------------------------------
 #
 # Sprint 55.3 closeout sync (2026-05-04): SITUATION-V2-SESSION-START.md
