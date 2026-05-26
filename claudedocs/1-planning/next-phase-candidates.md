@@ -4,7 +4,9 @@
 
 **Selection Rule**: User explicitly selects → draft plan kicks off Sprint XX.Y; otherwise items wait here indefinitely until selected or archived.
 
-**Updated**: 2026-05-26 (Sprint 57.52 closed — **triple-AD audit/docs hygiene bundle continuation** (Track A `AD-Day0-Prong2-Oklch-Delta-Grep` + Track B `AD-REFACTOR-Numbering-Collision` + Track C `AD-Stale-Docstring-Karpathy-3-Cleanup-Pattern`) — 0 production code change; 5 files +593/-0; 1 git mv rename 88% similarity; 24th consecutive code-implementer agent delegation; **2nd validation tier-2 `mixed-multidomain-bundle` 0.65 sub-class agent_factor** ratio ~1.7-2.0 ABOVE band by 0.5-0.8 = 2nd rollback-trigger > 1.20 (Sprint 57.51=1.49 + 57.52=~1.85) → **ROLLBACK RULE MET → Option B tier-3 SPLIT ACTIVATED** effective Sprint 57.53+: NEW `-mechanical` 0.65 UNCHANGED + `-non-mechanical` 1.0 NEW (Sprint 57.51 + 57.52 retroactively validate cleanly at 1.0); `audit-cycle/docs/template` 0.40 3rd data point 3-pt mean 1.13 IN band middle KEEP (3-sprint window complete; class calibration mature); 3 ADs CLOSED + CLOSES AD-AgentFactor-Tier-2-MixedBundle-Validation-Sprint-57.52 via tier-3 ACTIVATION; 2 NEW carryover ADs (AD-Checkpointer-Test-Tenant-Isolation-PreExisting-Fail-Investigation Sprint 57.53 user-confirmed scope + AD-AgentFactor-Tier-3-Validation-Sprint-57.53); mockup-fidelity DUAL CLEAN 22/22 PARITY preserved through 8 consecutive sprints 57.45-57.52.)
+**Updated**: 2026-05-26 (Sprint 57.53 closed — **Checkpointer test tenant isolation pre-existing fail FIX** closes `AD-Checkpointer-Test-Tenant-Isolation-PreExisting-Fail-Investigation` (Sprint 57.51+57.52 trail carryover); Option A enriched with Sprint 57.12 `§Committed-Row Cleanup Pattern` lift to agent_harness scope (NEW `backend/tests/integration/agent_harness/conftest.py` ~120 lines mirrors `api/conftest.py` verbatim); 0 modifications to existing files; pytest baseline restored to **1760 PASS + 0 fail** (was 1759 + 1 PRE-EXISTING fail); H1-H6 hypothesis methodology (5 REFUTED + 1 PLAUSIBLE) + D-DAY0-9 NEW MAJOR finding (Sprint 57.12 precedent discovery); **`medium-backend` 0.80 6th data point ratio 0.83 in band lower edge** (cleaner signal under human 1.0 factor); **`mechanical-greenfield` 0.50 1st validation NOT GENERATED** (parent-assistant-direct per Sprint 57.45 Path B precedent → `agent_factor = 1.0` applied; carryover renamed Sprint-57.54); 1 AD CLOSED + 4 NEW carryovers; 25-sprint code-implementer chain BROKEN (parent-assistant-direct shape); DUAL CLEAN 22/22 PARITY preserved 9 consecutive 57.45-57.53.)
+
+**Previous Updated**: 2026-05-26 (Sprint 57.52 closed — **triple-AD audit/docs hygiene bundle continuation** (Track A `AD-Day0-Prong2-Oklch-Delta-Grep` + Track B `AD-REFACTOR-Numbering-Collision` + Track C `AD-Stale-Docstring-Karpathy-3-Cleanup-Pattern`) — 0 production code change; 5 files +593/-0; 1 git mv rename 88% similarity; 24th consecutive code-implementer agent delegation; **2nd validation tier-2 `mixed-multidomain-bundle` 0.65 sub-class agent_factor** ratio ~1.7-2.0 ABOVE band by 0.5-0.8 = 2nd rollback-trigger > 1.20 (Sprint 57.51=1.49 + 57.52=~1.85) → **ROLLBACK RULE MET → Option B tier-3 SPLIT ACTIVATED** effective Sprint 57.53+: NEW `-mechanical` 0.65 UNCHANGED + `-non-mechanical` 1.0 NEW (Sprint 57.51 + 57.52 retroactively validate cleanly at 1.0); `audit-cycle/docs/template` 0.40 3rd data point 3-pt mean 1.13 IN band middle KEEP (3-sprint window complete; class calibration mature); 3 ADs CLOSED + CLOSES AD-AgentFactor-Tier-2-MixedBundle-Validation-Sprint-57.52 via tier-3 ACTIVATION; 2 NEW carryover ADs (AD-Checkpointer-Test-Tenant-Isolation-PreExisting-Fail-Investigation Sprint 57.53 user-confirmed scope + AD-AgentFactor-Tier-3-Validation-Sprint-57.53); mockup-fidelity DUAL CLEAN 22/22 PARITY preserved through 8 consecutive sprints 57.45-57.52.)
 
 **Previous Updated**: 2026-05-26 (Sprint 57.51 closed — **triple-AD audit/docs hygiene bundle** (Lint Detector + ORM Risk + HEX_OKLCH Verdict A) — 0 production code change; 7 `.md` files +1022/-3; **1st validation NEW tier-2 `mixed-multidomain-bundle` 0.65 sub-class agent_factor** ratio 1.49 ABOVE band by 0.29 → KEEP single-data-point caution; 3 ADs closed + 4 NEW carryovers; 23rd consecutive code-implementer delegation.)
 
@@ -16,7 +18,64 @@
 
 ---
 
-## 🆕 Sprint 57.52 Carryover (2026-05-26 — Triple-AD Audit/Docs Hygiene Bundle Continuation; Tier-3 `mixed-multidomain-bundle` SPLIT ACTIVATED)
+## 🆕 Sprint 57.53 Carryover (2026-05-26 — Checkpointer Test Tenant Isolation Pre-Existing Fail FIX; Sprint 57.12 `§Committed-Row Cleanup Pattern` Lift)
+
+Sprint 57.53 (single-track investigation+fix sprint) ✅ **CLOSED**: 1 carryover AD closed (`AD-Checkpointer-Test-Tenant-Isolation-PreExisting-Fail-Investigation` Sprint 57.51+57.52 trail). Pytest baseline restored to **1760 PASS + 0 fail** (was 1759 + 1 PRE-EXISTING fail).
+
+### Sprint scope (single track + investigation methodology)
+
+- **Day 1 Task 1.1** — H1-H6 hypothesis elimination investigation (5 evidence steps + verdict): H1 REFUTED in state_mgmt scope + CONFIRMED via Sprint 57.12 cross-scope precedent / H2 PLAUSIBLE secondary / H3 REFUTED (TRIGGER_COUNT=0) / H4 REFUTED (no refactor history) / H5 REFUTED (1/9 codes leaked) / H6 REFUTED (0 .commit() in checkpointer.py)
+- **Day 1 Task 1.2** — Option A enriched with Sprint 57.12 precedent (Options B/C/D explicitly rejected per `testing.md` documented anti-patterns)
+- **Day 1 Task 1.3** — Implementation:
+  - One-shot manual DELETE ISO_A row (WORM trigger toggle pattern; `DELETED_ROWS=1`)
+  - NEW `backend/tests/integration/agent_harness/conftest.py` (~120 lines mirroring `tests/integration/api/conftest.py` Sprint 57.12 `§Committed-Row Cleanup Pattern` verbatim at sibling scope)
+  - Allowlist `_COMMITTING_STATE_MGMT_TENANT_CODES` (9 codes: CHKPT_TEST + ISO_A + MISSING + MM_SID + MM_TID + RT + SIZE + TT + TEST_TENANT)
+  - `_clear_committed_state_mgmt_tenants()` cleanup with WORM trigger toggle (DISABLE → DELETE → ENABLE → COMMIT, single transaction)
+  - `@pytest.fixture(autouse=True) _reset_state_mgmt_test_state` before+after yield
+  - **0 modifications to existing files** (zero-edit-on-existing scope)
+
+### Day 0 三-prong + Day 1 validation
+
+- 6 GREEN + 1 YELLOW (D-DAY0-3 plan SAVEPOINT reference resolved Day 1.1.4) + 2 NEW NOTABLE (D-DAY0-7 H1 refutation evidence + D-DAY0-8 broader committer catalog) + **1 NEW MAJOR D-DAY0-9** (Sprint 57.12 §Committed-Row Cleanup precedent discovery upgraded Option A from speculative to direct-precedent-applicable; saved ~30-45 min Day 1 work)
+- 0 RED; GO with no plan revision
+- Day 1 validation 9/9 GREEN (pytest 1760 PASS + 4 skip + 0 fail = +1 net vs Sprint 57.52 baseline; mypy 0/310 source files; 9/9 V2 lints 1.19s; Vitest 607 PASS / 118 test files preserved; Vite build 3.51s clean; LLM SDK leak 0; 0 .ts/.tsx files touched)
+- **Parent-assistant-direct execution** (0% code-implementer agent delegation); ~80 min wall-clock total (Day 0 ~25 min + Day 1 ~30 min + Day 2 ~25 min closeout)
+
+### Calibration (Day 2 retro Q4)
+
+- **Class**: `medium-backend` 0.80 — **6th data point ratio 0.83** ✅ in band lower edge (was 5-pt mean 0.52; 6-pt mean **0.57** improvement; last 3 only 2/3 < 0.7 → lower-trigger NOT MET → **KEEP 0.80 baseline** per 3-sprint window rule; Sprint 57.50 retro Q4 prediction "6th data point cleaner signal under tier-2" validated)
+- **Sub-class agent_factor**: `mechanical-greenfield` 0.50 — **1st validation NOT GENERATED**. Plan §6 predicted agent-delegated execution at `mechanical-greenfield` 0.50, but reality was parent-assistant-direct → per Sprint 57.45 Path B precedent ("Path B = 0 code change → `agent_factor = 1.0` applied"; extended logic for "0% delegation" generally), `agent_factor = 1.0 (human)` applied. Carryover renamed to `AD-AgentFactor-Tier-3-Validation-Sprint-57.54` continues open.
+
+### 1 AD CLOSED + 4 NEW carryover ADs for Sprint 57.54+
+
+**CLOSED**:
+- ✅ `AD-Checkpointer-Test-Tenant-Isolation-PreExisting-Fail-Investigation` (Sprint 57.51+57.52 trail carryover; root-cause investigated; fix applied; pytest baseline restored to 1760 PASS + 0 fail)
+
+**NEW carryover**:
+- **`AD-AgentFactor-Tier-3-Validation-Sprint-57.54`** (renumbered from Sprint-57.53; need agent-delegated sprint at `mechanical-greenfield` 0.50 sub-class for 1st validation data point — estimated scope: any backend or frontend sprint with single-track NEW component-pair where user pre-confirms agent delegation at Day 0)
+- **`AD-Plan-Workload-AgentDelegation-Explicit-Field`** (NEW from retro Q3 Lesson 3 — codify sprint plan §6 pre-commit "agent-delegated: yes/no/partial/TBD-Day-1-decision" field BEFORE Day 0 三-prong; default to "TBD" at draft, finalize at Day 0 approval gate; default to "yes" if user defers — protects calibration matrix from accidental no-data-point sprints)
+- **`AD-Test-Cleanup-Pattern-Shared-Helper`** (NEW from retro Q3 Lesson 1; Phase 58.x — extract `_clear_committed_test_tenants` to shared `tests/conftest_helpers.py` module so api + agent_harness + future scopes can import-and-allowlist rather than duplicate the function body)
+- **`AD-MediumBackend-AICadence-Recalibration`** (NEW from retro Q4 sub-lesson; Phase 58+ — revisit `medium-backend` 0.80 baseline if next 2-3 human-factor sprints continue to land 0.70-0.85; class baseline may be slightly too high for AI-cadence parent-assistant-direct work)
+
+### Continuing carryover (unchanged this sprint)
+
+- `AD-medium-frontend-Baseline-Recalibration` (Sprint 57.49 carryover continues; 3rd data point pending at next medium-frontend sprint)
+- `AD-TenantSettings-{HITLPolicies,FeatureFlags,Quotas,RateLimits}-Persistence` Phase 58.x (Sprint 57.48 carryover)
+- `AD-TenantSettings-Identity-Persistence-Phase58` (Sprint 57.50 carryover)
+- `AD-MockupCapture-Frontend-Visual-Diff-Pipeline` (Phase 58+ deferred)
+
+### Highlights
+
+- 🎉 **Backend pytest baseline restored to ALL-GREEN** after 3-sprint carryover (57.51 → 57.52 → 57.53)
+- ⭐ **Sprint 57.12 §Committed-Row Cleanup Pattern lift** = direct precedent application (NOT new invention); ~120-line conftest.py sibling at agent_harness scope; 0 modifications to existing files
+- 🎯 **H1-H6 hypothesis elimination methodology** delivered 5 explicit REFUTED + 1 PLAUSIBLE in <30 min Day 1 investigation
+- 🟢 **Mockup-fidelity DUAL CLEAN milestone (22/22 PARITY)** PRESERVED through **9 consecutive sprints 57.45-57.53**
+- ⚠️ **25-sprint code-implementer agent delegation streak BROKEN** (Sprint 57.40-57.52 chain preserved as historical; Sprint 57.53 parent-assistant-direct due to investigation+small-fix shape)
+- 📊 **`medium-backend` 0.80 6th data point under human 1.0 factor** = 1st post-confound clean class-baseline data point (0.83 in band lower edge)
+
+---
+
+## Sprint 57.52 Carryover (2026-05-26 — Triple-AD Audit/Docs Hygiene Bundle Continuation; Tier-3 `mixed-multidomain-bundle` SPLIT ACTIVATED)
 
 Sprint 57.52 (triple-AD audit/docs hygiene bundle continuation) ✅ **CLOSED**: 3 carryover ADs from Sprint 57.50-51 trail closed in single bundled sprint (0 production code change; 5 files +593/-0; 1 git mv rename 88% similarity).
 
