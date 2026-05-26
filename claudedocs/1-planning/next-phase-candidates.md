@@ -4,11 +4,62 @@
 
 **Selection Rule**: User explicitly selects → draft plan kicks off Sprint XX.Y; otherwise items wait here indefinitely until selected or archived.
 
-**Updated**: 2026-05-26 (Sprint 57.50 closed — single-track 1-hr hygiene closes `AD-TenantSettings-IdentityFixture-Cleanup` via Option A fixture-projection (mirror Sprint 57.48 Track D RateLimits); **2nd validation `mechanical-single-domain` 0.45 ratio 0.58 → 2nd consec < 0.7 → ROLLBACK RULE MET → Option B tier-2 ESCALATED ACTIVATED**: NEW `mechanical-pattern-reuse-heavy` 0.30 + `mechanical-greenfield` 0.50 effective Sprint 57.51+ (parallel Sprint 57.38+57.48 precedent); 3 ADs closed (#73 + #74 + IdentityFixture-Cleanup); 4 NEW carryover ADs (#75 + #76 + #81 + AD-Stale-Docstring-Karpathy-3); 22nd consecutive code-implementer delegation; mockup-fidelity DUAL CLEAN 22/22 PARITY preserved.)
+**Updated**: 2026-05-26 (Sprint 57.51 closed — **triple-AD audit/docs hygiene bundle** (Track A `AD-Lint-Detector-Code-Aware-Masking-Rule` + Track B `AD-Plan-Risk-ORM-File-Path-Reference-Style #82` + Track C `AD-Sprint-57.49-HEX_OKLCH-Silent-Drift-Audit`) — 0 production code change; 7 `.md` files +1022/-3; 23rd consecutive code-implementer agent delegation; **1st validation NEW tier-2 `mixed-multidomain-bundle` 0.65 sub-class agent_factor** ratio actual/committed-with-agent-factor ~1.49 ABOVE [0.85, 1.20] band by 0.29 = 1st rollback-trigger > 1.20 → KEEP single-data-point caution; 3 ADs CLOSED (Lint Detector + ORM Risk + HEX_OKLCH Verdict A); 4 NEW carryover ADs (AD-Day0-Prong2-Oklch-Delta-Grep + AD-Checkpointer-Test-Tenant-Isolation-PreExisting-Fail + AD-AgentFactor-Tier-2-MixedBundle-Validation-Sprint-57.52 + AD-REFACTOR-Numbering-Collision BONUS); mockup-fidelity DUAL CLEAN 22/22 PARITY preserved through 7 consecutive sprints 57.45-57.51.)
+
+**Previous Updated**: 2026-05-26 (Sprint 57.50 closed — single-track 1-hr hygiene closes `AD-TenantSettings-IdentityFixture-Cleanup` via Option A fixture-projection; **2nd validation `mechanical-single-domain` 0.45 ratio 0.58 → ROLLBACK RULE MET → Option B tier-2 ESCALATED ACTIVATED**: NEW `mechanical-pattern-reuse-heavy` 0.30 + `mechanical-greenfield` 0.50; 3 ADs closed + 4 NEW carryovers; 22nd consecutive code-implementer delegation.)
 
 **Previous Updated**: 2026-05-26 (Sprint 57.43-57.49 batch closed; 4-sprint window landed via 14 ADs total — Phase-2 epic + NEAR-PARITY **DUAL CLEAN milestone 22/22 PARITY** reached Sprint 57.45; Phase 58+ Backend Schema Extension COMPLETE for TenantSettings 6-tab + admin-tenants LIST; Phase 58+ Frontend Real-Data Migration COMPLETE for /tenant-settings + /admin-tenants Members; Sprint 57.48 Option B sub-class split ACTIVATED.)
 
 **Previous Updated**: 2026-05-25 (Sprint 57.42 closed; Option A `agent_factor = 0.55` ACTIVATED — later SUPERSEDED Sprint 57.48 via Option B sub-class split.)
+
+---
+
+## 🆕 Sprint 57.51 Carryover (2026-05-26 — Triple-AD Audit/Docs Hygiene Bundle; Tier-2 `mixed-multidomain-bundle` 0.65 1st Validation)
+
+Sprint 57.51 (triple-AD audit/docs hygiene bundle) ✅ **CLOSED**: 3 carryover ADs from Sprint 57.48-50 trail closed in single bundled sprint (0 production code change; 7 `.md` files +1022/-3).
+
+### Sprint scope (3 tracks, sequential per user direction)
+
+- **Track A** — `AD-Lint-Detector-Code-Aware-Masking-Rule` ✅ CLOSED (Sprint 57.48 D-DAY0-6 carryover) → NEW `docs/rules-on-demand/lint-detector-authoring.md` ~145 lines (Why / 3-step authoring pattern / AP-4 placeholder JSX attr + TS key mask actual code + hypothetical AP-N case / 4 anti-patterns / cross-refs); `.claude/rules/README.md` on-demand index 11→12 entries.
+- **Track B** — `AD-Plan-Risk-ORM-File-Path-Reference-Style` #82 ✅ CLOSED (Sprint 57.50 D-DAY0-2 carryover) → NEW Risk Class D in `.claude/rules/sprint-workflow.md §Common Risk Classes` mirroring A/B/C 4-field template (Symptom/Source/Workaround/Long-term fix); cites `09-db-schema-design.md §Group 1 Identity & Tenancy` → identity.py.
+- **Track C** — `AD-Sprint-57.49-HEX_OKLCH-Silent-Drift-Audit` ✅ CLOSED (PR #200 hotfix carryover) → NEW `claudedocs/4-changes/refactoring/AUDIT-001-sprint-57-49-hex-oklch-silent-drift.md` ~145 lines with **Verdict A — intended verbatim port** (Sprint 57.44 MembersTab avatar gradient `linear-gradient(135deg, oklch(0.65 0.15 ${c % 360}), oklch(0.5 0.16 ${(c + 60) % 360}))` reused in Sprint 57.49 NEW TenantMembersDrawer.tsx for cross-component visual consistency; fix-forward at PR #200 hotfix `74ed8a2f` correct; no fix-back needed).
+
+### Day 0 三-prong + Day 1 validation
+
+- 8 GREEN + 2 GREEN+ (D-DAY0-5 NET +1 oklch confirmed + D-DAY0-6 TenantMembersDrawer source identified) + 1 BONUS observation (REFACTOR-001 numbering collision)
+- 0 RED / 0 YELLOW; GO with no plan revision
+- Day 1 validation 8/8 GREEN (9/9 V2 lints + pytest 1759 PASS + 1 PRE-EXISTING fail flagged `test_checkpointer_db::test_tenant_isolation` 0 backend source changes → NEW carryover AD; Vitest 607 preserved; ESLint 0 / tsc 0 / Vite build 3.40s / LLM SDK leak 0)
+- 23rd consecutive code-implementer agent delegation; ~70 min wall-clock total (Day 0 ~20 min + Day 1 ~50 min)
+
+### Calibration (Day 2 retro Q4)
+
+- **Class**: `audit-cycle/docs/template` 0.40 (**2nd data point**; 1st was Sprint 57.10 ratio 1.63) — 2-pt mean **1.30** ABOVE band by 0.10 (lower band edge); KEEP per `When to adjust` 3-sprint window rule
+- **Sub-class agent_factor**: `mixed-multidomain-bundle` 0.65 (**tier-2 1st validation** post Sprint 57.50 Option B tier-2 ESCALATION)
+- Bottom-up ~3.0 hr → class-calibrated ~1.2 hr (mult 0.40) → agent-adjusted ~0.78 hr (× 0.65) → actual ~70 min
+- Ratio actual/class-committed = **0.97** ✅ in band middle (validates class 0.40 cleanly)
+- Ratio actual/committed-with-agent-factor = **~1.49** ABOVE band by 0.29 = **1st rollback-trigger > 1.20 data point** under `mixed-multidomain-bundle` 0.65
+- **KEEP `mixed-multidomain-bundle` 0.65 single-data-point caution**; flag Sprint 57.52+ for 2nd validation; if also > 1.20 → roll back 0.65 → 1.0 (drop modifier; multi-domain non-mechanical = `human` cadence) OR tier-3 sub-class split `-mechanical` (keep 0.65) vs `-non-mechanical` (propose 1.0)
+
+### NEW carryover ADs (Sprint 57.52+ pickup)
+
+1. **`AD-Day0-Prong2-Oklch-Delta-Grep`** (NEW Track C lesson) — Codify oklch-delta grep step into `sprint-workflow.md §Step 2.5 Prong 2` for future agent-delegated frontend migration sprints. Generalizes beyond oklch to any baseline-constrained metric (HEX_OKLCH / AP-N detector counts / bundle size / test-count thresholds). ~30 min `audit-cycle/docs/template` 0.40 class. Recommended as Sprint 57.52 scope.
+2. **`AD-Checkpointer-Test-Tenant-Isolation-PreExisting-Fail`** (NEW Day 1 surface) — `test_checkpointer_db::test_tenant_isolation` fails on main `8431646f` (Sprint 57.50 baseline); 0 backend source changes in Sprint 57.51 → pre-existing failure. Suggests Sprint 57.50 closeout missed full backend pytest sweep OR paths-filter masked. ~1-2 hr investigation + fix. Class TBD (medium-backend OR frontend-page-bug-fix depending on root cause).
+3. **`AD-AgentFactor-Tier-2-MixedBundle-Validation-Sprint-57.52`** (NEW retro Q4 carryover) — 2nd validation data point needed under `mixed-multidomain-bundle` 0.65; conditional structural action if also > 1.20 (rollback to 1.0 OR tier-3 split).
+4. **`AD-REFACTOR-Numbering-Collision`** (NEW Sprint 57.51 Day 0.8 BONUS observation) — 2 files share `REFACTOR-001-*.md` prefix. Rename one to REFACTOR-002 for traceability. ~10 min chore. Could be bundled with #1 as 2-track audit/docs sprint.
+
+### Continuing carryover (unchanged Sprint 57.51)
+
+- `AD-medium-frontend-Baseline-Recalibration` (Sprint 57.49 carryover; 3rd data point pending; not addressed this sprint since `audit-cycle/docs/template` not medium-frontend)
+- `AD-TenantSettings-{HITLPolicies,FeatureFlags,Quotas,RateLimits}-Persistence` Phase 58.x (Sprint 57.48 carryover)
+- `AD-TenantSettings-Identity-Persistence-Phase58` (Sprint 57.50 carryover — full SSO admin schema)
+- `AD-MockupCapture-Frontend-Visual-Diff-Pipeline` Phase 58+ deferred
+- `AD-Stale-Docstring-Karpathy-3-Cleanup-Pattern` (Sprint 57.50 D-DAY0-8 lesson — codify docstring claims as Karpathy §3 dead-code class for Prong 2 content verify; ~30 min `audit-cycle/docs/template`; could bundle with #1 + #4)
+
+### Top 3 next-sprint candidates (post Sprint 57.51)
+
+1. **🥇 Audit/docs hygiene bundle continuation** (~1-1.5 hr) — Bundle #1 + #4 + AD-Stale-Docstring-Karpathy-3 into a Sprint 57.52 triple-track `audit-cycle/docs/template` 0.40 sprint. Naturally tests 2nd validation under `mixed-multidomain-bundle` 0.65. Closes 3 small carryovers cleanly.
+2. **🥈 Investigate AD-Checkpointer-Test-Tenant-Isolation-PreExisting-Fail** (~1-2 hr) — Bug-fix sprint; production stability matters; class TBD pending root cause. Would surface "how did silent failure land in main" + close the lint hygiene gap.
+3. **🥉 Pause** — Sprint 57.51 just closed 3 ADs from Sprint 57.48-50 trail; carryover queue reduced; tier-2 1st validation data point captured; let user direct Phase 58.x persistence work OR Phase 57.x SaaS frontend feature work resumption.
 
 ---
 
