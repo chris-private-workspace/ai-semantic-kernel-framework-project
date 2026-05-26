@@ -21,6 +21,7 @@
  * Last Modified: 2026-05-26
  *
  * Modification History (newest-first):
+ *   - 2026-05-27: Sprint 57.55 Track B — +FeatureFlagOverridesUpsert{Request,Response} write schemas
  *   - 2026-05-26: Sprint 57.54 Track B — +HITLPolicyUpsert{Request,Response} write schemas
  *   - 2026-05-26: Sprint 57.50 Day 1 — +TenantIdentity (Identity fixture cleanup)
  *   - 2026-05-26: Sprint 57.49 Day 1 — +5 sub-resource list shapes (Members/HITL/FF/Quotas/RateLimits)
@@ -171,4 +172,15 @@ export interface HITLPolicyUpsertRequest {
 export interface HITLPolicyUpsertResponse {
   saved_policy: HITLPolicyUpsertRequest;
   items: HITLPolicyItem[];
+}
+
+/* === Sprint 57.55 Track B — FeatureFlag overrides upsert write schemas === */
+
+export interface FeatureFlagOverridesUpsertRequest {
+  overrides: Record<string, boolean>;
+}
+
+export interface FeatureFlagOverridesUpsertResponse {
+  saved_overrides: Record<string, boolean>;
+  items: FeatureFlagItem[];
 }

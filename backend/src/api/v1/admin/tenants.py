@@ -46,6 +46,7 @@ Created: 2026-05-06 (Sprint 56.1 Day 1)
 Last Modified: 2026-05-10
 
 Modification History:
+    - 2026-05-26: Sprint 57.55 — PUT /feature-flags overrides + helper extract (D-DAY0-T pivot)
     - 2026-05-26: Sprint 57.54 — add PUT /{id}/hitl-policies upsert + write schemas (Track A)
     - 2026-05-26: Sprint 57.50 Day 1 — Identity admin GET (closes AD-Identity-Cleanup)
     - 2026-05-26: Sprint 57.48 Day 1 — +4 admin GET endpoints HITL+FF+Quotas+RateLimits
@@ -81,6 +82,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agent_harness._contracts.hitl import HITLPolicy, RiskLevel
+from core.feature_flags import FeatureFlagNotFoundError, get_feature_flags_service
 from infrastructure.db.audit_helper import append_audit
 from infrastructure.db.models.feature_flag import FeatureFlag
 from infrastructure.db.models.identity import Tenant, TenantPlan, TenantState, User
@@ -911,6 +913,49 @@ class FeatureFlagListResponse(BaseModel):
     offset: int
 
 
+async def _project_feature_flags_for_tenant(
+    db: AsyncSession,
+    tenant_id: UUID,
+    limit: int | None = None,
+    offset: int | None = None,
+) -> tuple[list[FeatureFlagItem], int]:
+    """Project all feature flags as per-tenant resolved items + total count.
+
+    Sprint 57.55 — extracted from list_tenant_feature_flags (Sprint 57.48 Track B)
+    so both GET and PUT endpoints can share projection logic (DRY refactor).
+    `limit` / `offset` are pagination knobs for the GET path; PUT passes None
+    to project the full set (cache hydration consistency with GET).
+    """
+    base_stmt = select(FeatureFlag).order_by(FeatureFlag.name.asc())
+    count_stmt = select(func.count()).select_from(base_stmt.subquery())
+    total_raw = (await db.execute(count_stmt)).scalar()
+    total = int(total_raw or 0)
+
+    page_stmt = base_stmt
+    if limit is not None:
+        page_stmt = page_stmt.limit(limit)
+    if offset is not None:
+        page_stmt = page_stmt.offset(offset)
+    rows = (await db.execute(page_stmt)).scalars().all()
+
+    tid_key = str(tenant_id)
+    items: list[FeatureFlagItem] = []
+    for ff in rows:
+        override = ff.tenant_overrides.get(tid_key) if ff.tenant_overrides else None
+        effective = bool(override) if override is not None else ff.default_enabled
+        items.append(
+            FeatureFlagItem(
+                name=ff.name,
+                value=effective,
+                default_enabled=ff.default_enabled,
+                overridden=override is not None,
+                description=ff.description,
+                updated_at=ff.updated_at,
+            )
+        )
+    return items, total
+
+
 @router.get(
     "/{tenant_id}/feature-flags",
     response_model=FeatureFlagListResponse,
@@ -930,32 +975,112 @@ async def list_tenant_feature_flags(
     value differs from the default.
     """
     await _load_tenant_or_404(db, tenant_id)
+    items, total = await _project_feature_flags_for_tenant(db, tenant_id, limit, offset)
+    return FeatureFlagListResponse(items=items, total=total, limit=limit, offset=offset)
 
-    base_stmt = select(FeatureFlag).order_by(FeatureFlag.name.asc())
-    count_stmt = select(func.count()).select_from(base_stmt.subquery())
-    total_raw = (await db.execute(count_stmt)).scalar()
-    total = int(total_raw or 0)
 
-    page_stmt = base_stmt.limit(limit).offset(offset)
-    rows = (await db.execute(page_stmt)).scalars().all()
+# =====================================================================
+# Sprint 57.55 Track A — FeatureFlags admin PUT upsert (D-DAY0-T pivot path)
+# =====================================================================
+# WRITE side: NEW PUT /{tenant_id}/feature-flags endpoint loops the composite
+# overrides payload through FeatureFlagsService.set_tenant_override (canonical
+# setter; auto-emits audit chain via Sprint 56.1 / US-4 invariant) +
+# clear_tenant_override (NEW Sprint 57.55 sibling for composite-replace
+# semantics — any prior tenant override NOT in payload gets cleared).
 
-    tid_key = str(tenant_id)
-    items: list[FeatureFlagItem] = []
-    for ff in rows:
-        override = ff.tenant_overrides.get(tid_key) if ff.tenant_overrides else None
-        effective = bool(override) if override is not None else ff.default_enabled
-        items.append(
-            FeatureFlagItem(
-                name=ff.name,
-                value=effective,
-                default_enabled=ff.default_enabled,
-                overridden=override is not None,
-                description=ff.description,
-                updated_at=ff.updated_at,
-            )
+
+class FeatureFlagOverridesUpsertRequest(BaseModel):
+    """Composite FeatureFlag overrides upsert payload (composite-replace semantics).
+
+    Sprint 57.55 Track A. Payload represents the COMPLETE desired override state
+    for this tenant; flags with a current override but NOT in payload are
+    cleared (revert to default_enabled).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    overrides: dict[str, bool] = Field(
+        default_factory=dict,
+        description=(
+            "Map of flag name → override value (bool). Composite-replace "
+            "semantics: flags NOT in payload but currently overridden for this "
+            "tenant are cleared (reverts to default_enabled)."
+        ),
+    )
+
+
+class FeatureFlagOverridesUpsertResponse(BaseModel):
+    """Echoes saved composite + projects items list for cache hydration."""
+
+    saved_overrides: dict[str, bool]
+    items: list[FeatureFlagItem]
+
+
+@router.put(
+    "/{tenant_id}/feature-flags",
+    response_model=FeatureFlagOverridesUpsertResponse,
+    dependencies=[Depends(require_admin_platform_role)],
+)
+async def upsert_tenant_feature_flag_overrides(
+    tenant_id: UUID,
+    payload: FeatureFlagOverridesUpsertRequest,
+    db: AsyncSession = Depends(get_db_session),
+) -> FeatureFlagOverridesUpsertResponse:
+    """Upsert per-tenant FeatureFlag overrides into feature_flags.tenant_overrides JSONB.
+
+    Composite-replace semantics: payload.overrides represents the COMPLETE
+    desired override state for this tenant. Any flag with a current tenant
+    override that is NOT in payload.overrides will be CLEARED (reverts to
+    default_enabled).
+
+    - 401/403 via require_admin_platform_role
+    - 404 via _load_tenant_or_404
+    - 422 if any override key not in global FeatureFlag registry
+    - 200 with response.saved_overrides + response.items (projected for cache hydration)
+    - Audit chain entries auto-emitted by FeatureFlagsService.set_tenant_override
+      and FeatureFlagsService.clear_tenant_override (Sprint 56.1 / US-4 invariant +
+      Sprint 57.55 NEW clear_tenant_override audit emit).
+    """
+    await _load_tenant_or_404(db, tenant_id)
+
+    # Pre-validate all payload keys against global registry (single SELECT).
+    all_flags_stmt = select(FeatureFlag)
+    all_flags = (await db.execute(all_flags_stmt)).scalars().all()
+    known = {ff.name for ff in all_flags}
+    unknown = set(payload.overrides.keys()) - known
+    if unknown:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown feature flag(s): {sorted(unknown)}",
         )
 
-    return FeatureFlagListResponse(items=items, total=total, limit=limit, offset=offset)
+    service = get_feature_flags_service(db)
+    tid_str = str(tenant_id)
+
+    # SET: each flag in payload → set_tenant_override (audit emit handled).
+    for flag_name, value in payload.overrides.items():
+        try:
+            await service.set_tenant_override(flag_name, tenant_id, value, actor_user_id=None)
+        except FeatureFlagNotFoundError as exc:
+            # Defense-in-depth: pre-validation above should catch all unknown
+            # flag names, but if registry mutates mid-request raise 422.
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unknown feature flag: {flag_name}",
+            ) from exc
+
+    # CLEAR: each flag NOT in payload with a current tenant override → clear.
+    for ff in all_flags:
+        if ff.name not in payload.overrides and tid_str in (ff.tenant_overrides or {}):
+            await service.clear_tenant_override(ff.name, tenant_id, actor_user_id=None)
+
+    await db.commit()
+
+    # Re-fetch + project items (cache hydration consistency with GET).
+    items, _ = await _project_feature_flags_for_tenant(db, tenant_id)
+    return FeatureFlagOverridesUpsertResponse(
+        saved_overrides=payload.overrides,
+        items=items,
+    )
 
 
 # =====================================================================

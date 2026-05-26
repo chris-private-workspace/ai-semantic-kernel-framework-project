@@ -31,6 +31,7 @@ Description:
     audit chain caller obeys multi-tenant-data.md (always passes tenant_id).
 
 Modification History (newest-first):
+    - 2026-05-26: Sprint 57.55 — add clear_tenant_override (D-DAY0-T pivot)
     - 2026-05-06: Initial creation (Sprint 56.1 Day 3 / US-4)
 
 Related:
@@ -137,6 +138,51 @@ class FeatureFlagsService:
                 "tenant_id": str(tenant_id),
                 "previous_override": previous,
                 "new_value": enabled,
+            },
+            operation_result="success",
+        )
+
+        await self._session.flush()
+        # Invalidate cached lookups for this flag (any tenant).
+        keys_to_drop = [k for k in self._resolved_cache if k[0] == flag_name]
+        for k in keys_to_drop:
+            self._resolved_cache.pop(k, None)
+
+    async def clear_tenant_override(
+        self,
+        flag_name: str,
+        tenant_id: UUID,
+        actor_user_id: UUID | None = None,
+    ) -> None:
+        """Remove per-tenant override (revert to default_enabled) + emit audit entry.
+
+        Sprint 57.55 — D-DAY0-T pivot: supports composite-replace clear semantics
+        for PUT /admin/tenants/{tenant_id}/feature-flags endpoint. Idempotent:
+        no-op when no override exists for the given tenant (no audit entry emitted).
+        """
+        flag = await self._load(flag_name)
+        if flag is None:
+            raise FeatureFlagNotFoundError(
+                f"flag '{flag_name}' not in registry; cannot clear unknown flag"
+            )
+        if str(tenant_id) not in flag.tenant_overrides:
+            return  # idempotent no-op
+        previous = flag.tenant_overrides[str(tenant_id)]
+        new_overrides = dict(flag.tenant_overrides)
+        del new_overrides[str(tenant_id)]
+        flag.tenant_overrides = new_overrides
+
+        await append_audit(
+            self._session,
+            tenant_id=tenant_id,
+            user_id=actor_user_id,
+            operation="feature_flag_override_cleared",
+            resource_type="feature_flag",
+            resource_id=flag_name,
+            operation_data={
+                "flag_name": flag_name,
+                "tenant_id": str(tenant_id),
+                "previous_override": previous,
             },
             operation_result="success",
         )

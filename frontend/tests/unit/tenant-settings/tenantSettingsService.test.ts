@@ -17,6 +17,7 @@ import {
   fetchTenantIdentity,
   fetchTenantMembers,
   fetchTenantSettings,
+  saveFeatureFlagOverrides,
   saveHITLPolicies,
   updateTenantSettings,
 } from "../../../src/features/tenant-settings/services/tenantSettingsService";
@@ -227,6 +228,52 @@ describe("tenantSettingsService", () => {
           sla_seconds_by_risk: {},
         }),
       ).rejects.toThrow("invalid risk level");
+    });
+  });
+
+  /* === Sprint 57.55 Track B — saveFeatureFlagOverrides PUT === */
+
+  describe("saveFeatureFlagOverrides (Sprint 57.55)", () => {
+    it("sends PUT with correct URL + JSON body", async () => {
+      const payload = {
+        overrides: { "subagent.fork.enabled": true, "tool.sandbox_full": false },
+      };
+      const responseBody = {
+        saved_overrides: payload.overrides,
+        items: [
+          {
+            name: "subagent.fork.enabled",
+            value: true,
+            default_enabled: false,
+            overridden: true,
+            description: null,
+            updated_at: "2026-05-27T00:00:00Z",
+          },
+        ],
+      };
+      fetchSpy.mockResolvedValueOnce(
+        new Response(JSON.stringify(responseBody), { status: 200 }),
+      );
+
+      const result = await saveFeatureFlagOverrides("tenant-x", payload);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "/api/v1/admin/tenants/tenant-x/feature-flags",
+        expect.objectContaining({
+          method: "PUT",
+          credentials: "include",
+          body: JSON.stringify(payload),
+        }),
+      );
+      expect(result).toEqual(responseBody);
+    });
+
+    it("throws Error with detail message on 422 unknown flag", async () => {
+      fetchSpy.mockResolvedValueOnce(
+        new Response(JSON.stringify({ detail: "unknown flag name: bogus.flag" }), { status: 422 }),
+      );
+      await expect(
+        saveFeatureFlagOverrides("tenant-x", { overrides: { "bogus.flag": true } }),
+      ).rejects.toThrow("unknown flag name");
     });
   });
 

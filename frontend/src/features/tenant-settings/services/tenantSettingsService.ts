@@ -21,6 +21,7 @@
  * Last Modified: 2026-05-26
  *
  * Modification History (newest-first):
+ *   - 2026-05-27: Sprint 57.55 Track B — +saveFeatureFlagOverrides PUT service func
  *   - 2026-05-26: Sprint 57.54 Track B — add saveHITLPolicies PUT (HITLPolicies edit mode)
  *   - 2026-05-26: Sprint 57.50 — add fetchTenantIdentity (Identity fixture cleanup)
  *   - 2026-05-26: Sprint 57.49 Day 1 — +5 sub-resource list service funcs
@@ -36,6 +37,8 @@
 import { fetchWithAuth } from "../../auth/services/authService";
 import type {
   FeatureFlagListResponse,
+  FeatureFlagOverridesUpsertRequest,
+  FeatureFlagOverridesUpsertResponse,
   HITLPolicyListResponse,
   HITLPolicyUpsertRequest,
   HITLPolicyUpsertResponse,
@@ -178,6 +181,25 @@ export async function saveHITLPolicies(
     },
   );
   return _handleResponse<HITLPolicyUpsertResponse>(response);
+}
+
+/* === Sprint 57.55 Track B — FeatureFlag overrides upsert (PUT) === */
+
+export async function saveFeatureFlagOverrides(
+  tenantId: string,
+  payload: FeatureFlagOverridesUpsertRequest,
+  signal?: AbortSignal,
+): Promise<FeatureFlagOverridesUpsertResponse> {
+  const response = await fetchWithAuth(
+    `${API_BASE}/tenants/${tenantId}/feature-flags`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal,
+    },
+  );
+  return _handleResponse<FeatureFlagOverridesUpsertResponse>(response);
 }
 
 /* === Sprint 57.50 — Identity single-record endpoint === */
