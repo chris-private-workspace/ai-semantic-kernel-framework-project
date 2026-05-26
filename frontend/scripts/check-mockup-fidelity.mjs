@@ -77,7 +77,11 @@ const SCAN_DIRS = [path.join(FRONTEND, "src/features"), path.join(FRONTEND, "src
 // + ApprovalList RISK_COLOR_CLASS (4 lines) + AuditChainBadge valid-state (1 line) swapped
 // to `var(--risk-X)` Tailwind arbitrary-value-with-typed-hint pattern. (chat_v2 risk map
 // was already migrated pre-FIX-017 — only the L72 comment historical reference remains.)
-const HEX_OKLCH_BASELINE = 46;
+// +1 Sprint 57.44: tenant-settings/MembersTab avatar gradient verbatim port from
+// mockup page-admin.jsx:588 — `linear-gradient(135deg, oklch(0.65 0.15 ${m.c}),
+// oklch(0.5 0.16 ${(m.c + 60) % 360}))`. Per STYLE.md §3 verbatim-CSS escape hatch
+// for mockup-inline oklch literals. Plan §3.6 predicted "+0-2 bump"; actual +1 within range.
+const HEX_OKLCH_BASELINE = 47;
 
 let failed = false;
 
