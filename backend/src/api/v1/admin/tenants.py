@@ -46,6 +46,7 @@ Created: 2026-05-06 (Sprint 56.1 Day 1)
 Last Modified: 2026-05-10
 
 Modification History:
+    - 2026-05-26: Sprint 57.47 Day 1 — LIST 7→12 + region filter + members GET (AD-AdminT-Ext)
     - 2026-05-26: Sprint 57.46 Day 1 — +5 SaaS settings fields (closes AD-TenantSettings-Schema-Ext)
     - 2026-05-10: Sprint 57.13 US-A3 — /{tenant_id} dep → require_tenant_match_or_platform_admin
     - 2026-05-07: Sprint 57.4 — add GET "" list endpoint (US-1 closes D1)
@@ -77,7 +78,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from infrastructure.db.audit_helper import append_audit
-from infrastructure.db.models.identity import Tenant, TenantPlan, TenantState
+from infrastructure.db.models.identity import Tenant, TenantPlan, TenantState, User
 from infrastructure.db.session import get_db_session
 from platform_layer.identity.auth import (
     require_admin_platform_role,
@@ -175,6 +176,11 @@ class TenantListItem(BaseModel):
     display_name: str
     state: TenantState
     plan: TenantPlan
+    region: str
+    locale: str
+    retention_days: int
+    sso_enabled: bool
+    seats: int
     created_at: datetime
     updated_at: datetime
 
@@ -198,6 +204,7 @@ class TenantListResponse(BaseModel):
 async def list_tenants(
     state: TenantState | None = Query(None),
     plan: TenantPlan | None = Query(None),
+    region: str | None = Query(None, max_length=32),
     search: str | None = Query(None, max_length=128),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
@@ -217,6 +224,8 @@ async def list_tenants(
         base_stmt = base_stmt.where(Tenant.state == state)
     if plan is not None:
         base_stmt = base_stmt.where(Tenant.plan == plan)
+    if region is not None:
+        base_stmt = base_stmt.where(Tenant.region == region)
     if search is not None:
         like = f"%{search}%"
         base_stmt = base_stmt.where(or_(Tenant.code.ilike(like), Tenant.display_name.ilike(like)))
@@ -568,3 +577,81 @@ async def update_tenant(
     await db.commit()
 
     return TenantResponse.model_validate(tenant)
+
+
+# =====================================================================
+# Sprint 57.47 Track B (US-3 cheapest fixture-only tab) — MEMBERS GET
+# =====================================================================
+class TenantMemberItem(BaseModel):
+    """Tenant member row projected from User ORM for /tenant-settings Members tab.
+
+    Sprint 57.47 Track B — closes cheapest fixture-only TenantSettings tab
+    (~1.5-2 hr; User ORM already has all needed fields via TenantScopedMixin).
+    Fixture shape in `frontend/src/features/tenant-settings/_fixtures.ts` Member:
+    `{ n: display_name, e: email, r: role, a: last_active_relative, c: capacity_pct }`.
+    For backend we expose the raw User fields; frontend maps to its shape.
+    Role + last-active + capacity are NOT in the current User ORM — exposed as
+    `null` here for Phase 58+ to wire when role/activity tracking lands.
+    """
+
+    id: UUID
+    email: str
+    display_name: str | None
+    status: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TenantMemberListResponse(BaseModel):
+    """Paginated response for tenant member list."""
+
+    items: list[TenantMemberItem]
+    total: int
+    limit: int
+    offset: int
+
+
+@router.get(
+    "/{tenant_id}/members",
+    response_model=TenantMemberListResponse,
+    dependencies=[Depends(require_tenant_match_or_platform_admin)],
+)
+async def list_tenant_members(
+    tenant_id: UUID,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db_session),
+) -> TenantMemberListResponse:
+    """List Users in this tenant (Sprint 57.47 Track B Day 1 stretch).
+
+    Auth: require_tenant_match_or_platform_admin (mirrors GET /{tenant_id}
+    pattern Sprint 57.13 US-A3) — platform admins read any tenant; a regular
+    user reads only their own tenant's members.
+
+    Order: created_at DESC (newest first).
+
+    Returns 5 fields per User (id/email/display_name/status/created_at).
+    role/last_active/capacity_pct columns in mockup fixture are NOT in the
+    current User ORM; frontend will display placeholders or hide those
+    columns until Phase 58+ adds role/activity tracking.
+    """
+    # Confirm tenant exists (404 else, consistent with GET /{tenant_id} pattern)
+    await _load_tenant_or_404(db, tenant_id)
+
+    base_stmt = select(User).where(User.tenant_id == tenant_id)
+    count_stmt = select(func.count()).select_from(base_stmt.subquery())
+    total_raw = (await db.execute(count_stmt)).scalar()
+    total = int(total_raw or 0)
+
+    page_stmt = (
+        base_stmt.order_by(User.created_at.desc(), User.id.desc()).limit(limit).offset(offset)
+    )
+    rows = (await db.execute(page_stmt)).scalars().all()
+
+    return TenantMemberListResponse(
+        items=[TenantMemberItem.model_validate(u) for u in rows],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )

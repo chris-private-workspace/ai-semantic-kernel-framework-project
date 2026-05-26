@@ -22,12 +22,16 @@ Description:
     require_admin_platform_role).
 
 Created: 2026-05-07 (Sprint 57.4 Day 1)
+
+Modification History (newest-first):
+    - 2026-05-26: Sprint 57.47 Day 1 — shape 7→12 fields + region filter tests (AD-AdminT-Ext)
 """
 
 from __future__ import annotations
 
 import json
 from collections.abc import AsyncIterator, Awaitable, Callable
+from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
@@ -80,19 +84,40 @@ async def _seed_tenant_with(
     display_name: str | None = None,
     state: TenantState = TenantState.REQUESTED,
     plan: TenantPlan = TenantPlan.ENTERPRISE,
+    region: str | None = None,
+    locale: str | None = None,
+    retention_days: int | None = None,
+    sso_enabled: bool | None = None,
+    seats: int | None = None,
 ) -> Tenant:
     """Create + flush a Tenant with explicit state + plan for filter tests.
 
     Note: Phase 56+ Stage 1 only ships TenantPlan.ENTERPRISE; STANDARD lands
     in Stage 2. Plan filter test therefore exercises the filter parameter
     parsing path rather than exclusion.
+
+    Sprint 57.47 — adds optional region/locale/retention_days/sso_enabled/seats
+    kwargs (default `None` → relies on ORM server_default values:
+    region='global' / locale='en-US' / retention_days=90 / sso_enabled=False /
+    seats=5; see identity.py L145-169).
     """
-    t = Tenant(
-        code=code,
-        display_name=display_name or f"Tenant {code}",
-        state=state,
-        plan=plan,
-    )
+    kwargs: dict[str, Any] = {
+        "code": code,
+        "display_name": display_name or f"Tenant {code}",
+        "state": state,
+        "plan": plan,
+    }
+    if region is not None:
+        kwargs["region"] = region
+    if locale is not None:
+        kwargs["locale"] = locale
+    if retention_days is not None:
+        kwargs["retention_days"] = retention_days
+    if sso_enabled is not None:
+        kwargs["sso_enabled"] = sso_enabled
+    if seats is not None:
+        kwargs["seats"] = seats
+    t = Tenant(**kwargs)
     session.add(t)
     await session.flush()
     await session.refresh(t)
@@ -137,9 +162,23 @@ async def test_list_tenants_happy_no_filter(db_session: AsyncSession) -> None:
     assert body["limit"] == 50
     assert body["offset"] == 0
     assert body["total"] >= 1
-    # Each item should have the 7 TenantListItem fields (no progress/meta_data).
+    # Each item should have the 12 TenantListItem fields (Sprint 57.47 +5 cols);
+    # no progress/meta_data.
     sample = body["items"][0]
-    expected = {"id", "code", "display_name", "state", "plan", "created_at", "updated_at"}
+    expected = {
+        "id",
+        "code",
+        "display_name",
+        "state",
+        "plan",
+        "region",
+        "locale",
+        "retention_days",
+        "sso_enabled",
+        "seats",
+        "created_at",
+        "updated_at",
+    }
     assert expected.issubset(set(sample.keys()))
     assert "meta_data" not in sample
     assert "provisioning_progress" not in sample
@@ -242,4 +281,205 @@ async def test_list_tenants_invalid_query_limit(db_session: AsyncSession) -> Non
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         resp = await ac.get("/api/v1/admin/tenants?limit=500")
+    assert resp.status_code == 422
+
+
+# =====================================================================
+# Sprint 57.47 — TenantListItem 7→12 field exposure tests (Track A US-1)
+# =====================================================================
+async def test_list_tenants_response_has_region_field(db_session: AsyncSession) -> None:
+    """Sprint 57.47 US-1: each list item exposes `region` matching ORM."""
+    await _seed_tenant_with(db_session, code="REGION_T1", region="apac")
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get("/api/v1/admin/tenants?search=REGION_T1")
+    assert resp.status_code == 200, resp.text
+    item = resp.json()["items"][0]
+    assert "region" in item
+    assert item["region"] == "apac"
+
+
+async def test_list_tenants_response_has_locale_field(db_session: AsyncSession) -> None:
+    """Sprint 57.47 US-1: each list item exposes `locale` matching ORM."""
+    await _seed_tenant_with(db_session, code="LOCALE_T1", locale="zh-TW")
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get("/api/v1/admin/tenants?search=LOCALE_T1")
+    assert resp.status_code == 200, resp.text
+    item = resp.json()["items"][0]
+    assert "locale" in item
+    assert item["locale"] == "zh-TW"
+
+
+async def test_list_tenants_response_has_retention_days_field(db_session: AsyncSession) -> None:
+    """Sprint 57.47 US-1: each list item exposes `retention_days` matching ORM."""
+    await _seed_tenant_with(db_session, code="RETENT_T1", retention_days=365)
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get("/api/v1/admin/tenants?search=RETENT_T1")
+    assert resp.status_code == 200, resp.text
+    item = resp.json()["items"][0]
+    assert "retention_days" in item
+    assert item["retention_days"] == 365
+
+
+async def test_list_tenants_response_has_sso_enabled_field(db_session: AsyncSession) -> None:
+    """Sprint 57.47 US-1: each list item exposes `sso_enabled` matching ORM."""
+    await _seed_tenant_with(db_session, code="SSO_T1", sso_enabled=True)
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get("/api/v1/admin/tenants?search=SSO_T1")
+    assert resp.status_code == 200, resp.text
+    item = resp.json()["items"][0]
+    assert "sso_enabled" in item
+    assert item["sso_enabled"] is True
+
+
+async def test_list_tenants_response_has_seats_field(db_session: AsyncSession) -> None:
+    """Sprint 57.47 US-1: each list item exposes `seats` matching ORM."""
+    await _seed_tenant_with(db_session, code="SEATS_T1", seats=42)
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get("/api/v1/admin/tenants?search=SEATS_T1")
+    assert resp.status_code == 200, resp.text
+    item = resp.json()["items"][0]
+    assert "seats" in item
+    assert item["seats"] == 42
+
+
+async def test_list_tenants_response_default_settings_via_server_defaults(
+    db_session: AsyncSession,
+) -> None:
+    """Sprint 57.47 US-1: ORM server_defaults (region='global', locale='en-US',
+    retention_days=90, sso_enabled=FALSE, seats=5) populate via from_attributes
+    when not explicitly set at insert time.
+
+    Mirrors identity.py L145-169 server_default declarations.
+    """
+    await _seed_tenant_with(db_session, code="DEFAULT_T1")
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get("/api/v1/admin/tenants?search=DEFAULT_T1")
+    assert resp.status_code == 200, resp.text
+    item = resp.json()["items"][0]
+    assert item["region"] == "global"
+    assert item["locale"] == "en-US"
+    assert item["retention_days"] == 90
+    assert item["sso_enabled"] is False
+    assert item["seats"] == 5
+
+
+# =====================================================================
+# Sprint 57.47 — region filter tests (Track A US-2)
+# =====================================================================
+async def test_list_tenants_filter_by_region_positive_match(
+    db_session: AsyncSession,
+) -> None:
+    """Sprint 57.47 US-2: filter `region=apac` returns only apac tenants."""
+    await _seed_tenant_with(db_session, code="APAC_T1", region="apac")
+    await _seed_tenant_with(db_session, code="EMEA_T1", region="emea")
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get("/api/v1/admin/tenants?region=apac")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert all(item["region"] == "apac" for item in body["items"])
+    codes = [item["code"] for item in body["items"]]
+    assert "APAC_T1" in codes
+    assert "EMEA_T1" not in codes
+
+
+async def test_list_tenants_filter_by_region_no_match(db_session: AsyncSession) -> None:
+    """Sprint 57.47 US-2: filter `region=americas` with no matches → empty list."""
+    await _seed_tenant_with(db_session, code="REGION_ONLY_APAC", region="apac")
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        # Use a unique region value + search to isolate this assertion from
+        # any sibling-fixture-seeded tenants in the test DB.
+        resp = await ac.get("/api/v1/admin/tenants?region=americas&search=REGION_ONLY_APAC")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["items"] == []
+    assert body["total"] == 0
+
+
+async def test_list_tenants_filter_region_plus_plan_combined(
+    db_session: AsyncSession,
+) -> None:
+    """Sprint 57.47 US-2: `region=apac&plan=enterprise` AND-combines filters."""
+    await _seed_tenant_with(
+        db_session, code="COMBO_APAC_ENT", region="apac", plan=TenantPlan.ENTERPRISE
+    )
+    await _seed_tenant_with(
+        db_session, code="COMBO_EMEA_ENT", region="emea", plan=TenantPlan.ENTERPRISE
+    )
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get("/api/v1/admin/tenants?region=apac&plan=enterprise")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    codes = [item["code"] for item in body["items"]]
+    assert "COMBO_APAC_ENT" in codes
+    assert "COMBO_EMEA_ENT" not in codes
+    assert all(item["region"] == "apac" and item["plan"] == "enterprise" for item in body["items"])
+
+
+async def test_list_tenants_filter_region_plus_state_combined(
+    db_session: AsyncSession,
+) -> None:
+    """Sprint 57.47 US-2: `region=apac&state=active` AND-combines filters."""
+    await _seed_tenant_with(
+        db_session, code="RSCOMB_APAC_ACT", region="apac", state=TenantState.ACTIVE
+    )
+    await _seed_tenant_with(
+        db_session, code="RSCOMB_APAC_REQ", region="apac", state=TenantState.REQUESTED
+    )
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get("/api/v1/admin/tenants?region=apac&state=active")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    codes = [item["code"] for item in body["items"]]
+    assert "RSCOMB_APAC_ACT" in codes
+    assert "RSCOMB_APAC_REQ" not in codes
+    assert all(item["region"] == "apac" and item["state"] == "active" for item in body["items"])
+
+
+async def test_list_tenants_no_region_filter_returns_all_regions(
+    db_session: AsyncSession,
+) -> None:
+    """Sprint 57.47 US-2: omitting `region` param preserves backward-compat
+    (no filter applied; results span all regions).
+    """
+    await _seed_tenant_with(db_session, code="BCOMPAT_APAC", region="apac")
+    await _seed_tenant_with(db_session, code="BCOMPAT_EMEA", region="emea")
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get("/api/v1/admin/tenants?search=BCOMPAT_")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    regions = {item["region"] for item in body["items"]}
+    assert {"apac", "emea"}.issubset(regions)
+
+
+async def test_list_tenants_filter_region_max_length_validation(
+    db_session: AsyncSession,
+) -> None:
+    """Sprint 57.47 US-2: region param has max_length=32 → over-long → 422."""
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    over_long = "a" * 33
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get(f"/api/v1/admin/tenants?region={over_long}")
     assert resp.status_code == 422
