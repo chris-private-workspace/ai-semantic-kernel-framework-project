@@ -4,7 +4,70 @@
 
 **Selection Rule**: User explicitly selects → draft plan kicks off Sprint XX.Y; otherwise items wait here indefinitely until selected or archived.
 
-**Updated**: 2026-05-25 (Sprint 57.42 closed + closeout follow-up `chore/agent-delegation-factor-activate` — /memory Memory Layers matrix full mockup-fidelity rebuild closes drift audit 2026-05-25 #2 priority CATASTROPHIC; 6 NEW carryover ADs added below; Phase-2 epic reality 19 PARITY + 1 NEAR-PARITY + 2 CATASTROPHIC remaining; **✅ `AD-Sprint-Plan-Agent-Delegation-Factor-Modifier` ACTIVATED 2026-05-25** via Option A multiplicative `agent_factor = 0.55` (see `.claude/rules/sprint-workflow.md §Active Agent Delegation Factor Modifier`); **`AD-Sprint-Plan-frontend-mockup-strict-rebuild-baseline-lift` proposal SUPERSEDED** by `agent_factor` activation — KEEP 0.60 class baseline; effective ratio under agent-delegation now 0.60 × 0.55 = 0.33.)
+**Updated**: 2026-05-26 (Sprint 57.43-57.49 batch closed; 4-sprint window landed via 14 ADs total — Phase-2 epic + NEAR-PARITY **DUAL CLEAN milestone 22/22 PARITY** reached Sprint 57.45; Phase 58+ Backend Schema Extension COMPLETE for TenantSettings 6-tab + admin-tenants LIST (Sprint 57.46-48); Phase 58+ Frontend Real-Data Migration COMPLETE for /tenant-settings + /admin-tenants Members (Sprint 57.49); **`agent_factor` evolved from single coefficient to Option B sub-class split table** via Sprint 57.48 retro Q4 escalation (`mechanical-single-domain` 0.45 / `mixed-multidomain-bundle` 0.65 / `partial` 0.75 / `human` 1.0); see new `## 🆕 Sprint 57.43-57.49 Carryover Batch` section below for 7 open items.)
+
+**Previous Updated**: 2026-05-25 (Sprint 57.42 closed + closeout follow-up `chore/agent-delegation-factor-activate` — /memory Memory Layers matrix full mockup-fidelity rebuild closes drift audit 2026-05-25 #2 priority CATASTROPHIC; 6 NEW carryover ADs added; **✅ `AD-Sprint-Plan-Agent-Delegation-Factor-Modifier` ACTIVATED 2026-05-25** via Option A multiplicative `agent_factor = 0.55`; later SUPERSEDED Sprint 57.48 via Option B sub-class split.)
+
+---
+
+## 🆕 Sprint 57.43-57.49 Carryover Batch (2026-05-26 — Phase-2 Epic DUAL CLEAN + Phase 58+ Backend Schema Extension + Frontend Migration Wave)
+
+4-sprint window closes **14 ADs total** + introduces **7 new carryover ADs**. Per-sprint detail single-source = `memory/project_phase57_4{3,4,5,6,7,8,9}_*.md` subfile + `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-XX/retrospective.md`.
+
+### Milestones reached
+
+- **Sprint 57.43** (PR `12af6060` later `34c5ad1c` merge): `/admin-tenants` Tenants table full mockup-fidelity rebuild closes drift audit 2026-05-25 #1 priority CATASTROPHIC (4th of 5 original). 5 NEW components + _fixtures.ts 8 TENANTS verbatim + 6 orphan delete Karpathy §3 + 33 NEW Vitest tests +312-560% over target + 24-route sweep cleanest of Phase-2 epic. `frontend-mockup-strict-rebuild` 0.60 9th data point + **1st validation under newly ACTIVATED `agent_factor = 0.55`** ratio ~0.41 BELOW band by 0.44 = 1st rollback-trigger data point → KEEP 0.55 single-data-point caution.
+- **Sprint 57.44** (PR squash merge): `/tenant-settings` 6-tab full rebuild closes Phase-2 epic FULL CLEAN (5th of 5 original CATASTROPHIC). 7 NEW components + 1 REWRITE + _fixtures.ts verbatim port + 4 orphan delete + 50 NEW Vitest tests +287% over +12 target. `frontend-mockup-strict-rebuild` 0.60 10th data point ratio ~0.20 = **2nd rollback-trigger data point → MANDATORY tighten `agent_factor` 0.55 → 0.45 effective Sprint 57.45+**. 🎉 **Phase-2 epic FULL CLEAN milestone (21 PARITY + 1 NEAR-PARITY + 0 CATASTROPHIC)**.
+- **Sprint 57.45** (PR #195): 🎉 **Phase-2 Epic + NEAR-PARITY DUAL CLEAN milestone (22/22 PARITY)** — `/chat-v2` Inspector tab NEAR-PARITY closed via Path B audit overrule (Day 0 Prong 2 grep proved audit row 9 was Sprint 57.22 transcription error; canonical mockup `page-chat.jsx:378-381` `Turn/Trace/Memory/Tree` matched production exactly). 0 code change docs-only closure. `frontend-refactor-mechanical 0.80` 3rd data point + `agent_factor` 1st validation NOT generated (Path B 0 code change → `agent-delegated: NO` → `agent_factor = 1.0`).
+- **Sprint 57.46** (PR #196 `034846f3`): 3-AD multi-domain bundle — AuditDocSync rule codified + Tenant ORM +5 cols Alembic 0018 + 12 NEW pytest tests + mockup capture D-DAY0-5 already-implemented Option B revelation -1 hr scope. NEW class `mixed-multidomain-bundle` 0.65 1-data-point baseline opens. `agent_factor = 0.45` 1st validation ratio ~1.60 ABOVE band by 0.40 → **ROLLBACK to 0.65** effective Sprint 57.47+ per single-data-point caution.
+- **Sprint 57.47** (PR #197 `12f97635`): Phase 58+ Backend Schema Extension — 🔴 BLOCKING `AD-AdminTenants-Backend-Schema-Extension` closed (TenantListItem 7→12 fields + region filter + 12 NEW pytest tests) + TenantSettings 6-tab Day 0.8b audit + MEMBERS cheapest tab impl (8 NEW pytest tests incl. CRITICAL multi-tenant isolation). `agent_factor = 0.65` 1st validation ratio ~0.27 = 1st < 0.7 → KEEP single-data-point caution.
+- **Sprint 57.48** (PR #198 `c451f584`): **5-track wave** (largest single-sprint AD closure of Phase 57+: **5 ADs**) — HITLPolicies (DBHITLPolicyStore projection) + FeatureFlags (JSONB tenant_overrides) + Quotas (PlanQuota projection) + RateLimits (Option A fixture-projection) + AP-4 lint detector false-positive fix → **9/9 V2 lints GREEN restored** (was 8/9 since Sprint 57.46). 29 NEW pytest tests +132% over target. `agent_factor = 0.65` 2nd validation ratio ~0.17 = 2nd consec < 0.7 → **ROLLBACK RULE MET → Option B sub-class split ESCALATED ACTIVATED** (parallel Sprint 57.38 `-simple/-with-extras` precedent).
+- **Sprint 57.49** (PR #199 `33e9f2aa`): Dual-track frontend migration wave — TenantSettings 5-tab fixture→hook via 5 NEW TanStack Query hooks + 5 NEW service functions + per-tab adapter projection D-DAY0-1 pattern + AdminTenants TenantMembersDrawer NEW with slide-over. 37 NEW Vitest tests +264% over target. **24× pattern-reuse speedup observed (highest of 21 consecutive code-implementer delegations)**. NEW sub-class `mechanical-single-domain` 0.45 1st validation ratio ~0.14 → KEEP single-data-point caution.
+
+### Structural calibration event (Sprint 57.48 retro Q4 — escalation)
+
+`agent_factor` evolved from single coefficient to sub-class table via Option B structural split. Single-coefficient pendulum 0.55 → 0.45 → 0.65 → 0.45 inadequate to capture Day 1 work shape variance (Sprint 57.46 multi-track 2.1× speedup vs Sprint 57.40-44 single-domain 5× speedup).
+
+**Active sub-class table** (effective Sprint 57.49+):
+
+| Sub-class | `agent_factor` | Activation criterion | Evidence base |
+|-----------|---------------|----------------------|---------------|
+| `mechanical-single-domain` | **0.45** | High pattern-reuse OR mechanical port; single-domain backend/frontend | Sprint 57.40-44 + 57.47 + 57.48 + 57.49 |
+| `mixed-multidomain-bundle` | **0.65** | 3+ independent tracks with context-switching | Sprint 57.46 |
+| `partial` | **0.75** | 20-79% via agent (linear interpolation) | — |
+| `human` | **1.0** | < 20% via agent | — |
+
+See `.claude/rules/sprint-workflow.md §Active Agent Delegation Factor Modifier` for full formula + rollback rule + tracking discipline. **NEW pattern-reuse acceleration scaling observation** (Sprint 57.49 retro Q4): 5× (single-domain) → 7× (single-tab) → 11× (4-endpoint) → **24× (5-tab+1-drawer; highest of 21 consecutive delegations)** — speedup scales with mechanical repetition count.
+
+### 🆕 7 NEW carryover ADs (Sprint 57.50+ candidates; ordered by ROI / actionability)
+
+73. 🆕 **`AD-AgentFactor-Sub-Class-Validation-Sprint-57.50`** (Sprint 57.49 NEW) — 2nd validation under `mechanical-single-domain` 0.45 needed. Current: 1st = Sprint 57.49 ratio actual/committed-with-agent-factor **~0.14 BELOW band by ~0.71** → KEEP single-data-point caution. If Sprint 57.50 also < 0.7 → escalate to tier-2 refinement (see #74). Naturally generated by any single-domain agent-delegated sprint scope.
+
+74. 🆕 **`AD-AgentFactor-Tier-2-Refinement-Proposal`** (Sprint 57.49 NEW) — If Sprint 57.50 2nd `mechanical-single-domain` data point also < 0.7 → propose tier-2 refinement: split `mechanical-pattern-reuse-heavy` **0.30** (≥4 mechanical repetitions in 1 sprint; matches Sprint 57.48/49 mean ~0.155) vs `mechanical-greenfield` **0.50** (single new component/endpoint; matches Sprint 57.47 ratio ~0.27 closer to band). Pending Sprint 57.50 evidence.
+
+75. 🆕 **`AD-TenantSettings-IdentityFixture-Cleanup`** (Sprint 57.49 NEW) **~1 hr** — `IDENTITY_FIXTURE` in `tenantSettingsService.ts` retained per Sprint 57.49 §_fixtures.ts cleanup; not yet migrated to real backend (5-tab migration shipped + DANGER_OPS retained too). Completes the fixture purge. Class `mechanical-single-domain` 0.45 candidate (single-file migration; natural 2nd validation data point for #73).
+
+76. 🆕 **`AD-Lint-Detector-Code-Aware-Masking-Rule`** (Sprint 57.48 NEW) **~1-2 hr** — Codify D-DAY0-6 lesson into `.claude/rules/`: lint detectors using regex pattern matching must apply code-aware masking (HTML/JSX attribute names like `placeholder=` / TS keys / string literals) to avoid false-positives. Root cause for AP-4 detector breaking 9/9 V2 lints in Sprint 57.46 → Sprint 57.48 Track E false-positive fix. Class `audit-cycle / docs / template` 0.40 candidate.
+
+77. 🆕 **`AD-medium-frontend-Baseline-Recalibration`** (Sprint 57.49 carryover) — 3rd data point needed for class `medium-frontend` 0.65. Current: 1st = Sprint 57.13 ratio 0.95-1.0 in band; 2nd = Sprint 57.49 ratio actual/class-committed 0.064 (confound resolved by sub-class split; under agent_factor `mechanical-single-domain` 0.45 = ratio ~0.14). Per `When to adjust` 3-sprint window rule → KEEP class baseline pending 3rd data point. Naturally generated by next medium-frontend sprint.
+
+78. 🆕 **`AD-MockupCapture-Frontend-Visual-Diff-Pipeline`** (Sprint 57.46 carryover) DEFERRED Phase 58+ **~5-8 hr** — `mockup-sweep.mjs` (Option B Python http.server + Playwright 1440×900) already implements basic capture per Sprint 57.46 D-DAY0-5 revelation; missing: per-page parity scoring + drift alerting + CI integration.
+
+79. 🆕 **`AD-TenantSettings-RateLimits-Persistence`** (Sprint 57.48 carryover) DEFERRED Phase 58.x — Sprint 57.48 Track D shipped Option A fixture-projection from `tenants.meta_data` JSONB; full persistence model (dedicated `tenant_rate_limits` table + admin PATCH endpoint + audit chain) deferred to Phase 58.x.
+
+### Phase progress (post Sprint 57.49)
+
+- V2 22/22 ✅ (unchanged)
+- SaaS Stage 1 3/3 ✅ (unchanged)
+- **Phase 57+ DUAL CLEAN 22/22 PARITY ✅ preserved** through Sprint 57.45-57.49 (5 consecutive sprints maintain milestone)
+- **Phase 58+ Backend Schema Extension COMPLETE** for tenant-settings 6-tab + admin-tenants LIST + members (Sprint 57.46-48)
+- **Phase 58+ Frontend Real-Data Migration COMPLETE** for /tenant-settings + /admin-tenants Members (Sprint 57.49)
+
+### Top 3 next-sprint candidates (post Sprint 57.49)
+
+1. 🥇 **`AD-TenantSettings-IdentityFixture-Cleanup`** (#75) **~1 hr** — Class `mechanical-single-domain` 0.45; naturally generates #73 (2nd validation data point). Cleanest hygiene close.
+2. **`AD-Lint-Detector-Code-Aware-Masking-Rule`** (#76) **~1-2 hr** — Class `audit-cycle / docs / template` 0.40; codifies repeatable lesson into `.claude/rules/`.
+3. **Pause** — Natural break point after 5 consecutive sprints (57.45-57.49) cleanly closed + 14 ADs total + DUAL CLEAN milestone preserved.
 
 ---
 
