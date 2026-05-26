@@ -154,49 +154,49 @@
 
 ---
 
-## Day 2 — Closeout (parent assistant)
+## Day 2 — Closeout (parent assistant) ✅ COMPLETE
 
-### 2.1 Validation
-- [ ] Full backend pytest suite passing: **1782-1784 PASS + 0 fail**
-- [ ] Full frontend Vitest suite passing: **622-625 PASS / 0 fail**
-- [ ] 9/9 V2 lints preserved (incl. HEX_OKLCH check_ap4_frontend_placeholder.py GREEN)
-- [ ] All edited files have MHist 1-line entry (per AD-Lint-MHist-Verbosity ≤100 char budget); NEW useFeatureFlagsSave.ts has full header MHist section
+### 2.1 Validation ✅
+- [x] Full backend pytest suite passing: **1784 PASS + 4 skip + 0 fail** (61.86s)
+- [x] Full frontend Vitest suite passing: **630 PASS / 0 fail** / 120 test files
+- [x] 9/9 V2 lints preserved (0.99s; incl. HEX_OKLCH check_ap4_frontend_placeholder.py GREEN)
+- [x] All edited files have MHist 1-line entry (per AD-Lint-MHist-Verbosity ≤100 char budget); NEW useFeatureFlagsSave.ts has full header MHist section
 
-### 2.2 Retrospective
-- [ ] Written `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-55/retrospective.md`
-- [ ] Q1-Q7 6必答 format per Sprint 57.52 + 57.53 + 57.54 precedent (Q7 N/A SKIP — feature ship NOT spike)
-- [ ] **Q2 (didn't go well + actuals)**: actual hours / divergences from plan (TBD post-Day-1)
-- [ ] **Q3 (lessons)**: generalizable lessons documented (FeatureFlags JSONB pattern vs dedicated-table pattern / unknown flag validation cost / reverse-projection from items to override record)
-- [ ] **Q4 (calibration)**: `mechanical-greenfield` 0.50 **2nd validation ratio** + rollback rule decision (KEEP / propose 0.50→0.65 lift / tier-4 sub-class split); `medium-backend` 0.80 8th data point; `medium-frontend` 0.65 4th data point + AD-medium-frontend-Baseline-Recalibration outcome
-- [ ] Q5 Top 3 carryover candidates documented (AD-AgentFactor-Tier-3-Validation-Sprint-57.56 CONDITIONAL + Phase 58.x portfolio continuation 2 remaining + class baseline tracking continuation)
-- [ ] Q6 Solo-Dev Policy Validation noted
-- [ ] Q7 Design note extract: N/A SKIP (feature ship per precedent)
+### 2.2 Retrospective ✅
+- [x] Written `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-55/retrospective.md`
+- [x] Q1-Q7 6必答 format per Sprint 57.52+57.53+57.54 precedent (Q7 N/A SKIP — feature ship NOT spike; 5th consecutive Q7 SKIP)
+- [x] **Q2 (didn't go well + actuals)**: ratio actual/agent-adjusted ~1.57; 2nd consec misframing pattern; +13 over target Vitest scope expansion; `overridden` vs `overridden_flag` notation error; Day 0+Day 2 parent overhead structural
+- [x] **Q3 (lessons)**: 4 generalizable lessons documented (Phase 58.x WRITE-side resource storage grep / canonical service path > raw SQL / tier-N refinement when 2 consec > 1.20 / Day 0+Day 2 parent overhead structural)
+- [x] **Q4 (calibration)**: `mechanical-greenfield` 0.50 **2nd validation ratio ~1.57 ABOVE band by 0.37** → 2 consec > 1.20 ROLLBACK RULE MET → **tier-4 SPLIT ACTIVATED** (`-port-style` 0.45 RESERVED + `-design-decisions` 0.65 NEW); `medium-backend` 0.80 8th data point 0.79 KEEP; `medium-frontend` 0.65 5th data point 0.53 KEEP per confound-resolved-at-sub-class-layer discipline
+- [x] Q5 Top 3 carryover candidates documented (AD-AgentFactor-Tier-4-Validation-Sprint-57.56 + AD-Day0-Prong2-Phase58-WriteSide-Resource-Storage-Grep + AD-Day0-Prong2-CanonicalService-Grep) + Phase 58.x portfolio 2/4 done
+- [x] Q6 Solo-Dev Policy Validation noted (enforce_admins + review_count=0 + 5 required CI checks pending PR)
+- [x] Q7 Design note extract: N/A SKIP (feature ship per precedent)
 
-### 2.3 sprint-workflow.md updates
-- [ ] File MHist 1-line entry prepended (≤100 char budget)
-- [ ] Matrix `medium-backend` 0.80 row updated to 8 data points
-- [ ] Matrix `medium-frontend` 0.65 row updated to 4 data points + recalibration outcome
-- [ ] §Active Activation history entry inserted after Sprint 57.54 retro Q4 (Sprint 57.55 retro Q4 — `mechanical-greenfield` 0.50 2nd validation outcome + rollback rule decision)
-- [ ] Sub-class table refinement: tier-4 split CONDITIONAL on Q4 rollback rule outcome
+### 2.3 sprint-workflow.md updates ✅
+- [x] File MHist 1-line entry prepended (≤100 char budget)
+- [x] Matrix `medium-backend` 0.80 row updated to 8 data points (57.55=0.79; 8-pt mean 0.65; last-3 mean 0.87 IN band lower-middle KEEP)
+- [x] Matrix `medium-frontend` 0.65 row updated to 5 data points (57.55=0.53; confound at tier-4 sub-class layer; KEEP per discipline)
+- [x] §Active Activation history entry inserted (Sprint 57.55 retro Q4 — tier-4 SPLIT ACTIVATED + Sprint 57.54+57.55 retroactive `-design-decisions` mapping)
+- [x] Sub-class table refinement: tier-4 SPLIT effective Sprint 57.56+ (`mechanical-greenfield-port-style` 0.45 RESERVED + `mechanical-greenfield-design-decisions` 0.65 NEW)
 
-### 2.4 Memory + index
-- [ ] `memory/project_phase57_55_feature_flags_write_endpoint.md` subfile created (full retro highlights + calibration + Sprint 57.54 carryover CLOSED + Phase 58.x portfolio progress 2/4 → 3/4 + Sprint 57.56+ carryover ADs + agent-delegated yes confirmation)
-- [ ] MEMORY.md pointer entry inserted at TOP of §Project — Recent Sprints (per Sprint Closeout Policy quality pointer principle ~300 char)
+### 2.4 Memory + index ✅
+- [x] `memory/project_phase57_55_feature_flags_write_endpoint.md` subfile created (full retro highlights + calibration + Sprint 57.54 carryover CLOSED + Phase 58.x portfolio progress 1/4 → 2/4 + Sprint 57.56+ carryover ADs + agent-delegated yes confirmation)
+- [x] MEMORY.md pointer entry inserted at TOP of §Project — Recent Sprints (per Sprint Closeout Policy quality pointer principle)
 
-### 2.5 CLAUDE.md
-- [ ] Current Sprint row updated (Sprint 57.54 → Sprint 57.55; navigator-only per Sprint Closeout Policy; AD-AgentFactor-Tier-3-Validation-Sprint-57.55 CLOSED + carryover summary + Phase 58.x portfolio progress note)
-- [ ] Last Updated footer updated (Sprint 57.55 closeout note)
+### 2.5 CLAUDE.md ✅
+- [x] Current Sprint row updated (Sprint 57.54 → Sprint 57.55; navigator-only per Sprint Closeout Policy; AD-AgentFactor-Tier-3-Validation-Sprint-57.55 CLOSED + carryover summary + tier-4 SPLIT note + Phase 58.x portfolio progress)
+- [x] Last Updated footer updated (Sprint 57.55 closeout note; trimmed to 1 line per policy)
 
-### 2.6 next-phase-candidates.md (REFACTOR-001 single-source for open items)
-- [ ] `Updated` header updated to Sprint 57.55 closeout note; demoted Sprint 57.54 to "Previous Updated"
-- [ ] NEW Sprint 57.55 Carryover section appended at TOP (1 AD CLOSED + N NEW carryovers based on Q4 outcome + Phase 58.x portfolio progress + class baseline tracking + DUAL CLEAN milestone preserve count)
-- [ ] Demoted previous Sprint 57.54 Carryover section (removed 🆕 marker)
-- [ ] Marked `AD-AgentFactor-Tier-3-Validation-Sprint-57.55` as CLOSED
-- [ ] Phase 58.x portfolio progress note: FeatureFlags WRITE side CLOSED; 2 remaining (Quotas / RateLimits)
+### 2.6 next-phase-candidates.md ✅
+- [x] `Updated` header updated to Sprint 57.55 closeout note; demoted Sprint 57.54 to "Previous Updated"
+- [x] NEW Sprint 57.55 Carryover section appended at TOP (4 ADs CLOSED + 3 NEW carryovers + Phase 58.x portfolio 2/4 progress + class baseline tracking + DUAL CLEAN 11 consecutive sprints preserved)
+- [x] Demoted previous Sprint 57.54 Carryover section (removed 🆕 marker)
+- [x] Marked `AD-AgentFactor-Tier-3-Validation-Sprint-57.55` as CLOSED via 2nd validation generated + tier-4 SPLIT ACTIVATED
+- [x] Phase 58.x portfolio progress: HITLPolicies + FeatureFlags WRITE side CLOSED; 2 remaining (Quotas / RateLimits Sprint 57.56+57.57 candidates)
 
-### 2.7 CHANGE-025
-- [ ] `claudedocs/4-changes/feature-changes/CHANGE-025-feature-flags-write-endpoint.md` created per CLAUDE.md `4-changes/` convention
-- [ ] Format: Problem (read-only state per Sprint 57.48) / Root cause (Phase 58+ deferred since Sprint 57.48 + 57.49 split read/write) / Solution (WRITE side ship — backend PUT into JSONB + frontend edit mode + 10-12 + 5-8 tests) / Verification (test counts + lint results) / Impact (file count / +/- lines) / Lessons captured (codification candidates)
+### 2.7 CHANGE-025 ✅
+- [x] `claudedocs/4-changes/feature-changes/CHANGE-025-feature-flags-write-endpoint.md` created per CLAUDE.md `4-changes/` convention
+- [x] Format: Problem (read-only state Sprint 57.48) / Root cause (Phase 58+ deferred + Day 0 pivot D-DAY0-B + D-DAY0-T) / Solution (4 backend + 6 frontend incl. 2 NEW files) / Verification (1784/630 + 9/9 V2 lints) / Impact (14 files +2173/-47 + tier-4 SPLIT calibration delta) / Lessons captured (3 codification candidates)
 
 ### 2.8 PR + merge (post-commit; user action)
 - [ ] Push branch `feature/sprint-57-55-feature-flags-write-endpoint` + open PR (user authorization required per CLAUDE.md `Confirmation on Destructive Only`)
@@ -206,7 +206,7 @@
 - [ ] 🚧 Local cleanup (main fast-forward + delete feature branch post-merge + delete remote branch if auto-delete not configured)
 
 ### 2.9 Final
-- [ ] Day 2 commit: `chore(sprint-57-55): Day 2 retro + closeout (mechanical-greenfield 0.50 tier-3 2nd validation outcome + medium-backend 0.80 8th data point + medium-frontend 0.65 4th data point + Phase 58.x FeatureFlags WRITE-side ship + DUAL CLEAN milestone preserve count + Nth consecutive code-implementer agent)`
+- [ ] Day 2 commit (HASH staged for next bash call): `chore(sprint-57-55): Day 2 retro + closeout (mechanical-greenfield 0.50 tier-3 2nd validation ratio ~1.57 ABOVE band → 2 consec > 1.20 ROLLBACK RULE MET → TIER-4 SPLIT ACTIVATED (-port-style 0.45 RESERVED + -design-decisions 0.65 NEW); medium-backend 0.80 8th data point 0.79 KEEP; medium-frontend 0.65 5th data point 0.53 KEEP per discipline; Phase 58.x FeatureFlags WRITE-side ship 2/4 portfolio progress; DUAL CLEAN 22/22 PARITY preserved 11 consecutive sprints 57.45-57.55; 16th+17th consecutive code-implementer agent chain extended)`
 - [ ] All Day 0-2.7 + Day 2.9 checklist items `[x]`; Day 2.8 PR + merge 🚧 pending user authorization
 
 ---
