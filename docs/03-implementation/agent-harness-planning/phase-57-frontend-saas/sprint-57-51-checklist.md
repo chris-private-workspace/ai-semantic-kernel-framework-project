@@ -42,7 +42,7 @@
 
 ### 0.9 Branch + Day 0 commit
 - [x] Branch `feature/sprint-57-51-audit-docs-hygiene-bundle` created from main `8431646f`
-- [ ] Day 0 + Day 1 combined commit (per Sprint 57.46/47/48/49/50 small-scope precedent)
+- [x] Day 0 + Day 1 combined commit `bd8c3269` (per Sprint 57.46/47/48/49/50 small-scope precedent)
 
 ---
 
@@ -98,46 +98,46 @@
 - [x] `git diff --stat` confirms 0 production code changes (only `.md` rule docs + audit report + sprint artifacts)
 
 ### 1.5 Day 1 commit
-- [ ] Commit: `feat(sprint-57-51): Day 0 + Day 1 — Triple-AD audit/docs hygiene bundle (Track A lint detector rule + Track B ORM risk class + Track C HEX_OKLCH audit)`
-- [ ] Includes plan + checklist + progress (Day 0 三-prong) + 3 track docs
+- [x] Commit `bd8c3269`: `feat(sprint-57-51): Day 0 + Day 1 — Triple-AD audit/docs hygiene bundle (Track A lint detector rule + Track B ORM risk class + Track C HEX_OKLCH audit)` (7 files +1022/-3)
+- [x] Includes plan + checklist + progress (Day 0 三-prong + Day 1) + 3 track docs
 
 ---
 
 ## Day 2 — Closeout (parent assistant)
 
 ### 2.1 Validation
-- [ ] Full backend pytest suite passing (no regressions; 224 PASS baseline preserved)
-- [ ] Full frontend Vitest suite passing (no regressions; 607 PASS baseline preserved)
-- [ ] 9/9 V2 lints preserved
-- [ ] No production code change confirmed via `git diff --stat`
+- [x] Full backend pytest suite passing (commit-time: 1759 PASS + 4 skip + 1 PRE-EXISTING fail flagged Q5)
+- [x] Full frontend Vitest suite passing (commit-time: 607 PASS preserved Sprint 57.50 baseline)
+- [x] 9/9 V2 lints preserved (commit-time)
+- [x] No production code change confirmed via `git diff --stat` (commit `bd8c3269` shows only `.md` files)
 
 ### 2.2 Retrospective
-- [ ] Write `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-51/retrospective.md`
-- [ ] Q1-Q7 6 必答 format
-- [ ] **Q4: 1st validation under tier-2 `mixed-multidomain-bundle` 0.65 sub-class** — log ratio actual/committed-with-agent-factor; decision per rollback rule (single-data-point caution: KEEP if in-band, > 1.20 single-shot rollback to 1.0, < 0.7 KEEP)
-- [ ] **Q4: `audit-cycle/docs/template` 0.40 4th data point** logged (1st was Sprint 57.10 = 1.63; this becomes 2nd)
-- [ ] Q5 carryover candidate list (rolling — defer to user-direction post-closeout)
-- [ ] Q7 Design note extract: N/A SKIP (audit-cycle/docs/template is NOT a spike sprint per 6-necessary-questions retro template; same precedent as Sprint 57.10/57.47-50)
+- [x] Write `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-51/retrospective.md`
+- [x] Q1-Q7 6 必答 format
+- [x] **Q4: 1st validation under tier-2 `mixed-multidomain-bundle` 0.65 sub-class** — ratio actual/committed-with-agent-factor 1.49 ABOVE band by 0.29 = 1st rollback-trigger > 1.20; KEEP per single-data-point caution; flag Sprint 57.52+ for 2nd validation
+- [x] **Q4: `audit-cycle/docs/template` 0.40 2nd data point** logged (1st Sprint 57.10 = 1.63; 2nd Sprint 57.51 = 0.97; 2-pt mean 1.30 lower band edge; KEEP per 3-sprint window rule)
+- [x] Q5 carryover candidate list (Top 3: hygiene bundle continuation / Checkpointer test fail investigation / Pause)
+- [x] Q7 Design note extract: N/A SKIP (audit-cycle/docs/template is NOT a spike sprint per 6-necessary-questions retro template; same precedent as Sprint 57.10/57.47-50)
 
 ### 2.3 sprint-workflow.md updates
-- [ ] File MHist entry (1-line)
-- [ ] Matrix MHist entry (`audit-cycle/docs/template` 0.40 row updated to 2 data points: 57.10 + 57.51; status note updated re 1st validation re-baselining)
-- [ ] §Active Activation history entry (Sprint 57.51 retro Q4 — `mixed-multidomain-bundle` 0.65 tier-2 1st validation)
+- [x] File MHist entry (1-line; L11 newest-first)
+- [x] Matrix MHist entry (`audit-cycle/docs/template` 0.40 row updated to 2 data points: 57.10=1.63 + 57.51=0.97; mean 1.30 lower band edge; KEEP)
+- [x] §Active Activation history entry inserted after Sprint 57.50 retro Q4 (Sprint 57.51 retro Q4 — `mixed-multidomain-bundle` 0.65 tier-2 1st validation ratio 1.49 KEEP)
 
 ### 2.4 Memory + index
-- [ ] `memory/project_phase57_51_audit_docs_hygiene_bundle.md` subfile (~300 char pointer per quality pointer principle)
-- [ ] MEMORY.md pointer entry (TOP)
+- [x] `memory/project_phase57_51_audit_docs_hygiene_bundle.md` subfile (~3KB quality pointer; subfile link + topic + keywords per Sprint Closeout Policy)
+- [x] MEMORY.md pointer entry inserted at TOP of §Project — Recent Sprints
 
 ### 2.5 CLAUDE.md
-- [ ] Current Sprint row updated (Sprint 57.50 → Sprint 57.51; navigator-only per Sprint Closeout Policy)
-- [ ] Last Updated footer updated
+- [x] Current Sprint row updated (Sprint 57.50 → Sprint 57.51; navigator-only per Sprint Closeout Policy)
+- [x] Last Updated footer updated (Sprint 57.51 closeout note)
 
 ### 2.6 next-phase-candidates.md (REFACTOR-001 single-source for open items)
-- [ ] Update `Updated` header (Sprint 57.51 closeout note; demoted Sprint 57.50 to "Previous Updated")
-- [ ] Append Sprint 57.51 carryover section at TOP per existing format (3 ADs closed + conditional NEW carryovers from verdict B / Day 0.8 findings)
+- [x] Update `Updated` header (Sprint 57.51 closeout note; demoted Sprint 57.50 to "Previous Updated")
+- [x] Append Sprint 57.51 carryover section at TOP (3 ADs closed + 4 NEW carryovers + tier-2 1st validation calibration + Top 3 candidates)
 
 ### 2.7 PR + merge (post-commit; user action)
-- [ ] Push branch + open PR
+- [ ] Push branch + open PR (🚧 awaiting user action)
 - [ ] Touch `.github/workflows/backend-ci.yml` header comment IF needed (docs-only PR paths-filter workaround per Sprint 53.2.5 precedent; this sprint has 0 backend/frontend code so Backend CI + V2 Lints may not auto-fire) — verify CI fires first; if not, apply workaround
 - [ ] Wait CI green
 - [ ] User merges
@@ -145,4 +145,4 @@
 
 ### 2.8 Final
 - [ ] Day 2 commit: `chore(sprint-57-51): Day 2 retro + closeout (mixed-multidomain-bundle 0.65 tier-2 1st validation)`
-- [ ] All checklist items `[x]` (Day 0 + Day 1) or 🚧 (Day 2.7 PR + merge pending user action)
+- [x] All Day 0-2.6 checklist items `[x]`; Day 2.7 PR + merge 🚧 pending user action; Day 2.8 final commit pending
