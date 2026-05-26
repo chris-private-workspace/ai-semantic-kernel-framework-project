@@ -13,102 +13,88 @@
 ### 0.8 Day 0 三-Prong Verify (Step 2.5 mandatory)
 
 **Prong 1 — Path Verify** (8 paths):
-- [ ] `backend/src/api/v1/admin/tenants.py` exists (extension target)
-- [ ] `backend/src/agent_harness/hitl/` directory exists (Track A — DBHITLPolicyStore source)
-- [ ] `backend/src/infrastructure/db/models/` feature_flags ORM file exists (Track B — Sprint 57.47 audit confirmed)
-- [ ] `backend/src/platform_layer/tenant/quota.py` exists (Track C — Sprint 57.47 D-DAY0-1 path)
-- [ ] `frontend/src/pages/auth/invite.tsx` + `login.tsx` + `register.tsx` exist (Track E targets)
-- [ ] `backend/tests/integration/api/test_admin_tenant_*.py` test pattern reference (MEMBERS = Sprint 57.47)
-- [ ] `frontend/src/features/tenant-settings/_fixtures.ts` exists (Track A/B/C/D fixture source)
-- [ ] Migration head: `0018_tenant_settings_extension.py` (next slot = 0019 if Track D needs new table)
+- [x] `backend/src/api/v1/admin/tenants.py` exists (extension target)
+- [x] `backend/src/agent_harness/hitl/` directory exists (ABC only; concrete `DBHITLPolicyStore` lives at `platform_layer/governance/hitl/policy_store.py` per D-DAY0-2)
+- [x] `backend/src/infrastructure/db/models/feature_flag.py` ORM file exists
+- [x] `backend/src/platform_layer/tenant/quota.py` exists (Redis-only — D-DAY0-4)
+- [x] `frontend/src/pages/auth/{invite,login,register}/index.tsx` exist (subdir not flat per D-DAY0-1)
+- [x] `backend/tests/integration/api/test_admin_tenant_members.py` exists (MEMBERS template)
+- [x] `frontend/src/features/tenant-settings/_fixtures.ts` exists
+- [x] Migration head = `0018_tenant_settings_extension.py` (next slot 0019 NOT needed per Track D Option A)
 
 **Prong 2 — Content Verify** (7 claims):
-- [ ] `DBHITLPolicyStore` has a `list_policies` or `find_by_tenant` method (Track A pattern reuse target)
-- [ ] `feature_flags` ORM has `tenant_id` column (Track B per-tenant scope confirmed)
-- [ ] `quota.py` exposes structured GET (not just Redis token bucket) — confirm/deny
-- [ ] Track D RateLimits — search `backend/src/` for `rate_limit*` modules (Track D scope decision input)
-- [ ] AP-4 violations in 3 auth pages — read each to identify why AP-4 flags
-- [ ] Sprint 57.47 MEMBERS endpoint pattern as reuse template — confirm 5-step structure (TenantItem + ListResponse + endpoint + paginate + tenant_id filter)
-- [ ] `_fixtures.ts` HITL_POLICIES + FEATURE_FLAGS + QUOTAS + RATE_LIMITS field shapes — confirm Pydantic schema mappings
+- [x] DBHITLPolicyStore returns SINGLE composite `HITLPolicy | None` (NOT list) — D-DAY0-2 pivot via projection helper
+- [x] `feature_flags` is global registry with `tenant_overrides JSONB` (NOT per-tenant rows) — D-DAY0-3 pivot via JSONB resolution
+- [x] `quota.py` is Redis-only; structured config via `PlanLoader.get_plan().quota` — D-DAY0-4 pivot
+- [x] NO existing `rate_limit*.py` module — D-DAY0-5 Option A locked
+- [x] AP-4 violations re-classified: lint regex `\bplaceholder\b` matched HTML5 `placeholder=` JSX attr + TS keys — D-DAY0-6 (false positives, fix detector not pages)
+- [x] Sprint 57.47 MEMBERS pattern confirmed (5-step: Item + ListResponse + endpoint + paginate + tenant_id filter)
+- [x] `_fixtures.ts` field shapes mapped to Pydantic models
 
 **Prong 3 — Schema Verify** (conditional on Track D):
-- [ ] If Track D needs new ORM (Option B) → schema verify on `tenant_rate_limits` table proposal + migration 0019 slot
-- [ ] If Track D uses fixture-projection (Option A) → N/A; skip Prong 3
+- [x] Track D Option A locked → N/A (no new ORM); Prong 3 skipped
 
 **Prong 2.5 — Frontend Tree Depth Audit**:
-- [ ] N/A for Tracks A-D (backend); apply to Track E AP-4 (read each auth page in full not just grep)
+- [x] Applied to Track E: read each of 3 auth `index.tsx` files in full; identified lint false-positive root cause
 
 **Drift findings catalog**:
-- [ ] All findings logged to `progress.md` Day 0 §Drift findings (D-DAY0-N)
-- [ ] Track D scope decision recorded (Option A / Option B / 🚧 defer)
-- [ ] Go/no-go decision recorded
+- [x] D-DAY0-1 through D-DAY0-6 logged to `progress.md` Day 0 §Drift findings
+- [x] Track D scope decision = Option A (fixture-projection from `tenants.meta_data`)
+- [x] Go/no-go: ✅ GO (scope shift < 20%)
 
 ### 0.9 Branch + Day 0 commit
 - [x] Branch `feature/sprint-57-48-tenant-settings-backend-completion-wave` created
-- [ ] Day 0 + Day 1 combined commit (small-scope precedent from Sprint 57.47)
+- [x] Day 0 + Day 1 combined commit (small-scope precedent from Sprint 57.47)
 
 ---
 
 ## Day 1 — Implementation (Code-Implementer Agent Delegation)
 
 ### 1.1 Track A — HITLPolicies Backend (cheapest, first)
-- [ ] Add `HITLPolicyItem` + `HITLPolicyListResponse` Pydantic models to `tenants.py`
-  - DoD: Mirrors `TenantMemberItem` (Sprint 57.47) shape; fields per plan §4.2
-- [ ] Add `GET /admin/tenants/{tenant_id}/hitl-policies` endpoint
-  - DoD: admin role only; 404 if tenant not found; paginated (limit/offset); tenant_id-filtered query
-- [ ] Add ≥6 NEW pytest tests in `test_admin_tenant_hitl_policies.py`
-  - DoD: auth + 404 + happy + shape + multi-tenant isolation + pagination + empty
-- [ ] CHANGE-013 record
+- [x] Add `HITLPolicyItem` + `HITLPolicyListResponse` Pydantic models to `tenants.py`
+- [x] Add `GET /admin/tenants/{tenant_id}/hitl-policies` endpoint
+- [x] Add 7 NEW pytest tests in `test_admin_tenant_hitl_policies.py` (≥6 target)
+- [x] CHANGE-013 record
 
 ### 1.2 Track B — FeatureFlags Admin GET
-- [ ] Add `FeatureFlagItem` + `FeatureFlagListResponse` models
-- [ ] Add `GET /admin/tenants/{tenant_id}/feature-flags` endpoint
-- [ ] ≥6 NEW pytest tests in `test_admin_tenant_feature_flags.py`
-- [ ] CHANGE-014 record
+- [x] Add `FeatureFlagItem` + `FeatureFlagListResponse` models
+- [x] Add `GET /admin/tenants/{tenant_id}/feature-flags` endpoint
+- [x] 8 NEW pytest tests in `test_admin_tenant_feature_flags.py` (≥6 target)
+- [x] CHANGE-014 record
 
 ### 1.3 Track C — Quotas Admin GET
-- [ ] Add `QuotaItem` + `QuotaListResponse` models
-- [ ] Add `GET /admin/tenants/{tenant_id}/quotas` endpoint
-- [ ] ≥6 NEW pytest tests in `test_admin_tenant_quotas.py`
-- [ ] CHANGE-015 record
+- [x] Add `QuotaItem` + `QuotaListResponse` models
+- [x] Add `GET /admin/tenants/{tenant_id}/quotas` endpoint
+- [x] 8 NEW pytest tests in `test_admin_tenant_quotas.py` (≥6 target)
+- [x] CHANGE-015 record
 
 ### 1.4 Track D — RateLimits Backend (Day 0.8 decision-gated)
 
-**If Option A (fixture-projection from `tenants.meta_data` JSON ~2-3 hr)**:
-- [ ] Add `RateLimitItem` + `RateLimitListResponse` models
-- [ ] Add `GET /admin/tenants/{tenant_id}/rate-limits` endpoint (reads from meta_data)
-- [ ] ≥4 NEW pytest tests in `test_admin_tenant_rate_limits.py`
-- [ ] CHANGE-016 record
+**Option A LOCKED (fixture-projection from `tenants.meta_data` JSON)**:
+- [x] Add `RateLimitItem` + `RateLimitListResponse` models
+- [x] Add `GET /admin/tenants/{tenant_id}/rate-limits` endpoint (reads from meta_data with DEFAULT_RATE_LIMITS fallback)
+- [x] 6 NEW pytest tests in `test_admin_tenant_rate_limits.py` (≥4 target)
+- [x] CHANGE-016 record
 
-**If Option B (new ORM table ~5-6 hr)**:
-- [ ] Alembic 0019_tenant_rate_limits.py migration
-- [ ] ORM model + endpoint + ≥4 tests
-- [ ] CHANGE-016 record
-
-**If 🚧 defer**:
-- [ ] Mark Track D items as 🚧 in checklist with reason
-- [ ] Log carryover AD `AD-TenantSettings-RateLimits-Backend-Sprint-57.49`
-- [ ] CHANGE-016 carryover memo (not full record)
-
-### 1.5 Track E — AP-4 Frontend Auth Hygiene
-- [ ] Read each of `invite.tsx`, `login.tsx`, `register.tsx` in full (Prong 2.5 depth audit applied)
-- [ ] Identify AP-4 root cause (Potemkin structure / unused imports / stub mocks)
-- [ ] Apply minimal fix
-  - DoD: No behavior change (existing Vitest + Playwright tests pass)
-- [ ] Verify `python scripts/lint/run_all.py` → 9/9 green
-- [ ] Vite build unchanged ±1KB
-- [ ] CHANGE-017 record
+### 1.5 Track E — AP-4 Lint False-Positive Fix
+- [x] Read each of 3 `auth/{X}/index.tsx` files (Prong 2.5 depth audit)
+- [x] Identified root cause: lint regex matching HTML5 `placeholder=` attribute (D-DAY0-6 false positive, NOT Potemkin)
+- [x] Applied fix to LINT SCRIPT (`check_ap4_frontend_placeholder.py` — added `JSX_PLACEHOLDER_ATTR` + `TS_PLACEHOLDER_KEY` masks)
+- [x] 0 frontend pages touched (behaviour preserved by construction)
+- [x] `python scripts/lint/run_all.py` → **9/9 green** ✅
+- [x] Vite build unchanged (no frontend file touched)
+- [x] CHANGE-017 record
 
 ### 1.6 Day 1 Validation Sweep
-- [ ] black + isort + flake8 — exit 0
-- [ ] mypy --strict — 0 errors
-- [ ] **9 V2 lints: 9/9 green** (Track E removes pre-existing AP-4 baseline)
-- [ ] pytest integration/api/ — all PASS; ≥22 NEW (6+6+6+4 across A-D, or 6+6+6+0 if Track D 🚧)
-- [ ] LLM SDK leak: 0
-- [ ] Frontend build + lint (Track E): `npm run lint` + `npm run build` exit 0
+- [x] black + isort + flake8 — exit 0
+- [x] mypy --strict — 0 errors
+- [x] **9 V2 lints: 9/9 green** ✅
+- [x] pytest integration/api/ — 217 PASS (29 NEW: 7+8+8+6 across A-D; 0 regressions vs Sprint 57.47 baseline 188)
+- [x] LLM SDK leak: 0
+- [x] Frontend `npm run lint` + `npm run build` exit 0
 
 ### 1.7 Day 1 commit
-- [ ] Commit: `feat(sprint-57-48): Day 1 — TenantSettings 4-tab backend completion wave + AP-4 hygiene`
+- [x] Commit: `feat(sprint-57-48): Day 1 — TenantSettings 4-tab backend completion wave + AP-4 hygiene`
 
 ---
 

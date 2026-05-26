@@ -19,7 +19,9 @@ Description:
 Forbidden text patterns (case-insensitive):
     - 'Coming in Phase'           — V1 / V2 placeholder hint
     - 'skeleton'                  — Sprint 50.2 chat-v2 phrasing
-    - 'placeholder'               — generic stub phrasing
+    - 'placeholder'               — generic stub phrasing (UI-visible only;
+      JSX `placeholder="..."` HTML5 attribute and TS object keys are masked
+      out per Sprint 57.48 Track E false-positive correction)
     - 'TODO' / 'FIXME'            — incomplete-impl markers
     - 'land in subsequent sprints' — common 17.md drift phrasing
     - 'will be added later'       — common drift phrasing
@@ -33,6 +35,16 @@ All comment forms are SKIPPED (developer notes are allowed):
 This is critical because file headers / MHist entries naturally mention
 "placeholder" / "Sprint 49.1 placeholder" / etc. as historical notes — those
 are NOT the AP-4 violation target;the target is RENDERED UI body text。
+
+JSX attribute / TS object key masking (Sprint 57.48 Track E — closes
+AD-Frontend-AP4-Pre-Existing-Lint):
+    - `placeholder="..."`/`placeholder={...}` JSX/HTML5 attribute → masked
+    - `placeholder: "..."` TS object key → masked
+    The HTML5 `placeholder` attribute on `<input>` is a legitimate web
+    standard, not an AP-4 violation. Same for fixture object keys like
+    `{ placeholder: "..." }`. The AP-4 lint targets RENDERED UI body text
+    (e.g. `<p>This is a placeholder for Phase 58+</p>`), not attribute
+    or property names.
 
 Excluded directories (ship-pending — will be removed once page ships):
     - frontend/src/pages/chat-v2 — Phase 57.7 candidate ship per 16.md
@@ -54,6 +66,7 @@ Stdlib-only (matches the 8 V2 lint scripts shipped in Sprint 49.4-56.1).
 Created: 2026-05-08 (Sprint 57.6 Day 3)
 
 Modification History:
+    - 2026-05-26: Sprint 57.48 Track E — mask JSX `placeholder=` attr + TS `placeholder:` key (closes AD-Frontend-AP4-Pre-Existing-Lint)
     - 2026-05-08: Sprint 57.6 US-5 — initial creation (closes AD-Reality-5)
 
 Related:
@@ -91,6 +104,17 @@ JSX_BLOCK_COMMENT = re.compile(r"\{/\*.*?\*/\}", re.DOTALL)
 JS_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
 JS_LINE_COMMENT = re.compile(r"//[^\n]*")
 
+# JSX attribute / TS object key masks (Sprint 57.48 Track E — closes
+# AD-Frontend-AP4-Pre-Existing-Lint). The HTML5 `placeholder` attribute and
+# TS object keys named `placeholder` are NOT AP-4 violations; they're
+# legitimate API/standard names. Mask them before the pattern scan so the
+# `\bplaceholder\b` rule only catches UI body text.
+JSX_PLACEHOLDER_ATTR = re.compile(
+    r"placeholder\s*=\s*(?:\"[^\"]*\"|'[^']*'|\{[^}]*\})",
+    re.IGNORECASE,
+)
+TS_PLACEHOLDER_KEY = re.compile(r"\bplaceholder\s*:", re.IGNORECASE)
+
 # File extensions to scan in frontend pages tree。
 SCAN_EXTENSIONS = frozenset({".tsx", ".ts", ".jsx", ".js"})
 
@@ -100,10 +124,19 @@ EXCLUDE_DIRS_DEFAULT = ("chat-v2", "governance", "verification")
 
 
 def mask_comments(src: str) -> str:
-    """Mask all comment forms (JSX block / JS block / JS line) to whitespace.
+    """Mask all comment forms (JSX block / JS block / JS line) + JSX
+    `placeholder=` attribute + TS `placeholder:` key to whitespace.
 
-    Order matters: JSX `{/* ... */}` masked first so the inner `/* ... */`
-    is not double-counted by the JS_BLOCK_COMMENT pass。
+    Order matters:
+        1. JSX `{/* ... */}` first so the inner `/* ... */` isn't double-counted
+        2. JS block / line comments
+        3. JSX `placeholder=` attribute + TS `placeholder:` key — masked AFTER
+           comments so we don't accidentally unmask inside a stripped comment
+
+    The `placeholder` attribute mask is critical: HTML5 `<input placeholder="...">`
+    and `<textarea placeholder="...">` are valid web-standard usage and must
+    NOT trigger the AP-4 `\\bplaceholder\\b` rule (Sprint 57.48 Track E
+    closes AD-Frontend-AP4-Pre-Existing-Lint).
     """
     masked = JSX_BLOCK_COMMENT.sub(
         lambda m: " " * (m.end() - m.start()), src
@@ -112,6 +145,12 @@ def mask_comments(src: str) -> str:
         lambda m: " " * (m.end() - m.start()), masked
     )
     masked = JS_LINE_COMMENT.sub(
+        lambda m: " " * (m.end() - m.start()), masked
+    )
+    masked = JSX_PLACEHOLDER_ATTR.sub(
+        lambda m: " " * (m.end() - m.start()), masked
+    )
+    masked = TS_PLACEHOLDER_KEY.sub(
         lambda m: " " * (m.end() - m.start()), masked
     )
     return masked
