@@ -1,10 +1,11 @@
 /**
  * File: frontend/tests/unit/tenant-settings/tabs/QuotasTab.test.tsx
- * Purpose: Vitest coverage for QuotasTab — useQuotas/useRateLimits + Sprint 57.56 edit mode.
+ * Purpose: Vitest coverage for QuotasTab — useQuotas/useRateLimits + Sprint 57.56/57.57 edit modes.
  * Category: Frontend / Tests / tenant-settings / unit / tabs
- * Scope: Phase 57 / Sprint 57.49 Day 1 + Sprint 57.56 Track B
+ * Scope: Phase 57 / Sprint 57.49 Day 1 + Sprint 57.56 Track B + Sprint 57.57 Track B
  *
  * Modification History (newest-first):
+ *   - 2026-05-27: Sprint 57.57 Track B — +Rate limits edit mode tests + Usage Card scope guard
  *   - 2026-05-27: Sprint 57.56 Track B — +edit-mode tests + banner copy + scope guard assertion
  *   - 2026-05-26: Sprint 57.49 — rewrite to mock useQuotas + useRateLimits hooks
  *   - 2026-05-26: Initial creation (Sprint 57.44 Day 2)
@@ -13,7 +14,6 @@
 import "@testing-library/jest-dom/vitest";
 
 import { fireEvent, render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/features/tenant-settings/hooks/useQuotas", () => ({
@@ -27,11 +27,15 @@ vi.mock("@/features/tenant-settings/hooks/useRateLimits", () => ({
 vi.mock("@/features/tenant-settings/hooks/useQuotasSave", () => ({
   useQuotasSave: vi.fn(),
 }));
+vi.mock("@/features/tenant-settings/hooks/useRateLimitsSave", () => ({
+  useRateLimitsSave: vi.fn(),
+}));
 
 import { QuotasTab } from "@/features/tenant-settings/components/tabs/QuotasTab";
 import { useQuotas } from "@/features/tenant-settings/hooks/useQuotas";
 import { useQuotasSave } from "@/features/tenant-settings/hooks/useQuotasSave";
 import { useRateLimits } from "@/features/tenant-settings/hooks/useRateLimits";
+import { useRateLimitsSave } from "@/features/tenant-settings/hooks/useRateLimitsSave";
 
 function mockSave(
   overrides: Partial<{
@@ -49,6 +53,24 @@ function mockSave(
     error: overrides.error ?? null,
     reset: overrides.reset ?? vi.fn(),
   } as unknown as ReturnType<typeof useQuotasSave>);
+}
+
+function mockRlSave(
+  overrides: Partial<{
+    mutate: ReturnType<typeof vi.fn>;
+    isPending: boolean;
+    isSuccess: boolean;
+    error: Error | null;
+    reset: ReturnType<typeof vi.fn>;
+  }> = {},
+): void {
+  vi.mocked(useRateLimitsSave).mockReturnValue({
+    mutate: overrides.mutate ?? vi.fn(),
+    isPending: overrides.isPending ?? false,
+    isSuccess: overrides.isSuccess ?? false,
+    error: overrides.error ?? null,
+    reset: overrides.reset ?? vi.fn(),
+  } as unknown as ReturnType<typeof useRateLimitsSave>);
 }
 
 function mockData(quotas: unknown[], rateLimits: unknown[]): void {
@@ -73,6 +95,7 @@ describe("QuotasTab (Sprint 57.49)", () => {
   beforeEach(() => {
     mockData([], []);
     mockSave();
+    mockRlSave();
   });
   afterEach(() => {
     vi.clearAllMocks();
@@ -122,24 +145,16 @@ describe("QuotasTab (Sprint 57.49)", () => {
     expect(screen.getByText("Tool calls")).toBeInTheDocument();
   });
 
-  it("Request increase button fires window.alert with backend gap message", async () => {
-    mockData([], [{ label: "x", value: "y" }]);
-    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
-    const user = userEvent.setup();
-    render(<QuotasTab tenantId="t1" />);
-    await user.click(screen.getByRole("button", { name: /request increase/i }));
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringMatching(/backend gap/i));
-    alertSpy.mockRestore();
-  });
-
   it("renders AP-2 BackendGapBanner with Sprint 57.56 softened copy", () => {
     mockData(SAMPLE_QUOTAS, []);
     render(<QuotasTab tenantId="t1" />);
-    const banner = screen.getByTestId("backend-gap-banner");
-    expect(banner).toBeInTheDocument();
-    expect(banner).toHaveTextContent(/Phase 58\+/);
-    expect(banner).toHaveTextContent(/Redis counter exposure/);
-    expect(banner).toHaveTextContent(/editable via Edit button/);
+    // Sprint 57.57: 2 banners now (Usage Card + Rate limits Card). Usage Card banner = banners[0].
+    const banners = screen.getAllByTestId("backend-gap-banner");
+    expect(banners.length).toBeGreaterThanOrEqual(1);
+    const usageBanner = banners[0];
+    expect(usageBanner).toHaveTextContent(/Phase 58\+/);
+    expect(usageBanner).toHaveTextContent(/Redis counter exposure/);
+    expect(usageBanner).toHaveTextContent(/editable via Edit button/);
   });
 
   /* === Sprint 57.56 Track B — edit mode tests === */
@@ -260,8 +275,200 @@ describe("QuotasTab (Sprint 57.49)", () => {
       expect(screen.getByText("Rate limits")).toBeInTheDocument();
       expect(screen.getByText("API requests")).toBeInTheDocument();
       expect(screen.getByText("100 / min")).toBeInTheDocument();
-      // Request increase button still present (Rate limits Card unchanged)
-      expect(screen.getByRole("button", { name: /request increase/i })).toBeInTheDocument();
+      // Rate limits Card has its own Edit button (Sprint 57.57)
+      expect(screen.getByTestId("ratelimits-edit-btn")).toBeInTheDocument();
+    });
+  });
+
+  /* === Sprint 57.57 Track B — Rate limits Card edit mode tests === */
+
+  const SAMPLE_RATE_LIMITS = [
+    { label: "API requests", value: "100/min" },
+    { label: "Agent runs", value: "20/min" },
+  ];
+
+  describe("Rate limits edit mode (Sprint 57.57)", () => {
+    it("renders Rate limits Edit button when data loaded", () => {
+      mockData([], SAMPLE_RATE_LIMITS);
+      render(<QuotasTab tenantId="t1" />);
+      expect(screen.getByTestId("ratelimits-edit-btn")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-edit-btn")).not.toBeDisabled();
+    });
+
+    it("entering edit mode reveals Save/Cancel + per-row label+value inputs + Add row button", () => {
+      mockData([], SAMPLE_RATE_LIMITS);
+      render(<QuotasTab tenantId="t1" />);
+      fireEvent.click(screen.getByTestId("ratelimits-edit-btn"));
+
+      expect(screen.getByTestId("ratelimits-save-btn")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-cancel-btn")).toBeInTheDocument();
+      // Two rows × two inputs each
+      expect(screen.getByTestId("ratelimits-label-input-0")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-value-input-0")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-label-input-1")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-value-input-1")).toBeInTheDocument();
+      // Per-row remove buttons
+      expect(screen.getByTestId("ratelimits-remove-0")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-remove-1")).toBeInTheDocument();
+      // Add row button
+      expect(screen.getByTestId("ratelimits-add-row-btn")).toBeInTheDocument();
+    });
+
+    it("seeds rlDraft from current items on entering edit mode", () => {
+      mockData([], SAMPLE_RATE_LIMITS);
+      render(<QuotasTab tenantId="t1" />);
+      fireEvent.click(screen.getByTestId("ratelimits-edit-btn"));
+
+      const lbl0 = screen.getByTestId("ratelimits-label-input-0") as HTMLInputElement;
+      const val0 = screen.getByTestId("ratelimits-value-input-0") as HTMLInputElement;
+      const lbl1 = screen.getByTestId("ratelimits-label-input-1") as HTMLInputElement;
+      const val1 = screen.getByTestId("ratelimits-value-input-1") as HTMLInputElement;
+      expect(lbl0.value).toBe("API requests");
+      expect(val0.value).toBe("100/min");
+      expect(lbl1.value).toBe("Agent runs");
+      expect(val1.value).toBe("20/min");
+    });
+
+    it("changing label input updates rlDraft[index].label", () => {
+      mockData([], SAMPLE_RATE_LIMITS);
+      render(<QuotasTab tenantId="t1" />);
+      fireEvent.click(screen.getByTestId("ratelimits-edit-btn"));
+
+      const lbl0 = screen.getByTestId("ratelimits-label-input-0") as HTMLInputElement;
+      fireEvent.change(lbl0, { target: { value: "API calls" } });
+      expect(lbl0.value).toBe("API calls");
+    });
+
+    it("changing value input updates rlDraft[index].value", () => {
+      mockData([], SAMPLE_RATE_LIMITS);
+      render(<QuotasTab tenantId="t1" />);
+      fireEvent.click(screen.getByTestId("ratelimits-edit-btn"));
+
+      const val0 = screen.getByTestId("ratelimits-value-input-0") as HTMLInputElement;
+      fireEvent.change(val0, { target: { value: "200/min" } });
+      expect(val0.value).toBe("200/min");
+    });
+
+    it("Add row button appends empty row to rlDraft", () => {
+      mockData([], SAMPLE_RATE_LIMITS);
+      render(<QuotasTab tenantId="t1" />);
+      fireEvent.click(screen.getByTestId("ratelimits-edit-btn"));
+
+      expect(screen.queryByTestId("ratelimits-label-input-2")).toBeNull();
+      fireEvent.click(screen.getByTestId("ratelimits-add-row-btn"));
+      const newLbl = screen.getByTestId("ratelimits-label-input-2") as HTMLInputElement;
+      const newVal = screen.getByTestId("ratelimits-value-input-2") as HTMLInputElement;
+      expect(newLbl.value).toBe("");
+      expect(newVal.value).toBe("");
+    });
+
+    it("Remove (×) button drops that row from rlDraft", () => {
+      mockData([], SAMPLE_RATE_LIMITS);
+      render(<QuotasTab tenantId="t1" />);
+      fireEvent.click(screen.getByTestId("ratelimits-edit-btn"));
+
+      expect(screen.getByTestId("ratelimits-label-input-1")).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId("ratelimits-remove-0"));
+      // After removal, row index 0 now shows what was index 1
+      const lbl0 = screen.getByTestId("ratelimits-label-input-0") as HTMLInputElement;
+      expect(lbl0.value).toBe("Agent runs");
+      // Original index-1 no longer present (only 1 row remains)
+      expect(screen.queryByTestId("ratelimits-label-input-1")).toBeNull();
+    });
+
+    it("Save button calls rlMutation with current rlDraft as items payload", () => {
+      const mutate = vi.fn();
+      mockRlSave({ mutate });
+      mockData([], SAMPLE_RATE_LIMITS);
+      render(<QuotasTab tenantId="t1" />);
+
+      fireEvent.click(screen.getByTestId("ratelimits-edit-btn"));
+      fireEvent.click(screen.getByTestId("ratelimits-save-btn"));
+
+      expect(mutate).toHaveBeenCalledWith({
+        items: [
+          { label: "API requests", value: "100/min" },
+          { label: "Agent runs", value: "20/min" },
+        ],
+      });
+    });
+
+    it("empty list save allowed (composite-clear → backend falls back to defaults)", () => {
+      const mutate = vi.fn();
+      mockRlSave({ mutate });
+      mockData([], SAMPLE_RATE_LIMITS);
+      render(<QuotasTab tenantId="t1" />);
+
+      fireEvent.click(screen.getByTestId("ratelimits-edit-btn"));
+      fireEvent.click(screen.getByTestId("ratelimits-remove-0"));
+      fireEvent.click(screen.getByTestId("ratelimits-remove-0"));
+      // All rows removed — empty-draft hint visible
+      expect(screen.getByTestId("ratelimits-empty-draft")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId("ratelimits-save-btn"));
+      expect(mutate).toHaveBeenCalledWith({ items: [] });
+    });
+
+    it("Cancel button resets rlDraft + exits edit mode", () => {
+      mockData([], SAMPLE_RATE_LIMITS);
+      render(<QuotasTab tenantId="t1" />);
+      fireEvent.click(screen.getByTestId("ratelimits-edit-btn"));
+      fireEvent.click(screen.getByTestId("ratelimits-cancel-btn"));
+
+      expect(screen.queryByTestId("ratelimits-save-btn")).toBeNull();
+      expect(screen.queryByTestId("ratelimits-cancel-btn")).toBeNull();
+      expect(screen.getByTestId("ratelimits-edit-btn")).toBeInTheDocument();
+    });
+
+    it("Save button disabled + 'Saving…' label while rlMutation isPending", () => {
+      mockRlSave({ isPending: true });
+      mockData([], SAMPLE_RATE_LIMITS);
+      render(<QuotasTab tenantId="t1" />);
+      fireEvent.click(screen.getByTestId("ratelimits-edit-btn"));
+
+      const saveBtn = screen.getByTestId("ratelimits-save-btn");
+      expect(saveBtn).toBeDisabled();
+      expect(saveBtn).toHaveTextContent(/Saving…/);
+      expect(screen.getByTestId("ratelimits-cancel-btn")).toBeDisabled();
+    });
+
+    it("renders save error message when rlMutation.error present", () => {
+      mockRlSave({ error: new Error("HTTP 422: items[].label required") });
+      mockData([], SAMPLE_RATE_LIMITS);
+      render(<QuotasTab tenantId="t1" />);
+
+      const err = screen.getByTestId("ratelimits-save-error");
+      expect(err).toBeInTheDocument();
+      expect(err).toHaveTextContent(/label required/);
+    });
+
+    it("renders Rate limits BackendGapBanner with Sprint 57.57 softened copy", () => {
+      mockData([], SAMPLE_RATE_LIMITS);
+      render(<QuotasTab tenantId="t1" />);
+      // 2 BackendGapBanner instances now (Usage Card + Rate limits Card)
+      const banners = screen.getAllByTestId("backend-gap-banner");
+      expect(banners.length).toBe(2);
+      // Rate limits banner content
+      const rlBanner = banners[1];
+      expect(rlBanner).toHaveTextContent(/syntax validation/);
+      expect(rlBanner).toHaveTextContent(/editable via Edit button/);
+    });
+
+    it("scope guard: Usage quotas Card edit mode (Sprint 57.56) UNCHANGED when Rate limits editing", () => {
+      mockData(SAMPLE_QUOTAS, SAMPLE_RATE_LIMITS);
+      render(<QuotasTab tenantId="t1" />);
+
+      // Enter Rate limits edit mode → Usage quotas Card unaffected
+      fireEvent.click(screen.getByTestId("ratelimits-edit-btn"));
+      // Sprint 57.56 Usage quotas Edit button still present + functional
+      expect(screen.getByTestId("quotas-edit-btn")).toBeInTheDocument();
+      expect(screen.getByTestId("quotas-edit-btn")).not.toBeDisabled();
+      // Usage quotas rows still rendered in read-only display
+      expect(screen.getByText("tokens_per_day")).toBeInTheDocument();
+      expect(screen.getByText("cost_usd_per_day")).toBeInTheDocument();
+      // Usage quotas edit-mode controls NOT present (we're editing Rate limits, not Usage)
+      expect(screen.queryByTestId("quotas-save-btn")).toBeNull();
+      expect(screen.queryByTestId("quotas-cancel-btn")).toBeNull();
     });
   });
 });

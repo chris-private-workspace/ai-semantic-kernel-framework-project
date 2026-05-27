@@ -7,6 +7,7 @@
  * Created: 2026-05-07 (Sprint 57.3 Day 3)
  *
  * Modification History (newest-first):
+ *   - 2026-05-27: Sprint 57.57 — +2 saveRateLimits PUT tests
  *   - 2026-05-27: Sprint 57.56 — +2 saveQuotaOverrides PUT tests
  */
 
@@ -23,6 +24,7 @@ import {
   saveFeatureFlagOverrides,
   saveHITLPolicies,
   saveQuotaOverrides,
+  saveRateLimits,
   updateTenantSettings,
 } from "../../../src/features/tenant-settings/services/tenantSettingsService";
 import {
@@ -323,6 +325,51 @@ describe("tenantSettingsService", () => {
       await expect(
         saveQuotaOverrides("tenant-x", { overrides: { bogus_resource: 100 } }),
       ).rejects.toThrow("unknown resource");
+    });
+  });
+
+  /* === Sprint 57.57 Track B — saveRateLimits PUT === */
+
+  describe("saveRateLimits (Sprint 57.57)", () => {
+    it("sends PUT with correct URL + JSON body", async () => {
+      const payload = {
+        items: [
+          { label: "API requests", value: "100/min" },
+          { label: "Agent runs", value: "20/min" },
+        ],
+      };
+      const responseBody = {
+        items: payload.items,
+        total: 2,
+        limit: 50,
+        offset: 0,
+      };
+      fetchSpy.mockResolvedValueOnce(
+        new Response(JSON.stringify(responseBody), { status: 200 }),
+      );
+
+      const result = await saveRateLimits("tenant-x", payload);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "/api/v1/admin/tenants/tenant-x/rate-limits",
+        expect.objectContaining({
+          method: "PUT",
+          credentials: "include",
+          body: JSON.stringify(payload),
+        }),
+      );
+      expect(result).toEqual(responseBody);
+    });
+
+    it("throws Error with detail message on 422 invalid item", async () => {
+      fetchSpy.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ detail: "items[].label required" }),
+          { status: 422 },
+        ),
+      );
+      await expect(
+        saveRateLimits("tenant-x", { items: [{ label: "", value: "100/min" }] }),
+      ).rejects.toThrow("label required");
     });
   });
 

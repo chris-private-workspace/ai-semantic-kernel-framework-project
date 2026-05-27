@@ -70,7 +70,7 @@ Build enterprise AI agent teams that work like **human professional teams** — 
 | Attribute | Value |
 |-----------|-------|
 | **Phase** | V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend ongoing (Phase 57+) |
-| **Current Sprint** | Sprint 57.56 closed 2026-05-27 (PR pending) — **Quotas WRITE-side ship** (Phase 58.x portfolio 3/4) closes `AD-AgentFactor-Tier-4-Validation-Sprint-57.56` (Sprint 57.55 carryover). **TIER-4 1ST VALIDATION CONFIRMED CLEANLY**: `mechanical-greenfield-design-decisions` 0.65 ratio ~1.02 ✅ IN BAND middle; KEEP baseline; Sprint 57.57+ 2nd validation pending. Mockup-fidelity DUAL CLEAN 22/22 PARITY preserved **12 consecutive 57.45-57.56** ⭐ strongest streak Phase 57+. Detail: `memory/project_phase57_56_quotas_write_endpoint.md`. Next candidates: `claudedocs/1-planning/next-phase-candidates.md` (RateLimits Sprint 57.57 = Phase 58.x portfolio 4/4 final). |
+| **Current Sprint** | Sprint 57.57 closed 2026-05-27 (PR #207 pending) — **RateLimits WRITE-side ship (Phase 58.x portfolio FINAL 4/4 CLOSURE 🎉)** closes `AD-AgentFactor-Tier-4-Validation-Sprint-57.57` (Sprint 57.56 carryover) + `AD-TenantSettings-RateLimits-Write-Endpoint` + **3 PROMOTION ADs codified into `sprint-workflow.md`** (AD-Plan-Workload-AgentDelegation-Explicit-Field-Codification + AD-Day0-Prong2-Phase58-WriteSide-Resource-Storage-Grep + AD-Day0-Prong2-CanonicalService-Grep). **TIER-4 SPLIT FULLY VALIDATED**: `mechanical-greenfield-design-decisions` 0.65 2nd validation ratio ~1.15 ✅ IN BAND top edge → 2 consec IN band (57.56=1.02 + 57.57=1.15); KEEP 0.65 baseline; rollback rule baseline established. Mockup-fidelity DUAL CLEAN 22/22 PARITY preserved **13 consecutive 57.45-57.57** ⭐ strongest streak Phase 57+. Phase 58.x portfolio: HITLPolicies + FeatureFlags + Quotas + **RateLimits ALL CLOSED 🎉** — wave complete; Phase 58+ moves to deeper extensions. Detail: `memory/project_phase57_57_rate_limits_write_endpoint.md`. Next candidates: `claudedocs/1-planning/next-phase-candidates.md`. |
 | **Sprint History** | See [`memory/MEMORY.md`](memory/MEMORY.md) §Recent Sprints + per-sprint subfile `memory/project_phase57_XX_*.md` + retrospective.md under `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-XX/` |
 | **Pending / Next Phase** | See [`claudedocs/1-planning/next-phase-candidates.md`](claudedocs/1-planning/next-phase-candidates.md) |
 | **Roadmap** | Phase 49-55 V2 ✅ / Phase 56-58 SaaS Stage 1 3/3 ✅ / Phase 57+ Frontend ongoing |
@@ -625,7 +625,7 @@ V1 完整 CLAUDE.md 已保留於 `CLAUDE.backup.md`。如需查閱 V1 架構（M
 
 ---
 
-**Last Updated**: 2026-05-27 (Sprint 57.56 — Quotas WRITE-side ship Phase 58.x portfolio 3/4; tier-4 `mechanical-greenfield-design-decisions` 0.65 1st validation ratio ~1.02 IN band CLEAN; commit `45735484`); see `memory/` for sprint history
+**Last Updated**: 2026-05-27 (Sprint 57.57 — RateLimits WRITE-side ship **Phase 58.x portfolio FINAL 4/4 CLOSURE 🎉**; tier-4 `mechanical-greenfield-design-decisions` 0.65 2nd validation ~1.15 IN band top edge → SPLIT FULLY VALIDATED 2 consec IN band; 3 PROMOTION ADs codified zero codification debt; DUAL CLEAN 13 consec 57.45-57.57 strongest streak Phase 57+; commit `08695112` Day 0+1 + Day 2 pending); see `memory/` for sprint history
 **Project Start**: 2025-11-14
 **V2 Authority**: `docs/03-implementation/agent-harness-planning/` (21 docs — 20 規劃 + 1 review)
 **V1 Reference**: `CLAUDE.backup.md` + `docs/07-analysis/V9/00-index.md`

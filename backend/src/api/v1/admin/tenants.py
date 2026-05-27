@@ -46,6 +46,7 @@ Created: 2026-05-06 (Sprint 56.1 Day 1)
 Last Modified: 2026-05-10
 
 Modification History:
+    - 2026-05-27: Sprint 57.57 Track A — PUT /rate-limits + Pydantic upsert schemas + append_audit
     - 2026-05-27: Sprint 57.56 Track A — PUT /quotas overrides + tenant.meta_data JSONB write
     - 2026-05-26: Sprint 57.55 — PUT /feature-flags overrides + helper extract (D-DAY0-T pivot)
     - 2026-05-26: Sprint 57.54 — add PUT /{id}/hitl-policies upsert + write schemas (Track A)
@@ -1382,6 +1383,108 @@ async def list_tenant_rate_limits(
     total = len(items)
     page = items[offset : offset + limit]
     return RateLimitListResponse(items=page, total=total, limit=limit, offset=offset)
+
+
+# =====================================================================
+# Sprint 57.57 Track A — RateLimits admin PUT (closes AD-TenantSettings-
+# RateLimits-Write-Endpoint; Phase 58.x portfolio FINAL 4/4)
+# =====================================================================
+# Mirrors Sprint 57.56 Quotas direct ORM UPDATE + manual append_audit pattern
+# verbatim with these simplifications:
+#   - NO whitelist (RateLimits has free-form labels — operator-defined)
+#   - NO plan-default merge (RateLimits has no plan template — single source
+#     of truth is meta_data["rate_limits"] OR fallback DEFAULT_RATE_LIMITS)
+#   - Reuse existing RateLimitItem (Sprint 57.48 Track D) verbatim
+# Composite-replace semantics: payload.items = COMPLETE desired override
+# state. Empty list ([]) clears all overrides → subsequent GET falls back to
+# DEFAULT_RATE_LIMITS. Insertion order preserved.
+
+
+class RateLimitsUpsertRequest(BaseModel):
+    """Composite RateLimits upsert payload (composite-replace semantics; variable-length list)."""
+
+    model_config = ConfigDict(extra="forbid")
+    items: list[RateLimitItem] = Field(
+        default_factory=list,
+        description=(
+            "List of {label, value} rate limit entries. Composite-replace "
+            "semantics: payload.items = COMPLETE desired override state. "
+            "Empty list ([]) clears all overrides → backend falls back to "
+            "DEFAULT_RATE_LIMITS on subsequent GET. Insertion order preserved."
+        ),
+    )
+
+
+class RateLimitsUpsertResponse(BaseModel):
+    """Echoes saved items + projects pagination envelope matching GET shape."""
+
+    items: list[RateLimitItem]
+    total: int
+    limit: int
+    offset: int
+
+
+@router.put(
+    "/{tenant_id}/rate-limits",
+    response_model=RateLimitsUpsertResponse,
+)
+async def upsert_tenant_rate_limits(
+    tenant_id: UUID,
+    payload: RateLimitsUpsertRequest,
+    db: AsyncSession = Depends(get_db_session),
+    admin_user_id: UUID = Depends(require_admin_platform_role),
+) -> RateLimitsUpsertResponse:
+    """Upsert per-tenant RateLimits overrides into tenant.meta_data["rate_limits"].
+
+    Composite-replace semantics: payload.items represents the COMPLETE desired
+    override state for this tenant. Empty list ([]) clears all overrides; on
+    subsequent GET the backend falls back to DEFAULT_RATE_LIMITS (3 items).
+
+    - 401/403 via require_admin_platform_role
+    - 404 via _load_tenant_or_404
+    - 422 via RateLimitsUpsertRequest extra='forbid'
+    - 200 with response.items + pagination envelope (total/limit/offset) matching
+      GET shape for cache hydration consistency.
+    - Audit chain entry written via direct append_audit (Sprint 57.3 PATCH
+      tenant + Sprint 57.56 Quotas precedent; no canonical service path exists
+      for RateLimits — direct ORM JSONB write is the architectural pattern).
+    """
+    tenant = await _load_tenant_or_404(db, tenant_id)
+
+    # Compose new meta_data dict (identity swap for SQLAlchemy JSONB change
+    # detection — Sprint 57.56 Quotas precedent verbatim).
+    new_meta = dict(tenant.meta_data or {})
+    new_items = [{"label": item.label, "value": item.value} for item in payload.items]
+    new_meta["rate_limits"] = new_items
+    tenant.meta_data = new_meta
+
+    await db.flush()  # Bump updated_at via SQLAlchemy onupdate.
+
+    await append_audit(
+        db,
+        tenant_id=tenant_id,
+        operation="tenant_rate_limits_upsert",
+        resource_type="tenant",
+        resource_id=str(tenant_id),
+        operation_data={
+            "tenant_id": str(tenant_id),
+            "items_count": len(new_items),
+            "items": new_items,
+        },
+        user_id=admin_user_id,
+        operation_result="success",
+    )
+
+    await db.commit()
+    await db.refresh(tenant)
+
+    saved_items = [RateLimitItem(label=entry["label"], value=entry["value"]) for entry in new_items]
+    return RateLimitsUpsertResponse(
+        items=saved_items,
+        total=len(saved_items),
+        limit=50,
+        offset=0,
+    )
 
 
 # =====================================================================

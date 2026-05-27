@@ -18,6 +18,7 @@ Description:
 Created: 2026-05-26 (Sprint 57.48 Day 1)
 
 Modification History (newest-first):
+    - 2026-05-27: Sprint 57.57 Track A — +10 PUT tests covering composite-replace + audit chain
     - 2026-05-26: Initial creation (Sprint 57.48 Day 1 Track D — RateLimits admin GET Option A)
 """
 
@@ -31,9 +32,11 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi import FastAPI, Request, Response
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.v1.admin.tenants import router as admin_tenants_router
+from infrastructure.db.models.audit import AuditLog
 from infrastructure.db.models.identity import Tenant, TenantPlan, TenantState
 from infrastructure.db.session import get_db_session
 from platform_layer.identity.auth import require_admin_platform_role
@@ -174,3 +177,219 @@ async def test_list_rate_limits_tenant_isolation(db_session: AsyncSession) -> No
     labels_b = {item["label"] for item in resp_b.json()["items"]}
     assert labels_a == {"Custom A"}
     assert labels_b == {"API requests", "Tool calls", "SSE connections"}
+
+
+# =====================================================================
+# Sprint 57.57 Track A — PUT /{tenant_id}/rate-limits upsert tests
+# =====================================================================
+# IMPORTANT: PUT tests call db.commit() inside the endpoint to persist the
+# tenant.meta_data["rate_limits"] JSONB write + the audit chain entry. To
+# avoid "duplicate key" cross-test leakage on the unique tenants.code, each
+# PUT test seeds its tenant with a uuid4-suffixed code (mirrors Sprint 57.56
+# QUOTA_PUT_% pattern; conftest.py extends LIKE 'RATE_PUT_%' cleanup sweep).
+
+
+def _unique_code() -> str:
+    """Return a unique tenant code suffix to survive committed-row leakage."""
+    return f"RATE_PUT_{uuid4().hex[:8]}"
+
+
+async def test_put_requires_admin_role() -> None:
+    """No JWT context → 401/403 from require_admin_platform_role."""
+    app = _build_app()
+    tenant_id = uuid4()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.put(
+            f"/api/v1/admin/tenants/{tenant_id}/rate-limits",
+            json={"items": []},
+        )
+    assert resp.status_code in (401, 403)
+
+
+async def test_put_tenant_not_found(db_session: AsyncSession) -> None:
+    """Nonexistent tenant_id → 404 via _load_tenant_or_404."""
+    app = _build_app(db_session=db_session)
+    missing_id = uuid4()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.put(
+            f"/api/v1/admin/tenants/{missing_id}/rate-limits",
+            json={"items": []},
+        )
+    assert resp.status_code == 404
+
+
+async def test_put_creates_new_items(db_session: AsyncSession) -> None:
+    """No prior overrides → PUT persists payload list to tenant.meta_data["rate_limits"]."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    payload_items = [
+        {"label": "API requests", "value": "999 / min"},
+        {"label": "Custom limit", "value": "42 / hour"},
+    ]
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/rate-limits",
+            json={"items": payload_items},
+        )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["total"] == 2
+    assert body["items"] == payload_items
+
+    # Verify ORM state via direct re-read.
+    row = (await db_session.execute(select(Tenant).where(Tenant.id == tenant.id))).scalar_one()
+    assert row.meta_data is not None
+    assert row.meta_data.get("rate_limits") == payload_items
+
+
+async def test_put_replaces_existing_items(db_session: AsyncSession) -> None:
+    """Second PUT replaces first composite (composite-replace semantics)."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        first = await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/rate-limits",
+            json={"items": [{"label": "A", "value": "1 / min"}]},
+        )
+        second = await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/rate-limits",
+            json={"items": [{"label": "B", "value": "2 / min"}]},
+        )
+    assert first.status_code == 200 and second.status_code == 200
+    # 2nd PUT replaces 1st: only "B" remains.
+    assert second.json()["items"] == [{"label": "B", "value": "2 / min"}]
+
+
+async def test_put_response_projects_items_matching_get(db_session: AsyncSession) -> None:
+    """PUT then GET return identical items (cache hydration consistency)."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    custom = [
+        {"label": "API requests", "value": "777 / min"},
+        {"label": "Tool calls", "value": "8,888 / min"},
+    ]
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        put_resp = await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/rate-limits",
+            json={"items": custom},
+        )
+        get_resp = await ac.get(f"/api/v1/admin/tenants/{tenant.id}/rate-limits")
+    assert put_resp.status_code == 200, put_resp.text
+    assert get_resp.status_code == 200, get_resp.text
+    assert put_resp.json()["items"] == get_resp.json()["items"] == custom
+    # Pagination envelope is consistent between PUT response and GET.
+    assert put_resp.json()["total"] == get_resp.json()["total"] == 2
+
+
+async def test_put_extra_field_rejected(db_session: AsyncSession) -> None:
+    """Unknown top-level field in payload → 422 via extra='forbid'."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/rate-limits",
+            json={"items": [], "unknown_field": "leak"},
+        )
+    assert resp.status_code == 422
+
+
+async def test_put_multi_tenant_isolation(db_session: AsyncSession) -> None:
+    """PUT to tenant_b MUST NOT affect tenant_a's meta_data (multi-tenant rule)."""
+    tenant_a = await _seed_tenant(db_session, code=_unique_code())
+    tenant_b = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp_a = await ac.put(
+            f"/api/v1/admin/tenants/{tenant_a.id}/rate-limits",
+            json={"items": [{"label": "OnlyA", "value": "1 / min"}]},
+        )
+        resp_b = await ac.put(
+            f"/api/v1/admin/tenants/{tenant_b.id}/rate-limits",
+            json={"items": [{"label": "OnlyB", "value": "2 / min"}]},
+        )
+    assert resp_a.status_code == 200 and resp_b.status_code == 200
+
+    # Verify via direct ORM re-read — each tenant's meta_data holds only its
+    # own override; cross-tenant leak would manifest as merged lists.
+    row_a = (await db_session.execute(select(Tenant).where(Tenant.id == tenant_a.id))).scalar_one()
+    row_b = (await db_session.execute(select(Tenant).where(Tenant.id == tenant_b.id))).scalar_one()
+    assert row_a.meta_data["rate_limits"] == [{"label": "OnlyA", "value": "1 / min"}]
+    assert row_b.meta_data["rate_limits"] == [{"label": "OnlyB", "value": "2 / min"}]
+
+
+async def test_put_empty_items_clears_all(db_session: AsyncSession) -> None:
+    """PUT with [] clears any prior overrides → GET reverts to DEFAULT_RATE_LIMITS."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        # First seed an override.
+        await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/rate-limits",
+            json={"items": [{"label": "Custom", "value": "42 / min"}]},
+        )
+        # Then clear all.
+        clear = await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/rate-limits",
+            json={"items": []},
+        )
+        get_resp = await ac.get(f"/api/v1/admin/tenants/{tenant.id}/rate-limits")
+    assert clear.status_code == 200, clear.text
+    assert clear.json()["items"] == []
+    # GET should now reflect DEFAULT_RATE_LIMITS (3 items) — fallback path.
+    labels = {item["label"] for item in get_resp.json()["items"]}
+    assert labels == {"API requests", "Tool calls", "SSE connections"}
+
+
+async def test_put_idempotent_same_payload_twice(db_session: AsyncSession) -> None:
+    """PUT same payload twice → consistent final state."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    payload = {"items": [{"label": "API requests", "value": "555 / min"}]}
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        first = await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/rate-limits",
+            json=payload,
+        )
+        second = await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/rate-limits",
+            json=payload,
+        )
+    assert first.status_code == 200 and second.status_code == 200
+    assert first.json()["items"] == second.json()["items"]
+
+
+async def test_put_audit_chain_emitted(db_session: AsyncSession) -> None:
+    """PUT emits exactly 1 audit_log row with operation=tenant_rate_limits_upsert."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    payload_items = [{"label": "Audited", "value": "99 / min"}]
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/rate-limits",
+            json={"items": payload_items},
+        )
+    assert resp.status_code == 200, resp.text
+
+    result = await db_session.execute(
+        select(AuditLog)
+        .where(AuditLog.tenant_id == tenant.id)
+        .where(AuditLog.operation == "tenant_rate_limits_upsert")
+    )
+    entries = result.scalars().all()
+    assert len(entries) == 1
+    audit = entries[0]
+    assert audit.resource_type == "tenant"
+    assert audit.resource_id == str(tenant.id)
+    assert audit.operation_data["items"] == payload_items
+    assert audit.operation_data["items_count"] == 1
+    assert audit.operation_result == "success"

@@ -21,6 +21,7 @@
  * Last Modified: 2026-05-26
  *
  * Modification History (newest-first):
+ *   - 2026-05-27: Sprint 57.57 Track B — +RateLimitsUpsert{Request,Response} write schemas
  *   - 2026-05-27: Sprint 57.56 Track B — +QuotaOverridesUpsert{Request,Response} types
  *   - 2026-05-27: Sprint 57.55 Track B — +FeatureFlagOverridesUpsert{Request,Response} write schemas
  *   - 2026-05-26: Sprint 57.54 Track B — +HITLPolicyUpsert{Request,Response} write schemas
@@ -195,4 +196,17 @@ export interface QuotaOverridesUpsertRequest {
 export interface QuotaOverridesUpsertResponse {
   saved_overrides: Record<string, number>;
   items: QuotaItem[];
+}
+
+/* === Sprint 57.57 Track B — RateLimits upsert write schemas === */
+
+export interface RateLimitsUpsertRequest {
+  items: RateLimitItem[];
+}
+
+export interface RateLimitsUpsertResponse {
+  items: RateLimitItem[];
+  total: number;
+  limit: number;
+  offset: number;
 }
