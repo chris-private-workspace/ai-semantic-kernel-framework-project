@@ -46,6 +46,7 @@ Created: 2026-05-06 (Sprint 56.1 Day 1)
 Last Modified: 2026-05-10
 
 Modification History:
+    - 2026-05-27: Sprint 57.56 Track A — PUT /quotas overrides + tenant.meta_data JSONB write
     - 2026-05-26: Sprint 57.55 — PUT /feature-flags overrides + helper extract (D-DAY0-T pivot)
     - 2026-05-26: Sprint 57.54 — add PUT /{id}/hitl-policies upsert + write schemas (Track A)
     - 2026-05-26: Sprint 57.50 Day 1 — Identity admin GET (closes AD-Identity-Cleanup)
@@ -1123,10 +1124,20 @@ _QUOTA_RESOURCE_META: list[tuple[str, str, str]] = [
 ]
 
 
-def _project_plan_quota_to_items(plan_quota: Any) -> list[QuotaItem]:
+def _project_plan_quota_to_items(
+    plan_quota: Any,
+    overrides: dict[str, float] | None = None,
+) -> list[QuotaItem]:
+    """Project PlanQuota → 4 QuotaItem rows; per-resource overrides win when present.
+
+    Sprint 57.56 Track A — extended with `overrides` param so both GET and PUT
+    paths share projection logic. When `overrides` carries a key matching a
+    PlanQuota attribute, that value supersedes the plan default in the response.
+    """
+    overrides = overrides or {}
     items: list[QuotaItem] = []
     for attr, unit, period in _QUOTA_RESOURCE_META:
-        raw = getattr(plan_quota, attr, None)
+        raw: Any = overrides[attr] if attr in overrides else getattr(plan_quota, attr, None)
         if raw is None:
             continue
         items.append(
@@ -1167,10 +1178,141 @@ async def list_tenant_quotas(
         # Unknown plan name → return empty list rather than 500. Defensive.
         return QuotaListResponse(items=[], total=0, limit=limit, offset=offset)
 
-    all_items = _project_plan_quota_to_items(plan.quota)
+    # Sprint 57.56 Track A — read per-tenant overrides from
+    # tenant.meta_data["quota_overrides"] JSONB (Option B per D-DAY0-A;
+    # mirrors Sprint 57.48 Track D RateLimits + Sprint 57.50 Identity pattern).
+    raw_overrides = tenant.meta_data.get("quota_overrides") if tenant.meta_data else None
+    overrides = raw_overrides if isinstance(raw_overrides, dict) else None
+    all_items = _project_plan_quota_to_items(plan.quota, overrides=overrides)
     total = len(all_items)
     page = all_items[offset : offset + limit]
     return QuotaListResponse(items=page, total=total, limit=limit, offset=offset)
+
+
+# =====================================================================
+# Sprint 57.56 Track A — Quotas admin PUT upsert (closes AD-Quotas-Backend-Write Phase 58.x 3/4)
+# =====================================================================
+# Option B per D-DAY0-A user direction 2026-05-27: store overrides in
+# tenant.meta_data["quota_overrides"] JSONB via direct ORM UPDATE (mirrors
+# Sprint 57.48 Track D RateLimits + Sprint 57.50 Identity precedent). No
+# canonical service exists for Quotas (unlike Sprint 57.54 DBHITLPolicyStore.put
+# or Sprint 57.55 FeatureFlagsService.set_tenant_override). Audit chain emitted
+# via direct append_audit (Sprint 57.3 PATCH tenant precedent).
+#
+# Resources are validated against the 4-name PlanQuota whitelist (tokens_per_day
+# / cost_usd_per_day / sessions_per_user_concurrent / api_keys_max). Composite-
+# replace semantics: payload.overrides represents the COMPLETE desired override
+# state; any resource currently overridden but NOT in payload is cleared.
+
+
+_PLAN_QUOTA_RESOURCE_WHITELIST: frozenset[str] = frozenset(
+    attr for attr, _, _ in _QUOTA_RESOURCE_META
+)
+
+
+class QuotaOverridesUpsertRequest(BaseModel):
+    """Composite Quota overrides upsert payload (composite-replace semantics).
+
+    Sprint 57.56 Track A. Payload represents the COMPLETE desired override
+    state for this tenant; resources NOT in payload but currently overridden
+    are cleared (revert to plan default).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    overrides: dict[str, float] = Field(
+        default_factory=dict,
+        description=(
+            "Map of resource name → override limit (float; int-coerced for "
+            "tokens/sessions/keys downstream). Composite-replace semantics: "
+            "resources NOT in payload but currently overridden for this tenant "
+            "are cleared (reverts to plan default)."
+        ),
+    )
+
+    @field_validator("overrides")
+    @classmethod
+    def _check_resource_names(cls, v: dict[str, float]) -> dict[str, float]:
+        unknown = set(v.keys()) - _PLAN_QUOTA_RESOURCE_WHITELIST
+        if unknown:
+            raise ValueError(
+                f"Unknown quota resource(s): {sorted(unknown)}; "
+                f"allowed: {sorted(_PLAN_QUOTA_RESOURCE_WHITELIST)}"
+            )
+        return v
+
+
+class QuotaOverridesUpsertResponse(BaseModel):
+    """Echoes saved composite + projects items list for cache hydration."""
+
+    saved_overrides: dict[str, float]
+    items: list[QuotaItem]
+
+
+@router.put(
+    "/{tenant_id}/quotas",
+    response_model=QuotaOverridesUpsertResponse,
+)
+async def upsert_tenant_quota_overrides(
+    tenant_id: UUID,
+    payload: QuotaOverridesUpsertRequest,
+    db: AsyncSession = Depends(get_db_session),
+    admin_user_id: UUID = Depends(require_admin_platform_role),
+) -> QuotaOverridesUpsertResponse:
+    """Upsert per-tenant Quotas overrides into tenant.meta_data["quota_overrides"].
+
+    Composite-replace semantics: payload.overrides represents the COMPLETE
+    desired override state for this tenant. Any resource with a current tenant
+    override that is NOT in payload.overrides will be CLEARED (reverts to plan
+    default).
+
+    - 401/403 via require_admin_platform_role
+    - 404 via _load_tenant_or_404
+    - 422 via QuotaOverridesUpsertRequest field_validator (unknown resource)
+    - 200 with response.saved_overrides + response.items (projected for cache
+      hydration; mirrors GET shape)
+    - Audit chain entry written via direct append_audit (Sprint 57.3 PATCH
+      tenant precedent; no canonical service path exists for Quotas).
+    """
+    tenant = await _load_tenant_or_404(db, tenant_id)
+
+    # Compose new meta_data dict (do not mutate in-place — ORM JSONB change
+    # detection relies on identity swap for dict columns).
+    new_meta = dict(tenant.meta_data or {})
+    new_overrides = dict(payload.overrides)
+    new_meta["quota_overrides"] = new_overrides
+    tenant.meta_data = new_meta
+
+    await db.flush()  # Bump updated_at via SQLAlchemy onupdate.
+
+    await append_audit(
+        db,
+        tenant_id=tenant_id,
+        operation="tenant_quota_overrides_upsert",
+        resource_type="tenant",
+        resource_id=str(tenant_id),
+        operation_data={
+            "tenant_id": str(tenant_id),
+            "overrides": new_overrides,
+        },
+        user_id=admin_user_id,
+        operation_result="success",
+    )
+
+    await db.commit()
+    await db.refresh(tenant)
+
+    # Re-project items (cache hydration consistency with GET).
+    loader: PlanLoader = get_plan_loader()
+    try:
+        plan = loader.get_plan(tenant.plan.value)
+        items = _project_plan_quota_to_items(plan.quota, overrides=new_overrides)
+    except Exception:
+        items = []
+
+    return QuotaOverridesUpsertResponse(
+        saved_overrides=new_overrides,
+        items=items,
+    )
 
 
 # =====================================================================
