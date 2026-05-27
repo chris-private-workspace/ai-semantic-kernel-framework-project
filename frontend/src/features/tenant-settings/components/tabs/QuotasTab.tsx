@@ -1,39 +1,48 @@
 /**
  * File: frontend/src/features/tenant-settings/components/tabs/QuotasTab.tsx
- * Purpose: Quotas tab — Usage quotas + Rate limits (real backend via useQuotas + useRateLimits).
+ * Purpose: Quotas tab — Usage quotas (edit mode) + Rate limits (read-only Sprint 57.57 candidate).
  * Category: Frontend / tenant-settings / components / tabs
- * Scope: Phase 57 / Sprint 57.49 Day 1 (Track A 1.1.3 — fixture → real backend migration)
+ * Scope: Phase 57 / Sprint 57.56 Track B (edit mode + useQuotasSave wiring)
  *
  * Description:
- *   Sprint 57.49 migration: previously consumed `QUOTAS` + `RATE_LIMITS` from
- *   `_fixtures.ts`; now fetches via `useQuotas(tenantId)` + `useRateLimits(tenantId)`
- *   hooks (Sprint 57.48 Track C + D endpoints).
+ *   Read side: useQuotas(tenantId) + useRateLimits(tenantId) (Sprint 57.49).
+ *   Write side (Sprint 57.56): Edit button on Usage quotas Card toggles edit
+ *   mode; per-row numeric input + "Clear override" button mutate the draft
+ *   Record<string, number>. Save invokes useQuotasSave mutation → PUT
+ *   /admin/tenants/{id}/quotas (composite-replace) → query invalidation
+ *   refreshes the table.
  *
- *   Backend QuotaItem shape: `{resource, limit, unit, period, current_usage}`.
- *   `current_usage` is `null` at admin layer (Sprint 57.48 doc-string: Redis
- *   gating Phase 58+). Bar-track percentage falls back to 0% until real usage
- *   wired; `used / max` display uses `current_usage ?? 0` / `limit`.
+ *   Reverse-projection on Edit: draft seeded from current items[].limit. User
+ *   can then modify values or Clear override (delete key from draft).
  *
- *   RateLimitItem `{label, value}` matches fixture exactly — direct render.
+ *   SCOPE GUARD: Rate limits Card UNCHANGED this sprint (Sprint 57.57 candidate
+ *   for write-side). Only Usage quotas Card gets edit mode.
  *
- *   Loading/Empty/Error states added per resource.
+ *   AP-2 BackendGapBanner copy updated: current_usage Redis counter exposure
+ *   still Phase 58+; limits are now editable via Edit button.
  *
  * Created: 2026-05-26 (Sprint 57.44 Day 1) — original fixture port
- * Last Modified: 2026-05-26
+ * Last Modified: 2026-05-27
  *
  * Modification History (newest-first):
+ *   - 2026-05-27: Sprint 57.56 Track B — +Usage quotas Card edit mode (Rate limits Card unchanged)
  *   - 2026-05-26: Sprint 57.49 — fixture → useQuotas + useRateLimits real backend (Sprint 57.48 Track C+D)
  *   - 2026-05-26: Initial creation (Sprint 57.44 Day 1)
  *
  * Related:
- *   - backend/src/api/v1/admin/tenants.py L886-1030 (Quota + RateLimit endpoints)
- *   - ../../hooks/useQuotas.ts + ../../hooks/useRateLimits.ts
+ *   - backend/src/api/v1/admin/tenants.py (QuotaOverridesUpsertRequest / put_tenant_quota_overrides)
+ *   - ../../hooks/useQuotas.ts (read TanStack consumer)
+ *   - ../../hooks/useQuotasSave.ts (write TanStack consumer)
  */
+
+import { useEffect, useState } from "react";
 
 import { Button, Card } from "../../../../components/mockup-ui";
 import { BackendGapBanner } from "../../../../components/ui/BackendGapBanner";
 import { useQuotas } from "../../hooks/useQuotas";
+import { useQuotasSave } from "../../hooks/useQuotasSave";
 import { useRateLimits } from "../../hooks/useRateLimits";
+import type { QuotaItem } from "../../types";
 
 export interface QuotasTabProps {
   tenantId: string;
@@ -50,9 +59,73 @@ function formatLimit(limit: number, unit: string): string {
   return String(limit);
 }
 
+/**
+ * Reverse-project: seed draft from items[].limit (all rows enter draft on Edit).
+ *
+ * User can then modify values or Clear override to remove key from draft.
+ * Resources NOT in draft on Save → composite-replace clears any prior override.
+ */
+function draftFromItems(items: ReadonlyArray<QuotaItem>): Record<string, number> {
+  const draft: Record<string, number> = {};
+  for (const item of items) {
+    draft[item.resource] = item.limit;
+  }
+  return draft;
+}
+
 export function QuotasTab({ tenantId }: QuotasTabProps): JSX.Element {
   const quotas = useQuotas(tenantId);
   const rateLimits = useRateLimits(tenantId);
+  const saveMutation = useQuotasSave(tenantId);
+
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Record<string, number>>({});
+
+  // Reset on tenant switch
+  useEffect(() => {
+    setEditing(false);
+    setDraft({});
+    saveMutation.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mutation reset on tenant switch only
+  }, [tenantId]);
+
+  // Auto-exit edit mode after successful save
+  useEffect(() => {
+    if (saveMutation.isSuccess && editing) {
+      setEditing(false);
+      setDraft({});
+    }
+  }, [saveMutation.isSuccess, editing]);
+
+  const items = quotas.data?.items ?? [];
+
+  const handleEdit = (): void => {
+    setDraft(draftFromItems(items));
+    setEditing(true);
+    saveMutation.reset();
+  };
+
+  const handleCancel = (): void => {
+    setDraft({});
+    setEditing(false);
+    saveMutation.reset();
+  };
+
+  const handleSave = (): void => {
+    saveMutation.mutate({ overrides: draft });
+  };
+
+  const updateDraft = (resource: string, value: number): void => {
+    setDraft((d) => ({ ...d, [resource]: value }));
+  };
+
+  const clearOverride = (resource: string): void => {
+    setDraft((d) => {
+      const next = { ...d };
+      delete next[resource];
+      return next;
+    });
+  };
 
   const handleRequestIncrease = (): void => {
     window.alert("Request increase: backend gap (Phase 58+) — rate limit increase request endpoint pending");
@@ -61,7 +134,51 @@ export function QuotasTab({ tenantId }: QuotasTabProps): JSX.Element {
   return (
     <div className="grid-main">
       <Card title="Usage quotas">
-        <BackendGapBanner reason="Live usage tracking (current_usage): backend extension Phase 58+ — limits shown are tenant-effective from PlanQuota" />
+        <BackendGapBanner reason="Live usage tracking (current_usage Redis counter exposure): backend extension Phase 58+ — limits shown are tenant-effective + editable via Edit button" />
+
+        {/* eslint-disable-next-line no-restricted-syntax -- verbatim port: row flex gap */}
+        <div className="row" style={{ gap: 8, marginBottom: 12, justifyContent: "flex-end" }}>
+          {!editing ? (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={handleEdit}
+              disabled={items.length === 0 || quotas.isLoading}
+              data-testid="quotas-edit-btn"
+            >
+              Edit
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={handleCancel}
+                disabled={saveMutation.isPending}
+                data-testid="quotas-cancel-btn"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={handleSave}
+                disabled={saveMutation.isPending}
+                data-testid="quotas-save-btn"
+              >
+                {saveMutation.isPending ? "Saving…" : "Save"}
+              </button>
+            </>
+          )}
+        </div>
+
+        {saveMutation.error ? (
+          // eslint-disable-next-line no-restricted-syntax -- inline-style error hint
+          <p style={{ color: "var(--danger)", fontSize: 12, marginBottom: 8 }} data-testid="quotas-save-error">
+            Save failed: {saveMutation.error.message}
+          </p>
+        ) : null}
+
         {quotas.isLoading ? (
           <p className="muted">Loading quotas…</p>
         ) : quotas.error ? (
@@ -69,31 +186,65 @@ export function QuotasTab({ tenantId }: QuotasTabProps): JSX.Element {
           <p style={{ color: "var(--danger)", fontSize: 12 }}>
             Error loading quotas: {quotas.error.message}
           </p>
-        ) : (quotas.data?.items ?? []).length === 0 ? (
+        ) : items.length === 0 ? (
           <p className="muted">No quotas configured for this tenant plan.</p>
         ) : (
           // eslint-disable-next-line no-restricted-syntax -- verbatim port: col gap
           <div className="col" style={{ gap: 14, marginTop: 8 }}>
-            {(quotas.data?.items ?? []).map((q) => {
+            {items.map((q) => {
               const used = q.current_usage ?? 0;
-              const pct = q.limit > 0 ? Math.round((used / q.limit) * 100) : 0;
+              const inDraft = q.resource in draft;
+              const effectiveLimit = editing && inDraft ? draft[q.resource] : q.limit;
+              const pct = effectiveLimit > 0 ? Math.round((used / effectiveLimit) * 100) : 0;
               return (
                 <div key={q.resource}>
                   {/* eslint-disable-next-line no-restricted-syntax -- verbatim port: spread marginBottom */}
                   <div className="spread" style={{ marginBottom: 4 }}>
                     {/* eslint-disable-next-line no-restricted-syntax -- verbatim port: fontSize */}
                     <span style={{ fontSize: 12.5 }}>{q.resource}</span>
-                    {/* eslint-disable-next-line no-restricted-syntax -- verbatim port: mono fontSize */}
-                    <span className="mono tnum" style={{ fontSize: 11.5 }}>
-                      {/* eslint-disable-next-line no-restricted-syntax -- verbatim port: fg color */}
-                      <span style={{ color: "var(--fg)" }}>{formatLimit(used, q.unit)}</span>{q.unit ? ` ${q.unit}` : ""}
-                      <span className="subtle"> / {formatLimit(q.limit, q.unit)}{q.unit ? ` ${q.unit}` : ""}</span>
-                    </span>
+                    {editing ? (
+                      // eslint-disable-next-line no-restricted-syntax -- verbatim port: row gap
+                      <span className="row" style={{ gap: 6, alignItems: "center" }}>
+                        <input
+                          type="number"
+                          value={inDraft ? draft[q.resource] : ""}
+                          placeholder={String(q.limit)}
+                          onChange={(e) => updateDraft(q.resource, Number(e.target.value))}
+                          // eslint-disable-next-line no-restricted-syntax -- verbatim port: input sizing
+                          style={{ width: 120, fontSize: 12, padding: "2px 6px" }}
+                          data-testid={`quotas-input-${q.resource}`}
+                          aria-label={`Override limit for ${q.resource}`}
+                        />
+                        {/* eslint-disable-next-line no-restricted-syntax -- verbatim port: unit label fontSize */}
+                        <span className="subtle" style={{ fontSize: 11.5 }}>{q.unit}</span>
+                        {inDraft ? (
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => clearOverride(q.resource)}
+                            // eslint-disable-next-line no-restricted-syntax -- verbatim port: clear-btn sizing
+                            style={{ fontSize: 11, padding: "2px 6px" }}
+                            data-testid={`quotas-clear-${q.resource}`}
+                          >
+                            Clear override
+                          </button>
+                        ) : null}
+                      </span>
+                    ) : (
+                      // eslint-disable-next-line no-restricted-syntax -- verbatim port: mono fontSize
+                      <span className="mono tnum" style={{ fontSize: 11.5 }}>
+                        {/* eslint-disable-next-line no-restricted-syntax -- verbatim port: fg color */}
+                        <span style={{ color: "var(--fg)" }}>{formatLimit(used, q.unit)}</span>{q.unit ? ` ${q.unit}` : ""}
+                        <span className="subtle"> / {formatLimit(q.limit, q.unit)}{q.unit ? ` ${q.unit}` : ""}</span>
+                      </span>
+                    )}
                   </div>
-                  <div className="bar-track">
-                    {/* eslint-disable-next-line no-restricted-syntax -- verbatim port: width pct */}
-                    <span style={{ width: pct + "%" }} />
-                  </div>
+                  {!editing ? (
+                    <div className="bar-track">
+                      {/* eslint-disable-next-line no-restricted-syntax -- verbatim port: width pct */}
+                      <span style={{ width: pct + "%" }} />
+                    </div>
+                  ) : null}
                 </div>
               );
             })}

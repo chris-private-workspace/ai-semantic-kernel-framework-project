@@ -21,6 +21,7 @@
  * Last Modified: 2026-05-26
  *
  * Modification History (newest-first):
+ *   - 2026-05-27: Sprint 57.56 Track B — +saveQuotaOverrides PUT service func
  *   - 2026-05-27: Sprint 57.55 Track B — +saveFeatureFlagOverrides PUT service func
  *   - 2026-05-26: Sprint 57.54 Track B — add saveHITLPolicies PUT (HITLPolicies edit mode)
  *   - 2026-05-26: Sprint 57.50 — add fetchTenantIdentity (Identity fixture cleanup)
@@ -43,6 +44,8 @@ import type {
   HITLPolicyUpsertRequest,
   HITLPolicyUpsertResponse,
   QuotaListResponse,
+  QuotaOverridesUpsertRequest,
+  QuotaOverridesUpsertResponse,
   RateLimitListResponse,
   TenantIdentity,
   TenantMemberListResponse,
@@ -200,6 +203,25 @@ export async function saveFeatureFlagOverrides(
     },
   );
   return _handleResponse<FeatureFlagOverridesUpsertResponse>(response);
+}
+
+/* === Sprint 57.56 Track B — Quota overrides upsert (PUT) === */
+
+export async function saveQuotaOverrides(
+  tenantId: string,
+  payload: QuotaOverridesUpsertRequest,
+  signal?: AbortSignal,
+): Promise<QuotaOverridesUpsertResponse> {
+  const response = await fetchWithAuth(
+    `${API_BASE}/tenants/${tenantId}/quotas`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal,
+    },
+  );
+  return _handleResponse<QuotaOverridesUpsertResponse>(response);
 }
 
 /* === Sprint 57.50 — Identity single-record endpoint === */

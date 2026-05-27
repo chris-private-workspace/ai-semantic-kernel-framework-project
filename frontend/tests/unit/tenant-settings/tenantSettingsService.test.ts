@@ -5,6 +5,9 @@
  * Scope: Phase 57 / Sprint 57.3 US-3
  *
  * Created: 2026-05-07 (Sprint 57.3 Day 3)
+ *
+ * Modification History (newest-first):
+ *   - 2026-05-27: Sprint 57.56 — +2 saveQuotaOverrides PUT tests
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -19,6 +22,7 @@ import {
   fetchTenantSettings,
   saveFeatureFlagOverrides,
   saveHITLPolicies,
+  saveQuotaOverrides,
   updateTenantSettings,
 } from "../../../src/features/tenant-settings/services/tenantSettingsService";
 import {
@@ -274,6 +278,51 @@ describe("tenantSettingsService", () => {
       await expect(
         saveFeatureFlagOverrides("tenant-x", { overrides: { "bogus.flag": true } }),
       ).rejects.toThrow("unknown flag name");
+    });
+  });
+
+  /* === Sprint 57.56 Track B — saveQuotaOverrides PUT === */
+
+  describe("saveQuotaOverrides (Sprint 57.56)", () => {
+    it("sends PUT with correct URL + JSON body", async () => {
+      const payload = {
+        overrides: { tokens_per_day: 20_000_000, cost_usd_per_day: 200 },
+      };
+      const responseBody = {
+        saved_overrides: payload.overrides,
+        items: [
+          {
+            resource: "tokens_per_day",
+            limit: 20_000_000,
+            unit: "tokens",
+            period: "day",
+            current_usage: null,
+          },
+        ],
+      };
+      fetchSpy.mockResolvedValueOnce(
+        new Response(JSON.stringify(responseBody), { status: 200 }),
+      );
+
+      const result = await saveQuotaOverrides("tenant-x", payload);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "/api/v1/admin/tenants/tenant-x/quotas",
+        expect.objectContaining({
+          method: "PUT",
+          credentials: "include",
+          body: JSON.stringify(payload),
+        }),
+      );
+      expect(result).toEqual(responseBody);
+    });
+
+    it("throws Error with detail message on 422 unknown resource", async () => {
+      fetchSpy.mockResolvedValueOnce(
+        new Response(JSON.stringify({ detail: "unknown resource name: bogus_resource" }), { status: 422 }),
+      );
+      await expect(
+        saveQuotaOverrides("tenant-x", { overrides: { bogus_resource: 100 } }),
+      ).rejects.toThrow("unknown resource");
     });
   });
 

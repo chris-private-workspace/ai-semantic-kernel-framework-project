@@ -19,6 +19,7 @@ Description:
 Created: 2026-05-26 (Sprint 57.48 Day 1)
 
 Modification History (newest-first):
+    - 2026-05-27: Sprint 57.56 Track A — +12 PUT tests covering composite-replace + audit chain
     - 2026-05-26: Initial creation (Sprint 57.48 Day 1 Track C — Quotas admin GET)
 """
 
@@ -31,9 +32,11 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi import FastAPI, Request, Response
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.v1.admin.tenants import router as admin_tenants_router
+from infrastructure.db.models.audit import AuditLog
 from infrastructure.db.models.identity import Tenant, TenantPlan, TenantState
 from infrastructure.db.session import get_db_session
 from platform_layer.identity.auth import require_admin_platform_role
@@ -185,3 +188,254 @@ async def test_list_quotas_invalid_query_limit(db_session: AsyncSession) -> None
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         resp = await ac.get(f"/api/v1/admin/tenants/{tenant.id}/quotas?limit=500")
     assert resp.status_code == 422
+
+
+# =====================================================================
+# Sprint 57.56 Track A — PUT /{tenant_id}/quotas upsert tests
+# =====================================================================
+# IMPORTANT: PUT tests call db.commit() inside the endpoint to persist the
+# tenant.meta_data["quota_overrides"] JSONB write + the audit chain entry.
+# To avoid "duplicate key" cross-test leakage on the unique tenants.code,
+# each PUT test seeds its tenant with a uuid4-suffixed code (mirrors Sprint
+# 57.55 FF_PUT_% pattern; conftest.py extends LIKE 'QUOTA_PUT_%' cleanup sweep).
+
+
+def _unique_code() -> str:
+    """Return a unique tenant code suffix to survive committed-row leakage."""
+    return f"QUOTA_PUT_{uuid4().hex[:8]}"
+
+
+async def test_put_requires_admin_role() -> None:
+    """No JWT context → 401/403 from require_admin_platform_role."""
+    app = _build_app()
+    tenant_id = uuid4()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.put(
+            f"/api/v1/admin/tenants/{tenant_id}/quotas",
+            json={"overrides": {}},
+        )
+    assert resp.status_code in (401, 403)
+
+
+async def test_put_tenant_not_found(db_session: AsyncSession) -> None:
+    """Nonexistent tenant_id → 404 via _load_tenant_or_404."""
+    app = _build_app(db_session=db_session)
+    missing_id = uuid4()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.put(
+            f"/api/v1/admin/tenants/{missing_id}/quotas",
+            json={"overrides": {}},
+        )
+    assert resp.status_code == 404
+
+
+async def test_put_creates_new_overrides(db_session: AsyncSession) -> None:
+    """No prior overrides → PUT persists payload to tenant.meta_data["quota_overrides"]."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    payload_overrides = {
+        "tokens_per_day": 500_000.0,
+        "cost_usd_per_day": 250.0,
+    }
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/quotas",
+            json={"overrides": payload_overrides},
+        )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["saved_overrides"] == payload_overrides
+
+    # Verify ORM state via direct re-read.
+    row = (await db_session.execute(select(Tenant).where(Tenant.id == tenant.id))).scalar_one()
+    assert row.meta_data is not None
+    assert row.meta_data.get("quota_overrides") == payload_overrides
+
+
+async def test_put_updates_existing_overrides(db_session: AsyncSession) -> None:
+    """Second PUT replaces first composite (composite-replace semantics)."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        first = await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/quotas",
+            json={"overrides": {"tokens_per_day": 100_000.0}},
+        )
+        second = await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/quotas",
+            json={"overrides": {"cost_usd_per_day": 99.5}},
+        )
+    assert first.status_code == 200 and second.status_code == 200
+    # 2nd PUT replaces 1st: tokens_per_day override is cleared, cost is set.
+    assert second.json()["saved_overrides"] == {"cost_usd_per_day": 99.5}
+
+
+async def test_put_response_projects_items_matching_get(db_session: AsyncSession) -> None:
+    """PUT then GET return identical items for the overridden resource (cache hydration)."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        put_resp = await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/quotas",
+            json={"overrides": {"tokens_per_day": 777_000.0}},
+        )
+        get_resp = await ac.get(f"/api/v1/admin/tenants/{tenant.id}/quotas")
+    assert put_resp.status_code == 200, put_resp.text
+    assert get_resp.status_code == 200, get_resp.text
+    put_tokens = next(i for i in put_resp.json()["items"] if i["resource"] == "tokens_per_day")
+    get_tokens = next(i for i in get_resp.json()["items"] if i["resource"] == "tokens_per_day")
+    assert put_tokens["limit"] == 777_000.0
+    assert put_tokens == get_tokens
+
+
+async def test_put_unknown_resource_rejected(db_session: AsyncSession) -> None:
+    """Payload includes a non-whitelist resource name → 422."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/quotas",
+            json={"overrides": {"bogus_resource": 1.0}},
+        )
+    assert resp.status_code == 422, resp.text
+    assert "bogus_resource" in resp.text
+
+
+async def test_put_extra_field_rejected(db_session: AsyncSession) -> None:
+    """Unknown top-level field in payload → 422 via extra='forbid'."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/quotas",
+            json={"overrides": {}, "unknown_field": "leak"},
+        )
+    assert resp.status_code == 422
+
+
+async def test_put_multi_tenant_isolation(db_session: AsyncSession) -> None:
+    """PUT to tenant_b MUST NOT affect tenant_a's meta_data (multi-tenant rule)."""
+    tenant_a = await _seed_tenant(db_session, code=_unique_code())
+    tenant_b = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp_a = await ac.put(
+            f"/api/v1/admin/tenants/{tenant_a.id}/quotas",
+            json={"overrides": {"tokens_per_day": 1.0}},
+        )
+        resp_b = await ac.put(
+            f"/api/v1/admin/tenants/{tenant_b.id}/quotas",
+            json={"overrides": {"cost_usd_per_day": 2.0}},
+        )
+    assert resp_a.status_code == 200 and resp_b.status_code == 200
+
+    # Verify via direct ORM re-read — each tenant's meta_data holds only its
+    # own override; cross-tenant leak would manifest as merged keys.
+    row_a = (await db_session.execute(select(Tenant).where(Tenant.id == tenant_a.id))).scalar_one()
+    row_b = (await db_session.execute(select(Tenant).where(Tenant.id == tenant_b.id))).scalar_one()
+    assert row_a.meta_data["quota_overrides"] == {"tokens_per_day": 1.0}
+    assert row_b.meta_data["quota_overrides"] == {"cost_usd_per_day": 2.0}
+
+
+async def test_put_empty_overrides_clears_all(db_session: AsyncSession) -> None:
+    """PUT with {} clears any prior overrides → GET reverts to plan defaults."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        # First seed an override.
+        await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/quotas",
+            json={"overrides": {"tokens_per_day": 42.0}},
+        )
+        # Then clear all.
+        clear = await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/quotas",
+            json={"overrides": {}},
+        )
+        get_resp = await ac.get(f"/api/v1/admin/tenants/{tenant.id}/quotas")
+    assert clear.status_code == 200, clear.text
+    assert clear.json()["saved_overrides"] == {}
+    # GET should now reflect plan defaults (no override == 42.0 for tokens).
+    tokens = next(i for i in get_resp.json()["items"] if i["resource"] == "tokens_per_day")
+    assert tokens["limit"] != 42.0  # plan default, not the cleared override
+
+
+async def test_put_idempotent_same_payload_twice(db_session: AsyncSession) -> None:
+    """PUT same payload twice → consistent final state."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    payload = {"overrides": {"sessions_per_user_concurrent": 7.0}}
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        first = await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/quotas",
+            json=payload,
+        )
+        second = await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/quotas",
+            json=payload,
+        )
+    assert first.status_code == 200 and second.status_code == 200
+    assert first.json()["saved_overrides"] == second.json()["saved_overrides"]
+    # Items match too (resource ordering is deterministic by _QUOTA_RESOURCE_META).
+    assert first.json()["items"] == second.json()["items"]
+
+
+async def test_put_persists_to_db_via_subsequent_get(db_session: AsyncSession) -> None:
+    """Post-PUT GET reflects override across all 4 quota items."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    overrides = {
+        "tokens_per_day": 1_000_000.0,
+        "cost_usd_per_day": 500.0,
+        "sessions_per_user_concurrent": 20.0,
+        "api_keys_max": 50.0,
+    }
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/quotas",
+            json={"overrides": overrides},
+        )
+        get_resp = await ac.get(f"/api/v1/admin/tenants/{tenant.id}/quotas")
+    assert get_resp.status_code == 200, get_resp.text
+    by_resource = {i["resource"]: i["limit"] for i in get_resp.json()["items"]}
+    for resource, expected_limit in overrides.items():
+        assert (
+            by_resource[resource] == expected_limit
+        ), f"{resource}: got {by_resource.get(resource)} expected {expected_limit}"
+
+
+async def test_put_audit_chain_emitted(db_session: AsyncSession) -> None:
+    """PUT emits exactly 1 audit_log row with operation=tenant_quota_overrides_upsert."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/quotas",
+            json={"overrides": {"api_keys_max": 25.0}},
+        )
+    assert resp.status_code == 200, resp.text
+
+    result = await db_session.execute(
+        select(AuditLog)
+        .where(AuditLog.tenant_id == tenant.id)
+        .where(AuditLog.operation == "tenant_quota_overrides_upsert")
+    )
+    entries = result.scalars().all()
+    assert len(entries) == 1
+    audit = entries[0]
+    assert audit.resource_type == "tenant"
+    assert audit.resource_id == str(tenant.id)
+    assert audit.operation_data["overrides"] == {"api_keys_max": 25.0}
+    assert audit.operation_result == "success"

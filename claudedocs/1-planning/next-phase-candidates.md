@@ -4,7 +4,9 @@
 
 **Selection Rule**: User explicitly selects → draft plan kicks off Sprint XX.Y; otherwise items wait here indefinitely until selected or archived.
 
-**Updated**: 2026-05-27 (Sprint 57.55 closed — **FeatureFlags WRITE-side ship Phase 58.x portfolio 2/4** closes `AD-AgentFactor-Tier-3-Validation-Sprint-57.55` (Sprint 57.54 carryover); Day 0 D-DAY0-B 🔴 RED pivot: plan §4.1 assumed `tenants.meta_data["tenant_overrides"]` → reality `feature_flags.tenant_overrides[str(tid)]` JSONB ON registry table; D-DAY0-T 🆕 NOTABLE: `FeatureFlagsService.set_tenant_override` (Sprint 56.1) canonical setter auto-emits audit chain → pivot to clean V2 service path (REMOVED `AD-FeatureFlags-PerFlag-AuditLog-Phase58` carryover positive side-effect); sequential agent delegation Track A backend ~12 min + Track B frontend ~25 min (16th+17th consecutive code-implementer chain extended); NEW `clear_tenant_override` ~15-line method + helper extract + PUT endpoint composite-replace semantics SET+CLEAR loops + 12 NEW pytest (1772→**1784 PASS** exact target) + FF_PUT_% + `ff.%` sweep (D-DAY1-1 mid-Track-A self-resolved); `useFeatureFlagsSave` mutation hook (verbatim mirror Sprint 57.54 useHITLPoliciesSave) + FeatureFlagsTab edit mode (per-row Switch + Clear override + reverse-projection draft seed + tenant-switch reset) + softened BackendGapBanner + 13 NEW Vitest (617→**630 PASS** over target +5-8); **TIER-3 2ND VALIDATION `mechanical-greenfield` 0.50 ratio ~1.57 ABOVE band by 0.37 → 2 consec > 1.20 ROLLBACK RULE MET → TIER-4 SPLIT ACTIVATED** (`-port-style` 0.45 RESERVED + `-design-decisions` 0.65 NEW; Sprint 57.54+57.55 retroactive `-design-decisions` mapping; equivalent ratios 1.05-1.55 / 1.21 IN band top edge ✅); `medium-backend` 0.80 8th data point 0.79 KEEP (last-3 mean 0.87 IN band lower-middle); `medium-frontend` 0.65 5th data point 0.53 KEEP per confound-resolved-at-sub-class-layer discipline; 4 ADs CLOSED + 3 NEW carryovers; DUAL CLEAN 22/22 PARITY preserved **11 consecutive 57.45-57.55**; Day 0+1 commit `aff39394` (14 files +2173/-47); Phase 58.x portfolio 2/4 → Quotas + RateLimits remain Sprint 57.56+57.57.)
+**Updated**: 2026-05-27 (Sprint 57.56 closed — **Quotas WRITE-side ship Phase 58.x portfolio 3/4** closes `AD-AgentFactor-Tier-4-Validation-Sprint-57.56` (Sprint 57.55 carryover); D-DAY0-A 🔴 RED resolved via user Option B Recommended at AskUserQuestion BEFORE plan v1 (zero rework cycle): `tenant.meta_data["quota_overrides"]` JSONB direct ORM write pattern (mirrors Sprint 57.48 RateLimits + Sprint 57.50 Identity precedent); D-DAY0-D 🆕 NOTABLE = inverse validation of Sprint 57.55 carryover `AD-Day0-Prong2-CanonicalService-Grep` — NO canonical service exists for Quotas (architectural simplification path = direct ORM UPDATE + manual `append_audit` Sprint 57.3 PATCH precedent; D-DAY1-1 fix-forward `append_audit` not `audit_log_append`); D-DAY0-E QuotasTab Quotas + RateLimits combined → scope guard Usage Card ONLY (RateLimits = Sprint 57.57); sequential agent delegation Track A backend ~25 min + Track B frontend ~25-30 min (18th+19th consecutive code-implementer); NEW `_PLAN_QUOTA_RESOURCE_WHITELIST` frozenset + Pydantic `QuotaOverridesUpsert{Request,Response}` + helper overrides param + PUT endpoint dict-identity-swap SQLAlchemy JSONB pattern + 12 NEW pytest (1784→**1796 PASS** exact upper target) + `QUOTA_PUT_%` LIKE sweep; `useQuotasSave` mutation hook + Usage Card edit mode (128→262 lines) + RateLimits Card UNCHANGED verified 11th scope-guard assertion test + 15 NEW Vitest (630→**645 PASS**); **TIER-4 1ST VALIDATION `mechanical-greenfield-design-decisions` 0.65 ratio ~1.02 ✅ IN BAND middle [0.85, 1.20] → CONFIRMED CLEANLY**; KEEP 0.65 baseline; Sprint 57.54+57.55 retroactive `-design-decisions` mapping VINDICATED; `medium-backend` 0.80 9th data point 0.66 KEEP per confound-resolved-at-sub-class-layer discipline; `medium-frontend` 0.65 6th data point ~0.50 4th consecutive KEEP per discipline; 1 AD CLOSED + 3 NEW carryovers; DUAL CLEAN 22/22 PARITY preserved **12 consecutive 57.45-57.56** ⭐ strongest streak Phase 57+; Day 0+1 commit `45735484` (13 files +2002/-43); Phase 58.x portfolio 3/4 → RateLimits remains Sprint 57.57 final 4/4.)
+
+**Previous Updated**: 2026-05-27 (Sprint 57.55 closed — **FeatureFlags WRITE-side ship Phase 58.x portfolio 2/4** closes `AD-AgentFactor-Tier-3-Validation-Sprint-57.55` (Sprint 57.54 carryover); Day 0 D-DAY0-B 🔴 RED pivot: plan §4.1 assumed `tenants.meta_data["tenant_overrides"]` → reality `feature_flags.tenant_overrides[str(tid)]` JSONB ON registry table; D-DAY0-T 🆕 NOTABLE: `FeatureFlagsService.set_tenant_override` (Sprint 56.1) canonical setter auto-emits audit chain → pivot to clean V2 service path (REMOVED `AD-FeatureFlags-PerFlag-AuditLog-Phase58` carryover positive side-effect); sequential agent delegation Track A backend ~12 min + Track B frontend ~25 min (16th+17th consecutive code-implementer chain extended); NEW `clear_tenant_override` ~15-line method + helper extract + PUT endpoint composite-replace semantics SET+CLEAR loops + 12 NEW pytest (1772→**1784 PASS** exact target) + FF_PUT_% + `ff.%` sweep (D-DAY1-1 mid-Track-A self-resolved); `useFeatureFlagsSave` mutation hook (verbatim mirror Sprint 57.54 useHITLPoliciesSave) + FeatureFlagsTab edit mode (per-row Switch + Clear override + reverse-projection draft seed + tenant-switch reset) + softened BackendGapBanner + 13 NEW Vitest (617→**630 PASS** over target +5-8); **TIER-3 2ND VALIDATION `mechanical-greenfield` 0.50 ratio ~1.57 ABOVE band by 0.37 → 2 consec > 1.20 ROLLBACK RULE MET → TIER-4 SPLIT ACTIVATED** (`-port-style` 0.45 RESERVED + `-design-decisions` 0.65 NEW; Sprint 57.54+57.55 retroactive `-design-decisions` mapping; equivalent ratios 1.05-1.55 / 1.21 IN band top edge ✅); `medium-backend` 0.80 8th data point 0.79 KEEP (last-3 mean 0.87 IN band lower-middle); `medium-frontend` 0.65 5th data point 0.53 KEEP per confound-resolved-at-sub-class-layer discipline; 4 ADs CLOSED + 3 NEW carryovers; DUAL CLEAN 22/22 PARITY preserved **11 consecutive 57.45-57.55**; Day 0+1 commit `aff39394` (14 files +2173/-47); Phase 58.x portfolio 2/4 → Quotas + RateLimits remain Sprint 57.56+57.57.)
 
 **Previous Updated**: 2026-05-26 (Sprint 57.54 closed — **HITLPolicies WRITE-side ship Phase 58.x portfolio 1/4**; tier-3 1st validation `mechanical-greenfield` 0.50 ratio ~1.37-2.0 ABOVE band by 0.17-0.8 → KEEP single-data-point caution + flag Sprint 57.55+ 2nd validation; 1 AD CLOSED + 3 NEW carryovers; DUAL CLEAN 22/22 PARITY 10 consecutive 57.45-57.54; commit `f2f95b11`.)
 
@@ -22,7 +24,66 @@
 
 ---
 
-## 🆕 Sprint 57.55 Carryover (2026-05-27 — FeatureFlags WRITE-side ship; Phase 58.x portfolio 2/4; tier-4 SPLIT ACTIVATED)
+## 🆕 Sprint 57.56 Carryover (2026-05-27 — Quotas WRITE-side ship; Phase 58.x portfolio 3/4; tier-4 1st validation CONFIRMED CLEANLY)
+
+Sprint 57.56 (single greenfield NEW component-pair via sequential agent delegation Track A backend + Track B frontend; **architectural simplification path** — direct ORM UPDATE vs Sprint 57.54+57.55 canonical service paths) ✅ **CLOSED**: 1 AD CLOSED + 3 NEW carryovers.
+
+### Sprint scope
+
+True gap = WRITE side only per D-DAY0-A 🔴 RED resolved via user Option B Recommended (BEFORE plan v1 drafting; zero rework cycle):
+- Backend: NEW `_PLAN_QUOTA_RESOURCE_WHITELIST` frozenset + Pydantic `QuotaOverridesUpsert{Request,Response}` + `_project_plan_quota_to_items` overrides param extension + GET refactor + NEW `PUT /admin/tenants/{tid}/quotas` endpoint dict-identity-swap SQLAlchemy JSONB pattern + manual `append_audit` (Sprint 57.3 PATCH precedent; D-DAY1-1 helper name fix-forward) + 12 NEW pytest + `QUOTA_PUT_%` LIKE sweep
+- Frontend: NEW `useQuotasSave` mutation hook (verbatim mirror Sprint 57.55 `useFeatureFlagsSave`) + types + service func + QuotasTab Usage quotas Card edit mode (Edit/Cancel/Save + per-row numeric input + Clear override + reverse-projection draft seed + auto-exit on success + tenant-switch reset + inline error + softened BackendGapBanner) + **RateLimits Card UNCHANGED** scope guard verified via 11th assertion test + 15 NEW Vitest
+
+### Q4 Calibration outcome — TIER-4 1ST VALIDATION ✅ CONFIRMED CLEANLY
+
+**`mechanical-greenfield-design-decisions` 0.65 — 1st validation IN BAND middle**:
+- Sprint 57.56 (1st): ratio actual/agent-adjusted ~**1.02** ✅ IN BAND middle [0.85, 1.20]
+- **tier-4 SPLIT 1st validation CONFIRMED CLEANLY**; KEEP 0.65 baseline
+- Sprint 57.54+57.55 retroactive `-design-decisions` mapping VINDICATED (equivalent ratios 1.05-1.55 / 1.21 → Sprint 57.56 ~1.02 bullseye)
+- Flag Sprint 57.57+ 2nd validation under same sub-class for rollback rule baseline
+
+`medium-backend` 0.80 9th data point 0.66 (BELOW band by 0.19; 9-pt mean ~0.65; last 3 = 2/3 < 0.7 lower-trigger NOT MET; KEEP per confound-resolved-at-sub-class-layer discipline)
+`medium-frontend` 0.65 6th data point ~0.50 (BELOW band 4th consecutive sprint; KEEP per same discipline; AD-medium-frontend-Baseline-Recalibration continues — need consistent human-factor data point)
+
+### 1 AD CLOSED
+
+1. ✅ `AD-AgentFactor-Tier-4-Validation-Sprint-57.56` (Sprint 57.55 carryover — 1st validation data point under tier-4 sub-class table; ratio ~1.02 IN BAND middle → tier-4 SPLIT 1st validation CONFIRMED CLEANLY)
+
+### 3 NEW carryovers
+
+1. **`AD-AgentFactor-Tier-4-Validation-Sprint-57.57`** (NEW priority — 2nd validation needed under tier-4 `mechanical-greenfield-design-decisions` 0.65 for rollback rule baseline; Sprint 57.57 RateLimits WRITE = natural candidate; same architectural simplification as Sprint 57.56)
+2. **`AD-Plan-Workload-AgentDelegation-Explicit-Field-Codification`** PROMOTION-CANDIDATE (Sprint 57.53+57.54+57.55+57.56 = 4-data-point evidence reached; per AD-Plan-2/3/4/5 promotion precedent 3-data-point sufficient; promote to MANDATORY field in `sprint-workflow.md §Workload Calibration §Four-segment form when agent_factor applies`)
+3. **`AD-Day0-Prong2-Phase58-WriteSide-Resource-Storage-Grep`** PROMOTION-CANDIDATE (Sprint 57.55 + 57.56 = 2 mid-plan-draft pivots in 2 sprints; 3-data-point evidence across Sprint 57.54+57.55+57.56 reached; promote to NEW Drift Class row in `sprint-workflow.md §Step 2.5 Prong 2 Drift Class table`)
+
+### Carryovers from Sprint 57.55 still active (re-list)
+
+- **`AD-Day0-Prong2-CanonicalService-Grep`** PROMOTION-CANDIDATE (Sprint 57.55 → Sprint 57.56 = 2-data-point evidence; both directions actionable — service exists OR doesn't; promote to MANDATORY rule)
+- **`AD-FeatureFlags-RegistryCRUD-Phase58`** + **`AD-FeatureFlags-NumericOverrides-Phase58`** + **`AD-FeatureFlags-AuditLogFiltering-UI-Phase58`** + **`AD-FeatureFlags-PerFlag-RolloutSchedule-Phase58`** + **`AD-FeatureFlags-OptimisticConcurrency`** (Phase 58+ FF deeper extensions; out of Sprint 57.56+57.57 scope)
+- **`AD-Quotas-LiveUsageTracking-Phase58`** (NEW Sprint 57.56 — expose QuotaEnforcer Redis counters at admin layer for `current_usage` real value)
+- **`AD-Quotas-UsageHistory-Phase58`** (NEW Sprint 57.56 — per-resource usage history / trend chart UI)
+- **`AD-Quotas-Alerting-Phase58`** (NEW Sprint 57.56 — per-resource alerting thresholds)
+- **`AD-Quotas-RequestIncrease-Workflow-Phase58`** (NEW Sprint 57.56 — existing "Request increase" button is alert stub; backend endpoint + approval workflow)
+- **`AD-Quotas-PlanUpgrade-AutoRollover-Phase58`** (NEW Sprint 57.56 — override map invalidation logic on tenant plan change)
+- **`AD-Quotas-OptimisticConcurrency`** (CONDITIONAL Sprint 57.56 — Phase 58+ If-Match header)
+- **`AD-TenantSettings-RateLimits-Write-Endpoint`** (Phase 58.x portfolio remaining — **FINAL** 4/4; Sprint 57.57 natural candidate; same direct-ORM mechanical-greenfield-design-decisions pattern as Sprint 57.56)
+- **`AD-TenantSettings-Identity-Persistence-Phase58`** (Sprint 57.50 carryover continues; full SSO admin schema)
+- **`AD-Test-Cleanup-Pattern-Shared-Helper`** (Sprint 57.53+57.54+57.55+57.56 carryover continues; Phase 58.x)
+- **`AD-MediumBackend-AICadence-Recalibration`** (Sprint 57.53+57.54+57.55+57.56 carryover continues; Phase 58+)
+- **`AD-Day0-Prong1-Test-Glob-Multi-Pattern`** (Sprint 57.54 carryover already CLOSED Sprint 57.55 — pattern in usage)
+- **`AD-Phase58-Persistence-WriteSide-Pattern-Template`** (Sprint 57.54+57.55+57.56 carryover continues — template now has 3 sub-patterns: dedicated table + canonical service / JSONB on registry + canonical service / JSONB on tenants + direct ORM; Sprint 57.57 RateLimits will be 4th data point validating the JSONB-on-tenants + direct ORM sub-pattern)
+
+### Phase 58.x portfolio progress
+
+- 1/4 (Sprint 57.54 HITLPolicies) → 2/4 (Sprint 57.55 FeatureFlags) → **3/4 (Sprint 57.56 Quotas)** ✅
+- Remaining: RateLimits (Sprint 57.57 candidate; final 4/4)
+
+### Mockup-fidelity DUAL CLEAN milestone
+
+**12 consecutive sprints 57.45-57.56** preserved 22/22 PARITY + HEX_OKLCH baseline 47. Strongest streak of Phase 57+ epic; no regression on drift-audit-2026-05-25 #1 priority since closure.
+
+---
+
+## Sprint 57.55 Carryover (2026-05-27 — FeatureFlags WRITE-side ship; Phase 58.x portfolio 2/4; tier-4 SPLIT ACTIVATED)
 
 Sprint 57.55 (single greenfield NEW component-pair via sequential agent delegation Track A backend + Track B frontend) ✅ **CLOSED**: 4 ADs CLOSED.
 

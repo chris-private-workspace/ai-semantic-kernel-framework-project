@@ -34,6 +34,7 @@ Description:
       handles dependent rows (memory_*, users, conversations, ...).
 
 Modification History (newest-first):
+    - 2026-05-27: Sprint 57.56 — add QUOTA_PUT_% LIKE sweep (Sprint 57.55 FF_PUT_% precedent)
     - 2026-05-26: Sprint 57.55 — sweep FF_PUT_% tenants (PUT /feature-flags tests)
     - 2026-05-26: Sprint 57.54 Track A — sweep HITL_PUT_% tenants (committed by store.put)
     - 2026-05-10: Sprint 57.12 — _clear_committed_test_tenants (AD-AdminTenant-Patch-Flake)
@@ -120,6 +121,8 @@ async def _clear_committed_test_tenants() -> None:
             await session.execute(text("DELETE FROM tenants WHERE code LIKE 'HITL_PUT_%'"))
             # Sprint 57.55 Track A — sweep uuid4-suffixed PUT /feature-flags test tenants
             await session.execute(text("DELETE FROM tenants WHERE code LIKE 'FF_PUT_%'"))
+            # Sprint 57.56 Track A — sweep uuid4-suffixed PUT /quotas test tenants
+            await session.execute(text("DELETE FROM tenants WHERE code LIKE 'QUOTA_PUT_%'"))
             # Sprint 57.55 — sweep uuid4-suffixed feature_flags rows seeded by PUT tests
             # (feature_flags is a global no-RLS registry; rows persist past test
             # rollback once any PUT test commits to make the row visible to the
