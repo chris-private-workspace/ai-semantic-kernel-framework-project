@@ -136,21 +136,18 @@ Plan: [`sprint-57-58-plan.md`](./sprint-57-58-plan.md)
 - [x] **LLM SDK leak 0** (`grep agent_harness` = 0) ✅
 
 ### 1.6 Day 1 commit
-- [ ] **Commit all Day 1 work**
-  - Files: 14 backend (7 NEW + 7 EDIT incl. middleware `__init__.py`) + 8 frontend (2 NEW + 6 EDIT) + progress.md
-  - Message: `feat(rate-limits, sprint-57-58): runtime enforcement middleware + Cat 2 tool layer + GET usage + frontend Live usage Card`
+- [x] **Commit all Day 1 work** ✅ `5e6fc72f` (24 files +2172/-106)
 
 ---
 
 ## Day 2 — Closeout (parent assistant)
 
 ### 2.1 Final Validation Sweep
-- [ ] **Re-run all Day 1.5 checks** (sanity after any final commits)
-- [ ] **mockup-fidelity DUAL CLEAN 22/22 PARITY preserved 14 consecutive sprints 57.45-57.58**
-  - Command: Reference Sprint 57.57 sweep pattern; document in retrospective Q1
+- [x] **Re-run Day 1.5 checks** ✅ (Day 2 = docs-only; no code change since `5e6fc72f`; Day 1.5 sweep authoritative: pytest 1819 / Vitest 675 / mypy 0 / tsc 0 / 9/9 V2 lints / 0 oklch / 0 SDK leak)
+- [x] **mockup-fidelity DUAL CLEAN 22/22 PARITY preserved 14 consecutive sprints 57.45-57.58** ✅ (0 new oklch; baseline 48 unchanged)
 
 ### 2.2 Retrospective (Q1-Q6 mandatory; Q7 N/A SKIP per feature ship)
-- [ ] **NEW** `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-58/retrospective.md`
+- [x] **NEW** `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-58/retrospective.md` ✅
   - Q1: What went well (3-5 items)
   - Q2: What didn't go well + calibration ratio (actual/agent-adjusted vs band [0.85, 1.20])
   - Q3: Lessons learned (generalizable; codify into rules if 2-3 sprint pattern)
@@ -160,26 +157,21 @@ Plan: [`sprint-57-58-plan.md`](./sprint-57-58-plan.md)
   - Q7: N/A SKIP (8th consecutive feature ship NOT spike)
 
 ### 2.3 sprint-workflow.md updates
-- [ ] **EDIT** `.claude/rules/sprint-workflow.md`
+- [x] **EDIT** `.claude/rules/sprint-workflow.md` ✅ (MHist + `mixed-multidomain-bundle` matrix 2nd data point + §Active block `mixed-multidomain-bundle-mechanical` tier-3 1st validation)
   - MHist entry: 1-line per AD-Lint-MHist-Verbosity char budget
   - Scope-class multiplier matrix update: `mixed-multidomain-bundle` 0.65 4th data point
   - §Active block: `mixed-multidomain-bundle-mechanical` 0.65 tier-3 1st validation
   - `medium-backend` 0.80 11th data point + `medium-frontend` 0.65 8th data point
 
 ### 2.4 sprint-workflow.md PROMOTIONS (Day 2 docs track — SKIP-eligible)
-- [ ] **Confirm 0 PROMOTION-CANDIDATE reach 3-data-point threshold**
-  - Tier-4 SPLIT FULLY VALIDATED (no further structural action)
-  - SKIP this sub-task per Sprint 57.58 §2.7 plan rationale
+- [x] **Confirm 0 PROMOTION-CANDIDATE reach 3-data-point threshold** ✅ SKIPPED (tier-4 SPLIT FULLY VALIDATED; no structural action)
 
 ### 2.5 Memory + index
-- [ ] **NEW** `memory/project_phase57_58_rate_limits_runtime_enforcement.md`
-  - Format: per Sprint 57.57 memory subfile structure (Sprint coord / Goal / Day 0 三-Prong / Day 1 / Day 2 / ratio / ADs / lessons)
-- [ ] **EDIT** `memory/MEMORY.md`
-  - Add 1-entry pointer ~250-300 char per §Sprint Closeout policy
-  - Keywords: rate-limits, runtime enforcement, middleware, Redis sliding window, Cat 2 tool layer, Live usage, mixed-multidomain-bundle-mechanical, tier-3 1st validation
+- [x] **NEW** `memory/project_phase57_58_rate_limits_runtime_enforcement.md` ✅ (user-home `.claude/projects/.../memory/`; NOT project mirror per convention)
+- [x] **EDIT** `memory/MEMORY.md` ✅ (quality pointer + keywords)
 
 ### 2.6 CLAUDE.md (navigator-only per §Sprint Closeout)
-- [ ] **EDIT** `CLAUDE.md`
+- [x] **EDIT** `CLAUDE.md` ✅ (Current Sprint row + Last Updated footer; navigator-only, no history dump)
   - Update `Current Sprint` row → next sprint id placeholder
   - Update `Last Updated` footer (1 line; sprint goal short summary)
   - Update `Phase` row if milestone (Phase 58.x portfolio remaining 4 of 5 RateLimits extensions)
@@ -187,15 +179,10 @@ Plan: [`sprint-57-58-plan.md`](./sprint-57-58-plan.md)
   - NO calibration ratio in cells
 
 ### 2.7 next-phase-candidates.md
-- [ ] **EDIT** `claudedocs/1-planning/next-phase-candidates.md`
-  - Mark `AD-RateLimits-RuntimeEnforcement-Phase58` CLOSED
-  - Update PARTIAL-CLOSE `AD-RateLimits-LiveUsageTracking-Phase58` (live usage exposure DONE; alerting threshold remains)
-  - Add NEW carryover candidates from §9 of plan + retrospective Q4
+- [x] **EDIT** `claudedocs/1-planning/next-phase-candidates.md` ✅ (Sprint 57.58 Carryover section: RuntimeEnforcement CLOSED + LiveUsageTracking PARTIAL + 3 NEW carryovers)
 
 ### 2.8 CHANGE-028 record
-- [ ] **NEW** `claudedocs/4-changes/feature-changes/CHANGE-028-sprint-57-58-rate-limits-runtime-enforcement.md`
-  - Format: 1-page (Problem / Root Cause / Solution / Verification / Impact)
-  - Per `CLAUDE.md §Change Record Conventions`
+- [x] **NEW** `claudedocs/4-changes/feature-changes/CHANGE-028-sprint-57-58-rate-limits-runtime-enforcement.md` ✅
 
 ### 2.9 PR + merge (user action)
 - [ ] **Push branch + open PR**
