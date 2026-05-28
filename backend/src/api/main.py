@@ -70,7 +70,7 @@ from api.v1.subagents import router as subagents_router
 from api.v1.telemetry import router as telemetry_router
 from api.v1.verification import router as verification_router
 from infrastructure.db import dispose_engine
-from platform_layer.middleware import TenantContextMiddleware
+from platform_layer.middleware import RateLimitMiddleware, TenantContextMiddleware
 from platform_layer.observability import (
     configure_json_logging,
     setup_opentelemetry,
@@ -78,6 +78,37 @@ from platform_layer.observability import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _wire_rate_limit_counter() -> None:
+    """Install the RedisRateLimitCounter singleton at startup (fail-open).
+
+    Sprint 57.58 Track A: creates a redis.asyncio client from settings.redis_url
+    and registers it so RateLimitMiddleware (and the Cat 2 tool layer) can
+    enforce per-tenant limits. If Redis is unavailable / misconfigured the
+    counter stays None and the middleware fails open (rate limits MUST NOT break
+    the service). The client is created lazily here (not connected) — the first
+    Lua script call establishes the connection; connection errors there are also
+    caught by the middleware's fail-open path.
+    """
+    try:
+        from redis.asyncio import Redis
+
+        from core.config import get_settings
+        from platform_layer.tenant.rate_limit_counter import (
+            RedisRateLimitCounter,
+            set_rate_limit_counter,
+        )
+
+        settings = get_settings()
+        client = Redis.from_url(settings.redis_url)
+        set_rate_limit_counter(RedisRateLimitCounter(client))
+        logger.info("api.main: rate-limit counter wired")
+    except Exception:  # noqa: BLE001 — fail-open: never block startup on rate limits
+        logger.warning(
+            "api.main: rate-limit counter not wired; enforcement disabled (fail-open)",
+            exc_info=True,
+        )
 
 
 @asynccontextmanager
@@ -89,6 +120,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     load_dotenv()
     configure_json_logging()
     setup_opentelemetry(app)
+    _wire_rate_limit_counter()
     logger.info("api.main: startup complete")
     try:
         yield
@@ -107,7 +139,12 @@ def create_app() -> FastAPI:
         lifespan=_lifespan,
     )
 
-    # Middleware: tenant context first (sets request.state for downstream).
+    # Middleware (Starlette runs them outside-in / LIFO: the LAST added runs
+    # FIRST at request time). We add RateLimitMiddleware BEFORE
+    # TenantContextMiddleware so that TenantContextMiddleware runs first and
+    # populates request.state.{tenant_id, roles} that RateLimitMiddleware reads.
+    # Net request-time order: TenantContext -> RateLimit -> routes.
+    app.add_middleware(RateLimitMiddleware)
     app.add_middleware(TenantContextMiddleware)
 
     # Routers: api/v1.

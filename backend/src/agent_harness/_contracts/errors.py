@@ -106,3 +106,34 @@ class ToolExecutionError(Exception):
     Subclass for finer-grained tool failure modes:
         class SalesforceConnectionError(ToolExecutionError): ...
     """
+
+
+class RateLimitExceededError(Exception):
+    """Terminal: a tenant's per-resource rate-limit budget is exhausted.
+
+    Sprint 57.58 (Track B): raised by the Cat 2 tool layer pre-call hook when a
+    tool call would exceed the tenant's configured `tool_calls` / `tool_calls.<name>`
+    rate limit (the same budget the FastAPI middleware enforces at the HTTP edge).
+
+    Intentionally does NOT subclass ToolExecutionError: that base maps to
+    ErrorClass.LLM_RECOVERABLE which the Loop retries by feeding the error back
+    to the LLM. Re-issuing the same tool call would just hit the limit again, so
+    rate-limit exhaustion must be TERMINAL — DefaultErrorPolicy registers this
+    type as ErrorClass.FATAL so `should_retry` returns False and the loop ends
+    gracefully (no self-correction storm). `retry_after` tells the caller when
+    capacity frees up.
+
+    Attributes:
+        resource: the rate-limit resource key (e.g. "tool_calls.search_web").
+        limit: the configured request cap for the window.
+        retry_after: seconds until capacity frees up (>=1).
+    """
+
+    def __init__(self, *, resource: str, limit: int, retry_after: int) -> None:
+        self.resource = resource
+        self.limit = limit
+        self.retry_after = retry_after
+        super().__init__(
+            f"rate limit exceeded for resource '{resource}': "
+            f"limit={limit}; retry_after={retry_after}s"
+        )

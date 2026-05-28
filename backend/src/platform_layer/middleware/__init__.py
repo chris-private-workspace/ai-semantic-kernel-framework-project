@@ -17,12 +17,14 @@ the same so endpoint dependencies don't change.
 
 from __future__ import annotations
 
+from platform_layer.middleware.rate_limit import RateLimitMiddleware
 from platform_layer.middleware.tenant_context import (
     TenantContextMiddleware,
     get_db_session_with_tenant,
 )
 
 __all__ = [
+    "RateLimitMiddleware",
     "TenantContextMiddleware",
     "get_db_session_with_tenant",
 ]

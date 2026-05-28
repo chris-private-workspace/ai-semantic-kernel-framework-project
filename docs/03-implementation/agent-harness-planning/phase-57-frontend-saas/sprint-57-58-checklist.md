@@ -64,20 +64,12 @@ Plan: [`sprint-57-58-plan.md`](./sprint-57-58-plan.md)
   - Skip with documented justification
 
 #### Day 0 Drift Catalog
-- [ ] **Catalog findings** in `progress.md` Day 0 entry under `Drift findings` header
-  - Format: `D-DAY0-{X}: <finding> → <implication>`
-  - Cross-reference plan §8 Risks if scope shifts
-- [ ] **Decide go/no-go for Day 1**
-  - ≤20% scope shift → continue with risk noted
-  - 20-50% → revise plan §Acceptance + §Workload + re-confirm with user
-  - >50% → abort + redraft
+- [x] **Catalog findings** in `progress.md` Day 0 entry under `Drift findings` header — 9 findings (4 🔴 RED + 4 🆕 NOTABLE + 1 🚨 CRITICAL Potemkin)
+- [x] **Decide go/no-go for Day 1** — 30-40% shift (20-50% bucket) → plan v2 revised + user re-confirmed Path B 2026-05-28 ✅
 
 ### 0.9 Branch + Day 0 commit
-- [ ] **Create feature branch**
-  - Command: `git checkout -b feature/sprint-57-58-rate-limits-runtime-enforcement`
-- [ ] **Day 0 commit** (plan + checklist + Day 0 progress)
-  - Files: `sprint-57-58-plan.md` + `sprint-57-58-checklist.md` + `sprint-57-58/progress.md`
-  - Message: `chore(sprint-57-58): Day 0 plan + checklist + 三-Prong findings`
+- [x] **Create feature branch** `feature/sprint-57-58-rate-limits-runtime-enforcement` (from main `ea2abaa9`)
+- [x] **Day 0 commit** `f20ef896` (plan v2 + checklist v2 + progress.md; 3 files +858)
 
 ---
 
@@ -85,91 +77,67 @@ Plan: [`sprint-57-58-plan.md`](./sprint-57-58-plan.md)
 
 ### 1.1 Track A — Backend Middleware NEW (code-implementer agent delegation #1) — paths corrected per Day 0 D-DAY0-A1/A2/A4
 
-- [ ] **NEW** `backend/src/platform_layer/middleware/_rate_limit_contracts.py`
-  - DoD: `RateLimitCounter` ABC + `RateLimitDecision` dataclass + `RateLimitCounterState` dataclass
-- [ ] **NEW** `backend/src/platform_layer/tenant/rate_limit_counter.py`
-  - DoD: `SLIDING_WINDOW_SCRIPT` constant + `RedisRateLimitCounter(RateLimitCounter)` impl using DI pattern mirror `quota.py:171 record_usage` + script SHA cache
-- [ ] **NEW** `backend/src/platform_layer/middleware/rate_limit.py`
-  - DoD: `RateLimitMiddleware(BaseHTTPMiddleware)` + `_load_rate_limits` 60s cache + `_infer_resource` + 429 + headers + bypass via `roles` claim (NOT `scopes` per D-DAY0-J)
-- [ ] **EDIT** `backend/src/api/main.py`
-  - DoD: `app.add_middleware(RateLimitMiddleware, ...)` inserted immediately AFTER L111 `app.add_middleware(TenantContextMiddleware)`; doc-comment ordering rationale (needs tenant_id)
-- [ ] **NEW** `backend/tests/integration/agent_harness/test_rate_limit_middleware.py`
-  - DoD: 6 tests — enforce_pass / enforce_block / bypass_admin / bypass_no_tenant / multi_tenant_isolation / 429_response_shape
-- [ ] **Verify pytest** Track A subset GREEN
-  - Command: `pytest backend/tests/integration/agent_harness/test_rate_limit_middleware.py -v`
-- [ ] **Verify mypy --strict** Track A files
-  - Command: `mypy backend/src/platform_layer/middleware/rate_limit.py backend/src/platform_layer/tenant/rate_limit_counter.py`
+- [x] **NEW** `backend/src/platform_layer/tenant/_rate_limit_contracts.py` ✅ (sited in `tenant/` not `middleware/` per D-DAY1-3 circular-import fix)
+  - DoD: `RateLimitCounter` ABC + `RateLimitDecision` + `RateLimitCounterState` ✅
+- [x] **NEW** `backend/src/platform_layer/tenant/rate_limit_counter.py` ✅
+  - DoD: `RedisRateLimitCounter(RateLimitCounter)` MULTI/EXEC pipeline sliding window (D-DAY1-2: fakeredis no EVAL → reserve-then-rollback, QuotaEnforcer precedent) + `parse_rate_limit_item()` `{label,value}` parser + singleton accessors ✅
+- [x] **NEW** `backend/src/platform_layer/middleware/rate_limit.py` ✅
+  - DoD: `RateLimitMiddleware(BaseHTTPMiddleware)` + fail-open + 429 + headers + bypass via `roles` claim ✅
+- [x] **NEW** `backend/src/platform_layer/tenant/tool_rate_limit_gate.py` ✅ (Track B adapter — not in original plan; LLM-neutral seam)
+- [x] **EDIT** `backend/src/api/main.py` — register `RateLimitMiddleware` after `TenantContextMiddleware` + `_lifespan` Redis counter wiring ✅
+- [x] **NEW** `backend/tests/integration/agent_harness/test_rate_limit_middleware.py` (6 tests) ✅
+- [x] **Verify pytest** Track A subset GREEN ✅
+- [x] **Verify mypy --strict** Track A files (0 errors) ✅
 
-### 1.2 Track B — Cat 2 Tool Layer Integration (code-implementer agent delegation #2) — path resolved Day 0 D-DAY0-A3
-- [ ] **EDIT** `backend/src/agent_harness/tools/sandbox.py` OR `tools/executor.py` (`ToolExecutorImpl:105` is the impl; agent selects site per call flow analysis at Day 1)
-  - DoD: `_check_rate_limit_pre_call(tenant_id, tool_name)` raises `RateLimitExceededError` on over-limit
-  - DoD: Reuses `RedisRateLimitCounter` from Track A (DRY)
-  - DoD: Resource keys `tool_calls.<tool_name>` + `tool_calls` aggregate
-- [ ] **NEW** `RateLimitExceededError` exception (NOT exists per D-DAY0-J grep — only openai SDK `RateLimitError` type exists in `adapters/azure_openai/error_mapper.py`)
-  - DoD: Inherits from Cat 8 base error; carries `resource` + `limit` + `retry_after` attributes
-- [ ] **EDIT** Cat 8 error handler if needed
-  - DoD: `RateLimitExceededError` → no LLM retry (terminate gracefully)
-- [ ] **NEW** `backend/tests/integration/agent_harness/test_tool_rate_limit_enforce.py`
-  - DoD: 4 tests — tool_allowed / tool_blocked / per_tool_isolation / no_tenant_skip
-- [ ] **Verify pytest** Track B subset GREEN
+### 1.2 Track B — Cat 2 Tool Layer Integration (bundled into backend agent `rl-backend`) — path resolved Day 0 D-DAY0-A3 ✅ COMPLETE
+- [x] **EDIT** `backend/src/agent_harness/tools/executor.py` (`ToolExecutorImpl.execute()` reads `ctx.tenant_id`) ✅
+  - DoD: LLM-neutral `RateLimitGate` Protocol (optional ctor injection, default None) — keeps Cat 2 free of platform/Redis imports; `RedisToolRateLimitGate` (platform_layer) is concrete adapter ✅
+  - DoD: Resource keys `tool_calls.<tool_name>` + `tool_calls` aggregate ✅
+- [x] **NEW** `RateLimitExceededError` exception in `backend/src/agent_harness/_contracts/errors.py` ✅
+  - DoD: carries `resource` + `limit` + `retry_after`; does NOT subclass `ToolExecutionError` ✅
+- [x] **EDIT** `backend/src/agent_harness/error_handling/policy.py` — register `RateLimitExceededError` FATAL → `should_retry=False` (test-verified; no LLM retry loop) ✅
+- [x] **NEW** `backend/tests/integration/agent_harness/test_tool_rate_limit_enforce.py` (4 tests) ✅
+- [x] **Verify pytest** Track B subset GREEN ✅
 
-### 1.3 Track C — GET Live Usage Endpoint (code-implementer agent delegation #3 OR bundle with Track A)
-- [ ] **EDIT** `backend/src/api/v1/admin/tenants.py`
-  - DoD: NEW `GET /admin/tenants/{tid}/rate-limits/usage` endpoint
-  - DoD: Reuses `_load_tenant_or_404` + `_session_factory_from`
-  - DoD: NEW Pydantic `RateLimitsUsageItem` + `RateLimitsUsageResponse` models
-  - DoD: Counter peek (no increment) via `RedisRateLimitCounter.peek`
-- [ ] **NEW** `backend/tests/integration/api/test_admin_tenant_rate_limits_usage.py`
-  - DoD: 3 tests — auth_required / 404_tenant_not_found / populated_response_shape
-- [ ] **EDIT** `backend/tests/integration/api/conftest.py`
-  - DoD: Add `RATE_LIMIT_USAGE_%` LIKE sweep (parallel to `RATE_PUT_%` Sprint 57.57 pattern)
-- [ ] **Verify pytest** Track C subset GREEN
+### 1.3 Track C — GET Live Usage Endpoint (bundled into backend agent `rl-backend`) ✅ COMPLETE
+- [x] **EDIT** `backend/src/api/v1/admin/tenants.py`
+  - DoD: NEW `GET /admin/tenants/{tid}/rate-limits/usage` endpoint ✅
+  - DoD: Reuses `_load_tenant_or_404` + session factory ✅
+  - DoD: NEW Pydantic `RateLimitsUsageItem` + `RateLimitsUsageResponse` models ✅ (`{resource, window:int sec, limit, current, reset_at:int epoch}`)
+  - DoD: Counter peek (no increment) via `RedisRateLimitCounter.peek` ✅
+- [x] **NEW** `backend/tests/integration/api/test_admin_tenant_rate_limits_usage.py` (3 tests) ✅
+- [x] **EDIT** `backend/tests/integration/api/conftest.py` — `RATE_LIMIT_USAGE_%` LIKE sweep ✅
+- [x] **Verify pytest** Track C subset GREEN ✅
 
-### 1.4 Track D — Frontend Live Usage Card (code-implementer agent delegation #4)
-- [ ] **EDIT** `frontend/src/features/tenant-settings/types.ts`
-  - DoD: Add `RateLimitsUsageItem` + `RateLimitsUsageResponse` types matching backend Pydantic
-- [ ] **EDIT** `frontend/src/features/tenant-settings/services/tenantSettingsService.ts`
-  - DoD: NEW `fetchRateLimitsUsage(tenantId)` function
-- [ ] **NEW** `frontend/src/features/tenant-settings/hooks/useRateLimitsUsage.ts`
-  - DoD: TanStack `useQuery` 5-second refetchInterval + 4-second staleTime
-- [ ] **EDIT** `frontend/src/features/tenant-settings/_fixtures.ts`
-  - DoD: Add `LIVE_USAGE_FIXTURE` for tests + storybook scenarios
-- [ ] **EDIT** `frontend/src/features/tenant-settings/components/QuotasTab.tsx`
-  - DoD: Insert Live usage Card BELOW existing RateLimits Card
-  - DoD: RateLimits Card UNCHANGED bit-for-bit (scope guard)
-  - DoD: Progress bar color-coded (green/yellow/red thresholds)
-  - DoD: Reset countdown using `Intl.DateTimeFormat` or human-readable duration
-  - DoD: Empty state handled
-- [ ] **NEW** `frontend/src/features/tenant-settings/hooks/useRateLimitsUsage.test.tsx`
-  - DoD: 3 tests — initial fetch / polling refetch / error handling
-- [ ] **EDIT** `frontend/src/features/tenant-settings/services/tenantSettingsService.test.ts`
-  - DoD: +2 tests — fetchRateLimitsUsage success / error
-- [ ] **EDIT** `frontend/src/features/tenant-settings/components/QuotasTab.test.tsx`
-  - DoD: +5 tests Live usage Card (render / progress / countdown / empty state / color thresholds) + 1 scope-guard test asserting RateLimits Card behavior UNCHANGED
-- [ ] **Verify Vitest** Track D subset GREEN
-  - Command: `pnpm vitest run frontend/src/features/tenant-settings/`
+### 1.4 Track D — Frontend Live Usage Card (code-implementer agent `rl-frontend`) ✅ COMPLETE
+- [x] **EDIT** `frontend/src/features/tenant-settings/types.ts` — `RateLimitsUsageItem` + `RateLimitsUsageResponse` ✅
+- [x] **EDIT** `frontend/src/features/tenant-settings/services/tenantSettingsService.ts` — `fetchRateLimitsUsage(tenantId, signal)` ✅
+- [x] **NEW** `frontend/src/features/tenant-settings/hooks/useRateLimitsUsage.ts` — `useQuery` 5s refetchInterval + 4s staleTime + `RATE_LIMITS_USAGE_QUERY_KEY_BASE` ✅
+- [x] **EDIT** `frontend/src/features/tenant-settings/_fixtures.ts` — `LIVE_USAGE_FIXTURE` (3 color thresholds) ✅
+- [x] **EDIT** `frontend/src/features/tenant-settings/components/tabs/QuotasTab.tsx` ✅ (path: `components/tabs/` not `components/`)
+  - DoD: Live usage Card BELOW Rate limits Card ✅
+  - DoD: RateLimits Card UNCHANGED bit-for-bit (scope guard test passes; only docstring lines changed) ✅
+  - DoD: Progress bar color-coded via existing `.bar-track` + `var(--success/--warning/--danger)` (green <70% / yellow 70-90% / red >90%) ✅
+  - DoD: Reset countdown `{m}m {s}s` from `reset_at − Date.now()` ✅
+  - DoD: Empty state handled ✅
+- [x] **NEW** `frontend/tests/unit/tenant-settings/useRateLimitsUsage.test.tsx` (3 tests; path `tests/unit/` not co-located) ✅
+- [x] **EDIT** `frontend/tests/unit/tenant-settings/tenantSettingsService.test.ts` (+2 tests) ✅
+- [x] **EDIT** `frontend/tests/unit/tenant-settings/tabs/QuotasTab.test.tsx` (+7 tests: 5 Live usage + loading/error + scope-guard) ✅
+- [x] **Verify Vitest** Track D subset GREEN ✅
 
-### 1.5 Day 1 Validation Sweep (full cross-track)
-- [ ] **pytest full**: 1806 → 1819+ (>= +12 NEW)
-  - Command: `pytest backend/tests/ -q`
-- [ ] **mypy --strict**: 0/310+ (no new errors)
-  - Command: `mypy backend/src/`
-- [ ] **9/9 V2 lints GREEN**
-  - Command: `python scripts/lint/run_all.py`
-- [ ] **Vitest full**: 663 → 673+ (>= +10 NEW)
-  - Command: `pnpm vitest run`
-- [ ] **ESLint clean**
-  - Command: `pnpm lint` (NOT `--silent`)
-- [ ] **Vite build clean**
-  - Command: `pnpm build`
-- [ ] **HEX_OKLCH baseline 47 preserved**
-  - Command: `git diff main -- 'frontend/src/**' | grep -cE '^\+[^+].*oklch\('` → 0
-- [ ] **LLM SDK leak 0**
-  - Command: `grep -rn "import openai\|import anthropic" backend/src/agent_harness/` → 0
+### 1.5 Day 1 Validation Sweep (full cross-track) ✅ ALL GREEN
+- [x] **pytest full**: 1806 → **1819** (+13 exact target) + 4 skip + 0 regressions ✅
+- [x] **mypy --strict**: 0 errors ✅
+- [x] **9/9 V2 lints GREEN** (1.03s; incl. LLM SDK leak) ✅
+- [x] **Vitest full**: 663 → **675** (+12) ✅
+- [x] **ESLint clean** (NO `--silent`; only pre-existing jsx-ast-utils warnings) ✅
+- [x] **Vite build clean** (3.44s) ✅
+- [x] **HEX_OKLCH baseline 48 preserved** (NOT 47 — bumped 47→48 Sprint 57.50 hotfix; 0 new oklch this sprint) ✅
+- [x] **LLM SDK leak 0** (`grep agent_harness` = 0) ✅
 
 ### 1.6 Day 1 commit
 - [ ] **Commit all Day 1 work**
-  - Files: backend NEW + EDIT + frontend NEW + EDIT + all NEW tests
+  - Files: 14 backend (7 NEW + 7 EDIT incl. middleware `__init__.py`) + 8 frontend (2 NEW + 6 EDIT) + progress.md
   - Message: `feat(rate-limits, sprint-57-58): runtime enforcement middleware + Cat 2 tool layer + GET usage + frontend Live usage Card`
 
 ---

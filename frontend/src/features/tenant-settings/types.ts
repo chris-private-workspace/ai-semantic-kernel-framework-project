@@ -21,6 +21,7 @@
  * Last Modified: 2026-05-26
  *
  * Modification History (newest-first):
+ *   - 2026-05-28: Sprint 57.58 Track D — +RateLimitsUsage{Item,Response} live usage read schemas
  *   - 2026-05-27: Sprint 57.57 Track B — +RateLimitsUpsert{Request,Response} write schemas
  *   - 2026-05-27: Sprint 57.56 Track B — +QuotaOverridesUpsert{Request,Response} types
  *   - 2026-05-27: Sprint 57.55 Track B — +FeatureFlagOverridesUpsert{Request,Response} write schemas
@@ -209,4 +210,26 @@ export interface RateLimitsUpsertResponse {
   total: number;
   limit: number;
   offset: number;
+}
+
+/* === Sprint 57.58 Track D — RateLimits live usage read schemas ===
+ *
+ * Mirrors backend Pydantic RateLimitsUsageItem / RateLimitsUsageResponse at
+ * backend/src/api/v1/admin/tenants.py (GET /{tenant_id}/rate-limits/usage).
+ * Distinct from RateLimitItem ({label, value} display string): the usage view
+ * is the LIVE Redis sliding-window counter parsed into numeric fields.
+ *   - window:   window length in SECONDS (int)
+ *   - reset_at: UNIX epoch SECONDS when the oldest entry ages out (0 = empty)
+ */
+
+export interface RateLimitsUsageItem {
+  resource: string;
+  window: number; // window length in seconds
+  limit: number;
+  current: number; // entries currently inside the window
+  reset_at: number; // UNIX epoch seconds when oldest entry ages out (0 = empty)
+}
+
+export interface RateLimitsUsageResponse {
+  items: RateLimitsUsageItem[];
 }

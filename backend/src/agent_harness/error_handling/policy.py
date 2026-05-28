@@ -50,6 +50,7 @@ from typing import Type
 from agent_harness._contracts.errors import (
     AuthenticationError,
     MissingDataError,
+    RateLimitExceededError,
     ToolExecutionError,
 )
 from agent_harness.error_handling._abc import ErrorClass, ErrorPolicy
@@ -110,6 +111,11 @@ class DefaultErrorPolicy(ErrorPolicy):
         # HITL_RECOVERABLE — agent_harness contracts
         self.register(AuthenticationError, ErrorClass.HITL_RECOVERABLE)
         self.register(MissingDataError, ErrorClass.HITL_RECOVERABLE)
+
+        # FATAL — explicit so rate-limit exhaustion terminates the loop instead
+        # of being retried (Sprint 57.58 Track B). FATAL is already the registry
+        # fallback, but registering keeps intent clear + survives default changes.
+        self.register(RateLimitExceededError, ErrorClass.FATAL)
 
         # FATAL — fallback when no registered match found
 
