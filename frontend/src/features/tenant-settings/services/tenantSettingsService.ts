@@ -21,6 +21,7 @@
  * Last Modified: 2026-05-26
  *
  * Modification History (newest-first):
+ *   - 2026-05-28: Sprint 57.58 Track D — +fetchRateLimitsUsage GET live usage service func
  *   - 2026-05-27: Sprint 57.57 Track B — +saveRateLimits PUT service func
  *   - 2026-05-27: Sprint 57.56 Track B — +saveQuotaOverrides PUT service func
  *   - 2026-05-27: Sprint 57.55 Track B — +saveFeatureFlagOverrides PUT service func
@@ -50,6 +51,7 @@ import type {
   RateLimitListResponse,
   RateLimitsUpsertRequest,
   RateLimitsUpsertResponse,
+  RateLimitsUsageResponse,
   TenantIdentity,
   TenantMemberListResponse,
   TenantSettingsResponse,
@@ -244,6 +246,25 @@ export async function saveRateLimits(
     },
   );
   return _handleResponse<RateLimitsUpsertResponse>(response);
+}
+
+/* === Sprint 57.58 Track D — RateLimits live usage (GET) ===
+ *
+ * Read-only poll of the live Redis sliding-window counter for each configured
+ * rate-limit resource. Polled every 5s by useRateLimitsUsage; MUST NOT consume
+ * capacity (backend uses RateLimitCounter.peek). No pagination envelope —
+ * response is {items: RateLimitsUsageItem[]} verbatim.
+ */
+
+export async function fetchRateLimitsUsage(
+  tenantId: string,
+  signal?: AbortSignal,
+): Promise<RateLimitsUsageResponse> {
+  const response = await fetchWithAuth(
+    `${API_BASE}/tenants/${tenantId}/rate-limits/usage`,
+    { method: "GET", signal },
+  );
+  return _handleResponse<RateLimitsUsageResponse>(response);
 }
 
 /* === Sprint 57.50 — Identity single-record endpoint === */

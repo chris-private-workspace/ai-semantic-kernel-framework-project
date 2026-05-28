@@ -60,7 +60,8 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
+from uuid import UUID
 
 from jsonschema import Draft202012Validator  # type: ignore[import-untyped, unused-ignore]
 from jsonschema.exceptions import ValidationError  # type: ignore[import-untyped, unused-ignore]
@@ -74,6 +75,7 @@ from agent_harness._contracts import (
     ToolSpec,
     TraceContext,
 )
+from agent_harness._contracts.errors import RateLimitExceededError
 from agent_harness.observability import (
     MetricRegistry,
     NoOpTracer,
@@ -102,6 +104,29 @@ ToolHandler = (
 )
 
 
+@runtime_checkable
+class RateLimitGate(Protocol):
+    """Pre-call tool-budget gate (Sprint 57.58 Track B).
+
+    Kept as a local Protocol so the Cat 2 tool layer stays LLM-provider-neutral
+    AND free of any platform_layer / Redis import (per category-boundaries). The
+    wiring layer (which has tenant context + the RedisRateLimitCounter) provides
+    a concrete adapter; the executor only knows this contract.
+
+    check() returns None to allow the call, or a RateLimitExceededError when the
+    tenant's `tool_calls.<name>` / `tool_calls` budget is exhausted. Returning
+    (rather than raising) lets the executor convert it into a terminal
+    ToolResult deterministically. Implementations MUST be fail-open: any
+    backend error returns None (never blocks tool execution on infra failure).
+    """
+
+    async def check(
+        self,
+        tenant_id: UUID,
+        tool_name: str,
+    ) -> RateLimitExceededError | None: ...
+
+
 class ToolExecutorImpl(ToolExecutor):
     """Production tool executor: permission + schema + concurrency + metrics."""
 
@@ -113,12 +138,17 @@ class ToolExecutorImpl(ToolExecutor):
         permission_checker: PermissionChecker | None = None,
         tracer: Tracer | None = None,
         metric_registry: MetricRegistry | None = None,
+        rate_limit_gate: RateLimitGate | None = None,
     ) -> None:
         self._registry = registry
         self._handlers = dict(handlers)
         self._permission = permission_checker or PermissionChecker()
         self._tracer = tracer or NoOpTracer()
         self._metrics = metric_registry or MetricRegistry()
+        # Sprint 57.58 Track B: optional per-tenant tool-call rate-limit gate.
+        # None (default) = no tool rate limiting (e.g. unit tests, dev without
+        # Redis). The wiring layer injects a concrete gate with tenant context.
+        self._rate_limit_gate = rate_limit_gate
         self._validator_cache: dict[str, Draft202012Validator] = {}
         # P0 #18: cache `inspect.signature` arity per handler so we don't
         # re-introspect on every call. Filled lazily on first dispatch.
@@ -173,6 +203,14 @@ class ToolExecutorImpl(ToolExecutor):
                 t0=None,
             )
 
+        # Sprint 57.58 Track B: per-tenant tool-call rate-limit gate. Runs
+        # OUTSIDE the dispatch try/except below so the terminal RateLimitExceeded
+        # result is NOT re-classified as LLM_RECOVERABLE. error_class is set so
+        # Cat 8 classify_by_string() resolves FATAL → no LLM retry storm.
+        rate_limited = await self._check_rate_limit_pre_call(call, ctx)
+        if rate_limited is not None:
+            return rate_limited
+
         async with self._tracer.start_span(
             name=f"tool.{call.name}",
             category=SpanCategory.TOOLS,
@@ -221,6 +259,42 @@ class ToolExecutorImpl(ToolExecutor):
                     error=str(exc),
                     error_class=f"{type(exc).__module__}.{type(exc).__name__}",
                 )
+
+    async def _check_rate_limit_pre_call(
+        self,
+        call: ToolCall,
+        ctx: ExecutionContext,
+    ) -> ToolResult | None:
+        """Gate the call against the tenant's tool-call budget (Track B).
+
+        Returns None to proceed; a terminal ToolResult when the budget is
+        exhausted. No gate configured OR no tenant scope → proceed (the gate
+        itself checks both `tool_calls.<name>` and the `tool_calls` aggregate
+        and is fail-open on backend errors).
+        """
+        gate = self._rate_limit_gate
+        if gate is None or ctx.tenant_id is None:
+            return None
+        exceeded = await gate.check(ctx.tenant_id, call.name)
+        if exceeded is None:
+            return None
+        # Terminal: set error_class so DefaultErrorPolicy.classify_by_string()
+        # resolves FATAL (RateLimitExceededError is registered FATAL), so the
+        # Loop ends gracefully instead of retrying the same throttled call.
+        self._safe_emit(
+            "tool_execution_duration_seconds",
+            0.0,
+            {"tool_name": call.name, "status": "rate_limited"},
+            None,
+        )
+        return ToolResult(
+            tool_call_id=call.id,
+            tool_name=call.name,
+            success=False,
+            content="",
+            error=str(exceeded),
+            error_class=(f"{type(exceeded).__module__}.{type(exceeded).__name__}"),
+        )
 
     async def execute_batch(
         self,

@@ -7,6 +7,7 @@
  * Created: 2026-05-07 (Sprint 57.3 Day 3)
  *
  * Modification History (newest-first):
+ *   - 2026-05-28: Sprint 57.58 — +2 fetchRateLimitsUsage GET tests
  *   - 2026-05-27: Sprint 57.57 — +2 saveRateLimits PUT tests
  *   - 2026-05-27: Sprint 57.56 — +2 saveQuotaOverrides PUT tests
  */
@@ -18,6 +19,7 @@ import {
   fetchHITLPolicies,
   fetchQuotas,
   fetchRateLimits,
+  fetchRateLimitsUsage,
   fetchTenantIdentity,
   fetchTenantMembers,
   fetchTenantSettings,
@@ -370,6 +372,32 @@ describe("tenantSettingsService", () => {
       await expect(
         saveRateLimits("tenant-x", { items: [{ label: "", value: "100/min" }] }),
       ).rejects.toThrow("label required");
+    });
+  });
+
+  /* === Sprint 57.58 Track D — fetchRateLimitsUsage GET === */
+
+  describe("fetchRateLimitsUsage (Sprint 57.58)", () => {
+    it("builds correct URL for /rate-limits/usage (no query-string) + returns parsed items", async () => {
+      const payload = {
+        items: [
+          { resource: "api_requests", window: 60, limit: 100, current: 30, reset_at: 1_900_000_060 },
+        ],
+      };
+      fetchSpy.mockResolvedValueOnce(new Response(JSON.stringify(payload), { status: 200 }));
+      const result = await fetchRateLimitsUsage("tenant-x");
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "/api/v1/admin/tenants/tenant-x/rate-limits/usage",
+        expect.objectContaining({ method: "GET", credentials: "include" }),
+      );
+      expect(result).toEqual(payload);
+    });
+
+    it("throws Error with detail message on 404", async () => {
+      fetchSpy.mockResolvedValueOnce(
+        new Response(JSON.stringify({ detail: "tenant not found" }), { status: 404 }),
+      );
+      await expect(fetchRateLimitsUsage("tenant-x")).rejects.toThrow("tenant not found");
     });
   });
 

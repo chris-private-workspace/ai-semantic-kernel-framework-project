@@ -46,6 +46,7 @@ Created: 2026-05-06 (Sprint 56.1 Day 1)
 Last Modified: 2026-05-10
 
 Modification History:
+    - 2026-05-28: Sprint 57.58 Track C — GET /rate-limits/usage live counter peek endpoint
     - 2026-05-27: Sprint 57.57 Track A — PUT /rate-limits + Pydantic upsert schemas + append_audit
     - 2026-05-27: Sprint 57.56 Track A — PUT /quotas overrides + tenant.meta_data JSONB write
     - 2026-05-26: Sprint 57.55 — PUT /feature-flags overrides + helper extract (D-DAY0-T pivot)
@@ -103,6 +104,10 @@ from platform_layer.tenant.onboarding import (
 )
 from platform_layer.tenant.plans import PlanLoader, get_plan_loader
 from platform_layer.tenant.provisioning import ProvisioningError, ProvisioningWorkflow
+from platform_layer.tenant.rate_limit_counter import (
+    maybe_get_rate_limit_counter,
+    parse_rate_limit_item,
+)
 
 router = APIRouter(prefix="/admin/tenants", tags=["admin", "tenants"])
 
@@ -1485,6 +1490,88 @@ async def upsert_tenant_rate_limits(
         limit=50,
         offset=0,
     )
+
+
+# =====================================================================
+# Sprint 57.58 Track C — RateLimits live usage GET (RateLimits RuntimeEnforcement)
+# =====================================================================
+# Exposes the LIVE sliding-window counter (Redis) for each configured rate-limit
+# resource so admins can watch consumption before tenants hit 429 in production.
+# Uses RateLimitCounter.peek (read-only — polling MUST NOT consume capacity).
+# Mirrors the GET /rate-limits projection pattern: _load_tenant_or_404 + parse
+# the {label, value} list. Resources whose value is not a rate (e.g. "50
+# concurrent") are skipped (no time window to count against). If the counter is
+# not wired (dev / no Redis), current defaults to 0 (fail-open display).
+
+
+class RateLimitsUsageItem(BaseModel):
+    """Live usage snapshot for one rate-limit resource."""
+
+    resource: str
+    window: int  # window length in seconds
+    limit: int
+    current: int  # entries currently inside the window
+    reset_at: int  # UNIX epoch seconds when the oldest entry ages out (0 = empty)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RateLimitsUsageResponse(BaseModel):
+    """Live usage envelope (one item per enforceable configured resource)."""
+
+    items: list[RateLimitsUsageItem]
+
+
+@router.get(
+    "/{tenant_id}/rate-limits/usage",
+    response_model=RateLimitsUsageResponse,
+    dependencies=[Depends(require_admin_platform_role)],
+)
+async def get_rate_limits_usage(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db_session),
+) -> RateLimitsUsageResponse:
+    """Return the live Redis counter state for each configured rate-limit resource.
+
+    - 401/403 via require_admin_platform_role
+    - 404 via _load_tenant_or_404
+    - 200 with {items: [{resource, window, limit, current, reset_at}]}
+
+    Source: tenant.meta_data["rate_limits"] ({label, value} list); each rate
+    item is parsed to (resource, limit, window_seconds) and the live count is
+    read via RateLimitCounter.peek (read-only). Non-rate items (e.g. concurrency
+    caps) are skipped. The counter is read lenient — if enforcement is not wired
+    the response still returns each resource with current=0.
+    """
+    tenant = await _load_tenant_or_404(db, tenant_id)
+
+    raw = tenant.meta_data.get("rate_limits") if tenant.meta_data else None
+    if not isinstance(raw, list) or not raw:
+        raw = DEFAULT_RATE_LIMITS
+
+    counter = maybe_get_rate_limit_counter()
+    items: list[RateLimitsUsageItem] = []
+    for entry in raw:
+        parsed = parse_rate_limit_item(entry)
+        if parsed is None:
+            continue  # non-rate value (e.g. "50 concurrent") → no window to track
+        current = 0
+        reset_at = 0
+        if counter is not None:
+            state = await counter.peek(tenant_id, parsed.resource, parsed.window_seconds)
+            current = state.count
+            reset_at = state.reset_at
+        items.append(
+            RateLimitsUsageItem(
+                resource=parsed.resource,
+                window=parsed.window_seconds,
+                limit=parsed.limit,
+                current=current,
+                reset_at=reset_at,
+            )
+        )
+
+    return RateLimitsUsageResponse(items=items)
 
 
 # =====================================================================

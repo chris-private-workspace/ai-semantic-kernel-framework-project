@@ -1,11 +1,12 @@
 /**
  * File: frontend/src/features/tenant-settings/components/tabs/QuotasTab.tsx
- * Purpose: Quotas tab — Usage quotas (edit mode) + Rate limits (edit mode Sprint 57.57).
+ * Purpose: Quotas tab — Usage quotas + Rate limits (edit) + Rate limits Live usage (Sprint 57.58).
  * Category: Frontend / tenant-settings / components / tabs
- * Scope: Phase 57 / Sprint 57.57 Track B (Rate limits edit mode + useRateLimitsSave wiring)
+ * Scope: Phase 57 / Sprint 57.58 Track D (RateLimits Live usage Card + 5s polling)
  *
  * Description:
- *   Read side: useQuotas(tenantId) + useRateLimits(tenantId) (Sprint 57.49).
+ *   Read side: useQuotas(tenantId) + useRateLimits(tenantId) (Sprint 57.49) +
+ *   useRateLimitsUsage(tenantId) (Sprint 57.58, 5s polling).
  *
  *   Write side — Usage quotas (Sprint 57.56): Edit button toggles edit mode;
  *   per-row numeric input + "Clear override" mutate draft Record<string,number>.
@@ -17,23 +18,31 @@
  *   (composite-clear → backend falls back to DEFAULT_RATE_LIMITS). Save
  *   invokes useRateLimitsSave → PUT /admin/tenants/{id}/rate-limits.
  *
- *   SCOPE GUARD: Sprint 57.56 Usage quotas Card edit mode preserved bit-for-bit
- *   intact; Sprint 57.57 only ADDS Rate limits Card edit mode (no Usage Card
- *   modifications). Verified via scope-guard assertion test.
+ *   Live usage (Sprint 57.58): NEW read-only Card BELOW Rate limits Card.
+ *   useRateLimitsUsage polls GET /rate-limits/usage every 5s; per-resource
+ *   progress bar (current/limit, color-coded green<70 / yellow70-90 / red>90)
+ *   + human-readable reset countdown. Empty state when no rate limits configured.
+ *
+ *   SCOPE GUARD: Sprint 57.56 Usage quotas Card + Sprint 57.57 Rate limits Card
+ *   edit mode preserved bit-for-bit intact; Sprint 57.58 only ADDS a third Live
+ *   usage Card (no modifications to the two existing Cards). Verified via
+ *   scope-guard assertion test.
  *
  * Created: 2026-05-26 (Sprint 57.44 Day 1) — original fixture port
- * Last Modified: 2026-05-27
+ * Last Modified: 2026-05-28
  *
  * Modification History (newest-first):
+ *   - 2026-05-28: Sprint 57.58 Track D — +Rate limits Live usage Card (5s poll; existing 2 Cards unchanged)
  *   - 2026-05-27: Sprint 57.57 Track B — +Rate limits Card edit mode (Usage Card unchanged)
  *   - 2026-05-27: Sprint 57.56 Track B — +Usage quotas Card edit mode (Rate limits Card unchanged)
  *   - 2026-05-26: Sprint 57.49 — fixture → useQuotas + useRateLimits real backend (Sprint 57.48 Track C+D)
  *   - 2026-05-26: Initial creation (Sprint 57.44 Day 1)
  *
  * Related:
- *   - backend/src/api/v1/admin/tenants.py (RateLimitsUpsertRequest / upsert_tenant_rate_limits)
+ *   - backend/src/api/v1/admin/tenants.py (RateLimitsUpsertRequest / upsert_tenant_rate_limits / get_rate_limits_usage)
  *   - ../../hooks/useQuotas.ts + useQuotasSave.ts (Usage quotas read/write)
  *   - ../../hooks/useRateLimits.ts + useRateLimitsSave.ts (Rate limits read/write)
+ *   - ../../hooks/useRateLimitsUsage.ts (Rate limits live usage poll)
  */
 
 import { useEffect, useState } from "react";
@@ -44,10 +53,48 @@ import { useQuotas } from "../../hooks/useQuotas";
 import { useQuotasSave } from "../../hooks/useQuotasSave";
 import { useRateLimits } from "../../hooks/useRateLimits";
 import { useRateLimitsSave } from "../../hooks/useRateLimitsSave";
-import type { QuotaItem, RateLimitItem } from "../../types";
+import { useRateLimitsUsage } from "../../hooks/useRateLimitsUsage";
+import type { QuotaItem, RateLimitItem, RateLimitsUsageItem } from "../../types";
 
 export interface QuotasTabProps {
   tenantId: string;
+}
+
+/**
+ * Pick a semantic token for the usage progress bar fill.
+ *
+ * Thresholds (Sprint 57.58 plan §4.4): green < 70%, yellow 70-90%, red > 90%.
+ * Returns an EXISTING styles-mockup.css token var (no new oklch literal — the
+ * oklch values live in styles-mockup.css which this sprint does not touch).
+ */
+function usageColorToken(pct: number): string {
+  if (pct > 90) return "var(--danger)";
+  if (pct >= 70) return "var(--warning)";
+  return "var(--success)";
+}
+
+/** Severity word for aria/testid — mirrors usageColorToken thresholds. */
+function usageSeverity(pct: number): "ok" | "warn" | "crit" {
+  if (pct > 90) return "crit";
+  if (pct >= 70) return "warn";
+  return "ok";
+}
+
+/**
+ * Human-readable countdown to `reset_at` (UNIX epoch seconds).
+ *
+ * 0 (empty counter) → "—". Past / now → "now". Otherwise compact "{m}m {s}s"
+ * (or "{s}s" under a minute). Computed against Date.now() at render time; the
+ * 5s poll re-renders so the value stays roughly current without a local timer.
+ */
+function formatResetCountdown(resetAtEpochSeconds: number, nowMs: number): string {
+  if (resetAtEpochSeconds <= 0) return "—";
+  const remainingSeconds = Math.round(resetAtEpochSeconds - nowMs / 1000);
+  if (remainingSeconds <= 0) return "now";
+  if (remainingSeconds < 60) return `${remainingSeconds}s`;
+  const minutes = Math.floor(remainingSeconds / 60);
+  const seconds = remainingSeconds % 60;
+  return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
 }
 
 function formatLimit(limit: number, unit: string): string {
@@ -78,6 +125,7 @@ function draftFromItems(items: ReadonlyArray<QuotaItem>): Record<string, number>
 export function QuotasTab({ tenantId }: QuotasTabProps): JSX.Element {
   const quotas = useQuotas(tenantId);
   const rateLimits = useRateLimits(tenantId);
+  const rlUsage = useRateLimitsUsage(tenantId);
   const saveMutation = useQuotasSave(tenantId);
   const rlSaveMutation = useRateLimitsSave(tenantId);
 
@@ -117,6 +165,7 @@ export function QuotasTab({ tenantId }: QuotasTabProps): JSX.Element {
 
   const items = quotas.data?.items ?? [];
   const rlItems = rateLimits.data?.items ?? [];
+  const usageItems: RateLimitsUsageItem[] = rlUsage.data?.items ?? [];
 
   const handleEdit = (): void => {
     setDraft(draftFromItems(items));
@@ -408,6 +457,61 @@ export function QuotasTab({ tenantId }: QuotasTabProps): JSX.Element {
                 <span className="mono">{r.value}</span>
               </div>
             ))}
+          </div>
+        )}
+      </Card>
+      <Card title="Live usage">
+        {rlUsage.isLoading ? (
+          <p className="muted" data-testid="ratelimits-usage-loading">
+            Loading live usage…
+          </p>
+        ) : rlUsage.error ? (
+          // eslint-disable-next-line no-restricted-syntax -- inline-style error hint (matches existing Card error pattern)
+          <p style={{ color: "var(--danger)", fontSize: 12 }} data-testid="ratelimits-usage-error">
+            Error loading live usage: {rlUsage.error.message}
+          </p>
+        ) : usageItems.length === 0 ? (
+          <p className="muted" data-testid="ratelimits-usage-empty">
+            No rate limits configured — set them in the Rate limits card above.
+          </p>
+        ) : (
+          // eslint-disable-next-line no-restricted-syntax -- verbatim port: col gap (mirrors Usage quotas list)
+          <div className="col" style={{ gap: 14, marginTop: 8 }} data-testid="ratelimits-usage-list">
+            {usageItems.map((u) => {
+              const pct = u.limit > 0 ? Math.round((u.current / u.limit) * 100) : 0;
+              const clampedPct = Math.min(pct, 100);
+              const severity = usageSeverity(pct);
+              const fill = usageColorToken(pct);
+              return (
+                <div key={u.resource} data-testid={`ratelimits-usage-row-${u.resource}`}>
+                  {/* eslint-disable-next-line no-restricted-syntax -- verbatim port: spread marginBottom (mirrors Usage quotas) */}
+                  <div className="spread" style={{ marginBottom: 4 }}>
+                    {/* eslint-disable-next-line no-restricted-syntax -- verbatim port: fontSize (mirrors Usage quotas) */}
+                    <span style={{ fontSize: 12.5 }}>{u.resource}</span>
+                    {/* eslint-disable-next-line no-restricted-syntax -- verbatim port: mono fontSize (mirrors Usage quotas) */}
+                    <span className="mono tnum" style={{ fontSize: 11.5 }}>
+                      {/* eslint-disable-next-line no-restricted-syntax -- verbatim port: severity-colored count */}
+                      <span style={{ color: fill }} data-testid={`ratelimits-usage-count-${u.resource}`}>
+                        {u.current.toLocaleString()}
+                      </span>
+                      <span className="subtle"> / {u.limit.toLocaleString()}</span>
+                      <span className="subtle"> ({pct}%)</span>
+                    </span>
+                  </div>
+                  <div className="bar-track" data-severity={severity}>
+                    {/* eslint-disable-next-line no-restricted-syntax -- verbatim port: width pct + severity token fill (var ref, no new oklch) */}
+                    <span style={{ width: clampedPct + "%", background: fill }} />
+                  </div>
+                  {/* eslint-disable-next-line no-restricted-syntax -- verbatim port: subtle countdown fontSize */}
+                  <div className="subtle" style={{ fontSize: 11, marginTop: 3 }}>
+                    {u.window}s window · resets in{" "}
+                    <span data-testid={`ratelimits-usage-reset-${u.resource}`}>
+                      {formatResetCountdown(u.reset_at, Date.now())}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </Card>

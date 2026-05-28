@@ -5,6 +5,7 @@
  * Scope: Phase 57 / Sprint 57.49 Day 1 + Sprint 57.56 Track B + Sprint 57.57 Track B
  *
  * Modification History (newest-first):
+ *   - 2026-05-28: Sprint 57.58 Track D — +Live usage Card tests + Rate limits Card scope guard
  *   - 2026-05-27: Sprint 57.57 Track B — +Rate limits edit mode tests + Usage Card scope guard
  *   - 2026-05-27: Sprint 57.56 Track B — +edit-mode tests + banner copy + scope guard assertion
  *   - 2026-05-26: Sprint 57.49 — rewrite to mock useQuotas + useRateLimits hooks
@@ -30,12 +31,17 @@ vi.mock("@/features/tenant-settings/hooks/useQuotasSave", () => ({
 vi.mock("@/features/tenant-settings/hooks/useRateLimitsSave", () => ({
   useRateLimitsSave: vi.fn(),
 }));
+vi.mock("@/features/tenant-settings/hooks/useRateLimitsUsage", () => ({
+  useRateLimitsUsage: vi.fn(),
+  RATE_LIMITS_USAGE_QUERY_KEY_BASE: ["tenant-settings", "rate-limits-usage"],
+}));
 
 import { QuotasTab } from "@/features/tenant-settings/components/tabs/QuotasTab";
 import { useQuotas } from "@/features/tenant-settings/hooks/useQuotas";
 import { useQuotasSave } from "@/features/tenant-settings/hooks/useQuotasSave";
 import { useRateLimits } from "@/features/tenant-settings/hooks/useRateLimits";
 import { useRateLimitsSave } from "@/features/tenant-settings/hooks/useRateLimitsSave";
+import { useRateLimitsUsage } from "@/features/tenant-settings/hooks/useRateLimitsUsage";
 
 function mockSave(
   overrides: Partial<{
@@ -86,6 +92,18 @@ function mockData(quotas: unknown[], rateLimits: unknown[]): void {
   } as unknown as ReturnType<typeof useRateLimits>);
 }
 
+/** Sprint 57.58 — control the Live usage poll hook independently. */
+function mockUsage(
+  usage: unknown[] | undefined,
+  overrides: Partial<{ isLoading: boolean; error: Error | null }> = {},
+): void {
+  vi.mocked(useRateLimitsUsage).mockReturnValue({
+    data: usage === undefined ? undefined : { items: usage },
+    isLoading: overrides.isLoading ?? false,
+    error: overrides.error ?? null,
+  } as unknown as ReturnType<typeof useRateLimitsUsage>);
+}
+
 const SAMPLE_QUOTAS = [
   { resource: "tokens_per_day", limit: 10_000_000, unit: "tokens", period: "day", current_usage: null },
   { resource: "cost_usd_per_day", limit: 100, unit: "usd", period: "day", current_usage: null },
@@ -96,6 +114,7 @@ describe("QuotasTab (Sprint 57.49)", () => {
     mockData([], []);
     mockSave();
     mockRlSave();
+    mockUsage([]);
   });
   afterEach(() => {
     vi.clearAllMocks();
@@ -469,6 +488,126 @@ describe("QuotasTab (Sprint 57.49)", () => {
       // Usage quotas edit-mode controls NOT present (we're editing Rate limits, not Usage)
       expect(screen.queryByTestId("quotas-save-btn")).toBeNull();
       expect(screen.queryByTestId("quotas-cancel-btn")).toBeNull();
+    });
+  });
+
+  /* === Sprint 57.58 Track D — Live usage Card tests === */
+
+  const SAMPLE_USAGE = [
+    // green: 30/100 = 30%
+    { resource: "api_requests", window: 60, limit: 100, current: 30, reset_at: 1_900_000_060 },
+    // yellow: 16/20 = 80%
+    { resource: "agent_runs", window: 60, limit: 20, current: 16, reset_at: 1_900_000_055 },
+    // red: 95/100 = 95%
+    { resource: "tool_calls", window: 60, limit: 100, current: 95, reset_at: 1_900_000_058 },
+  ];
+
+  describe("Live usage Card (Sprint 57.58)", () => {
+    it("renders 'Live usage' Card title + per-resource rows when usage present", () => {
+      mockData([], []);
+      mockUsage(SAMPLE_USAGE);
+      render(<QuotasTab tenantId="t1" />);
+
+      expect(screen.getByText("Live usage")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-usage-list")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-usage-row-api_requests")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-usage-row-agent_runs")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-usage-row-tool_calls")).toBeInTheDocument();
+    });
+
+    it("renders per-resource progress (current / limit / pct) with a bar-track", () => {
+      mockData([], []);
+      mockUsage(SAMPLE_USAGE);
+      const { container } = render(<QuotasTab tenantId="t1" />);
+
+      // Count text reflects current value
+      expect(screen.getByTestId("ratelimits-usage-count-api_requests")).toHaveTextContent("30");
+      // pct text present (30%)
+      expect(screen.getByText(/\(30%\)/)).toBeInTheDocument();
+      // Live usage Card bars use the same .bar-track primitive (3 usage rows;
+      // SAMPLE_QUOTAS not loaded here so all bar-tracks belong to Live usage)
+      const bars = container.querySelectorAll(".bar-track");
+      expect(bars.length).toBe(3);
+    });
+
+    it("color-codes severity by threshold (green<70 / yellow70-90 / red>90)", () => {
+      mockData([], []);
+      mockUsage(SAMPLE_USAGE);
+      const { container } = render(<QuotasTab tenantId="t1" />);
+
+      const ok = container.querySelector(
+        '[data-testid="ratelimits-usage-row-api_requests"] .bar-track',
+      );
+      const warn = container.querySelector(
+        '[data-testid="ratelimits-usage-row-agent_runs"] .bar-track',
+      );
+      const crit = container.querySelector(
+        '[data-testid="ratelimits-usage-row-tool_calls"] .bar-track',
+      );
+      // 30% → ok (green), 80% → warn (yellow), 95% → crit (red)
+      expect(ok).toHaveAttribute("data-severity", "ok");
+      expect(warn).toHaveAttribute("data-severity", "warn");
+      expect(crit).toHaveAttribute("data-severity", "crit");
+    });
+
+    it("renders a human-readable reset countdown per resource", () => {
+      // Freeze Date.now so reset_at - now is deterministic.
+      // reset_at 1_900_000_060 → 60s after the frozen now (1_900_000_000_000 ms).
+      const nowSpy = vi.spyOn(Date, "now").mockReturnValue(1_900_000_000_000);
+      mockData([], []);
+      mockUsage(SAMPLE_USAGE);
+      render(<QuotasTab tenantId="t1" />);
+
+      // api_requests reset_at is 60s out → "1m"
+      expect(screen.getByTestId("ratelimits-usage-reset-api_requests")).toHaveTextContent("1m");
+      // agent_runs reset_at is 55s out → "55s"
+      expect(screen.getByTestId("ratelimits-usage-reset-agent_runs")).toHaveTextContent("55s");
+      nowSpy.mockRestore();
+    });
+
+    it("renders empty state when no rate limits configured", () => {
+      mockData([], []);
+      mockUsage([]);
+      render(<QuotasTab tenantId="t1" />);
+
+      expect(screen.getByTestId("ratelimits-usage-empty")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-usage-empty")).toHaveTextContent(
+        /No rate limits configured/,
+      );
+      expect(screen.queryByTestId("ratelimits-usage-list")).toBeNull();
+    });
+
+    it("renders loading + error states from the poll hook", () => {
+      mockData([], []);
+      mockUsage(undefined, { isLoading: true });
+      const { rerender } = render(<QuotasTab tenantId="t1" />);
+      expect(screen.getByTestId("ratelimits-usage-loading")).toBeInTheDocument();
+
+      mockUsage(undefined, { error: new Error("HTTP 404: tenant not found") });
+      rerender(<QuotasTab tenantId="t1" />);
+      const err = screen.getByTestId("ratelimits-usage-error");
+      expect(err).toBeInTheDocument();
+      expect(err).toHaveTextContent(/tenant not found/);
+    });
+
+    it("scope guard: Rate limits Card (Sprint 57.57) UNCHANGED when Live usage present", () => {
+      const SAMPLE_RATE_LIMITS = [{ label: "API requests", value: "100/min" }];
+      mockData([], SAMPLE_RATE_LIMITS);
+      mockUsage(SAMPLE_USAGE);
+      render(<QuotasTab tenantId="t1" />);
+
+      // Rate limits Card retains its read-only items + Edit button untouched
+      expect(screen.getByText("Rate limits")).toBeInTheDocument();
+      expect(screen.getByText("API requests")).toBeInTheDocument();
+      expect(screen.getByText("100/min")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-edit-btn")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-edit-btn")).not.toBeDisabled();
+      // Entering Rate limits edit mode still works (independent of Live usage Card)
+      fireEvent.click(screen.getByTestId("ratelimits-edit-btn"));
+      expect(screen.getByTestId("ratelimits-save-btn")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-cancel-btn")).toBeInTheDocument();
+      // Live usage Card still rendered alongside
+      expect(screen.getByText("Live usage")).toBeInTheDocument();
     });
   });
 });
