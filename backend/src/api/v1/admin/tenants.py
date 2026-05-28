@@ -46,6 +46,7 @@ Created: 2026-05-06 (Sprint 56.1 Day 1)
 Last Modified: 2026-05-10
 
 Modification History:
+    - 2026-05-28: Sprint 57.59 US-3 — GET /rate-limits/usage reads config + usage tables
     - 2026-05-28: Sprint 57.58 Track C — GET /rate-limits/usage live counter peek endpoint
     - 2026-05-27: Sprint 57.57 Track A — PUT /rate-limits + Pydantic upsert schemas + append_audit
     - 2026-05-27: Sprint 57.56 Track A — PUT /quotas overrides + tenant.meta_data JSONB write
@@ -75,7 +76,7 @@ Related:
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
@@ -87,6 +88,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from agent_harness._contracts.hitl import HITLPolicy, RiskLevel
 from core.feature_flags import FeatureFlagNotFoundError, get_feature_flags_service
 from infrastructure.db.audit_helper import append_audit
+from infrastructure.db.models.api_keys import RateLimit
 from infrastructure.db.models.feature_flag import FeatureFlag
 from infrastructure.db.models.identity import Tenant, TenantPlan, TenantState, User
 from infrastructure.db.session import get_db_session
@@ -104,9 +106,14 @@ from platform_layer.tenant.onboarding import (
 )
 from platform_layer.tenant.plans import PlanLoader, get_plan_loader
 from platform_layer.tenant.provisioning import ProvisioningError, ProvisioningWorkflow
+from platform_layer.tenant.rate_limit_config_store import (
+    RateLimitConfigStore,
+    project_config_to_item,
+)
 from platform_layer.tenant.rate_limit_counter import (
     maybe_get_rate_limit_counter,
     parse_rate_limit_item,
+    window_type_for_seconds,
 )
 
 router = APIRouter(prefix="/admin/tenants", tags=["admin", "tenants"])
@@ -1364,16 +1371,29 @@ async def list_tenant_rate_limits(
 ) -> RateLimitListResponse:
     """List rate-limit entries for this tenant.
 
-    Source: tenant.meta_data["rate_limits"] (list of {label, value}); falls
-    back to DEFAULT_RATE_LIMITS (3 items mirroring frontend fixture) when
-    no override is configured. Phase 58+ may swap meta_data for a dedicated
-    `tenant_rate_limits` table if persistence requirements grow.
+    Source of truth (Sprint 57.59): the `rate_limit_configs` table, projected back
+    to the unchanged {label, value} display shape. Transition fallback: if the
+    table has no config rows for this tenant (pre-migration tenant, or a tenant
+    whose meta_data was never seeded), fall back to tenant.meta_data["rate_limits"]
+    (Sprint 57.48 path), then to DEFAULT_RATE_LIMITS (3 items mirroring the
+    frontend fixture). The meta_data fallback is transitional and removed by
+    AD-RateLimits-MetaData-Cleanup-Phase58 once the table path is validated.
     """
     tenant = await _load_tenant_or_404(db, tenant_id)
 
-    raw = tenant.meta_data.get("rate_limits") if tenant.meta_data else None
-    if not isinstance(raw, list) or not raw:
-        raw = DEFAULT_RATE_LIMITS
+    # 1. Prefer the config table (Sprint 57.59 source of truth).
+    store = RateLimitConfigStore()
+    configs = await store.list_configs(db, tenant_id)
+    if configs:
+        raw: list[dict[str, str]] = [project_config_to_item(c) for c in configs]
+    else:
+        # 2. Transition fallback: meta_data JSONB (Sprint 57.48 path).
+        meta_raw = tenant.meta_data.get("rate_limits") if tenant.meta_data else None
+        if isinstance(meta_raw, list) and meta_raw:
+            raw = [e for e in meta_raw if isinstance(e, dict)]
+        else:
+            # 3. Default fixture.
+            raw = list(DEFAULT_RATE_LIMITS)
 
     items: list[RateLimitItem] = []
     for entry in raw:
@@ -1452,14 +1472,27 @@ async def upsert_tenant_rate_limits(
       GET shape for cache hydration consistency.
     - Audit chain entry written via direct append_audit (Sprint 57.3 PATCH
       tenant + Sprint 57.56 Quotas precedent; no canonical service path exists
-      for RateLimits — direct ORM JSONB write is the architectural pattern).
+      for RateLimits — direct ORM write is the architectural pattern).
+
+    Sprint 57.59 re-point: the COMPOSITE-replace now writes the
+    `rate_limit_configs` table (source of truth) via RateLimitConfigStore. A
+    transitional dual-write keeps tenant.meta_data["rate_limits"] in sync so the
+    GET meta_data fallback + any not-yet-migrated readers stay consistent; the
+    dual-write is removed by AD-RateLimits-MetaData-Cleanup-Phase58.
     """
     tenant = await _load_tenant_or_404(db, tenant_id)
 
-    # Compose new meta_data dict (identity swap for SQLAlchemy JSONB change
-    # detection — Sprint 57.56 Quotas precedent verbatim).
-    new_meta = dict(tenant.meta_data or {})
     new_items = [{"label": item.label, "value": item.value} for item in payload.items]
+
+    # 1. Source of truth: replace config rows in rate_limit_configs (composite-
+    #    replace; empty list clears all → GET falls back to DEFAULT_RATE_LIMITS).
+    store = RateLimitConfigStore()
+    configs = await store.replace_configs(db, tenant_id, new_items)
+
+    # 2. Transitional dual-write to meta_data JSONB (Sprint 57.48 fallback path).
+    #    Identity swap for SQLAlchemy JSONB change detection (Sprint 57.56 Quotas
+    #    precedent). Removed by AD-RateLimits-MetaData-Cleanup-Phase58.
+    new_meta = dict(tenant.meta_data or {})
     new_meta["rate_limits"] = new_items
     tenant.meta_data = new_meta
 
@@ -1483,7 +1516,15 @@ async def upsert_tenant_rate_limits(
     await db.commit()
     await db.refresh(tenant)
 
-    saved_items = [RateLimitItem(label=entry["label"], value=entry["value"]) for entry in new_items]
+    # Project the persisted config rows back to the {label, value} shape for cache-
+    # hydration consistency with GET (falls back to the raw payload echo if the
+    # config table came back empty — e.g. all items unparseable).
+    if configs:
+        saved_items = [RateLimitItem(**project_config_to_item(c)) for c in configs]
+    else:
+        saved_items = [
+            RateLimitItem(label=entry["label"], value=entry["value"]) for entry in new_items
+        ]
     return RateLimitsUpsertResponse(
         items=saved_items,
         total=len(saved_items),
@@ -1531,25 +1572,41 @@ async def get_rate_limits_usage(
     tenant_id: UUID,
     db: AsyncSession = Depends(get_db_session),
 ) -> RateLimitsUsageResponse:
-    """Return the live Redis counter state for each configured rate-limit resource.
+    """Return the live usage state for each configured rate-limit resource.
 
     - 401/403 via require_admin_platform_role
     - 404 via _load_tenant_or_404
     - 200 with {items: [{resource, window, limit, current, reset_at}]}
 
-    Source: tenant.meta_data["rate_limits"] ({label, value} list); each rate
-    item is parsed to (resource, limit, window_seconds) and the live count is
-    read via RateLimitCounter.peek (read-only). Non-rate items (e.g. concurrency
-    caps) are skipped. The counter is read lenient — if enforcement is not wired
-    the response still returns each resource with current=0.
+    Config source (Sprint 57.59): the `rate_limit_configs` table (projected back
+    to {label, value}); fallback tenant.meta_data["rate_limits"] then
+    DEFAULT_RATE_LIMITS. Each rate item is parsed to (resource, limit,
+    window_seconds).
+
+    Usage source (Sprint 57.59): Redis fast-path via RateLimitCounter.peek
+    (read-only — polling MUST NOT consume capacity), with a `rate_limits` usage
+    TABLE fallback for durability: when Redis is empty (count 0 — e.g. a fresh
+    restart) but the table holds a still-open window (window_end > now), the
+    table's `used` is surfaced instead so live usage survives a Redis restart.
+    Non-rate items (e.g. "50 concurrent") are skipped (no window to track).
     """
     tenant = await _load_tenant_or_404(db, tenant_id)
 
-    raw = tenant.meta_data.get("rate_limits") if tenant.meta_data else None
-    if not isinstance(raw, list) or not raw:
-        raw = DEFAULT_RATE_LIMITS
+    # Config: prefer the table (Sprint 57.59 source of truth), then meta_data,
+    # then the default fixture.
+    store = RateLimitConfigStore()
+    configs = await store.list_configs(db, tenant_id)
+    if configs:
+        raw: list[dict[str, str]] = [project_config_to_item(c) for c in configs]
+    else:
+        meta_raw = tenant.meta_data.get("rate_limits") if tenant.meta_data else None
+        if isinstance(meta_raw, list) and meta_raw:
+            raw = [e for e in meta_raw if isinstance(e, dict)]
+        else:
+            raw = list(DEFAULT_RATE_LIMITS)
 
     counter = maybe_get_rate_limit_counter()
+    now = datetime.now(tz=timezone.utc)
     items: list[RateLimitsUsageItem] = []
     for entry in raw:
         parsed = parse_rate_limit_item(entry)
@@ -1561,6 +1618,25 @@ async def get_rate_limits_usage(
             state = await counter.peek(tenant_id, parsed.resource, parsed.window_seconds)
             current = state.count
             reset_at = state.reset_at
+        # Durable fallback: Redis empty (restart) but table has an open window.
+        if current == 0:
+            window_type = window_type_for_seconds(parsed.window_seconds)
+            usage_row = await db.execute(
+                select(RateLimit.used, RateLimit.window_end)
+                .where(
+                    RateLimit.tenant_id == tenant_id,
+                    RateLimit.resource_type == parsed.resource,
+                    RateLimit.window_type == window_type,
+                    RateLimit.window_end > now,
+                )
+                .order_by(RateLimit.window_end.desc())
+                .limit(1)
+            )
+            row = usage_row.first()
+            if row is not None and int(row[0]) > 0:
+                current = int(row[0])
+                if reset_at == 0:
+                    reset_at = int(row[1].timestamp())
         items.append(
             RateLimitsUsageItem(
                 resource=parsed.resource,

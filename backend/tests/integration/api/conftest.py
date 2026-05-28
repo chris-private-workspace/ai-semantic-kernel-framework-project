@@ -34,6 +34,7 @@ Description:
       handles dependent rows (memory_*, users, conversations, ...).
 
 Modification History (newest-first):
+    - 2026-05-28: Sprint 57.59 — add RATE_LIMIT_CONFIG_% LIKE sweep (US-2 table re-point)
     - 2026-05-28: Sprint 57.58 — add RATE_LIMIT_USAGE_% LIKE sweep (Track C usage GET)
     - 2026-05-27: Sprint 57.57 — add RATE_PUT_% LIKE sweep (Phase 58.x portfolio 4/4 FINAL)
     - 2026-05-27: Sprint 57.56 — add QUOTA_PUT_% LIKE sweep (Sprint 57.55 FF_PUT_% precedent)
@@ -129,6 +130,9 @@ async def _clear_committed_test_tenants() -> None:
             await session.execute(text("DELETE FROM tenants WHERE code LIKE 'RATE_PUT_%'"))
             # Sprint 57.58 Track C — sweep uuid4-suffixed GET /rate-limits/usage test tenants
             await session.execute(text("DELETE FROM tenants WHERE code LIKE 'RATE_LIMIT_USAGE_%'"))
+            # Sprint 57.59 US-2 — sweep uuid4-suffixed PUT /rate-limits table re-point test
+            # tenants (FK CASCADE from tenants drops their rate_limit_configs rows).
+            await session.execute(text("DELETE FROM tenants WHERE code LIKE 'RATE_LIMIT_CONFIG_%'"))
             # Sprint 57.55 — sweep uuid4-suffixed feature_flags rows seeded by PUT tests
             # (feature_flags is a global no-RLS registry; rows persist past test
             # rollback once any PUT test commits to make the row visible to the

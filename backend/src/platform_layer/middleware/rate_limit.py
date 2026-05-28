@@ -35,10 +35,12 @@ Created: 2026-05-28 (Sprint 57.58)
 Last Modified: 2026-05-28
 
 Modification History (newest-first):
+    - 2026-05-28: Sprint 57.59 US-3 — _load_rate_limits reads config table (fallback meta_data)
     - 2026-05-28: Sprint 57.58 Track A — initial creation (RateLimits RuntimeEnforcement)
 
 Related:
     - platform_layer/middleware/tenant_context.py — sets request.state (runs first)
+    - platform_layer/tenant/rate_limit_config_store.py — config source of truth
     - platform_layer/tenant/rate_limit_counter.py — RedisRateLimitCounter + parser
     - platform_layer/tenant/_rate_limit_contracts.py — RateLimitDecision
     - api/main.py — registration order (after TenantContextMiddleware)
@@ -56,6 +58,10 @@ from starlette.responses import JSONResponse
 
 from infrastructure.db.engine import get_session_factory
 from infrastructure.db.models.identity import Tenant
+from platform_layer.tenant.rate_limit_config_store import (
+    RateLimitConfigStore,
+    project_config_to_item,
+)
 from platform_layer.tenant.rate_limit_counter import (
     maybe_get_rate_limit_counter,
     parse_rate_limit_item,
@@ -158,16 +164,28 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
     async def _load_rate_limits(self, tenant_id: UUID) -> list[object]:
-        """Read tenant.meta_data["rate_limits"] (per-request; empty on miss).
+        """Load this tenant's {label, value} rate-limit list (empty on miss).
 
-        Per-request DB read is acceptable for v1 — the query is a single
-        primary-key lookup and the volume is bounded by request rate (which is
-        precisely what we are limiting). A 60s in-process cache is a future
-        optimization (deferred; documented in plan §4.1). `tenants` is a global
-        no-RLS table so no SET LOCAL is required here.
+        Source of truth (Sprint 57.59): the `rate_limit_configs` table, projected
+        back to the {label, value} shape parse_rate_limit_item expects. Transition
+        fallback: if the table has no config rows for this tenant, fall back to
+        tenant.meta_data["rate_limits"] (the Sprint 57.48/57.58 path) — removed by
+        AD-RateLimits-MetaData-Cleanup-Phase58 once the table path is validated.
+
+        Per-request DB read is acceptable for v1 (single tenant-scoped lookup;
+        volume bounded by the request rate we are limiting). `rate_limit_configs`
+        is RLS-enforced, but the config-store query filters by tenant_id (鐵律 2)
+        and `tenants` is a global no-RLS table — no SET LOCAL needed for either
+        read here.
         """
         factory = get_session_factory()
         async with factory() as session:
+            # 1. Prefer the config table (Sprint 57.59 source of truth).
+            store = RateLimitConfigStore()
+            configs = await store.list_configs(session, tenant_id)
+            if configs:
+                return [project_config_to_item(c) for c in configs]
+            # 2. Transition fallback: tenant.meta_data JSONB (Sprint 57.48 path).
             result = await session.execute(select(Tenant).where(Tenant.id == tenant_id))
             tenant = result.scalar_one_or_none()
         if tenant is None or not tenant.meta_data:

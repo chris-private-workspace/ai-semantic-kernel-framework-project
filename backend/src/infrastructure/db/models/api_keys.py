@@ -31,10 +31,21 @@ Description:
         - resource_type / window_type kept as VARCHAR (not enum) for forward
           compatibility; validation lives in service layer.
 
+    rate_limit_configs notes (Sprint 57.59):
+        - Per (tenant, resource_type, window_type) durable quota config — the
+          window-instance-agnostic config that rate_limits (usage) cannot hold
+          because its unique key forces window_start NOT NULL.
+        - Replaces the Sprint 57.48-57.58 tenant.meta_data["rate_limits"] JSONB
+          ({label, value}) as the config source of truth (AP-4 Potemkin close:
+          activates a queryable, RLS-enforced config table).
+        - resource_type / window_type kept as VARCHAR (not enum) — same forward-
+          compat stance as rate_limits; validation lives in the service layer.
+
 Created: 2026-04-29 (Sprint 49.3 Day 2.1)
-Last Modified: 2026-04-29
+Last Modified: 2026-05-28
 
 Modification History:
+    - 2026-05-28: Sprint 57.59 — add RateLimitConfig ORM (config two-table split; AP-4 close)
     - 2026-04-29: Initial creation (Sprint 49.3 Day 2.1)
 
 Related:
@@ -42,6 +53,7 @@ Related:
     - 14-security-deep-dive.md (API auth + rate limit hardening)
     - .claude/rules/multi-tenant-data.md 鐵律 1 (TenantScopedMixin)
     - sprint-49-3-plan.md §Story 49.3-3
+    - sprint-57-59-plan.md §4.1 (RateLimitConfig two-table split)
 """
 
 from __future__ import annotations
@@ -184,4 +196,59 @@ class RateLimit(Base, TenantScopedMixin):
     )
 
 
-__all__ = ["ApiKey", "RateLimit"]
+# === RateLimitConfig: durable per-(tenant,resource,window) quota config ===
+# Why: Sprint 57.48-57.58 stored config in tenant.meta_data["rate_limits"] JSONB
+# (opaque {label, value} display strings). This normalises it to a queryable,
+# RLS-enforced table — separate from the rate_limits usage table, whose unique
+# key forces window_start NOT NULL (every row is a live window instance) so it
+# cannot hold window-agnostic config. Closes the AP-4 Potemkin on the dormant
+# rate_limits subsystem by giving config a real, queried home.
+# Alternative considered (C2): a nullable window_start single table — rejected
+# for semantic overload (a row is config-or-usage by null-ness); the C1
+# two-table split is the cleaner normalisation.
+# Reference: sprint-57-59-plan.md §4.1 / 09-db-schema-design.md §rate limits
+class RateLimitConfig(Base, TenantScopedMixin):
+    """Per-tenant resource quota config (window-agnostic). Sprint 57.59."""
+
+    __tablename__ = "rate_limit_configs"
+
+    id: Mapped[PyUUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+
+    resource_type: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        doc="api_requests / tool_calls / sse_connections (validation in service layer).",
+    )
+    window_type: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        doc="sec / min / hour / day (the display window unit; validation in service layer).",
+    )
+
+    quota: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "resource_type",
+            "window_type",
+            name="uq_rate_limit_configs_tenant_resource_window",
+        ),
+    )
+
+
+__all__ = ["ApiKey", "RateLimit", "RateLimitConfig"]

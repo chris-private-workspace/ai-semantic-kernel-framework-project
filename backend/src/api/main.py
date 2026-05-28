@@ -95,6 +95,7 @@ def _wire_rate_limit_counter() -> None:
         from redis.asyncio import Redis
 
         from core.config import get_settings
+        from infrastructure.db.engine import get_session_factory
         from platform_layer.tenant.rate_limit_counter import (
             RedisRateLimitCounter,
             set_rate_limit_counter,
@@ -102,7 +103,11 @@ def _wire_rate_limit_counter() -> None:
 
         settings = get_settings()
         client = Redis.from_url(settings.redis_url)
-        set_rate_limit_counter(RedisRateLimitCounter(client))
+        # Sprint 57.59: inject the DB session factory so the counter write-throughs
+        # each window's live count to the durable rate_limits usage table (AP-4
+        # close) + recovers from it on a Redis restart. Persistence is best-effort
+        # + fail-open inside the counter; the Redis hot-path is unaffected.
+        set_rate_limit_counter(RedisRateLimitCounter(client, session_factory=get_session_factory))
         logger.info("api.main: rate-limit counter wired")
     except Exception:  # noqa: BLE001 — fail-open: never block startup on rate limits
         logger.warning(

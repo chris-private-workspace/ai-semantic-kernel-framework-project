@@ -23,7 +23,8 @@ inherit `TenantScopedMixin` from `infrastructure.db.base`.
 from __future__ import annotations
 
 # Day 2.1 (Sprint 49.3) — API auth + quotas
-from infrastructure.db.models.api_keys import ApiKey, RateLimit
+# Sprint 57.59 — RateLimitConfig (config two-table split; AP-4 close)
+from infrastructure.db.models.api_keys import ApiKey, RateLimit, RateLimitConfig
 
 # Day 1.1 (Sprint 49.3) — Audit
 from infrastructure.db.models.audit import AuditLog
@@ -127,6 +128,8 @@ __all__ = [
     # API auth + quotas (Sprint 49.3)
     "ApiKey",
     "RateLimit",
+    # RateLimits config (Sprint 57.59 — config two-table split; AP-4 close)
+    "RateLimitConfig",
     # Memory layers (Sprint 49.3)
     "MemorySystem",
     "MemoryTenant",

@@ -22,6 +22,7 @@ Description:
 Created: 2026-05-28 (Sprint 57.58 Day 1)
 
 Modification History (newest-first):
+    - 2026-05-28: Sprint 57.59 — restore class-level _load_rate_limits monkeypatch after each test
     - 2026-05-28: Initial creation (Sprint 57.58 Track A — RateLimits RuntimeEnforcement)
 """
 
@@ -57,6 +58,22 @@ def _reset_counter() -> Any:
     reset_rate_limit_counter()
     yield
     reset_rate_limit_counter()
+
+
+@pytest.fixture(autouse=True)
+def _restore_load_rate_limits() -> Any:
+    """Restore RateLimitMiddleware._load_rate_limits after each test.
+
+    _build_app monkeypatches the method at CLASS level (so the middleware
+    instance the app creates internally picks it up). Without restoring it the
+    fake leaks into other tests in the same process that exercise the real DB
+    read path (e.g. Sprint 57.59 test_rate_limit_usage_persistence). Save +
+    restore the original here (Risk Class C — module/class-level mutation needs
+    reset per testing.md).
+    """
+    original = RateLimitMiddleware._load_rate_limits
+    yield
+    RateLimitMiddleware._load_rate_limits = original  # type: ignore[method-assign]
 
 
 def _build_app(

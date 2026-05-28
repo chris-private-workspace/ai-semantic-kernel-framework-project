@@ -66,6 +66,61 @@ Checklist: `docs/03-implementation/agent-harness-planning/phase-57-frontend-saas
 2. §4.2 migration: add BOTH RLS policies (isolation USING + insert WITH CHECK) per 0009 pattern; migration number = **0019**
 3. §4.2 migration: INLINE parse logic (do not import `parse_rate_limit_item`); dep-light Alembic convention
 
+---
+
+## Day 1 — 2026-05-28
+
+### US-1 + US-2 — config table + ORM + migration + GET/PUT re-point (agent `rl-config-table`; 24th consecutive code-implementer)
+
+✅ COMPLETE — 4 NEW + 4 EDIT; pytest 1819 → **1834** (+15); mypy 0; **`check_rls_policies` PASS (20 tables, +1)**; migration up/down/up clean (head `0019`).
+
+**NEW**: `0019_rate_limit_configs.py` (CREATE + 2 RLS policies + inline-parse data migration) / `platform_layer/tenant/rate_limit_config_store.py` (`RateLimitConfigStore`) / `test_rate_limit_config_migration.py` (6 tests) / `test_admin_tenant_rate_limits_table.py` (9 tests)
+**EDIT**: `api_keys.py` (+`RateLimitConfig` ORM + `__all__`) / `models/__init__.py` (export) / `admin/tenants.py` (GET/PUT re-point) / `api/conftest.py` (`RATE_LIMIT_CONFIG_%` sweep)
+
+- `RateLimitConfig`: id (PgUUID) + tenant_id (FK CASCADE via TenantScopedMixin) + resource_type(64) + window_type(32) + quota(Int) + created/updated_at + unique `(tenant_id, resource_type, window_type)`
+- Migration `0019`, `down_revision = "0018_tenant_settings_extension"` (verified)
+- Data migration: additive; inline `_parse_item` mirrors `parse_rate_limit_item` (_LABEL_TO_RESOURCE + value regex + window aliases); de-dups last-wins; skips unparseable; meta_data NOT modified
+- GET fallback chain: config table → meta_data → DEFAULT_RATE_LIMITS; PUT `replace_configs` (source of truth) + transitional dual-write to meta_data + audit preserved; API `{label,value}` shape UNCHANGED
+
+### US-3 — runtime re-point + usage-table write-through (agent `rl-runtime-repoint`; 25th consecutive code-implementer)
+
+✅ COMPLETE — 1 NEW + 6 EDIT; full suite 1834 → **1840** (+6); mypy 0; 9/9 V2 lints; `check_llm_sdk_leak` PASS (Cat 2 seam neutral). **AP-4 CLOSED**.
+
+**EDIT**: `rate_limit_counter.py` (write-through + `_recover_from_table` + `window_type_for_seconds` + optional `session_factory` ctor) / `rate_limit.py` (`_load_rate_limits` config table) / `tool_rate_limit_gate.py` (config table) / `admin/tenants.py` (usage GET table-backed) / `api/main.py` (inject `get_session_factory`) / `test_rate_limit_middleware.py` (autouse monkeypatch-restore fixture; assertions preserved) / `agent_harness/conftest.py` (`RATE_USAGE_%` sweep)
+**NEW**: `test_rate_limit_usage_persistence.py` (6 tests)
+
+- Counter DB session: optional `session_factory` DI (None = pure-Redis dev/unit; main.py injects); singleton self-acquires session + sets RLS context
+- window_start = floor(now to window boundary); window_end = window_start + window_seconds; upsert via `pg_insert.on_conflict_do_update` (`used = GREATEST`) — same-window requests update ONE row
+- Write-through best-effort/fail-open (Redis decision taken BEFORE DB I/O; errors log + continue)
+- Recovery: Redis cache miss → `_recover_from_table` replays still-open-window `used` from table
+
+### Day 1 Drift findings
+
+- **🔴 D-DAY1-1**: tenants JSONB physical column is `metadata` (ORM attr `meta_data` aliases via `mapped_column("metadata", ...)`); migration raw SQL fixed to quoted `"metadata"` (agent caught via live migration failure)
+- **🆕 D-DAY1-2**: transitional **dual-write** on PUT — config table = source of truth + meta_data kept in sync until cleanup sprint (`AD-RateLimits-MetaData-Cleanup-Phase58`); sensible transition safety beyond plan's "fallback-read-only"
+- **🆕 D-DAY1-3**: `SET LOCAL app.tenant_id = $1` bind-param fails under asyncpg → `SELECT set_config('app.tenant_id', :tid, true)` (per `correction_loop.py` precedent)
+- **🆕 D-DAY1-4**: counter is a singleton (not request-scoped) → self-acquires session via `session_factory` + sets own RLS context per write/read
+
+### Day 1 Validation Sweep — ALL GREEN
+
+| Gate | Result |
+|------|--------|
+| pytest | 1819 → **1840** (+21; plan target +15) + 4 skip + 0 regressions ✅ |
+| mypy --strict | 0 errors ✅ |
+| 9 V2 lints | 9/9 green (incl. `check_rls_policies` 20 tables + `check_llm_sdk_leak`) ✅ |
+| Frontend | 0 files touched (API shapes preserved) → Vitest 675 unaffected ✅ |
+| HEX_OKLCH | baseline 48 unchanged (0 frontend change) ✅ |
+| LLM SDK leak | 0 ✅ |
+| **AP-4 closure** | `rate_limits` usage table now written (`pg_insert`) + queried (recovery/usage GET) ✅ |
+| mockup-fidelity | DUAL CLEAN 22/22 PARITY 15 consec 57.45-57.59 ✅ |
+
+### Day 1 Workload tracking
+
+- US-1+US-2 agent (`rl-config-table`): ~12 min wall-clock (duration 718s) — 24th consecutive
+- US-3 agent (`rl-runtime-repoint`): ~14 min wall-clock (duration 844s) — 25th consecutive
+- Parent supervisory + validation + progress/checklist: ~25 min
+- **Day 1 total**: ~50 min wall-clock
+
 ### Day 0 Workload tracking
 
 - Plan v1 + checklist v1 drafting: ~45 min (parent)

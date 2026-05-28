@@ -43,6 +43,7 @@ Created: 2026-05-26 (Sprint 57.53)
 Last Modified: 2026-05-26
 
 Modification History:
+    - 2026-05-28: Sprint 57.59 US-3 — add RATE_USAGE_% LIKE sweep (usage persistence tests)
     - 2026-05-26: Sprint 57.53 — initial creation (closes AD-Checkpointer-Tenant-Isolation)
 
 Related:
@@ -102,6 +103,11 @@ async def _clear_committed_state_mgmt_tenants() -> None:
                 text("DELETE FROM tenants WHERE code = ANY(:codes)"),
                 {"codes": list(_COMMITTING_STATE_MGMT_TENANT_CODES)},
             )
+            # Sprint 57.59 US-3 — sweep uuid4-suffixed RateLimits usage-persistence
+            # test tenants (test_rate_limit_usage_persistence.py commits config +
+            # usage rows so the counter's own session can read them). FK CASCADE
+            # from tenants drops their rate_limit_configs + rate_limits rows.
+            await session.execute(text("DELETE FROM tenants WHERE code LIKE 'RATE_USAGE_%'"))
             await session.execute(
                 text("ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_update_delete")
             )
