@@ -371,10 +371,16 @@ class RedisRateLimitCounter(RateLimitCounter):
             # so the normal sliding-window prune ages them out correctly.
             key = self._key(tenant_id, resource)
             start_ms = int(window_start.timestamp() * 1000)
-            mapping: dict[str | bytes, float | int | str] = {
+            # Keys are str, values int (matches the inferred dict[str, int] of the
+            # check_and_increment zadd below). Cross-platform mypy (Risk Class B,
+            # code-quality.md): Linux redis stub's zadd AnyKeyT type-var rejects a
+            # str|bytes union key, Windows stub wants Mapping[str|bytes, ...] and
+            # rejects the narrow dict[str, int] with [arg-type] — dual ignore so both
+            # platforms pass (FIX post-PR-#210).
+            mapping: dict[str, int] = {
                 f"recover:{i}:{uuid.uuid4().hex}": start_ms + i for i in range(used)
             }
-            await self._client.zadd(key, mapping)
+            await self._client.zadd(key, mapping)  # type: ignore[arg-type, unused-ignore]
             await self._client.expire(key, window_seconds + 1)
             return used
         except Exception:  # noqa: BLE001 — fail-open: recovery never blocks

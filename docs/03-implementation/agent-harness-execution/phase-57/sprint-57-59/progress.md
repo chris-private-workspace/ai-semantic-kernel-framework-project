@@ -121,6 +121,17 @@ Checklist: `docs/03-implementation/agent-harness-planning/phase-57-frontend-saas
 - Parent supervisory + validation + progress/checklist: ~25 min
 - **Day 1 total**: ~50 min wall-clock
 
+### Post-PR CI fix (2026-05-29) — cross-platform mypy (Risk Class B)
+
+PR #210 CI check `Lint + Type Check + Test (PostgreSQL 16)` FAILED on **mypy strict** (NOT a test/migration failure):
+- `rate_limit_counter.py:377` (US-3 `_recover_from_table` zadd): `Value of type variable "AnyKeyT" of "zadd" cannot be "str | bytes"` `[type-var]`
+- **Root cause (Risk Class B cross-platform mypy)**: US-3 agent annotated `mapping: dict[str | bytes, float | int | str]` to satisfy the **Windows** redis stub (which wants `Mapping[str | bytes, ...]`); the **Linux/CI** stub uses an `AnyKeyT` type-var that REJECTS the `str | bytes` union. Local mypy (Windows) passed → agent didn't catch it; CI (Linux) caught it.
+- **Two platforms want opposite annotations**: Windows wants `dict[str | bytes, ...]`; Linux wants concrete `dict[str, ...]`.
+- **Fix**: `mapping: dict[str, int]` (semantically correct — keys str, values int) + `await ...zadd(key, mapping)  # type: ignore[arg-type, unused-ignore]` per `code-quality.md §Cross-platform mypy pattern`. Windows: `arg-type` fires → suppressed; Linux: no error → `arg-type` ignore unused → `unused-ignore` suppresses.
+- Verified: local `mypy src` = **0 issues / 316 files**.
+- **Lesson reinforced**: agent local-mypy "0 errors" does NOT guarantee CI mypy green when redis/asyncpg stubs differ cross-platform. Agent prompts for Redis/asyncpg-touching code should flag Risk Class B + suggest the dual-ignore pattern proactively. → candidate `AD-AgentPrompt-CrossPlatform-Mypy-Warning`.
+- Commit: (Day 2.5 CI hotfix)
+
 ### Day 0 Workload tracking
 
 - Plan v1 + checklist v1 drafting: ~45 min (parent)
