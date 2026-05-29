@@ -112,7 +112,7 @@ Plan: [`sprint-57-61-plan.md`](./sprint-57-61-plan.md)
 - [ ] Wait CI (5 required green) → user merge → branch cleanup
 
 ### 2.10 Final closeout
-- [ ] Day 2 commit (all docs)
+- [x] Day 2 commit (all docs) ✅ `e1b9c2ff` (7 in-repo docs; memory user-home outside repo)
 - [ ] Verify working tree clean on main after merge
 - [ ] Mark Sprint 57.61 CLOSED in next-phase-candidates.md
 

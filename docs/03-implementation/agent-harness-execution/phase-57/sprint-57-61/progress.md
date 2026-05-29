@@ -87,7 +87,7 @@
 - `medium-backend` 0.80 12th data point ~0.48 confound-resolved KEEP (last-3 2/3 < 0.7 NOT 3-consec).
 
 ### Day 2 commit
-- (pending) Day 2 closeout docs commit
+- ✅ `e1b9c2ff` (7 in-repo docs: retro + progress + checklist + sprint-workflow.md + CLAUDE.md + next-phase-candidates.md + CHANGE-029). Memory subfile + MEMORY.md are user-home (outside repo, not committed).
 
 ### 2.9 PR + merge — pending user confirmation (outward action gate)
 ### 2.10 Final closeout — pending post-merge
