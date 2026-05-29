@@ -40,6 +40,29 @@
 
 ---
 
-## Day 1 — Implementation (pending)
+## Day 1 — Implementation (2026-05-29 — single code-implementer agent `rl-syntax-validation`, 27th consecutive)
+
+### US-1 — PUT-time syntax validation (422 instead of silent drop)
+- **NEW predicate** `is_recognized_rate_limit_value(value) -> tuple[bool, str|None]` + module-private `_CONCURRENCY_RE` in `rate_limit_config_store.py`; reuses existing `_VALUE_RE` + `_WINDOW_ALIASES` (no 4th rate-regex copy). Accepts enforceable rate `N / <sec|min|hour|day>` + display-only `N concurrent`; rejects garbage/unsupported-window/non-positive/non-numeric/empty with a human reason.
+- **NEW `field_validator("items")`** on `RateLimitsUpsertRequest` (the REQUEST model, NOT shared `RateLimitItem`); label-non-empty + value-shape → `ValueError` → FastAPI 422 per-item reason. `field_validator` already imported (D-DAY0-J); only the predicate import added.
+- **16 integration tests** (`test_admin_tenant_rate_limits_syntax_validation.py`): 8 parametrized malformed → 422 (`foo`/`50 / week`/`0 / min`/`-5 / min`/`abc / min`/``/`100 bananas`/`concurrent`) + empty-label 422 + per-item-reason 422 + no-persist-on-reject + valid-rate 200+persisted + concurrency 200 + **DEFAULT round-trip 200** + GET-unaffected + multi-tenant isolation.
+
+### US-2 — Parser-consistency guard
+- **23 tests** (`test_rate_limit_parser_consistency.py`, unit): RATE_OK → all-three-recognize; RATE_BAD+GARBAGE → all-three-reject; CONCURRENCY → validator-True-but-parsers-None (documented asymmetry); explicit `_WINDOW_TO_SECONDS` (counter) == `_WINDOW_ALIASES` (store) key-set equality assertion (fails loudly on future divergence).
+
+### Day 1 deviations / findings
+- All edge cases behave as planned (`-5 / min` + `abc / min` → shape-reject branch 422; `0 / min` → positive-number reason; `50 / week` → unsupported-window reason). No 422-vs-500 surprise; 0 existing tests needed conversion.
+- **Environmental (resolved by parent)**: the agent's dev env had Docker Postgres down → 16 integration tests couldn't run in-agent (US-2 unit 23 ran green). Parent started `docker-compose.dev.yml` (Postgres Healthy) → full suite ran: all 16 integration + 23 unit pass.
+- Risk Class B (cross-platform mypy) N/A — this sprint touches no Redis/asyncpg stubs.
+
+### Day 1.3 Validation Sweep — ALL GREEN (parent authoritative)
+- pytest 1848 → **1887 passed / 4 skip** (+39: 16 US-1 integration + 23 US-2 unit; 0 regressions)
+- mypy **`src/ --strict` 0 errors / 317 files** (CI parity backend-ci.yml:152; `mypy .` whole-dir pre-existing conftest collision NOT run — Phase 58+ candidate)
+- **9/9 V2 lints** green (`check_rls_policies` 20 tables unchanged — no schema change + `check_llm_sdk_leak`)
+- black/isort/flake8 clean (576 files)
+- 0 frontend touched → Vitest 675 unaffected; HEX_OKLCH baseline 48; DUAL CLEAN 22/22 PARITY 17 consec
+
+### Day 1 commit
+- (pending — parent commits all Day 1 work after this entry)
 
 ## Day 2 — Closeout (pending)

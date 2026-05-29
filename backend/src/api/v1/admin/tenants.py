@@ -46,6 +46,7 @@ Created: 2026-05-06 (Sprint 56.1 Day 1)
 Last Modified: 2026-05-10
 
 Modification History:
+    - 2026-05-29: Sprint 57.61 — RateLimits PUT field_validator (422 on malformed value/label)
     - 2026-05-29: Sprint 57.60 — RateLimits GET/usage/PUT drop meta_data fallback+dual-write
     - 2026-05-28: Sprint 57.59 US-3 — GET /rate-limits/usage reads config + usage tables
     - 2026-05-28: Sprint 57.58 Track C — GET /rate-limits/usage live counter peek endpoint
@@ -109,6 +110,7 @@ from platform_layer.tenant.plans import PlanLoader, get_plan_loader
 from platform_layer.tenant.provisioning import ProvisioningError, ProvisioningWorkflow
 from platform_layer.tenant.rate_limit_config_store import (
     RateLimitConfigStore,
+    is_recognized_rate_limit_value,
     project_config_to_item,
 )
 from platform_layer.tenant.rate_limit_counter import (
@@ -1431,6 +1433,27 @@ class RateLimitsUpsertRequest(BaseModel):
             "DEFAULT_RATE_LIMITS on subsequent GET. Insertion order preserved."
         ),
     )
+
+    # Sprint 57.61: PUT-time syntax validation. Without this, a malformed value
+    # is silently dropped by replace_configs (if parsed is None: continue) → the
+    # admin gets 200 OK but the row vanishes on next GET. Validate the value
+    # shape + non-empty label here so a malformed item returns a 422 with a
+    # per-item reason. Goes on the REQUEST model only (RateLimitItem is shared by
+    # the GET response + DEFAULT projection, which must NOT be validated). Free-
+    # form labels stay unrestricted (no whitelist; Sprint 57.57 D-DAY0-C/D).
+    @field_validator("items")
+    @classmethod
+    def _validate_items(cls, items: list[RateLimitItem]) -> list[RateLimitItem]:
+        errors: list[str] = []
+        for i, item in enumerate(items):
+            if not item.label.strip():
+                errors.append(f"item[{i}]: label is required")
+            ok, reason = is_recognized_rate_limit_value(item.value)
+            if not ok:
+                errors.append(f"item[{i}] ({item.label!r} = {item.value!r}): {reason}")
+        if errors:
+            raise ValueError("; ".join(errors))
+        return items
 
 
 class RateLimitsUpsertResponse(BaseModel):

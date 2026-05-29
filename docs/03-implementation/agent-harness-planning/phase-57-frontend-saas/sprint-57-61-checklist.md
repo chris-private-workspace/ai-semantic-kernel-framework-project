@@ -50,29 +50,29 @@ Plan: [`sprint-57-61-plan.md`](./sprint-57-61-plan.md)
 
 ### 0.9 Branch + Day 0 commit
 - [x] **Create feature branch** `feature/sprint-57-61-rate-limits-syntax-validation` (from main `e71608f0`)
-- [ ] **Day 0 commit** (plan + checklist + progress.md Day 0 entry)
+- [x] **Day 0 commit** (plan + checklist + progress.md Day 0 entry) ✅ `6bf23e63`
 
 ---
 
 ## Day 1 — Implementation (Agent-Delegated: yes — single agent)
 
 ### 1.1 US-1 — PUT-time syntax validation (422 instead of silent drop)
-- [ ] **EDIT** `rate_limit_config_store.py` — NEW `_CONCURRENCY_RE` + `is_recognized_rate_limit_value(value) -> tuple[bool, str|None]` (reuses `_VALUE_RE` + `_WINDOW_ALIASES`); MHist
-- [ ] **EDIT** `api/v1/admin/tenants.py` — NEW `field_validator("items")` on `RateLimitsUpsertRequest` (label non-empty + `is_recognized_rate_limit_value`) → ValueError → 422 per-item reason; import; MHist
-- [ ] **NEW** `test_admin_tenant_rate_limits_syntax_validation.py` (~8-10): garbage/unsupported-window/`0 / min`/empty/non-numeric/empty-label → 422; rate + `N concurrent` + DEFAULT round-trip → 200 + persisted; multi-tenant; GET unaffected
-- [ ] **Verify**: validator on `RateLimitsUpsertRequest` only (GET regression test green); DEFAULT_RATE_LIMITS verbatim round-trip → 200
+- [x] **EDIT** `rate_limit_config_store.py` — NEW `_CONCURRENCY_RE` + `is_recognized_rate_limit_value(value) -> tuple[bool, str|None]` (reuses `_VALUE_RE` + `_WINDOW_ALIASES`); MHist
+- [x] **EDIT** `api/v1/admin/tenants.py` — NEW `field_validator("items")` on `RateLimitsUpsertRequest` (label non-empty + `is_recognized_rate_limit_value`) → ValueError → 422 per-item reason; import; MHist
+- [x] **NEW** `test_admin_tenant_rate_limits_syntax_validation.py` (~8-10): garbage/unsupported-window/`0 / min`/empty/non-numeric/empty-label → 422; rate + `N concurrent` + DEFAULT round-trip → 200 + persisted; multi-tenant; GET unaffected
+- [x] **Verify**: validator on `RateLimitsUpsertRequest` only (GET regression test green); DEFAULT_RATE_LIMITS verbatim round-trip → 200
 
 ### 1.2 US-2 — Parser-consistency guard
-- [ ] **NEW** `test_rate_limit_parser_consistency.py` (~4-6 matrix): RATE_OK → store/counter not-None + validator True; RATE_BAD+GARBAGE → all reject; CONCURRENCY → validator True + store/counter None (documented asymmetry); every window alias covered
-- [ ] **Verify**: test fails loudly if counter/store window-alias keys diverge
+- [x] **NEW** `test_rate_limit_parser_consistency.py` (~4-6 matrix): RATE_OK → store/counter not-None + validator True; RATE_BAD+GARBAGE → all reject; CONCURRENCY → validator True + store/counter None (documented asymmetry); every window alias covered
+- [x] **Verify**: test fails loudly if counter/store window-alias keys diverge
 
 ### 1.3 Day 1 Validation Sweep — ALL GREEN
-- [ ] **pytest full**: 1848 → ~1860+ (NO regressions)
-- [ ] **mypy `src/ --strict`**: 0 errors (CI parity backend-ci.yml:152)
-- [ ] **9/9 V2 lints** (incl. `check_rls_policies` 20 tables unchanged + `check_llm_sdk_leak`)
-- [ ] **Vitest 675 unchanged** (0 frontend files touched)
-- [ ] **HEX_OKLCH baseline 48** + DUAL CLEAN 22/22 PARITY 17 consec
-- [ ] **LLM SDK leak 0** + black/isort/flake8 clean
+- [x] **pytest full**: 1848 → **1887** (+39: 16 US-1 integration + 23 US-2 unit; 0 regressions)
+- [x] **mypy `src/ --strict`**: 0 errors / 317 files (CI parity backend-ci.yml:152)
+- [x] **9/9 V2 lints** (incl. `check_rls_policies` 20 tables unchanged + `check_llm_sdk_leak`)
+- [x] **Vitest 675 unchanged** (0 frontend files touched)
+- [x] **HEX_OKLCH baseline 48** + DUAL CLEAN 22/22 PARITY 17 consec
+- [x] **LLM SDK leak 0** + black/isort/flake8 clean
 
 ### 1.4 Day 1 commit
 - [ ] **Commit all Day 1 work**

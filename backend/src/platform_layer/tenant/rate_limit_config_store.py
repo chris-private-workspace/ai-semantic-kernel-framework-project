@@ -34,6 +34,7 @@ Created: 2026-05-28 (Sprint 57.59 US-2)
 Last Modified: 2026-05-28
 
 Modification History (newest-first):
+    - 2026-05-29: Sprint 57.61 — add is_recognized_rate_limit_value PUT-time validator predicate
     - 2026-05-28: Sprint 57.59 US-2 — initial creation (config store + projection)
 
 Related:
@@ -84,6 +85,44 @@ _WINDOW_ALIASES: dict[str, str] = {
 
 # e.g. "100 / min", "1,000 / minute". "50 concurrent" does NOT match (skipped).
 _VALUE_RE = re.compile(r"^\s*([\d,]+)\s*/\s*([a-zA-Z]+)\s*$")
+
+# Display-only concurrency pattern (e.g. "50 concurrent") — recognized + accepted
+# by the admin validator but NOT enforceable (no time window), so the runtime
+# parsers skip it. Kept here next to parse_config_item so the {label,value} domain
+# logic stays in one module (no 4th regex copy beyond this one new pattern).
+_CONCURRENCY_RE = re.compile(r"^\s*[\d,]+\s+concurrent\s*$", re.IGNORECASE)
+
+
+def is_recognized_rate_limit_value(value: str) -> tuple[bool, str | None]:
+    """Validate an admin-supplied rate-limit display value.
+
+    Accepts: enforceable rate 'N / <sec|min|hour|day>' OR display-only 'N concurrent'.
+    Rejects everything else with a human reason. Broader than parse_config_item
+    (which only recognizes the enforceable rate) because the admin UI legitimately
+    carries the non-enforceable 'N concurrent' default (DEFAULT_RATE_LIMITS SSE row).
+
+    Public so the RateLimitsUpsertRequest validator (tenants.py) + tests reuse it;
+    used at PUT-time so a malformed value returns a clear 422 instead of being
+    silently skipped by replace_configs (which keeps its fail-open skip).
+    """
+    v = (value or "").strip()
+    if not v:
+        return False, "value is empty"
+    m = _VALUE_RE.match(v)
+    if m:
+        raw_quota, raw_window = m.group(1), m.group(2).lower()
+        if raw_window not in _WINDOW_ALIASES:
+            return False, f"unsupported window '{m.group(2)}' (supported: sec, min, hour, day)"
+        try:
+            quota = int(raw_quota.replace(",", ""))
+        except ValueError:
+            return False, "quota is not a number"
+        if quota <= 0:
+            return False, "quota must be a positive number"
+        return True, None
+    if _CONCURRENCY_RE.match(v):
+        return True, None  # display-only; not time-windowed, not enforced
+    return False, "value must be 'N / <sec|min|hour|day>' or 'N concurrent'"
 
 
 def _label_to_resource(label: str) -> str:
