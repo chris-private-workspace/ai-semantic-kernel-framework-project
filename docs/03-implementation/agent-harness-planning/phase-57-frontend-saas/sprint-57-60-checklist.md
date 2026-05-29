@@ -81,37 +81,37 @@ Plan: [`sprint-57-60-plan.md`](./sprint-57-60-plan.md)
 - [x] **LLM SDK leak 0** + black/isort/flake8 clean
 
 ### 1.4 Day 1 commit
-- [ ] **Commit all Day 1 work**
+- [x] **Commit all Day 1 work** ✅ `416c9f84`
 
 ---
 
 ## Day 2 — Closeout (parent assistant)
 
 ### 2.1 Final Validation Sweep
-- [ ] **Re-run Day 1.3 checks** sanity
-- [ ] **mockup-fidelity DUAL CLEAN 22/22 PARITY 16 consecutive 57.45-57.60** (0 frontend touched)
+- [x] **Re-run Day 1.3 checks** sanity ✅ (pytest 1848 / mypy src 0/317 / 9/9 V2 lints / black-isort-flake8 clean / Alembic up→down→up clean)
+- [x] **mockup-fidelity DUAL CLEAN 22/22 PARITY 16 consecutive 57.45-57.60** ✅ (0 frontend touched)
 
 ### 2.2 Retrospective (Q1-Q6; Q7 N/A SKIP — refactor/cleanup NOT spike)
-- [ ] **NEW** `retrospective.md` (Q1-Q6 + calibration `mechanical-pattern-reuse-heavy` 0.30 1st forward application + AD closure)
+- [x] **NEW** `retrospective.md` ✅ (Q1-Q6 + calibration `mechanical-pattern-reuse-heavy` 0.30 1st forward application ~1.09 IN BAND + AD closure)
 
 ### 2.3 sprint-workflow.md updates
-- [ ] MHist 1-line + `medium-backend` 0.80 11th data point + `mechanical-pattern-reuse-heavy` 0.30 forward-application data point
+- [x] MHist 1-line + `medium-backend` 0.80 11th data point (~0.33; KEEP) + `mechanical-pattern-reuse-heavy` 0.30 §Active block forward-application data point (~1.09 IN BAND; KEEP)
 
-### 2.4 PROMOTIONS (Prong codify — if Day 0 confirms 2 data points each)
-- [ ] Codify `AD-Day0-Prong3-Physical-Column-Read` + `AD-Day0-Prong2-Nested-Shape-Read` into `sprint-workflow.md §Step 2.5` Drift Class table (both 2 data points 57.58+57.59) — OR carry to 57.61 if scope tight
+### 2.4 PROMOTIONS (Prong codify — both confirmed 2 data points)
+- [x] Codified BOTH into `sprint-workflow.md §Step 2.5`: Prong 2 +1 row `Claimed-but-nested-shape-mismatch` (`AD-Day0-Prong2-Nested-Shape-Read`; 57.58+57.59) + Prong 3 +1 row `Physical-column-vs-ORM-alias` (`AD-Day0-Prong3-Physical-Column-Read`; 57.59+57.60)
 
 ### 2.5 Memory + index
-- [ ] **NEW** `memory/project_phase57_60_rate_limits_metadata_cleanup.md` (user-home)
-- [ ] **EDIT** `memory/MEMORY.md` — quality pointer
+- [x] **NEW** `memory/project_phase57_60_rate_limits_metadata_cleanup.md` (user-home) ✅
+- [x] **EDIT** `memory/MEMORY.md` — quality pointer ✅
 
 ### 2.6 CLAUDE.md (navigator-only)
-- [ ] Current Sprint row + Last Updated footer
+- [x] Current Sprint row + Last Updated footer ✅
 
 ### 2.7 next-phase-candidates.md
-- [ ] Sprint 57.60 Carryover section: MetaData-Cleanup CLOSED + carryovers (SyntaxValidation / Alerting / Tier-3 0.45 deferred to 57.61)
+- [x] Updated line (demote 57.59 → Previous) + NEW §57.60 Carryover section: MetaData-Cleanup CLOSED + 2 PROMOTIONS + carryovers (SyntaxValidation / Alerting / Tier-3 0.45 deferred 57.61 / NEW AD-Mypy-WholeDir-Conftest-Collision) ✅
 
 ### 2.8 REFACTOR-004 record
-- [ ] **NEW** `REFACTOR-004-sprint-57-60-rate-limits-metadata-cleanup.md`
+- [x] **NEW** `REFACTOR-004-sprint-57-60-rate-limits-metadata-cleanup.md` ✅
 
 ### 2.9 PR + merge (user action)
 - [ ] Push branch + open PR (title: `refactor(rate-limits, sprint-57-60): retire transitional meta_data fallback + dual-write — close AD-RateLimits-MetaData-Cleanup-Phase58`)

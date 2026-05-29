@@ -93,6 +93,32 @@
 - 0 frontend files touched → Vitest 675 unaffected; HEX_OKLCH baseline 48 unchanged; DUAL CLEAN 22/22 PARITY 16 consec
 
 ### Day 1 commit
-- (pending — parent commits all Day 1 work after this entry)
+- ✅ `416c9f84` (9 files: 3 source + 4 test + 2 NEW migration/test; +187/-137 source-test diffstat + 2 NEW files)
 
-## Day 2 — Closeout (pending)
+## Day 2 — Closeout (2026-05-29, parent assistant)
+
+### Validation (re-confirmed Day 1.3 authoritative)
+- pytest 1848 / mypy `src/` 0/317 / 9/9 V2 lints / black-isort-flake8 clean / Alembic up→down→up clean / 0 frontend touched → DUAL CLEAN 22/22 PARITY **16 consecutive 57.45-57.60**
+
+### Closeout artifacts
+- `retrospective.md` (Q1-Q6 + calibration; Q7 N/A SKIP — refactor/cleanup NOT spike)
+- `REFACTOR-004-sprint-57-60-rate-limits-metadata-cleanup.md`
+- memory subfile `project_phase57_60_rate_limits_metadata_cleanup.md` (user-home) + `MEMORY.md` quality pointer
+- `CLAUDE.md` navigator-only (Current Sprint row + Last Updated footer)
+- `next-phase-candidates.md` (Updated line + NEW §57.60 Carryover section)
+
+### sprint-workflow.md updates (calibration + 2 PROMOTIONS)
+- MHist 1-line 57.60 entry
+- `medium-backend` 0.80 matrix row +11th data point (~0.33; 11-pt mean ~0.63; lower-trigger NOT met → KEEP)
+- `mechanical-pattern-reuse-heavy` 0.30 §Active block +57.60 1st forward validation (~1.09 IN BAND → KEEP)
+- **PROMOTION 1** Prong 2 Content Drift Class +1 row `Claimed-but-nested-shape-mismatch` (`AD-Day0-Prong2-Nested-Shape-Read`; 57.58+57.59)
+- **PROMOTION 2** Prong 3 Schema Drift Class +1 row `Physical-column-vs-ORM-alias` (`AD-Day0-Prong3-Physical-Column-Read`; 57.59+57.60)
+
+### Calibration (final)
+- Bottom-up ~7.25 hr → class-calibrated ~5.6 hr (`medium-backend` 0.80) → agent-adjusted ~1.7 hr (`agent_factor` 0.30) → actual ~1.85 hr → **ratio actual/agent-adjusted ≈ 1.09 IN BAND [0.85, 1.20]** ✅ → KEEP `mechanical-pattern-reuse-heavy` 0.30 (1st deliberate forward application)
+
+### Day 2 commit
+- (pending — parent commits all closeout docs after this entry)
+
+### PR + merge (2.9 — user action) + final closeout (2.10)
+- 🚧 PENDING — awaiting user confirmation to push branch + open PR (outward action)
