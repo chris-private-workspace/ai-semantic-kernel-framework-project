@@ -46,6 +46,7 @@ Created: 2026-05-06 (Sprint 56.1 Day 1)
 Last Modified: 2026-05-10
 
 Modification History:
+    - 2026-05-29: Sprint 57.60 — RateLimits GET/usage/PUT drop meta_data fallback+dual-write
     - 2026-05-28: Sprint 57.59 US-3 — GET /rate-limits/usage reads config + usage tables
     - 2026-05-28: Sprint 57.58 Track C — GET /rate-limits/usage live counter peek endpoint
     - 2026-05-27: Sprint 57.57 Track A — PUT /rate-limits + Pydantic upsert schemas + append_audit
@@ -1372,14 +1373,11 @@ async def list_tenant_rate_limits(
     """List rate-limit entries for this tenant.
 
     Source of truth (Sprint 57.59): the `rate_limit_configs` table, projected back
-    to the unchanged {label, value} display shape. Transition fallback: if the
-    table has no config rows for this tenant (pre-migration tenant, or a tenant
-    whose meta_data was never seeded), fall back to tenant.meta_data["rate_limits"]
-    (Sprint 57.48 path), then to DEFAULT_RATE_LIMITS (3 items mirroring the
-    frontend fixture). The meta_data fallback is transitional and removed by
-    AD-RateLimits-MetaData-Cleanup-Phase58 once the table path is validated.
+    to the unchanged {label, value} display shape. When the table has no config
+    rows for this tenant, fall back to DEFAULT_RATE_LIMITS (3 items mirroring the
+    frontend fixture) — the steady-state display default for un-configured tenants.
     """
-    tenant = await _load_tenant_or_404(db, tenant_id)
+    await _load_tenant_or_404(db, tenant_id)
 
     # 1. Prefer the config table (Sprint 57.59 source of truth).
     store = RateLimitConfigStore()
@@ -1387,13 +1385,8 @@ async def list_tenant_rate_limits(
     if configs:
         raw: list[dict[str, str]] = [project_config_to_item(c) for c in configs]
     else:
-        # 2. Transition fallback: meta_data JSONB (Sprint 57.48 path).
-        meta_raw = tenant.meta_data.get("rate_limits") if tenant.meta_data else None
-        if isinstance(meta_raw, list) and meta_raw:
-            raw = [e for e in meta_raw if isinstance(e, dict)]
-        else:
-            # 3. Default fixture.
-            raw = list(DEFAULT_RATE_LIMITS)
+        # 2. Display default for un-configured tenants.
+        raw = list(DEFAULT_RATE_LIMITS)
 
     items: list[RateLimitItem] = []
     for entry in raw:
@@ -1418,7 +1411,7 @@ async def list_tenant_rate_limits(
 # verbatim with these simplifications:
 #   - NO whitelist (RateLimits has free-form labels — operator-defined)
 #   - NO plan-default merge (RateLimits has no plan template — single source
-#     of truth is meta_data["rate_limits"] OR fallback DEFAULT_RATE_LIMITS)
+#     of truth is the rate_limit_configs table OR fallback DEFAULT_RATE_LIMITS)
 #   - Reuse existing RateLimitItem (Sprint 57.48 Track D) verbatim
 # Composite-replace semantics: payload.items = COMPLETE desired override
 # state. Empty list ([]) clears all overrides → subsequent GET falls back to
@@ -1459,7 +1452,7 @@ async def upsert_tenant_rate_limits(
     db: AsyncSession = Depends(get_db_session),
     admin_user_id: UUID = Depends(require_admin_platform_role),
 ) -> RateLimitsUpsertResponse:
-    """Upsert per-tenant RateLimits overrides into tenant.meta_data["rate_limits"].
+    """Upsert per-tenant RateLimits overrides into the `rate_limit_configs` table.
 
     Composite-replace semantics: payload.items represents the COMPLETE desired
     override state for this tenant. Empty list ([]) clears all overrides; on
@@ -1474,29 +1467,17 @@ async def upsert_tenant_rate_limits(
       tenant + Sprint 57.56 Quotas precedent; no canonical service path exists
       for RateLimits — direct ORM write is the architectural pattern).
 
-    Sprint 57.59 re-point: the COMPOSITE-replace now writes the
-    `rate_limit_configs` table (source of truth) via RateLimitConfigStore. A
-    transitional dual-write keeps tenant.meta_data["rate_limits"] in sync so the
-    GET meta_data fallback + any not-yet-migrated readers stay consistent; the
-    dual-write is removed by AD-RateLimits-MetaData-Cleanup-Phase58.
+    Sprint 57.59 re-point: the COMPOSITE-replace writes the `rate_limit_configs`
+    table (sole source of truth) via RateLimitConfigStore.
     """
-    tenant = await _load_tenant_or_404(db, tenant_id)
+    await _load_tenant_or_404(db, tenant_id)
 
     new_items = [{"label": item.label, "value": item.value} for item in payload.items]
 
-    # 1. Source of truth: replace config rows in rate_limit_configs (composite-
-    #    replace; empty list clears all → GET falls back to DEFAULT_RATE_LIMITS).
+    # Source of truth: replace config rows in rate_limit_configs (composite-
+    # replace; empty list clears all → GET falls back to DEFAULT_RATE_LIMITS).
     store = RateLimitConfigStore()
     configs = await store.replace_configs(db, tenant_id, new_items)
-
-    # 2. Transitional dual-write to meta_data JSONB (Sprint 57.48 fallback path).
-    #    Identity swap for SQLAlchemy JSONB change detection (Sprint 57.56 Quotas
-    #    precedent). Removed by AD-RateLimits-MetaData-Cleanup-Phase58.
-    new_meta = dict(tenant.meta_data or {})
-    new_meta["rate_limits"] = new_items
-    tenant.meta_data = new_meta
-
-    await db.flush()  # Bump updated_at via SQLAlchemy onupdate.
 
     await append_audit(
         db,
@@ -1514,7 +1495,6 @@ async def upsert_tenant_rate_limits(
     )
 
     await db.commit()
-    await db.refresh(tenant)
 
     # Project the persisted config rows back to the {label, value} shape for cache-
     # hydration consistency with GET (falls back to the raw payload echo if the
@@ -1579,9 +1559,8 @@ async def get_rate_limits_usage(
     - 200 with {items: [{resource, window, limit, current, reset_at}]}
 
     Config source (Sprint 57.59): the `rate_limit_configs` table (projected back
-    to {label, value}); fallback tenant.meta_data["rate_limits"] then
-    DEFAULT_RATE_LIMITS. Each rate item is parsed to (resource, limit,
-    window_seconds).
+    to {label, value}); falls back to DEFAULT_RATE_LIMITS when un-configured. Each
+    rate item is parsed to (resource, limit, window_seconds).
 
     Usage source (Sprint 57.59): Redis fast-path via RateLimitCounter.peek
     (read-only — polling MUST NOT consume capacity), with a `rate_limits` usage
@@ -1590,20 +1569,16 @@ async def get_rate_limits_usage(
     table's `used` is surfaced instead so live usage survives a Redis restart.
     Non-rate items (e.g. "50 concurrent") are skipped (no window to track).
     """
-    tenant = await _load_tenant_or_404(db, tenant_id)
+    await _load_tenant_or_404(db, tenant_id)
 
-    # Config: prefer the table (Sprint 57.59 source of truth), then meta_data,
-    # then the default fixture.
+    # Config: prefer the table (Sprint 57.59 source of truth), else the default
+    # fixture for un-configured tenants.
     store = RateLimitConfigStore()
     configs = await store.list_configs(db, tenant_id)
     if configs:
         raw: list[dict[str, str]] = [project_config_to_item(c) for c in configs]
     else:
-        meta_raw = tenant.meta_data.get("rate_limits") if tenant.meta_data else None
-        if isinstance(meta_raw, list) and meta_raw:
-            raw = [e for e in meta_raw if isinstance(e, dict)]
-        else:
-            raw = list(DEFAULT_RATE_LIMITS)
+        raw = list(DEFAULT_RATE_LIMITS)
 
     counter = maybe_get_rate_limit_counter()
     now = datetime.now(tz=timezone.utc)

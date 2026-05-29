@@ -5,11 +5,13 @@ Category: Tests / Integration / API (Phase 58.x RateLimits Potemkin close)
 Scope: Sprint 57.59 Day 1 / US-2 (closes AD-RateLimits-Potemkin-Migration-Phase58)
 
 Description:
-    Verifies the Sprint 57.59 re-point of the admin RateLimits endpoints from
-    tenant.meta_data["rate_limits"] JSONB to the durable rate_limit_configs table:
+    Verifies the Sprint 57.59 re-point of the admin RateLimits endpoints to the
+    durable rate_limit_configs table (the sole source of truth since Sprint 57.60
+    retired the transitional meta_data fallback):
     - GET reads config-table rows (projected back to {label, value})
-    - GET falls back to meta_data / DEFAULT_RATE_LIMITS when the table is empty
-    - PUT replaces config-table rows (composite-replace) + dual-writes meta_data
+    - GET falls back to DEFAULT_RATE_LIMITS when the table is empty (meta_data
+      is no longer consulted)
+    - PUT replaces config-table rows (composite-replace); no meta_data dual-write
     - PUT emits the tenant_rate_limits_upsert audit chain entry
     - Multi-tenant PUT isolation (tenant_b's PUT never touches tenant_a's config)
     - API response shape UNCHANGED ({label, value} + pagination envelope)
@@ -22,6 +24,7 @@ Description:
 Created: 2026-05-28 (Sprint 57.59 Day 1)
 
 Modification History (newest-first):
+    - 2026-05-29: Sprint 57.60 — meta_data fallback retired; GET-fallback test → DEFAULT
     - 2026-05-28: Initial creation (Sprint 57.59 Day 1 / US-2 — table re-point)
 """
 
@@ -104,7 +107,7 @@ async def _seed_tenant(
 
 
 # =====================================================================
-# GET — reads config table; falls back to meta_data when table empty
+# GET — reads config table; falls back to DEFAULT when table empty
 # =====================================================================
 
 
@@ -134,10 +137,16 @@ async def test_get_reads_from_config_table(db_session: AsyncSession) -> None:
     assert body["items"] == [{"label": "API requests", "value": "250 / min"}]
 
 
-async def test_get_falls_back_to_meta_data_when_no_config_rows(
+async def test_get_ignores_stale_meta_data_when_no_config_rows(
     db_session: AsyncSession,
 ) -> None:
-    """No config rows → GET falls back to meta_data['rate_limits']."""
+    """Sprint 57.60: stale meta_data is NO LONGER read → GET returns DEFAULT.
+
+    Previously (Sprint 57.59) an empty config table fell back to
+    meta_data['rate_limits']; that transitional fallback was removed in Sprint
+    57.60, so a seeded-but-stale meta_data blob must be ignored and GET must
+    return DEFAULT_RATE_LIMITS.
+    """
     tenant = await _seed_tenant(
         db_session,
         code="RLC_GET_FB",
@@ -148,8 +157,10 @@ async def test_get_falls_back_to_meta_data_when_no_config_rows(
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         resp = await ac.get(f"/api/v1/admin/tenants/{tenant.id}/rate-limits")
     assert resp.status_code == 200, resp.text
-    body = resp.json()
-    assert body["items"] == [{"label": "Fallback only", "value": "9 / min"}]
+    labels = {item["label"] for item in resp.json()["items"]}
+    # DEFAULT_RATE_LIMITS — NOT the stale meta_data value.
+    assert labels == {"API requests", "Tool calls", "SSE connections"}
+    assert "Fallback only" not in labels
 
 
 async def test_get_falls_back_to_defaults_when_no_config_and_no_meta(

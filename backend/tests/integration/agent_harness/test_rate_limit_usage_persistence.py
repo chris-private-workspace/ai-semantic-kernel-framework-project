@@ -27,6 +27,7 @@ Description:
 Created: 2026-05-28 (Sprint 57.59 Day 1)
 
 Modification History (newest-first):
+    - 2026-05-29: Sprint 57.60 — meta_data fallback retired; no-config test → empty list
     - 2026-05-28: Initial creation (Sprint 57.59 US-3 — usage persistence + recovery)
 """
 
@@ -184,8 +185,12 @@ async def test_middleware_loads_config_from_table() -> None:
     assert by_label["Tool calls"] == "1,000 / min"
 
 
-async def test_middleware_falls_back_to_meta_data_when_no_config_rows() -> None:
-    """No config rows → fall back to tenant.meta_data['rate_limits']."""
+async def test_middleware_returns_empty_when_no_config_rows() -> None:
+    """Sprint 57.60: no config rows → no enforcement (empty list).
+
+    The transitional meta_data fallback was removed; enforcement never applies
+    phantom defaults. A seeded-but-stale meta_data blob must be ignored.
+    """
     code = _code()
     factory = get_session_factory()
     async with factory() as session:
@@ -204,7 +209,8 @@ async def test_middleware_falls_back_to_meta_data_when_no_config_rows() -> None:
 
     mw = RateLimitMiddleware(app=lambda *_: None)  # type: ignore[arg-type]
     items = await mw._load_rate_limits(tenant_id)
-    assert items == [{"label": "API requests", "value": "7 / min"}]
+    # Stale meta_data is ignored; empty config → no enforcement.
+    assert items == []
 
 
 # === Test 2: usage write-through creates + updates the row =============

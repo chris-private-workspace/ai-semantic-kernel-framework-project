@@ -27,6 +27,7 @@ Created: 2026-05-28 (Sprint 57.58)
 Last Modified: 2026-05-28
 
 Modification History (newest-first):
+    - 2026-05-29: Sprint 57.60 — _load_tool_limits drops transitional meta_data fallback
     - 2026-05-28: Sprint 57.59 US-3 — _load_tool_limits reads config table (fallback meta_data)
     - 2026-05-28: Sprint 57.58 Track B — initial creation (tool-call rate gate)
 
@@ -43,11 +44,8 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 
-from sqlalchemy import select
-
 from agent_harness._contracts.errors import RateLimitExceededError
 from infrastructure.db.engine import get_session_factory
-from infrastructure.db.models.identity import Tenant
 from platform_layer.tenant._rate_limit_contracts import RateLimitCounter
 from platform_layer.tenant.rate_limit_config_store import (
     RateLimitConfigStore,
@@ -116,32 +114,19 @@ class RedisToolRateLimitGate:
         """Map resource -> (limit, window_seconds) for tool_calls* resources.
 
         Source of truth (Sprint 57.59): the `rate_limit_configs` table, projected
-        back to the {label, value} shape, then parsed. Transition fallback: if the
-        table has no config rows for this tenant, fall back to
-        tenant.meta_data["rate_limits"] (Sprint 57.48/57.58 path) — removed by
-        AD-RateLimits-MetaData-Cleanup-Phase58 once the table path is validated.
+        back to the {label, value} shape, then parsed. When the table has no config
+        rows for this tenant, no limits load (empty map) — enforcement never applies
+        phantom defaults.
 
         Keeps only parsed items whose resource is the aggregate `tool_calls` or a
         per-tool `tool_calls.<name>` key. The config-store query filters by
-        tenant_id (鐵律 2); `tenants` is a global no-RLS table.
+        tenant_id (鐵律 2).
         """
         factory = get_session_factory()
         async with factory() as session:
-            # 1. Prefer the config table (Sprint 57.59 source of truth).
             store = RateLimitConfigStore()
             configs = await store.list_configs(session, tenant_id)
-            if configs:
-                raw: list[object] = [project_config_to_item(c) for c in configs]
-            else:
-                # 2. Transition fallback: tenant.meta_data JSONB (Sprint 57.48 path).
-                result = await session.execute(select(Tenant).where(Tenant.id == tenant_id))
-                tenant = result.scalar_one_or_none()
-                if tenant is None or not tenant.meta_data:
-                    return {}
-                meta_raw = tenant.meta_data.get("rate_limits")
-                if not isinstance(meta_raw, list):
-                    return {}
-                raw = list(meta_raw)
+            raw: list[object] = [project_config_to_item(c) for c in configs]
         out: dict[str, tuple[int, int]] = {}
         for item in raw:
             parsed = parse_rate_limit_item(item)

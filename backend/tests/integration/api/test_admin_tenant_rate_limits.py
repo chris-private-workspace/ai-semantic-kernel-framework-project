@@ -6,18 +6,18 @@ Scope: Sprint 57.48 Day 1 Track D Option A (closes AD-TenantSettings-RateLimits-
 
 Description:
     Verifies the GET /admin/tenants/{tenant_id}/rate-limits endpoint
-    (Day 0.8 Option A — fixture-projection from tenant.meta_data["rate_limits"]):
+    (source of truth: the rate_limit_configs table since Sprint 57.59):
     - 401 when no JWT context
     - 404 when tenant not found
-    - 200 returns DEFAULT_RATE_LIMITS (3 items) when meta_data has no
-      "rate_limits" key
-    - 200 returns tenant-overridden list when meta_data["rate_limits"] is set
+    - 200 returns DEFAULT_RATE_LIMITS (3 items) when the config table is empty
+    - 200 returns tenant-overridden list when config rows are present
     - Response shape: items + total + limit + offset; items carry label + value
     - Multi-tenant isolation (tenant A's override does NOT show in tenant B)
 
 Created: 2026-05-26 (Sprint 57.48 Day 1)
 
 Modification History (newest-first):
+    - 2026-05-29: Sprint 57.60 — convert meta_data seeds/asserts to config-table (cleanup)
     - 2026-05-27: Sprint 57.57 Track A — +10 PUT tests covering composite-replace + audit chain
     - 2026-05-26: Initial creation (Sprint 57.48 Day 1 Track D — RateLimits admin GET Option A)
 """
@@ -36,6 +36,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.v1.admin.tenants import router as admin_tenants_router
+from infrastructure.db.models.api_keys import RateLimitConfig
 from infrastructure.db.models.audit import AuditLog
 from infrastructure.db.models.identity import Tenant, TenantPlan, TenantState
 from infrastructure.db.session import get_db_session
@@ -94,6 +95,34 @@ async def _seed_tenant(
     return t
 
 
+async def _seed_config_rows(
+    session: AsyncSession,
+    tenant_id: UUID,
+    items: list[dict[str, str]],
+) -> None:
+    """Seed rate_limit_configs rows from {label, value} display items.
+
+    Mirrors how the live PUT path persists overrides (Sprint 57.59 source of
+    truth) so GET-override tests no longer depend on the retired meta_data
+    fallback.
+    """
+    from platform_layer.tenant.rate_limit_config_store import parse_config_item
+
+    for item in items:
+        parsed = parse_config_item(item)
+        assert parsed is not None, f"unparseable seed item: {item}"
+        resource_type, window_type, quota = parsed
+        session.add(
+            RateLimitConfig(
+                tenant_id=tenant_id,
+                resource_type=resource_type,
+                window_type=window_type,
+                quota=quota,
+            )
+        )
+    await session.flush()
+
+
 async def test_list_rate_limits_401_without_auth() -> None:
     app = _build_app()
     tenant_id = uuid4()
@@ -129,16 +158,13 @@ async def test_list_rate_limits_returns_defaults_when_no_override(
 
 
 async def test_list_rate_limits_applies_tenant_override(db_session: AsyncSession) -> None:
-    """meta_data['rate_limits'] is honoured when present."""
+    """Config rows are honoured when present (table is the source of truth)."""
     custom = [
         {"label": "API requests", "value": "500 / min"},
         {"label": "Tool calls", "value": "5,000 / min"},
     ]
-    tenant = await _seed_tenant(
-        db_session,
-        code="RL_OVR_T1",
-        meta_data={"rate_limits": custom},
-    )
+    tenant = await _seed_tenant(db_session, code="RL_OVR_T1")
+    await _seed_config_rows(db_session, tenant.id, custom)
     app = _build_app(db_session=db_session)
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -148,6 +174,29 @@ async def test_list_rate_limits_applies_tenant_override(db_session: AsyncSession
     assert body["total"] == 2
     api = next(item for item in body["items"] if item["label"] == "API requests")
     assert api["value"] == "500 / min"
+
+
+async def test_list_rate_limits_ignores_stale_meta_data(db_session: AsyncSession) -> None:
+    """Sprint 57.60: meta_data['rate_limits'] is NO LONGER read.
+
+    Seed a stale meta_data blob + leave the config table empty → GET must return
+    DEFAULT_RATE_LIMITS (the steady-state display default), proving the
+    transitional meta_data fallback is fully removed.
+    """
+    tenant = await _seed_tenant(
+        db_session,
+        code="RL_NOFB_T1",
+        meta_data={"rate_limits": [{"label": "Stale only", "value": "1 / min"}]},
+    )
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get(f"/api/v1/admin/tenants/{tenant.id}/rate-limits")
+    assert resp.status_code == 200, resp.text
+    labels = {item["label"] for item in resp.json()["items"]}
+    # DEFAULT_RATE_LIMITS — NOT the stale meta_data value.
+    assert labels == {"API requests", "Tool calls", "SSE connections"}
+    assert "Stale only" not in labels
 
 
 async def test_list_rate_limits_response_shape(db_session: AsyncSession) -> None:
@@ -161,10 +210,9 @@ async def test_list_rate_limits_response_shape(db_session: AsyncSession) -> None
 
 
 async def test_list_rate_limits_tenant_isolation(db_session: AsyncSession) -> None:
-    tenant_a = await _seed_tenant(
-        db_session,
-        code="RL_ISO_A",
-        meta_data={"rate_limits": [{"label": "Custom A", "value": "9 / min"}]},
+    tenant_a = await _seed_tenant(db_session, code="RL_ISO_A")
+    await _seed_config_rows(
+        db_session, tenant_a.id, [{"label": "API requests", "value": "9 / min"}]
     )
     tenant_b = await _seed_tenant(db_session, code="RL_ISO_B")
     app = _build_app(db_session=db_session)
@@ -173,9 +221,11 @@ async def test_list_rate_limits_tenant_isolation(db_session: AsyncSession) -> No
         resp_a = await ac.get(f"/api/v1/admin/tenants/{tenant_a.id}/rate-limits")
         resp_b = await ac.get(f"/api/v1/admin/tenants/{tenant_b.id}/rate-limits")
     assert resp_a.status_code == 200 and resp_b.status_code == 200
-    labels_a = {item["label"] for item in resp_a.json()["items"]}
+    items_a = resp_a.json()["items"]
     labels_b = {item["label"] for item in resp_b.json()["items"]}
-    assert labels_a == {"Custom A"}
+    # tenant_a has exactly its one configured override (table-scoped); tenant_b
+    # has no config rows → DEFAULT_RATE_LIMITS.
+    assert items_a == [{"label": "API requests", "value": "9 / min"}]
     assert labels_b == {"API requests", "Tool calls", "SSE connections"}
 
 
@@ -221,7 +271,7 @@ async def test_put_tenant_not_found(db_session: AsyncSession) -> None:
 
 
 async def test_put_creates_new_items(db_session: AsyncSession) -> None:
-    """No prior overrides → PUT persists payload list to tenant.meta_data["rate_limits"]."""
+    """No prior overrides → PUT persists payload to the rate_limit_configs table."""
     tenant = await _seed_tenant(db_session, code=_unique_code())
     app = _build_app(db_session=db_session)
     transport = ASGITransport(app=app)
@@ -239,10 +289,22 @@ async def test_put_creates_new_items(db_session: AsyncSession) -> None:
     assert body["total"] == 2
     assert body["items"] == payload_items
 
-    # Verify ORM state via direct re-read.
+    # Verify ORM state: config rows written; meta_data NOT (dual-write retired).
+    config_rows = (
+        (
+            await db_session.execute(
+                select(RateLimitConfig).where(RateLimitConfig.tenant_id == tenant.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert {(r.resource_type, r.window_type, r.quota) for r in config_rows} == {
+        ("api_requests", "min", 999),
+        ("custom_limit", "hour", 42),
+    }
     row = (await db_session.execute(select(Tenant).where(Tenant.id == tenant.id))).scalar_one()
-    assert row.meta_data is not None
-    assert row.meta_data.get("rate_limits") == payload_items
+    assert "rate_limits" not in (row.meta_data or {})
 
 
 async def test_put_replaces_existing_items(db_session: AsyncSession) -> None:
@@ -316,12 +378,29 @@ async def test_put_multi_tenant_isolation(db_session: AsyncSession) -> None:
         )
     assert resp_a.status_code == 200 and resp_b.status_code == 200
 
-    # Verify via direct ORM re-read — each tenant's meta_data holds only its
-    # own override; cross-tenant leak would manifest as merged lists.
-    row_a = (await db_session.execute(select(Tenant).where(Tenant.id == tenant_a.id))).scalar_one()
-    row_b = (await db_session.execute(select(Tenant).where(Tenant.id == tenant_b.id))).scalar_one()
-    assert row_a.meta_data["rate_limits"] == [{"label": "OnlyA", "value": "1 / min"}]
-    assert row_b.meta_data["rate_limits"] == [{"label": "OnlyB", "value": "2 / min"}]
+    # Verify via direct ORM re-read — each tenant's config rows hold only its own
+    # override (table-scoped by tenant_id); cross-tenant leak would manifest as
+    # merged rows. meta_data is no longer written (dual-write retired).
+    rows_a = (
+        (
+            await db_session.execute(
+                select(RateLimitConfig).where(RateLimitConfig.tenant_id == tenant_a.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    rows_b = (
+        (
+            await db_session.execute(
+                select(RateLimitConfig).where(RateLimitConfig.tenant_id == tenant_b.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert {(r.resource_type, r.quota) for r in rows_a} == {("onlya", 1)}
+    assert {(r.resource_type, r.quota) for r in rows_b} == {("onlyb", 2)}
 
 
 async def test_put_empty_items_clears_all(db_session: AsyncSession) -> None:

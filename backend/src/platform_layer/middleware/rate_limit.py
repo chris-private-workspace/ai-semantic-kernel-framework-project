@@ -5,8 +5,9 @@ Category: Platform layer / Middleware (cross-cutting; ranges 9 governance + mult
 Scope: Sprint 57.58 (Track A) — RateLimits RuntimeEnforcement (Phase 58.x portfolio #1)
 
 Description:
-    Transforms tenant.meta_data["rate_limits"] (admin-display-only since Sprint
-    57.48 + 57.57) into runtime governance. For every authenticated request:
+    Transforms the tenant's `rate_limit_configs` rows (the Sprint 57.59 source of
+    truth; admin-display-only before runtime enforcement) into runtime governance.
+    For every authenticated request:
 
       1. Bypass when there is no tenant scope (internal calls) OR the JWT
          carries an `admin` / `service` role (operators are not throttled).
@@ -35,6 +36,7 @@ Created: 2026-05-28 (Sprint 57.58)
 Last Modified: 2026-05-28
 
 Modification History (newest-first):
+    - 2026-05-29: Sprint 57.60 — _load_rate_limits drops transitional meta_data fallback
     - 2026-05-28: Sprint 57.59 US-3 — _load_rate_limits reads config table (fallback meta_data)
     - 2026-05-28: Sprint 57.58 Track A — initial creation (RateLimits RuntimeEnforcement)
 
@@ -52,12 +54,10 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 
-from sqlalchemy import select
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
 from infrastructure.db.engine import get_session_factory
-from infrastructure.db.models.identity import Tenant
 from platform_layer.tenant.rate_limit_config_store import (
     RateLimitConfigStore,
     project_config_to_item,
@@ -167,30 +167,18 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         """Load this tenant's {label, value} rate-limit list (empty on miss).
 
         Source of truth (Sprint 57.59): the `rate_limit_configs` table, projected
-        back to the {label, value} shape parse_rate_limit_item expects. Transition
-        fallback: if the table has no config rows for this tenant, fall back to
-        tenant.meta_data["rate_limits"] (the Sprint 57.48/57.58 path) — removed by
-        AD-RateLimits-MetaData-Cleanup-Phase58 once the table path is validated.
+        back to the {label, value} shape parse_rate_limit_item expects. When the
+        table has no config rows for this tenant, enforcement loads nothing (empty
+        list) — enforcement never applies phantom defaults.
 
         Per-request DB read is acceptable for v1 (single tenant-scoped lookup;
-        volume bounded by the request rate we are limiting). `rate_limit_configs`
-        is RLS-enforced, but the config-store query filters by tenant_id (鐵律 2)
-        and `tenants` is a global no-RLS table — no SET LOCAL needed for either
-        read here.
+        volume bounded by the request rate we are limiting). The config-store query
+        filters by tenant_id (鐵律 2) — no SET LOCAL needed for this read.
         """
         factory = get_session_factory()
         async with factory() as session:
-            # 1. Prefer the config table (Sprint 57.59 source of truth).
             store = RateLimitConfigStore()
             configs = await store.list_configs(session, tenant_id)
             if configs:
                 return [project_config_to_item(c) for c in configs]
-            # 2. Transition fallback: tenant.meta_data JSONB (Sprint 57.48 path).
-            result = await session.execute(select(Tenant).where(Tenant.id == tenant_id))
-            tenant = result.scalar_one_or_none()
-        if tenant is None or not tenant.meta_data:
-            return []
-        raw = tenant.meta_data.get("rate_limits")
-        if not isinstance(raw, list):
-            return []
-        return list(raw)
+        return []
