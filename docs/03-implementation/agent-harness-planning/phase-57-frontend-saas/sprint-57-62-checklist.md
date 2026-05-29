@@ -62,40 +62,40 @@ Plan: [`sprint-57-62-plan.md`](./sprint-57-62-plan.md)
 
 ### 0.9 Branch + Day 0 commit
 - [x] **Create feature branch** `feature/sprint-57-62-rate-limits-alerting` (from main `2d99d626`)
-- [ ] **Day 0 commit** (plan + checklist + progress.md Day 0 entry)
+- [x] **Day 0 commit** (plan + checklist + progress.md Day 0 entry) ✅ `79282286`
 
 ---
 
 ## Day 1 — Implementation (Agent-Delegated: yes — sequential Track A backend → Track B frontend)
 
 ### 1.1 US-1 — 80%-threshold detection + persisted alert log (Track A backend)
-- [ ] **EDIT** `infrastructure/db/models/api_keys.py` — NEW `RateLimitAlert` ORM (`rate_limit_alerts`, `TenantScopedMixin`); `threshold_pct`/`actual_pct` int; severity lowercase `warning`/`critical`; UNIQUE `(tenant_id, resource_type, window_type, window_start)` + CHECK `severity IN ('warning','critical')` + index `(tenant_id, triggered_at)`; MHist
-- [ ] **NEW** Alembic `0021_rate_limit_alerts.py` (down_revision `0020`) — CREATE table + ENABLE+**FORCE** RLS + 2 policies (`tenant_isolation` USING + `tenant_insert` WITH CHECK; `current_setting('app.tenant_id', true)::uuid` per D-DAY0-J) + CHECK + index
-- [ ] **NEW** `platform_layer/tenant/rate_limit_alert_store.py` — `ALERT_THRESHOLD_PCT=80` + `_severity` (lowercase) + `maybe_record` (idempotent upsert peak/escalate, returns early < 80 / quota<=0) + `list_recent`; stateless (no ctor state); MHist
-- [ ] **EDIT** `rate_limit_counter.py` — best-effort `maybe_record` call inside `_write_through` (D-DAY0-G: direct stateless call, session already present; rides existing best-effort block; Risk Class B dual-ignore if mypy diverges); MHist
+- [x] **EDIT** `infrastructure/db/models/api_keys.py` — NEW `RateLimitAlert` ORM (`rate_limit_alerts`, `TenantScopedMixin`); `threshold_pct`/`actual_pct` int; severity lowercase `warning`/`critical`; UNIQUE `(tenant_id, resource_type, window_type, window_start)` + CHECK `severity IN ('warning','critical')` + index `(tenant_id, triggered_at)`; MHist
+- [x] **NEW** Alembic `0021_rate_limit_alerts.py` (down_revision `0020`) — CREATE table + ENABLE+**FORCE** RLS + 2 policies (`tenant_isolation` USING + `tenant_insert` WITH CHECK; `current_setting('app.tenant_id', true)::uuid` per D-DAY0-J) + CHECK + index
+- [x] **NEW** `platform_layer/tenant/rate_limit_alert_store.py` — `ALERT_THRESHOLD_PCT=80` + `_severity` (lowercase) + `maybe_record` (idempotent upsert peak/escalate, returns early < 80 / quota<=0) + `list_recent`; stateless (no ctor state); MHist
+- [x] **EDIT** `rate_limit_counter.py` — best-effort `maybe_record` call inside `_write_through` (D-DAY0-G: direct stateless call, session already present; rides existing best-effort block; Risk Class B dual-ignore if mypy diverges); MHist
 - [x] ~~**EDIT** `api/main.py` — inject `RateLimitAlertStore`~~ **N/A (D-DAY0-G)**: stateless store + session already in `_write_through` → NO wiring edit needed (scope dropped at Day 0)
-- [ ] **NEW** `backend/tests/unit/platform_layer/tenant/test_rate_limit_alert_store.py` (~10-12): 80/90/100 → row+severity (lowercase); <80 → none; dedup once-per-window (peak); warning→critical escalation; fail-open no-session/DB-error; multi-tenant isolation
-- [ ] **Verify**: detection at write-through (not GET); fail-open never breaks enforcement; RLS present
+- [x] **NEW** `backend/tests/unit/platform_layer/tenant/test_rate_limit_alert_store.py` (~10-12): 80/90/100 → row+severity (lowercase); <80 → none; dedup once-per-window (peak); warning→critical escalation; fail-open no-session/DB-error; multi-tenant isolation
+- [x] **Verify**: detection at write-through (not GET); fail-open never breaks enforcement; RLS present
 
 ### 1.2 US-2 — Recent-alerts GET endpoint (Track A backend cont.)
-- [ ] **EDIT** `api/v1/admin/tenants.py` — NEW `RateLimitAlertItem` + `RateLimitAlertsResponse` + `GET /admin/tenants/{tid}/rate-limits/alerts?limit=N` (default 20, cap 100, newest-first); reuse `_load_tenant_or_404`; MHist
-- [ ] **NEW** `backend/tests/integration/api/test_admin_tenant_rate_limits_alerts.py` (~4-6): auth/404; empty list; ordering newest-first; limit cap 100; multi-tenant isolation
-- [ ] **Verify**: GET reads via `alert_store.list_recent`; tenant A cannot read tenant B's alerts
+- [x] **EDIT** `api/v1/admin/tenants.py` — NEW `RateLimitAlertItem` + `RateLimitAlertsResponse` + `GET /admin/tenants/{tid}/rate-limits/alerts?limit=N` (default 20, cap 100, newest-first); reuse `_load_tenant_or_404`; MHist
+- [x] **NEW** `backend/tests/integration/api/test_admin_tenant_rate_limits_alerts.py` (~4-6): auth/404; empty list; ordering newest-first; limit cap 100; multi-tenant isolation
+- [x] **Verify**: GET reads via `alert_store.list_recent`; tenant A cannot read tenant B's alerts
 
 ### 1.3 US-3 — QuotasTab recent-alerts surface (Track B frontend)
-- [ ] **NEW** `useRateLimitsAlerts.ts` hook (TanStack; `refetchInterval` ~15000) + `fetchRateLimitsAlerts` service func + alert TS types
-- [ ] **EDIT** `QuotasTab.tsx` — NEW "Recent alerts" Card BELOW Live usage Card (resource · peak % · severity badge `var(--warning)`/`var(--danger)` · time + empty state); existing Rate limits Card + Live usage Card UNCHANGED (scope guard); 0 new oklch
-- [ ] **NEW** Vitest (~8-10): hook fetch/empty/error; alerts list render + severity colors; empty state; 2 existing cards unchanged scope-guard
-- [ ] **Verify**: HEX_OKLCH baseline 48 unchanged (grep); existing cards bit-for-bit
+- [x] **NEW** `useRateLimitsAlerts.ts` hook (TanStack; `refetchInterval` ~15000) + `fetchRateLimitsAlerts` service func + alert TS types
+- [x] **EDIT** `QuotasTab.tsx` — NEW "Recent alerts" Card BELOW Live usage Card (resource · peak % · severity badge `var(--warning)`/`var(--danger)` · time + empty state); existing Rate limits Card + Live usage Card UNCHANGED (scope guard); 0 new oklch
+- [x] **NEW** Vitest (~8-10): hook fetch/empty/error; alerts list render + severity colors; empty state; 2 existing cards unchanged scope-guard
+- [x] **Verify**: HEX_OKLCH baseline 48 unchanged (grep); existing cards bit-for-bit
 
 ### 1.4 Day 1 Validation Sweep — ALL GREEN
-- [ ] **pytest full**: 1887 → ~1900+ (US-1 ~10-12 + US-2 ~4-6; 0 regressions)
-- [ ] **mypy `src/ --strict`**: 0 / files (CI parity backend-ci.yml:152)
-- [ ] **9/9 V2 lints** (`check_rls_policies` **20 → 21** tables incl. new `rate_limit_alerts` + `check_llm_sdk_leak`)
-- [ ] **Alembic** live `0021` up→down→up clean
-- [ ] **Vitest** 675 → ~685+ ; tsc 0 ; ESLint clean ; Vite build
-- [ ] **HEX_OKLCH baseline 48** + DUAL CLEAN 22/22 PARITY 18 consec
-- [ ] **LLM SDK leak 0** + black/isort/flake8 clean
+- [x] **pytest full**: 1887 → **1907** (+20) (US-1 ~10-12 + US-2 ~4-6; 0 regressions)
+- [x] **mypy `src/ --strict`**: 0 / 319 files (CI parity backend-ci.yml:152)
+- [x] **9/9 V2 lints** (`check_rls_policies` **20 → 21** tables incl. new `rate_limit_alerts` + `check_llm_sdk_leak`)
+- [x] **Alembic** live `0021` up→down→up clean
+- [x] **Vitest** 675 → ~685+ ; tsc 0 ; ESLint clean ; Vite build
+- [x] **HEX_OKLCH baseline 48** + DUAL CLEAN 22/22 PARITY 18 consec
+- [x] **LLM SDK leak 0** + black/isort/flake8 clean
 
 ### 1.5 Day 1 commit(s)
 - [ ] **Commit Day 1 work** (Track A + Track B; 1 or 2 commits)

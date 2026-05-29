@@ -24,7 +24,13 @@ from __future__ import annotations
 
 # Day 2.1 (Sprint 49.3) — API auth + quotas
 # Sprint 57.59 — RateLimitConfig (config two-table split; AP-4 close)
-from infrastructure.db.models.api_keys import ApiKey, RateLimit, RateLimitConfig
+# Sprint 57.62 — RateLimitAlert (80%-threshold usage alert log)
+from infrastructure.db.models.api_keys import (
+    ApiKey,
+    RateLimit,
+    RateLimitAlert,
+    RateLimitConfig,
+)
 
 # Day 1.1 (Sprint 49.3) — Audit
 from infrastructure.db.models.audit import AuditLog
@@ -130,6 +136,8 @@ __all__ = [
     "RateLimit",
     # RateLimits config (Sprint 57.59 — config two-table split; AP-4 close)
     "RateLimitConfig",
+    # RateLimits alert log (Sprint 57.62 — 80%-threshold usage alert)
+    "RateLimitAlert",
     # Memory layers (Sprint 49.3)
     "MemorySystem",
     "MemoryTenant",

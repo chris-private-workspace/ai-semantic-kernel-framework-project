@@ -32,6 +32,7 @@
  * Last Modified: 2026-05-28
  *
  * Modification History (newest-first):
+ *   - 2026-05-29: Sprint 57.62 — add Recent alerts Card below Live usage
  *   - 2026-05-28: Sprint 57.58 Track D — +Rate limits Live usage Card (5s poll; existing 2 Cards unchanged)
  *   - 2026-05-27: Sprint 57.57 Track B — +Rate limits Card edit mode (Usage Card unchanged)
  *   - 2026-05-27: Sprint 57.56 Track B — +Usage quotas Card edit mode (Rate limits Card unchanged)
@@ -53,8 +54,14 @@ import { useQuotas } from "../../hooks/useQuotas";
 import { useQuotasSave } from "../../hooks/useQuotasSave";
 import { useRateLimits } from "../../hooks/useRateLimits";
 import { useRateLimitsSave } from "../../hooks/useRateLimitsSave";
+import { useRateLimitsAlerts } from "../../hooks/useRateLimitsAlerts";
 import { useRateLimitsUsage } from "../../hooks/useRateLimitsUsage";
-import type { QuotaItem, RateLimitItem, RateLimitsUsageItem } from "../../types";
+import type {
+  QuotaItem,
+  RateLimitAlertItem,
+  RateLimitItem,
+  RateLimitsUsageItem,
+} from "../../types";
 
 export interface QuotasTabProps {
   tenantId: string;
@@ -109,6 +116,38 @@ function formatLimit(limit: number, unit: string): string {
 }
 
 /**
+ * Sprint 57.62 — semantic token for an alert severity badge.
+ *
+ * "critical" (>=100% throttled) → red; "warning" (80-99%) → yellow. Returns an
+ * EXISTING styles-mockup.css token var (no new oklch literal — the oklch values
+ * live in styles-mockup.css which this sprint does not touch).
+ */
+function alertSeverityToken(severity: string): string {
+  return severity === "critical" ? "var(--danger)" : "var(--warning)";
+}
+
+/**
+ * Sprint 57.62 — compact relative-time label for an alert's `triggered_at`.
+ *
+ * ISO-8601 → "{n}s/m/h/d ago"; future / unparseable → "just now". Computed
+ * against Date.now() at render time; the 15s poll re-renders so the value stays
+ * roughly current without a local timer.
+ */
+function formatRelativeTime(isoTimestamp: string, nowMs: number): string {
+  const thenMs = Date.parse(isoTimestamp);
+  if (Number.isNaN(thenMs)) return "just now";
+  const diffSeconds = Math.round((nowMs - thenMs) / 1000);
+  if (diffSeconds <= 0) return "just now";
+  if (diffSeconds < 60) return `${diffSeconds}s ago`;
+  const minutes = Math.floor(diffSeconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+/**
  * Reverse-project: seed draft from items[].limit (all rows enter draft on Edit).
  *
  * User can then modify values or Clear override to remove key from draft.
@@ -126,6 +165,7 @@ export function QuotasTab({ tenantId }: QuotasTabProps): JSX.Element {
   const quotas = useQuotas(tenantId);
   const rateLimits = useRateLimits(tenantId);
   const rlUsage = useRateLimitsUsage(tenantId);
+  const rlAlerts = useRateLimitsAlerts(tenantId);
   const saveMutation = useQuotasSave(tenantId);
   const rlSaveMutation = useRateLimitsSave(tenantId);
 
@@ -166,6 +206,7 @@ export function QuotasTab({ tenantId }: QuotasTabProps): JSX.Element {
   const items = quotas.data?.items ?? [];
   const rlItems = rateLimits.data?.items ?? [];
   const usageItems: RateLimitsUsageItem[] = rlUsage.data?.items ?? [];
+  const alertItems: RateLimitAlertItem[] = rlAlerts.data?.items ?? [];
 
   const handleEdit = (): void => {
     setDraft(draftFromItems(items));
@@ -509,6 +550,64 @@ export function QuotasTab({ tenantId }: QuotasTabProps): JSX.Element {
                       {formatResetCountdown(u.reset_at, Date.now())}
                     </span>
                   </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+      <Card title="Recent alerts">
+        {rlAlerts.isLoading ? (
+          <p className="muted" data-testid="ratelimits-alerts-loading">
+            Loading recent alerts…
+          </p>
+        ) : rlAlerts.error ? (
+          // eslint-disable-next-line no-restricted-syntax -- inline-style error hint (matches existing Card error pattern)
+          <p style={{ color: "var(--danger)", fontSize: 12 }} data-testid="ratelimits-alerts-error">
+            Error loading alerts: {rlAlerts.error.message}
+          </p>
+        ) : alertItems.length === 0 ? (
+          <p className="muted" data-testid="ratelimits-alerts-empty">
+            No recent alerts — no resource has crossed 80% of its rate limit.
+          </p>
+        ) : (
+          // eslint-disable-next-line no-restricted-syntax -- verbatim port: col gap (mirrors Live usage list)
+          <div className="col" style={{ gap: 10, marginTop: 8 }} data-testid="ratelimits-alerts-list">
+            {alertItems.map((a, index) => {
+              // Map severity → existing styles-mockup.css badge modifier:
+              // critical → .badge.danger (red), warning → .badge.warning (yellow).
+              // Both modifiers already reference --danger / --warning (no new oklch).
+              const badgeClass = a.severity === "critical" ? "badge danger" : "badge warning";
+              const pctColor = alertSeverityToken(a.severity);
+              return (
+                <div
+                  key={`${a.resource}-${a.window}-${a.window_start}-${index}`}
+                  className="spread"
+                  data-testid={`ratelimits-alert-row-${a.resource}`}
+                >
+                  {/* eslint-disable-next-line no-restricted-syntax -- verbatim port: row gap (mirrors Live usage rows) */}
+                  <span className="row" style={{ gap: 8, alignItems: "center" }}>
+                    <span
+                      className={badgeClass}
+                      data-severity={a.severity}
+                      data-testid={`ratelimits-alert-badge-${a.resource}`}
+                    >
+                      {a.severity}
+                    </span>
+                    {/* eslint-disable-next-line no-restricted-syntax -- verbatim port: fontSize (mirrors Live usage) */}
+                    <span style={{ fontSize: 12.5 }}>{a.resource}</span>
+                  </span>
+                  {/* eslint-disable-next-line no-restricted-syntax -- verbatim port: mono fontSize (mirrors Live usage) */}
+                  <span className="mono tnum" style={{ fontSize: 11.5 }}>
+                    {/* eslint-disable-next-line no-restricted-syntax -- severity-colored peak pct (existing token ref, no new oklch) */}
+                    <span style={{ color: pctColor }} data-testid={`ratelimits-alert-pct-${a.resource}`}>
+                      {a.actual_pct}%
+                    </span>
+                    <span className="subtle"> · {a.window} · </span>
+                    <span className="subtle" data-testid={`ratelimits-alert-time-${a.resource}`}>
+                      {formatRelativeTime(a.triggered_at, Date.now())}
+                    </span>
+                  </span>
                 </div>
               );
             })}

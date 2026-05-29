@@ -5,6 +5,7 @@
  * Scope: Phase 57 / Sprint 57.49 Day 1 + Sprint 57.56 Track B + Sprint 57.57 Track B
  *
  * Modification History (newest-first):
+ *   - 2026-05-29: Sprint 57.62 US-3 — +Recent alerts Card tests + existing 2 Cards scope guard
  *   - 2026-05-28: Sprint 57.58 Track D — +Live usage Card tests + Rate limits Card scope guard
  *   - 2026-05-27: Sprint 57.57 Track B — +Rate limits edit mode tests + Usage Card scope guard
  *   - 2026-05-27: Sprint 57.56 Track B — +edit-mode tests + banner copy + scope guard assertion
@@ -35,11 +36,16 @@ vi.mock("@/features/tenant-settings/hooks/useRateLimitsUsage", () => ({
   useRateLimitsUsage: vi.fn(),
   RATE_LIMITS_USAGE_QUERY_KEY_BASE: ["tenant-settings", "rate-limits-usage"],
 }));
+vi.mock("@/features/tenant-settings/hooks/useRateLimitsAlerts", () => ({
+  useRateLimitsAlerts: vi.fn(),
+  RATE_LIMITS_ALERTS_QUERY_KEY_BASE: ["tenant-settings", "rate-limits-alerts"],
+}));
 
 import { QuotasTab } from "@/features/tenant-settings/components/tabs/QuotasTab";
 import { useQuotas } from "@/features/tenant-settings/hooks/useQuotas";
 import { useQuotasSave } from "@/features/tenant-settings/hooks/useQuotasSave";
 import { useRateLimits } from "@/features/tenant-settings/hooks/useRateLimits";
+import { useRateLimitsAlerts } from "@/features/tenant-settings/hooks/useRateLimitsAlerts";
 import { useRateLimitsSave } from "@/features/tenant-settings/hooks/useRateLimitsSave";
 import { useRateLimitsUsage } from "@/features/tenant-settings/hooks/useRateLimitsUsage";
 
@@ -104,6 +110,18 @@ function mockUsage(
   } as unknown as ReturnType<typeof useRateLimitsUsage>);
 }
 
+/** Sprint 57.62 — control the Recent alerts poll hook independently. */
+function mockAlerts(
+  alerts: unknown[] | undefined,
+  overrides: Partial<{ isLoading: boolean; error: Error | null }> = {},
+): void {
+  vi.mocked(useRateLimitsAlerts).mockReturnValue({
+    data: alerts === undefined ? undefined : { items: alerts },
+    isLoading: overrides.isLoading ?? false,
+    error: overrides.error ?? null,
+  } as unknown as ReturnType<typeof useRateLimitsAlerts>);
+}
+
 const SAMPLE_QUOTAS = [
   { resource: "tokens_per_day", limit: 10_000_000, unit: "tokens", period: "day", current_usage: null },
   { resource: "cost_usd_per_day", limit: 100, unit: "usd", period: "day", current_usage: null },
@@ -115,6 +133,7 @@ describe("QuotasTab (Sprint 57.49)", () => {
     mockSave();
     mockRlSave();
     mockUsage([]);
+    mockAlerts([]);
   });
   afterEach(() => {
     vi.clearAllMocks();
@@ -608,6 +627,132 @@ describe("QuotasTab (Sprint 57.49)", () => {
       expect(screen.getByTestId("ratelimits-cancel-btn")).toBeInTheDocument();
       // Live usage Card still rendered alongside
       expect(screen.getByText("Live usage")).toBeInTheDocument();
+    });
+  });
+
+  /* === Sprint 57.62 US-3 — Recent alerts Card tests === */
+
+  const SAMPLE_ALERTS = [
+    {
+      resource: "api_requests",
+      window: "min",
+      threshold_pct: 80,
+      actual_pct: 92,
+      used: 92,
+      quota: 100,
+      severity: "warning",
+      window_start: "2026-05-29T10:00:00Z",
+      triggered_at: "2026-05-29T10:00:05Z",
+    },
+    {
+      resource: "tool_calls",
+      window: "min",
+      threshold_pct: 80,
+      actual_pct: 100,
+      used: 100,
+      quota: 100,
+      severity: "critical",
+      window_start: "2026-05-29T09:59:00Z",
+      triggered_at: "2026-05-29T09:59:30Z",
+    },
+  ];
+
+  describe("Recent alerts Card (Sprint 57.62)", () => {
+    it("renders 'Recent alerts' Card title + per-alert rows when alerts present", () => {
+      mockData([], []);
+      mockAlerts(SAMPLE_ALERTS);
+      render(<QuotasTab tenantId="t1" />);
+
+      expect(screen.getByText("Recent alerts")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-alerts-list")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-alert-row-api_requests")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-alert-row-tool_calls")).toBeInTheDocument();
+    });
+
+    it("renders peak pct + severity per alert row", () => {
+      mockData([], []);
+      mockAlerts(SAMPLE_ALERTS);
+      render(<QuotasTab tenantId="t1" />);
+
+      expect(screen.getByTestId("ratelimits-alert-pct-api_requests")).toHaveTextContent("92%");
+      expect(screen.getByTestId("ratelimits-alert-pct-tool_calls")).toHaveTextContent("100%");
+      expect(screen.getByTestId("ratelimits-alert-badge-api_requests")).toHaveTextContent("warning");
+      expect(screen.getByTestId("ratelimits-alert-badge-tool_calls")).toHaveTextContent("critical");
+    });
+
+    it("maps severity → existing token badge modifier (warning → .badge.warning, critical → .badge.danger)", () => {
+      mockData([], []);
+      mockAlerts(SAMPLE_ALERTS);
+      render(<QuotasTab tenantId="t1" />);
+
+      const warnBadge = screen.getByTestId("ratelimits-alert-badge-api_requests");
+      const critBadge = screen.getByTestId("ratelimits-alert-badge-tool_calls");
+      // severity → existing styles-mockup.css badge modifier (refs --warning / --danger; no new oklch)
+      expect(warnBadge).toHaveClass("badge", "warning");
+      expect(warnBadge).toHaveAttribute("data-severity", "warning");
+      expect(critBadge).toHaveClass("badge", "danger");
+      expect(critBadge).toHaveAttribute("data-severity", "critical");
+    });
+
+    it("renders a relative-time label per alert", () => {
+      // Freeze Date.now so triggered_at - now is deterministic.
+      // triggered_at 2026-05-29T10:00:05Z; now = +65s → "1m ago".
+      const nowSpy = vi
+        .spyOn(Date, "now")
+        .mockReturnValue(Date.parse("2026-05-29T10:01:10Z"));
+      mockData([], []);
+      mockAlerts(SAMPLE_ALERTS);
+      render(<QuotasTab tenantId="t1" />);
+
+      expect(screen.getByTestId("ratelimits-alert-time-api_requests")).toHaveTextContent("1m ago");
+      nowSpy.mockRestore();
+    });
+
+    it("renders empty state when no alerts recorded", () => {
+      mockData([], []);
+      mockAlerts([]);
+      render(<QuotasTab tenantId="t1" />);
+
+      expect(screen.getByTestId("ratelimits-alerts-empty")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-alerts-empty")).toHaveTextContent(/No recent alerts/);
+      expect(screen.queryByTestId("ratelimits-alerts-list")).toBeNull();
+    });
+
+    it("renders loading + error states from the alerts poll hook", () => {
+      mockData([], []);
+      mockAlerts(undefined, { isLoading: true });
+      const { rerender } = render(<QuotasTab tenantId="t1" />);
+      expect(screen.getByTestId("ratelimits-alerts-loading")).toBeInTheDocument();
+
+      mockAlerts(undefined, { error: new Error("HTTP 404: tenant not found") });
+      rerender(<QuotasTab tenantId="t1" />);
+      const err = screen.getByTestId("ratelimits-alerts-error");
+      expect(err).toBeInTheDocument();
+      expect(err).toHaveTextContent(/tenant not found/);
+    });
+
+    it("scope guard: existing Rate limits + Live usage Cards UNCHANGED when alerts present", () => {
+      const SAMPLE_RATE_LIMITS = [{ label: "API requests", value: "100/min" }];
+      mockData([], SAMPLE_RATE_LIMITS);
+      mockUsage(SAMPLE_USAGE);
+      mockAlerts(SAMPLE_ALERTS);
+      render(<QuotasTab tenantId="t1" />);
+
+      // Rate limits Card (Sprint 57.57) intact — read-only items + Edit button
+      expect(screen.getByText("Rate limits")).toBeInTheDocument();
+      expect(screen.getByText("API requests")).toBeInTheDocument();
+      expect(screen.getByText("100/min")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-edit-btn")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-edit-btn")).not.toBeDisabled();
+
+      // Live usage Card (Sprint 57.58) intact — list + rows
+      expect(screen.getByText("Live usage")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-usage-list")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-usage-row-api_requests")).toBeInTheDocument();
+
+      // Recent alerts Card rendered alongside
+      expect(screen.getByText("Recent alerts")).toBeInTheDocument();
+      expect(screen.getByTestId("ratelimits-alerts-list")).toBeInTheDocument();
     });
   });
 });

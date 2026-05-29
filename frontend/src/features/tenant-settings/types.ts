@@ -21,6 +21,7 @@
  * Last Modified: 2026-05-26
  *
  * Modification History (newest-first):
+ *   - 2026-05-29: Sprint 57.62 US-3 — +RateLimitAlert{Item,Response} alerts read schemas
  *   - 2026-05-28: Sprint 57.58 Track D — +RateLimitsUsage{Item,Response} live usage read schemas
  *   - 2026-05-27: Sprint 57.57 Track B — +RateLimitsUpsert{Request,Response} write schemas
  *   - 2026-05-27: Sprint 57.56 Track B — +QuotaOverridesUpsert{Request,Response} types
@@ -232,4 +233,33 @@ export interface RateLimitsUsageItem {
 
 export interface RateLimitsUsageResponse {
   items: RateLimitsUsageItem[];
+}
+
+/* === Sprint 57.62 US-3 — RateLimits alerts read schemas ===
+ *
+ * Mirrors backend Pydantic RateLimitAlertItem / RateLimitAlertsResponse at
+ * backend/src/api/v1/admin/tenants.py (GET /{tenant_id}/rate-limits/alerts).
+ * One persisted 80%-threshold usage alert per (resource, window, window_start),
+ * peak-tracked; newest-first. Distinct from RateLimitsUsageItem (live counter):
+ * this is the durable, deduplicated breach record.
+ *   - threshold_pct: the crossing threshold that fired (currently 80)
+ *   - actual_pct:    observed usage pct, per-window peak
+ *   - severity:      "warning" (80-99%) | "critical" (>=100%, throttled)
+ *   - window_start / triggered_at: ISO-8601 datetime strings
+ */
+
+export interface RateLimitAlertItem {
+  resource: string;
+  window: string; // window_type label (e.g. "min")
+  threshold_pct: number; // crossing threshold (currently 80)
+  actual_pct: number; // observed usage pct (per-window peak)
+  used: number;
+  quota: number;
+  severity: string; // "warning" | "critical"
+  window_start: string; // ISO-8601 datetime
+  triggered_at: string; // ISO-8601 datetime
+}
+
+export interface RateLimitAlertsResponse {
+  items: RateLimitAlertItem[];
 }

@@ -21,6 +21,7 @@
  * Last Modified: 2026-05-26
  *
  * Modification History (newest-first):
+ *   - 2026-05-29: Sprint 57.62 US-3 — +fetchRateLimitsAlerts GET recent alerts service func
  *   - 2026-05-28: Sprint 57.58 Track D — +fetchRateLimitsUsage GET live usage service func
  *   - 2026-05-27: Sprint 57.57 Track B — +saveRateLimits PUT service func
  *   - 2026-05-27: Sprint 57.56 Track B — +saveQuotaOverrides PUT service func
@@ -48,6 +49,7 @@ import type {
   QuotaListResponse,
   QuotaOverridesUpsertRequest,
   QuotaOverridesUpsertResponse,
+  RateLimitAlertsResponse,
   RateLimitListResponse,
   RateLimitsUpsertRequest,
   RateLimitsUpsertResponse,
@@ -265,6 +267,25 @@ export async function fetchRateLimitsUsage(
     { method: "GET", signal },
   );
   return _handleResponse<RateLimitsUsageResponse>(response);
+}
+
+/* === Sprint 57.62 US-3 — RateLimits recent alerts (GET) ===
+ *
+ * Mirrors backend GET /{tenant_id}/rate-limits/alerts?limit=N (default 20,
+ * 1..100). Returns recent 80%-threshold breach records newest-first. `limit`
+ * omitted → backend default 20.
+ */
+export async function fetchRateLimitsAlerts(
+  tenantId: string,
+  limit?: number,
+  signal?: AbortSignal,
+): Promise<RateLimitAlertsResponse> {
+  const query = limit !== undefined ? `?limit=${limit}` : "";
+  const response = await fetchWithAuth(
+    `${API_BASE}/tenants/${tenantId}/rate-limits/alerts${query}`,
+    { method: "GET", signal },
+  );
+  return _handleResponse<RateLimitAlertsResponse>(response);
 }
 
 /* === Sprint 57.50 — Identity single-record endpoint === */

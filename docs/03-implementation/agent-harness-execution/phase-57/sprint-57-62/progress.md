@@ -40,10 +40,38 @@
 **GO for Day 1.** 0 CRITICAL-blocker. Net scope shift ≈ **−3%** (dropped `api/main.py` wiring edit via D-DAY0-G stateless-store simplification; 3 factual corrections folded into plan: migration-test path `db/`→`api/`, RLS SQL `+, true` + `FORCE`, severity lowercase + CHECK). All corrections preserved here as audit trail; plan §4.1/§4.2/§4.4/§5 + checklist updated to reality.
 
 ### Day 0 commit
-- (pending) plan + checklist + this progress.md Day 0 entry
+- ✅ `79282286` (plan + checklist + this progress.md Day 0 entry; 3 files +565)
 
 ---
 
-## Day 1 — Implementation (pending — sequential Track A backend → Track B frontend)
+## Day 1 — Implementation (sequential Track A backend → Track B frontend; 2026-05-29)
+
+### Track A — backend (US-1 + US-2; code-implementer agent, 28th consecutive)
+- **US-1**: NEW `RateLimitAlert` ORM in `api_keys.py` (`rate_limit_alerts`, `TenantScopedMixin`; `threshold_pct`/`actual_pct` int; severity lowercase `warning`/`critical` + CHECK; UNIQUE `(tenant_id, resource_type, window_type, window_start)` + index `(tenant_id, triggered_at)`) + export in `models/__init__.py`. NEW Alembic `0021_rate_limit_alerts` (down_revision `0020`; CREATE + ENABLE+FORCE RLS + 2 policies `tenant_isolation`/`tenant_insert` `current_setting('app.tenant_id', true)::uuid`). NEW stateless `RateLimitAlertStore` (`ALERT_THRESHOLD_PCT=80`; `maybe_record` idempotent peak/escalate via `pg_insert.on_conflict_do_update` GREEATEST + warning→critical; early-return quota<=0 / pct<80; `list_recent` newest-first). Hooked into `RedisRateLimitCounter._write_through` (best-effort; session already present — D-DAY0-G stateless-store simplification, NO `main.py` wiring).
+- **US-2**: NEW `RateLimitAlertItem` + `RateLimitAlertsResponse` + `GET /admin/tenants/{tid}/rate-limits/alerts?limit=N` (default 20, ge=1 le=100, newest-first; reuse `_load_tenant_or_404`).
+- Tests +20: `test_rate_limit_alert_store.py` (12) + `test_admin_tenant_rate_limits_alerts.py` (6) + `test_rate_limit_alerts_migration.py` (2).
+
+### Track B — frontend (US-3; code-implementer agent, 29th consecutive)
+- NEW `useRateLimitsAlerts.ts` (TanStack `useQuery`, `refetchInterval: 15000`, key `RATE_LIMITS_ALERTS_QUERY_KEY_BASE`) + `fetchRateLimitsAlerts(tenantId, limit?, signal?)` in `tenantSettingsService.ts` + `RateLimitAlertItem`/`RateLimitAlertsResponse` TS types (snake_case mirror of backend, matching `RateLimitsUsageItem` convention).
+- `QuotasTab.tsx`: NEW "Recent alerts" Card BELOW Live usage Card (resource · peak % · severity badge `.badge.warning`/`.badge.danger` · relative time + empty state); existing Rate limits + Live usage cards UNCHANGED (scope-guard test). 0 new oklch.
+- Vitest +17 (4 hook + 13 QuotasTab incl. 2-card scope-guard).
+
+### Drift findings (Day 1)
+- **D-DAY1-1**: store test placed at `backend/tests/integration/api/test_rate_limit_alert_store.py` (NOT `tests/unit/platform_layer/tenant/` per checklist §1.1) — the store's `maybe_record`/`list_recent` need a real RLS-bearing DB session, so it belongs alongside the other rate-limit integration tests. Reasonable deviation; checklist path was a Day-0 estimate.
+- **D-DAY1-2** (repo-health, OUT OF SCOPE — RESOLVED): 2 orphaned `AA` unmerged files (`docs/.../phase-52/sprint-52-2/progress.md` + `retrospective.md`; conflict markers in working tree; no active merge/MERGE_HEAD) surfaced at the Day 1.4 sweep — a stray remnant from an earlier interrupted merge/stash, NOT created by Track A/B. main `2d99d626` + HEAD `79282286` both hold the canonical clean blobs → restored via `git checkout HEAD -- <2 paths>` per user Option A (no data loss; conflict-marker working content discarded). NOT part of Sprint 57.62; excluded from the Day 1 commit.
+
+### Day 1.4 validation sweep — ALL GREEN (parent authoritative)
+- pytest **1907 passed, 4 skipped** (1887 → +20)
+- mypy `src --strict` **0 / 319 files**
+- **9/9 V2 lints** (`check_rls_policies` incl. new `rate_limit_alerts` → 21 tables; `check_llm_sdk_leak`; `check_ap4_frontend_placeholder`)
+- black 9 changed files unchanged / isort clean / flake8 exit 0
+- Vitest **686 passed (124 files)** (+17)
+- tsc + Vite build ✓ (3.74s)
+- ESLint exit 0
+- **OKLCH delta 0** (HEX_OKLCH baseline 48 unchanged)
+- Alembic **`0021` live down→up clean** (0021→0020→0021, both exit 0; + `test_rate_limit_alerts_migration` 2 tests)
+
+### Day 1 commit
+- (SHA recorded at Day 2 closeout per 57.61 self-reference-avoidance lesson)
 
 ## Day 2 — Closeout (pending)

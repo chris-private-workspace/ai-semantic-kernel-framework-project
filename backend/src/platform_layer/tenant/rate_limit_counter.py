@@ -37,6 +37,7 @@ Created: 2026-05-28 (Sprint 57.58)
 Last Modified: 2026-05-28
 
 Modification History (newest-first):
+    - 2026-05-29: Sprint 57.62 Track A — record 80%-threshold usage alert in _write_through
     - 2026-05-28: Sprint 57.59 US-3 — usage-table write-through + Redis recovery (AP-4 close)
     - 2026-05-28: Sprint 57.58 Track A — initial creation (RateLimits RuntimeEnforcement)
 
@@ -67,6 +68,7 @@ from platform_layer.tenant._rate_limit_contracts import (
     RateLimitCounterState,
     RateLimitDecision,
 )
+from platform_layer.tenant.rate_limit_alert_store import RateLimitAlertStore
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -315,6 +317,23 @@ class RedisRateLimitCounter(RateLimitCounter):
                     )
                 )
                 await session.execute(stmt)
+                # Sprint 57.62: record a durable 80%-threshold usage alert at the
+                # enforcement point (so breaches are captured even when no admin is
+                # polling live usage). Rides this method's best-effort try/except —
+                # an alert failure must NEVER break enforcement. The session already
+                # carries the tenant context (set above for the rate_limits RLS
+                # policies), which the rate_limit_alerts RLS policies also read.
+                # Idempotent per (tenant, resource, window_type, window_start) so
+                # repeated crossings in one window upsert the same row.
+                await RateLimitAlertStore().maybe_record(
+                    session,
+                    tenant_id,
+                    resource,
+                    window_type,
+                    used=used,
+                    quota=limit,
+                    window_start=window_start,
+                )
                 await session.commit()
         except Exception:  # noqa: BLE001 — fail-open: usage persistence never blocks
             logger.warning(

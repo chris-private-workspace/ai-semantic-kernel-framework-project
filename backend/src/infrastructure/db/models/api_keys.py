@@ -45,6 +45,7 @@ Created: 2026-04-29 (Sprint 49.3 Day 2.1)
 Last Modified: 2026-05-28
 
 Modification History:
+    - 2026-05-29: Sprint 57.62 — add RateLimitAlert ORM (80%-threshold usage alert log)
     - 2026-05-28: Sprint 57.59 — add RateLimitConfig ORM (config two-table split; AP-4 close)
     - 2026-04-29: Initial creation (Sprint 49.3 Day 2.1)
 
@@ -63,6 +64,7 @@ from typing import Any
 from uuid import UUID as PyUUID
 
 from sqlalchemy import (
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
@@ -251,4 +253,83 @@ class RateLimitConfig(Base, TenantScopedMixin):
     )
 
 
-__all__ = ["ApiKey", "RateLimit", "RateLimitConfig"]
+# === RateLimitAlert: durable 80%-threshold usage alert log =================
+# Why: Sprint 57.62 surfaces rate-limit pressure BEFORE tenants hit a hard 429.
+# The enforcement point (rate_limit_counter._write_through) records a durable row
+# the first time a tenant's usage for a (resource, window) crosses 80% of its
+# configured quota, so breaches are captured even when no admin is polling the
+# live-usage endpoint. Mirrors the SLAViolation append-only breach log (sla.py):
+# lowercase severity + CHECK constraint, but threshold_pct/actual_pct are plain
+# int (rate-limit pct is integer-grained — deliberately NOT Numeric).
+# The unique (tenant, resource, window, window_start) key makes the alert
+# idempotent per window instance: repeated crossings in the same window upsert the
+# SAME row (actual_pct = peak, triggered_at = first-crossing time preserved).
+# Reference: sprint-57-62-plan.md / 09-db-schema-design.md §rate limits /
+#   infrastructure/db/models/sla.py:SLAViolation (alert-log precedent)
+class RateLimitAlert(Base, TenantScopedMixin):
+    """Per-window rate-limit 80%-threshold breach alert. Sprint 57.62."""
+
+    __tablename__ = "rate_limit_alerts"
+
+    id: Mapped[PyUUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+
+    resource_type: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        doc="api_requests / tool_calls / sse_connections (validation in service layer).",
+    )
+    window_type: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        doc="sec / min / hour / day — same label the rate_limits usage row uses.",
+    )
+
+    threshold_pct: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        doc="The crossing threshold this row records (currently always 80).",
+    )
+    actual_pct: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        doc="Observed usage pct at crossing time; upsert keeps the per-window peak.",
+    )
+    used: Mapped[int] = mapped_column(Integer, nullable=False)
+    quota: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    severity: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        doc="warning (>=80%) / critical (>=100%) — lowercase, mirrors SLAViolation.",
+    )
+
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    triggered_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "resource_type",
+            "window_type",
+            "window_start",
+            name="uq_rate_limit_alerts_window",
+        ),
+        CheckConstraint(
+            "severity IN ('warning', 'critical')",
+            name="ck_rate_limit_alerts_severity",
+        ),
+        Index(
+            "ix_rate_limit_alerts_tenant_recent",
+            "tenant_id",
+            "triggered_at",
+        ),
+    )
+
+
+__all__ = ["ApiKey", "RateLimit", "RateLimitAlert", "RateLimitConfig"]

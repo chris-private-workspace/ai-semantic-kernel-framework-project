@@ -46,6 +46,7 @@ Created: 2026-05-06 (Sprint 56.1 Day 1)
 Last Modified: 2026-05-10
 
 Modification History:
+    - 2026-05-29: Sprint 57.62 Track A — add GET /rate-limits/alerts (80%-threshold alert log)
     - 2026-05-29: Sprint 57.61 — RateLimits PUT field_validator (422 on malformed value/label)
     - 2026-05-29: Sprint 57.60 — RateLimits GET/usage/PUT drop meta_data fallback+dual-write
     - 2026-05-28: Sprint 57.59 US-3 — GET /rate-limits/usage reads config + usage tables
@@ -108,6 +109,7 @@ from platform_layer.tenant.onboarding import (
 )
 from platform_layer.tenant.plans import PlanLoader, get_plan_loader
 from platform_layer.tenant.provisioning import ProvisioningError, ProvisioningWorkflow
+from platform_layer.tenant.rate_limit_alert_store import RateLimitAlertStore
 from platform_layer.tenant.rate_limit_config_store import (
     RateLimitConfigStore,
     is_recognized_rate_limit_value,
@@ -1646,6 +1648,78 @@ async def get_rate_limits_usage(
         )
 
     return RateLimitsUsageResponse(items=items)
+
+
+# =====================================================================
+# Sprint 57.62 Track A — RateLimits 80%-threshold usage alerts GET
+# =====================================================================
+# Exposes the durable rate_limit_alerts log (written at the enforcement point by
+# rate_limit_counter._write_through when usage crosses 80% of a configured quota).
+# Read-only, newest-first; mirrors get_rate_limits_usage's auth/db/404 pattern.
+
+
+class RateLimitAlertItem(BaseModel):
+    """One recorded 80%-threshold usage alert."""
+
+    resource: str  # the alerted resource_type (e.g. "api_requests")
+    window: str  # the window_type label (e.g. "min")
+    threshold_pct: int  # the crossing threshold (currently 80)
+    actual_pct: int  # observed usage pct (per-window peak)
+    used: int
+    quota: int
+    severity: str  # "warning" / "critical"
+    window_start: datetime
+    triggered_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RateLimitAlertsResponse(BaseModel):
+    """Recent rate-limit alerts envelope (newest-first)."""
+
+    items: list[RateLimitAlertItem]
+
+
+@router.get(
+    "/{tenant_id}/rate-limits/alerts",
+    response_model=RateLimitAlertsResponse,
+    dependencies=[Depends(require_admin_platform_role)],
+)
+async def get_rate_limits_alerts(
+    tenant_id: UUID,
+    limit: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db_session),
+) -> RateLimitAlertsResponse:
+    """Return this tenant's most-recent rate-limit usage alerts (newest-first).
+
+    - 401/403 via require_admin_platform_role
+    - 404 via _load_tenant_or_404
+    - 200 with {items: [{resource, window, threshold_pct, actual_pct, used,
+      quota, severity, window_start, triggered_at}]}
+
+    Alerts are written lazily at the enforcement point (rate_limit_counter
+    ._write_through) the first time a tenant's usage for a (resource, window)
+    crosses 80% of its configured quota, so breaches are captured even when no
+    admin is watching live usage. `limit` caps the page (default 20, max 100).
+    """
+    await _load_tenant_or_404(db, tenant_id)
+
+    rows = await RateLimitAlertStore().list_recent(db, tenant_id, limit)
+    items = [
+        RateLimitAlertItem(
+            resource=row.resource_type,
+            window=row.window_type,
+            threshold_pct=row.threshold_pct,
+            actual_pct=row.actual_pct,
+            used=row.used,
+            quota=row.quota,
+            severity=row.severity,
+            window_start=row.window_start,
+            triggered_at=row.triggered_at,
+        )
+        for row in rows
+    ]
+    return RateLimitAlertsResponse(items=items)
 
 
 # =====================================================================
