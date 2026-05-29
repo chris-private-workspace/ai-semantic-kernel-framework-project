@@ -56,6 +56,43 @@
 
 ---
 
-## Day 1 — Implementation (pending)
+## Day 1 — Implementation (2026-05-29 — single code-implementer agent `rl-metadata-cleanup`, 26th consecutive)
+
+### US-1 — Remove meta_data read-fallback (4 sites) + PUT dual-write (1 site)
+- 5 sites removed (config → terminal, meta_data middle layer dropped):
+  - #1 GET `list_tenant_rate_limits` → `config → DEFAULT`; orphan: `tenant =` binding → bare `await _load_tenant_or_404(...)` (404 kept)
+  - #2 usage GET `get_rate_limits_usage` → `config → DEFAULT`; `tenant` binding dropped (rest uses `tenant_id`/`RateLimit`)
+  - #3 middleware `_load_rate_limits` → `config → []`; orphans cleaned: `select`, `Tenant` imports
+  - #4 gate `_load_tool_limits` → `config → {}` (empty list → empty dict via loop); orphans cleaned: `select`, `Tenant` imports
+  - #5 PUT `upsert_tenant_rate_limits` → removed 3-line dual-write; dropped `tenant` binding + `db.refresh(tenant)` + redundant `db.flush()` (confirmed `replace_configs` flushes internally; `commit` persists). Audit + `commit` kept.
+- Stale `AD-RateLimits-MetaData-Cleanup-Phase58` inline comments/docstrings → past-tense; MHist added to 3 source files.
+
+### US-1 test conversions (Never-Delete honored)
+- `test_admin_tenant_rate_limits.py` (57.48): 2 GET-override tests re-seeded to config table; 2 PUT ORM `meta_data` asserts flipped to config-rows + `"rate_limits" not in meta_data`; +1 NEW `test_list_rate_limits_ignores_stale_meta_data`
+- `test_admin_tenant_rate_limits_table.py` (57.59): GET-fallback test → asserts DEFAULT (stale meta_data ignored)
+- `test_rate_limit_usage_persistence.py` (57.59): middleware-fallback test → asserts `[]`
+- `test_admin_tenant_rate_limits_usage.py` (57.58): seeds config table instead of meta_data
+- `test_rate_limit_middleware.py` / `test_tool_rate_limit_enforce.py`: NO conversion (monkeypatch `_load_rate_limits` / patch gate read — no meta_data dependency)
+- `test_rate_limit_config_migration.py` (57.59): untouched (tests `0019` in isolation — legitimately seeds meta_data)
+
+### US-2 — Alembic `0020` clear stored JSONB + reverse-populate downgrade
+- NEW `0020_clear_rate_limits_meta_data.py` (down_revision `0019_rate_limit_configs`): `upgrade()` strips `"metadata" - 'rate_limits'` (idempotent), `downgrade()` reverse-populates via inline `_inline_project` (inverse of `0019._parse_item`; lossy custom labels, dev-only). Dep-light (no store import); physical `"metadata"` column (D-DAY0-M).
+- NEW `test_clear_rate_limits_meta_data_migration.py` (7 tests incl. downgrade reverse-populate + round-trip)
+
+### Day 1 deviations / findings
+- **`CAST(:items AS jsonb)` NOT `:items::jsonb`**: the `::jsonb` cast shorthand collides with asyncpg named-param parsing (test path); `CAST(...)` is equivalent SQL working under both psycopg (Alembic) + asyncpg. Applied to migration + test. Verified via live `0019→0020→0019→0020` round-trip.
+- **`db.flush()` in PUT was redundant** (not needed) — `replace_configs` flushes internally; dropped safely.
+- **Pre-existing (not this sprint)**: `mypy --strict .` (whole-dir) reports a duplicate-`conftest` collection error (two `tests/integration/{api,agent_harness}/conftest.py` lack `__init__.py`); present on `main` since Sprint 57.53. **NOT a CI concern** — CI runs `mypy src/ --strict` (backend-ci.yml:152), which is clean (0/317). Flagged as a Phase 58+ candidate, outside this sprint's scope.
+
+### Day 1.3 Validation Sweep — ALL GREEN (parent authoritative)
+- pytest **1848 passed / 4 skip** (+8 vs 1840 baseline; 6 new migration tests + 2 new ignore-stale tests; 0 regressions)
+- mypy **`src/ --strict` 0 errors / 317 files** (CI parity per backend-ci.yml:152)
+- **9/9 V2 lints** green (incl. `check_rls_policies` 20 tables unchanged — data-only migration + `check_llm_sdk_leak`)
+- black/isort/flake8 clean (574 files)
+- Alembic `up → down → up` clean on live DB
+- 0 frontend files touched → Vitest 675 unaffected; HEX_OKLCH baseline 48 unchanged; DUAL CLEAN 22/22 PARITY 16 consec
+
+### Day 1 commit
+- (pending — parent commits all Day 1 work after this entry)
 
 ## Day 2 — Closeout (pending)

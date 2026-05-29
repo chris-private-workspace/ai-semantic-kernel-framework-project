@@ -47,36 +47,38 @@ Plan: [`sprint-57-60-plan.md`](./sprint-57-60-plan.md)
 
 ### 0.9 Branch + Day 0 commit
 - [x] **Create feature branch** `feature/sprint-57-60-rate-limits-metadata-cleanup` (from main `4ad51828`)
-- [ ] **Day 0 commit** (plan + checklist + progress.md Day 0 entry)
+- [x] **Day 0 commit** (plan + checklist + progress.md Day 0 entry) ✅ `621afe72`
 
 ---
 
 ## Day 1 — Implementation (Agent-Delegated: yes — single agent)
 
 ### 1.1 US-1 — Remove meta_data read-fallback (4 sites) + PUT dual-write (1 site)
-- [ ] **EDIT** `api/v1/admin/tenants.py` — remove GET fallback (#1 L1390-91) → config → DEFAULT
-- [ ] **EDIT** `api/v1/admin/tenants.py` — remove usage GET fallback (#2 L1602) → config → DEFAULT
-- [ ] **EDIT** `api/v1/admin/tenants.py` — remove PUT dual-write (#5 L1492-97) → config write only; audit unchanged
-- [ ] **EDIT** `platform_layer/middleware/rate_limit.py` — `_load_rate_limits` remove fallback (#3 L188-193) → config → `[]`; drop orphaned tenant fetch if unused
-- [ ] **EDIT** `platform_layer/tenant/tool_rate_limit_gate.py` — `_load_tool_limits` remove fallback (#4 L136-141) → config → `[]`; drop orphan if unused
-- [ ] **EDIT** file-header MHist (3 source files) + remove/update inline "AD-RateLimits-MetaData-Cleanup-Phase58" comments (AD now closed)
-- [ ] **CONVERT** `test_admin_tenant_rate_limits_table.py` — fallback-path assertions → config-only steady-state (no delete)
-- [ ] **CONVERT** `test_rate_limit_usage_persistence.py` — fallback-path assertions → config-only (no delete)
-- [ ] **NEW** ~2-4 pytest: seed meta_data + empty config → GET returns DEFAULT (not meta_data) + PUT does not write meta_data
-- [ ] **Verify**: pytest US-1 green + API shapes unchanged
+- [x] **EDIT** `api/v1/admin/tenants.py` — remove GET fallback (#1) → config → DEFAULT; orphan `tenant` binding → bare `await _load_tenant_or_404(...)`
+- [x] **EDIT** `api/v1/admin/tenants.py` — remove usage GET fallback (#2) → config → DEFAULT; `tenant` binding dropped
+- [x] **EDIT** `api/v1/admin/tenants.py` — remove PUT dual-write (#5) → config write only; dropped `tenant` binding + `db.refresh` + redundant `db.flush`; audit + commit kept
+- [x] **EDIT** `platform_layer/middleware/rate_limit.py` — `_load_rate_limits` remove fallback (#3) → config → `[]`; dropped orphan `select`/`Tenant` imports
+- [x] **EDIT** `platform_layer/tenant/tool_rate_limit_gate.py` — `_load_tool_limits` remove fallback (#4) → config → `{}`; dropped orphan `select`/`Tenant` imports
+- [x] **EDIT** file-header MHist (3 source files) + inline AD comments → past-tense (AD now closed)
+- [x] **CONVERT** `test_admin_tenant_rate_limits_table.py` — fallback-path assertion → config-only (DEFAULT)
+- [x] **CONVERT** `test_rate_limit_usage_persistence.py` — middleware-fallback assertion → config-only (`[]`)
+- [x] **CONVERT (Day 0 D-DAY0-G drift)** `test_admin_tenant_rate_limits.py` (57.48) — 2 GET-override → config table; 2 PUT meta_data asserts → config-rows + `"rate_limits" not in meta_data`; +1 NEW `test_list_rate_limits_ignores_stale_meta_data`
+- [x] **CONVERT** `test_admin_tenant_rate_limits_usage.py` (57.58) — seeds config table instead of meta_data
+- [x] **NEW** ignore-stale-meta_data pytest: seed meta_data + empty config → GET returns DEFAULT (not meta_data) + PUT does not write meta_data
+- [x] **Verify**: pytest US-1 green + API shapes unchanged
 
 ### 1.2 US-2 — Alembic `0020` clear stored JSONB + reverse-populate downgrade
-- [ ] **NEW** `0020_clear_rate_limits_meta_data.py` — upgrade strips `meta_data - 'rate_limits'` (idempotent) + downgrade inline-projects `rate_limit_configs` → `meta_data["rate_limits"]`
-- [ ] **NEW** `test_clear_rate_limits_meta_data_migration.py` (~3-4 tests): upgrade clears key + idempotent on un-seeded + downgrade reverse-populates + multi-tenant isolation
-- [ ] **Verify**: migration `up → down → up` clean (head `0020`) + `check_rls_policies` 20 tables unchanged
+- [x] **NEW** `0020_clear_rate_limits_meta_data.py` — upgrade strips `"metadata" - 'rate_limits'` (idempotent, physical column) + downgrade inline `_inline_project` `rate_limit_configs` → `meta_data["rate_limits"]`; `CAST(:items AS jsonb)` (asyncpg compat); dep-light
+- [x] **NEW** `test_clear_rate_limits_meta_data_migration.py` (7 tests): upgrade clears key + idempotent + downgrade reverse-populates + multi-tenant + round-trip
+- [x] **Verify**: migration `up → down → up` clean on live DB (head `0020`) + `check_rls_policies` 20 tables unchanged
 
 ### 1.3 Day 1 Validation Sweep — ALL GREEN
-- [ ] **pytest full**: 1840 → ~1842+ (NO regressions)
-- [ ] **mypy --strict**: 0 errors
-- [ ] **9/9 V2 lints** (incl. `check_rls_policies` 20 tables + `check_llm_sdk_leak`)
-- [ ] **Vitest 675 unchanged** (0 frontend files touched — API shapes preserved)
-- [ ] **HEX_OKLCH baseline 48** + DUAL CLEAN 22/22 PARITY 16 consec
-- [ ] **LLM SDK leak 0** + Vite build clean
+- [x] **pytest full**: 1840 → **1848** (+8; 0 regressions)
+- [x] **mypy `src/ --strict`**: 0 errors / 317 files (CI parity per backend-ci.yml:152)
+- [x] **9/9 V2 lints** (incl. `check_rls_policies` 20 tables + `check_llm_sdk_leak`)
+- [x] **Vitest 675 unchanged** (0 frontend files touched — API shapes preserved)
+- [x] **HEX_OKLCH baseline 48** + DUAL CLEAN 22/22 PARITY 16 consec
+- [x] **LLM SDK leak 0** + black/isort/flake8 clean
 
 ### 1.4 Day 1 commit
 - [ ] **Commit all Day 1 work**

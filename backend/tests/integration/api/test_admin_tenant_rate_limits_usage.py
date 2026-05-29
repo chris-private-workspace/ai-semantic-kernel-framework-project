@@ -16,6 +16,7 @@ Description:
 Created: 2026-05-28 (Sprint 57.58 Day 1)
 
 Modification History (newest-first):
+    - 2026-05-29: Sprint 57.60 — seed config table (not meta_data) for usage config source
     - 2026-05-28: Initial creation (Sprint 57.58 Track C — RateLimits live usage GET)
 """
 
@@ -33,6 +34,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.v1.admin.tenants import router as admin_tenants_router
+from infrastructure.db.models.api_keys import RateLimitConfig
 from infrastructure.db.models.identity import Tenant, TenantPlan, TenantState
 from infrastructure.db.session import get_db_session
 from platform_layer.identity.auth import require_admin_platform_role
@@ -130,17 +132,21 @@ async def test_usage_populated_response_shape(db_session: AsyncSession) -> None:
     counter = RedisRateLimitCounter(fake_redis)
     set_rate_limit_counter(counter)
 
-    tenant = await _seed_tenant(
-        db_session,
-        code=_unique_code(),
-        meta_data={
-            "rate_limits": [
-                {"label": "API requests", "value": "100 / min"},
-                {"label": "Tool calls", "value": "1,000 / min"},
-                {"label": "SSE connections", "value": "50 concurrent"},  # skipped (non-rate)
-            ]
-        },
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    # Config source = rate_limit_configs table (Sprint 57.59+; meta_data fallback
+    # retired Sprint 57.60). "SSE connections / 50 concurrent" is non-rate so it
+    # never had a config-row representation — the usage GET skips it regardless.
+    db_session.add(
+        RateLimitConfig(
+            tenant_id=tenant.id, resource_type="api_requests", window_type="min", quota=100
+        )
     )
+    db_session.add(
+        RateLimitConfig(
+            tenant_id=tenant.id, resource_type="tool_calls", window_type="min", quota=1000
+        )
+    )
+    await db_session.flush()
 
     # Pre-consume 3 api_requests so the peek shows current=3.
     for _ in range(3):
