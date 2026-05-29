@@ -302,7 +302,7 @@ python scripts/dev.py logs docker -f
 | `.claude/rules/multi-tenant-data.md` | tenant_id 鐵律 + RLS + GDPR / PII |
 | `.claude/rules/anti-patterns-checklist.md` | 11 條 PR 自檢 |
 
-**📋 On-demand（10 條，需要時主動 Read `docs/rules-on-demand/X.md`）**
+**📋 On-demand（9 條，需要時主動 Read `docs/rules-on-demand/X.md`）**
 
 | Rule | Trigger |
 |------|---------|
@@ -315,7 +315,6 @@ python scripts/dev.py logs docker -f
 | `git-workflow.md` | Commit message / branch naming |
 | `backend-python.md` | Python backend 通用約定 |
 | `frontend-react.md` | React/TS 通用約定 |
-| `graphify-usage.md` | 用 graphify-out/ 探索 codebase |
 
 > 完整 trigger 表 + 任務情境配對見 [`.claude/rules/README.md`](.claude/rules/README.md)。
 
@@ -578,44 +577,6 @@ Phase README → Code → Progress Doc  ❌ 跳過 plan + checklist
 1. **Target Market**: 台灣 / 香港。技術詞英文，使用者面向繁體中文。
 2. **BMAD Methodology**: 沿用 BMad Agile workflow。狀態追蹤於 `docs/bmm-workflow-status.yaml`。
 3. **MAF Status**: V1 整合的 Microsoft Agent Framework 已於 Sprint 49.1 完成封存到 `archived/v1-phase1-48/`。V2 不再以 MAF 為核心；如需 multi-agent builder 才有條件保留 adapter。
-
----
-
-## graphify
-
-This project has a graphify knowledge graph at `graphify-out/`.
-
-### Navigation rules
-- 回答架構或代碼問題前，讀 `graphify-out/GRAPH_REPORT.md`（god nodes + community structure）
-- 若 `graphify-out/wiki/index.md` 存在，優先用而非讀原始檔案
-- 最佳閱讀順序：L1–10（summary）→ L2184–2322（god nodes + surprising connections + hyperedges）。用 Grep 跳到特定 community 在 L2323+
-
-### Confidence handling（CRITICAL）
-當前 graph 約 25% EXTRACTED / 75% INFERRED。
-- **God Nodes 與 Community structure** — 高信任，可直接用
-- **Surprising Connections** — 多為 INFERRED，當作假說，引用前用 Read/Grep 驗證
-- **架構理由引用** — 用 `/graphify explain <node>` 確認支撐 edge 是 EXTRACTED（已驗證）還是 INFERRED（LLM 猜的）。若只有 INFERRED 支撐，回答時必須明示
-
-### ⚠️ Scope Control
-**`.graphifyignore` 必須存在於專案根**。`graphify update .` 不會記住初次 build 排除哪些目錄；缺少 `.graphifyignore` 會把 `reference/`（2,213 files）、`claudedocs sample/`（217 files）、debug PNG（~124 files）全納入。
-
-驗證 scope：
-```bash
-python -c "from graphify.detect import detect; from pathlib import Path; r = detect(Path('.')); print(f'{r[\"total_files\"]} files, {r[\"graphifyignore_patterns\"]} ignore patterns')"
-# 預期：~3,300 files、30 ignore patterns
-```
-
-若 >5,000 files，停下修 `.graphifyignore` 再繼續。
-
-### Maintenance
-
-| Command | When | Cost |
-|---------|------|------|
-| `graphify update .` | 代碼變更（.py / .ts / .tsx）| Free |
-| `/graphify --update` | docs / markdown / PDF / image | Paid (LLM) |
-| `/graphify .` | 全重建（罕用） | Paid (LLM) |
-
-預設：每次 code commit 後跑 `graphify update .` — 它用 manifest.json diff，小變更幾乎瞬間完成。
 
 ---
 
