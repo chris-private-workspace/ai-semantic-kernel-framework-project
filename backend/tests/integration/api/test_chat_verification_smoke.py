@@ -6,26 +6,29 @@ Scope: Sprint 55.5 Day 1 (Option E 2-mode post-D4+D5)
 
 Description:
     End-to-end smoke validating the always-call-wrapper pattern at
-    `_stream_loop_events()` L197+:
+    `_stream_loop_events()`:
 
-    - "disabled" (default): inject verifier_registry=None → wrapper transparently
-      delegates to loop.run() per correction_loop.py:99-106. Event stream
-      byte-for-byte identical to the existing 50.2 echo_demo 8-event sequence;
-      no verification_* events emitted.
+    - "disabled" (default): build_handler returns verifier_registry=None → wrapper
+      transparently delegates to loop.run() per correction_loop.py:99-106. Event
+      stream byte-for-byte identical to the existing 50.2 echo_demo 8-event
+      sequence; no verification_* events emitted. (echo_demo, no Azure needed.)
 
-    - "enabled": inject populated VerifierRegistry containing
-      RulesBasedVerifier(rules=[]) → wrapper runs verifier on the final LLM
-      output. With no rules, RulesBasedVerifier passes → emits
-      VerificationPassed event into the SSE stream alongside the echo events.
-
-    Assumes `mode=echo_demo` produces a LoopCompleted with stop_reason="end_turn"
-    (gate condition for run_with_verification to run verifiers per
-    correction_loop.py:134-136). Existing 50.2 e2e test asserts this contract.
+    - "enabled": Sprint 57.63 (approach A) moved verifier construction INTO
+      build_real_llm_handler so the LLMJudgeVerifier shares the loop's adapter.
+      Only the real_llm path builds a populated VerifierRegistry; echo_demo always
+      returns registry=None (predictable fixtures, MockChatClient must not be
+      judged). So the "enabled emits verification" assertion now exercises the
+      real_llm path with a MockChatClient injected via dependency override (no
+      real Azure call), proving the wrapper runs the verifier + emits
+      VerificationPassed when the registry is populated.
 
 Created: 2026-05-05 (Sprint 55.5 Day 1)
-Last Modified: 2026-05-05
+Last Modified: 2026-05-31
 
 Modification History (newest-first):
+    - 2026-05-31: Sprint 57.63 — enabled-mode assertion moved to the real_llm path
+      (approach A: verifier built in build_real_llm_handler; echo_demo no longer
+      verifies). echo_demo disabled-mode backwards-compat assertion unchanged.
     - 2026-05-05: Initial creation (Sprint 55.5 Day 1) — close AD-Cat10-Wire-1 integration smoke
 """
 
@@ -138,8 +141,29 @@ class TestChatVerificationWireSmoke:
         assert "verification_failed" not in types_disabled
 
         # ---- Mode 2: enabled (populated registry path) ----
-        monkeypatch.setenv("CHAT_VERIFICATION_MODE", "enabled")
-        get_settings.cache_clear()
+        # Sprint 57.63 approach A: the verifier registry is now built INSIDE
+        # build_real_llm_handler (so the LLMJudgeVerifier shares the loop's
+        # adapter); echo_demo always returns registry=None. To prove the
+        # router → wrapper → SSE emission contract for a POPULATED registry
+        # WITHOUT a real Azure call, monkeypatch build_handler to pair the
+        # echo_demo loop with a populated (no-op) registry. The production
+        # "enabled → handler builds a real LLMJudgeVerifier registry" path is
+        # covered by test_chat_category_activation_wiring.py Group A.
+        import importlib
+
+        from api.v1.chat._verifier_factory import build_default_verifier_registry
+        from api.v1.chat.handler import build_echo_demo_handler
+
+        def _fake_build_handler(mode, message, **kwargs):  # type: ignore[no-untyped-def]
+            loop, _ = build_echo_demo_handler(message)
+            return loop, build_default_verifier_registry()
+
+        # `from api.v1.chat import router` yields the APIRouter INSTANCE (the
+        # package __init__ re-exports it), so patch the actual module object —
+        # importlib.import_module returns the module, not the re-exported attr —
+        # where chat() looks up its module-global `build_handler`.
+        router_module = importlib.import_module("api.v1.chat.router")
+        monkeypatch.setattr(router_module, "build_handler", _fake_build_handler)
         # Reset registry so 2nd POST does not see stale session
         reg = get_default_registry()
         reg._tenants.clear()  # type: ignore[attr-defined]  # noqa: SLF001

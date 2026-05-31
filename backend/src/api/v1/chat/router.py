@@ -78,7 +78,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from agent_harness._contracts import LoopCompleted, TraceContext
 from agent_harness._contracts.events import ToolCallExecuted
 from agent_harness.observability._abc import Tracer
-from agent_harness.verification import run_with_verification
+from agent_harness.verification import VerifierRegistry, run_with_verification
 from business_domain._service_factory import BusinessServiceFactory
 from core.config import get_settings
 from infrastructure.db.audit_helper import append_audit
@@ -107,7 +107,6 @@ from platform_layer.tenant.quota import (
     maybe_get_quota_enforcer,
 )
 
-from ._verifier_factory import select_verifier_registry
 from .handler import build_handler
 from .schemas import ChatRequest, ChatSessionResponse
 from .session_registry import SessionRegistry, get_default_registry
@@ -198,14 +197,21 @@ async def chat(
     def business_factory_provider() -> BusinessServiceFactory:
         return business_factory
 
+    # Sprint 57.63 Day 1: session_id generated BEFORE build_handler so the Cat 7
+    # DBCheckpointer can bind to it (was generated AFTER build_handler pre-57.63).
+    session_id = req.session_id or uuid4()
+
     try:
-        loop = build_handler(
+        loop, verifier_registry = build_handler(
             req.mode,
             req.message,
             service_factory=factory,
             business_factory_provider=(
                 business_factory_provider if settings.business_domain_mode == "service" else None
             ),
+            db=db,
+            session_id=session_id,
+            tenant_id=current_tenant,
         )
     except (RuntimeError, ValueError) as exc:
         # Misconfiguration (env vars / unsupported mode) → 503.
@@ -216,7 +222,6 @@ async def chat(
             detail=str(exc),
         ) from exc
 
-    session_id = req.session_id or uuid4()
     registry = get_default_registry()
     await registry.register(current_tenant, session_id)
 
@@ -279,6 +284,7 @@ async def chat(
             chat_start_time=chat_start_time,
             cost_ledger=cost_ledger_service,
             db=db,
+            verifier_registry=verifier_registry,
         ),
         media_type="text/event-stream",
         headers={
@@ -305,6 +311,7 @@ async def _stream_loop_events(
     chat_start_time: float | None = None,
     cost_ledger: CostLedgerService | None = None,
     db: AsyncSession | None = None,
+    verifier_registry: VerifierRegistry | None = None,
 ) -> AsyncIterator[bytes]:
     """Drive the loop generator + emit SSE bytes; finalize tenant-scoped registry.
 
@@ -325,9 +332,10 @@ async def _stream_loop_events(
     ``"enabled"``, passes a populated ``VerifierRegistry`` → wrapper runs
     verifiers + self-correction loop (max 2 attempts).
     """
-    settings = get_settings()
-    verifier_registry = select_verifier_registry(settings.chat_verification_mode)
-
+    # Sprint 57.63 (Cat 10, approach A): verifier_registry is now passed in from
+    # build_handler — built with the loop's OWN adapter (shared ChatClient) when
+    # settings.chat_verification_mode == "enabled", else None. The previous
+    # in-function select_verifier_registry() call is removed.
     natural_completion = False
     try:
         async for event in run_with_verification(

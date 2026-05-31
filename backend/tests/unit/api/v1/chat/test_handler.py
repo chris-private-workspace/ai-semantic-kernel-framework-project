@@ -20,13 +20,15 @@ from api.v1.chat.handler import (
 
 
 def test_build_echo_demo_returns_agent_loop() -> None:
-    loop = build_echo_demo_handler(message="hello")
+    # Sprint 57.63 (Cat 10, approach A): builders return (loop, verifier_registry).
+    loop, registry = build_echo_demo_handler(message="hello")
     assert isinstance(loop, AgentLoopImpl)
+    assert registry is None  # echo_demo never verifies
 
 
 def test_build_echo_demo_scripts_message_into_tool_call() -> None:
     """Scripted MockChatClient response should carry user's message as echo_tool arg."""
-    loop = build_echo_demo_handler(message="zebra")
+    loop, _ = build_echo_demo_handler(message="zebra")
     # peek at scripted responses via MockChatClient internals
     client = loop._chat_client  # type: ignore[attr-defined]
     first_response = client._responses[0]  # type: ignore[attr-defined]
@@ -44,8 +46,9 @@ def test_build_real_llm_missing_env_raises_runtime_error(monkeypatch: pytest.Mon
 
 
 def test_build_handler_dispatches_echo_demo() -> None:
-    loop = build_handler("echo_demo", "x")
+    loop, registry = build_handler("echo_demo", "x")
     assert isinstance(loop, AgentLoopImpl)
+    assert registry is None
 
 
 def test_build_handler_invalid_mode_raises() -> None:

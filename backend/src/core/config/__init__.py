@@ -110,6 +110,11 @@ class Settings(BaseSettings):
     # Option E 2-mode post-D4+D5: no shadow/enforce mode; rely on
     # registry-presence dispatch in run_with_verification wrapper.
     chat_verification_mode: Literal["disabled", "enabled"] = "disabled"
+    # Sprint 57.63 Cat 10: judge template used by the real LLMJudgeVerifier when
+    # chat_verification_mode == "enabled". A template name resolved from
+    # verification/templates/<name>.txt (e.g. "safety_review", "factual_consistency")
+    # or a raw string containing the `{output}` placeholder. Final-output judge only.
+    chat_verification_judge_template: str = "safety_review"
 
     # ---- Phase 56.1 SaaS quota (US-2) -------------------------------
     # Off by default — production rollout flips True after Redis client

@@ -63,11 +63,23 @@ from agent_harness.guardrails import build_default_guardrail_engine
 from agent_harness.orchestrator_loop import AgentLoopImpl
 from agent_harness.output_parser import OutputParserImpl
 from business_domain._register_all import make_default_executor
+from core.config import get_settings
 
+from ._category_factories import (
+    make_chat_compactor,
+    make_chat_error_deps,
+    make_chat_state_deps,
+    make_chat_verifier_registry,
+)
 from .schemas import ChatMode
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
+    from sqlalchemy.ext.asyncio import AsyncSession
+
     from agent_harness.hitl import HITLManager
+    from agent_harness.verification import VerifierRegistry
     from business_domain._service_factory import BusinessServiceFactory
     from platform_layer.governance.service_factory import ServiceFactory
 
@@ -87,7 +99,7 @@ def build_echo_demo_handler(
     hitl_manager: "HITLManager | None" = None,
     hitl_timeout_s: int = 14400,
     business_factory_provider: Callable[[], "BusinessServiceFactory"] | None = None,
-) -> AgentLoopImpl:
+) -> tuple[AgentLoopImpl, "VerifierRegistry | None"]:
     """Wire AgentLoopImpl with a MockChatClient pre-scripted to call echo_tool.
 
     The mock responds with TOOL_USE on turn 1 (echo_tool with the user's
@@ -99,6 +111,9 @@ def build_echo_demo_handler(
     Sprint 55.2 US-3: optional `business_factory_provider` enables service-mode
     business domain handlers (settings.business_domain_mode='service' path).
     None preserves PoC mock-mode behavior.
+
+    Sprint 57.63 Day 2 (Cat 10, approach A): returns `(loop, verifier_registry)`.
+    echo_demo always returns `registry=None` (no verification on the demo path).
     """
     registry, executor = make_default_executor(factory_provider=business_factory_provider)
     parser = OutputParserImpl()
@@ -124,7 +139,7 @@ def build_echo_demo_handler(
     ]
     chat_client: ChatClient = MockChatClient(responses=scripted)
 
-    return AgentLoopImpl(
+    loop = AgentLoopImpl(
         chat_client=chat_client,
         output_parser=parser,
         tool_executor=executor,
@@ -134,6 +149,7 @@ def build_echo_demo_handler(
         hitl_manager=hitl_manager,
         hitl_timeout_s=hitl_timeout_s,
     )
+    return loop, None
 
 
 def build_real_llm_handler(
@@ -141,11 +157,19 @@ def build_real_llm_handler(
     hitl_manager: "HITLManager | None" = None,
     hitl_timeout_s: int = 14400,
     business_factory_provider: Callable[[], "BusinessServiceFactory"] | None = None,
-) -> AgentLoopImpl:
+    db: "AsyncSession | None" = None,
+    session_id: "UUID | None" = None,
+    tenant_id: "UUID | None" = None,
+) -> tuple[AgentLoopImpl, "VerifierRegistry | None"]:
     """Wire AgentLoopImpl with AzureOpenAIAdapter. Requires env vars.
 
     Sprint 55.2 US-3: optional `business_factory_provider` enables service-mode
     business domain handlers. See build_echo_demo_handler for full description.
+
+    Sprint 57.63 Day 2 (Cat 10, approach A): returns `(loop, verifier_registry)`.
+    When `settings.chat_verification_mode == "enabled"`, builds a registry with a
+    real `LLMJudgeVerifier` sharing THIS handler's adapter (the same ChatClient
+    the loop runs on); otherwise returns `registry=None` (wrapper passthrough).
 
     Raises:
         RuntimeError: when any of AZURE_OPENAI_ENDPOINT / AZURE_OPENAI_API_KEY /
@@ -174,7 +198,26 @@ def build_real_llm_handler(
     # handler wires GuardrailEngine with default 4-detector chain (PII +
     # Jailbreak input; Toxicity + SensitiveInfo output). Echo demo handler
     # left without engine to keep test fixtures predictable.
-    return AgentLoopImpl(
+    #
+    # Sprint 57.63 Day 1: Cat 4 (context compaction) + Cat 7 (state reducer +
+    # checkpointer) activate by injection alone (AgentLoopImpl opt-in deps;
+    # loop.py call-sites verified Day 0). Cat 7 is all-three-or-nothing —
+    # make_chat_state_deps returns (None, None) when db / session_id /
+    # tenant_id is missing (legacy / test callers), preserving baseline.
+    compactor = make_chat_compactor(chat_client)
+    reducer, checkpointer = make_chat_state_deps(db, session_id, tenant_id)
+    # Sprint 57.63 Day 2: Cat 8 (error handling) — the 5 deps activate
+    # `_handle_tool_error` (classify → budget → terminator) on the production
+    # tool path; always injected (no DB / env required to construct).
+    (
+        error_policy,
+        retry_policy,
+        circuit_breaker,
+        error_budget,
+        error_terminator,
+    ) = make_chat_error_deps()
+
+    loop = AgentLoopImpl(
         chat_client=chat_client,
         output_parser=parser,
         tool_executor=executor,
@@ -184,7 +227,26 @@ def build_real_llm_handler(
         hitl_manager=hitl_manager,
         hitl_timeout_s=hitl_timeout_s,
         guardrail_engine=build_default_guardrail_engine(),
+        compactor=compactor,
+        reducer=reducer,
+        checkpointer=checkpointer,
+        tenant_id=tenant_id,
+        error_policy=error_policy,
+        retry_policy=retry_policy,
+        circuit_breaker=circuit_breaker,
+        error_budget=error_budget,
+        error_terminator=error_terminator,
     )
+
+    # Sprint 57.63 Day 2: Cat 10 — build a real verifier registry only when
+    # enabled; it shares THIS adapter (LLM-neutral; same ChatClient as the loop).
+    settings = get_settings()
+    verifier_registry: VerifierRegistry | None = None
+    if settings.chat_verification_mode == "enabled":
+        verifier_registry = make_chat_verifier_registry(
+            chat_client, settings.chat_verification_judge_template
+        )
+    return loop, verifier_registry
 
 
 def build_handler(
@@ -194,8 +256,14 @@ def build_handler(
     service_factory: "ServiceFactory | None" = None,
     hitl_timeout_s: int = 14400,
     business_factory_provider: Callable[[], "BusinessServiceFactory"] | None = None,
-) -> AgentLoopImpl:
+    db: "AsyncSession | None" = None,
+    session_id: "UUID | None" = None,
+    tenant_id: "UUID | None" = None,
+) -> tuple[AgentLoopImpl, "VerifierRegistry | None"]:
     """Dispatch to the per-mode builder. Single entry-point for the router.
+
+    Sprint 57.63 Day 2 (Cat 10, approach A): returns `(loop, verifier_registry)`
+    — the per-mode builder's tuple is passed through unchanged.
 
     Sprint 53.6 US-4: when `service_factory` is provided AND env flag
     HITL_ENABLED is not "false", resolves the production HITLManager from the
@@ -221,6 +289,9 @@ def build_handler(
             hitl_manager=hitl_manager,
             hitl_timeout_s=hitl_timeout_s,
             business_factory_provider=business_factory_provider,
+            db=db,
+            session_id=session_id,
+            tenant_id=tenant_id,
         )
     raise ValueError(f"Unsupported mode: {mode!r}")
 
