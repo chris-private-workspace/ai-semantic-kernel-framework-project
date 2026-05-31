@@ -17,11 +17,18 @@ Description:
     LLM Provider Neutrality preserved — pricing read from
     `config/llm_pricing.yml` via PricingLoader;no openai/anthropic SDK import.
 
-Day 3 attribution simplification (per D2):
-    record_llm_call accepts `provider`+`model` from caller (chat router
-    Day 3 wiring uses default azure_openai/gpt-5.4 per app default LLM tier).
-    Real per-request provider/model attribution from ChatResponse metadata
-    deferred to Phase 56.x — AD-Cost-Ledger-Provider-Attribution candidate.
+Provider/model attribution (Sprint 57.2):
+    record_llm_call accepts `provider`+`model` from the caller; the chat router
+    now sources both truthfully from the LoopCompleted accumulator (event.provider
+    + event.model, populated by AgentLoop from ChatResponse.model +
+    adapter.model_info().provider). Unknown (provider, model) → record at zero
+    cost (observable anomaly) per get_llm_pricing → None.
+
+    FIX-022 §6.2 caveat: the deployment/model/pricing identities are currently
+    mismatched (.env deployment gpt-5.2 vs config.model_name default gpt-4o vs
+    llm_pricing.yml keys {gpt-4o-mini, gpt-5.4}); only gpt-5.4 is priced, so
+    gpt-4o / gpt-5.2 calls write $0 rows until the real model + USD pricing is
+    aligned in llm_pricing.yml (deferred follow-up).
 
 Key Components:
     - AggregatedSlice / AggregatedUsage: dataclasses
@@ -29,8 +36,10 @@ Key Components:
     - get_cost_ledger / set_cost_ledger / reset_cost_ledger: hooks
 
 Created: 2026-05-06 (Sprint 56.3 Day 3)
+Last Modified: 2026-05-31
 
 Modification History:
+    - 2026-05-31: FIX-022 §6.2 — correct stale attribution docstring + pricing caveat
     - 2026-05-06: Initial creation (Sprint 56.3 Day 3 / US-3 + US-4)
 
 Related:

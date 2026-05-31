@@ -35,9 +35,10 @@ Description:
     actual loop run lives in the worker.
 
 Created: 2026-04-30 (Sprint 50.2 Day 1.5)
-Last Modified: 2026-05-01
+Last Modified: 2026-05-31
 
 Modification History (newest-first):
+    - 2026-05-31: FIX-022 §6.2 — consolidate gpt-5.4 pricing fallback into named const
     - 2026-05-10: Sprint 57.7 US-R1 — sessions + tool_calls observer (AD-Reality-3a/3b)
     - 2026-05-08: Sprint 57.6 US-3 — audit_log observer at LoopCompleted (AD-Reality-3-audit_log)
     - 2026-05-06: Sprint 56.3 Day 3 — wire Cost Ledger LLM + tool hooks (US-4)
@@ -114,6 +115,17 @@ from .sse import format_sse_message, serialize_loop_event
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+# FIX-022 §6.2 (runtime-verification 2026-05-30): fallback model identity used for
+# cost-ledger pricing when a LoopCompleted event carries no model (early-termination
+# paths). Consolidated here from a bare literal so the app's priced-default model
+# lives in ONE place. NOTE the deployment/model/pricing identities are currently
+# mismatched (4-way): .env AZURE_OPENAI_DEPLOYMENT_NAME=gpt-5.2 vs config.model_name
+# default gpt-4o vs this fallback gpt-5.4 vs llm_pricing.yml keys {gpt-4o-mini,
+# gpt-5.4}. Only gpt-5.4 is actually priced — gpt-4o / gpt-5.2 resolve to $0 rows
+# (get_llm_pricing -> None). Aligning the real deployment model + its USD pricing in
+# llm_pricing.yml is the deferred follow-up (FIX-022 §6.2 "定價數據另案").
+_FALLBACK_PRICING_MODEL = "gpt-5.4"
 
 
 @router.post("/", status_code=status.HTTP_200_OK)
@@ -395,7 +407,7 @@ async def _stream_loop_events(
                         await cost_ledger.record_llm_call(
                             tenant_id=tenant_id,
                             provider=event.provider or "azure_openai",
-                            model=event.model or "gpt-5.4",
+                            model=event.model or _FALLBACK_PRICING_MODEL,
                             input_tokens=event.input_tokens,
                             output_tokens=event.output_tokens,
                             session_id=session_id,

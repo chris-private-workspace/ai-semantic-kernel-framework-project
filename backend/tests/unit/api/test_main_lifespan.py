@@ -1,8 +1,8 @@
 """
 File: backend/tests/unit/api/test_main_lifespan.py
-Purpose: Verify api.main._lifespan() autoloads .env via python-dotenv on startup.
+Purpose: Verify api.main._lifespan() startup wiring (.env autoload + pricing loader).
 Category: tests / api boundary
-Scope: Sprint 57.6 US-2 (R2 / closes AD-Reality-2 + 57.5 D-20)
+Scope: Sprint 57.6 US-2 (R2 / closes AD-Reality-2 + 57.5 D-20) + FIX-022 (§5.1 H1)
 
 Description:
     Sprint 57.5 reality check found AZURE_OPENAI_API_KEY etc. were not loaded
@@ -17,6 +17,7 @@ Description:
 Created: 2026-05-08 (Sprint 57.6 Day 1)
 
 Modification History:
+    - 2026-05-31: FIX-022 — add test_lifespan_wires_pricing_loader_from_yaml (§5.1 H1)
     - 2026-05-08: Sprint 57.6 US-2 — initial creation (closes AD-Reality-2)
 
 Related:
@@ -48,3 +49,34 @@ def test_lifespan_calls_load_dotenv_on_startup() -> None:
         assert (
             mock_load.call_count == 1
         ), f"Expected load_dotenv called once on startup, got {mock_load.call_count}"
+
+
+def test_lifespan_wires_pricing_loader_from_yaml() -> None:
+    """`_lifespan` startup must install the PricingLoader (FIX-022 §5.1 H1).
+
+    Before FIX-022 nothing called set_pricing_loader(), so the chat router's
+    `if pricing_loader is not None` guard was always False → CostLedgerService
+    never constructed → cost_ledger rows never written for real LLM calls. This
+    pins the startup wiring: after lifespan startup the loader must be present and
+    must have parsed config/llm_pricing.yml (a known key resolves).
+    """
+    from api.main import create_app
+    from platform_layer.billing.pricing import (
+        maybe_get_pricing_loader,
+        reset_pricing_loader,
+    )
+
+    # Clean slate so a prior test's loader cannot mask a regression here.
+    reset_pricing_loader()
+    try:
+        app = create_app()
+        assert maybe_get_pricing_loader() is None  # not wired until startup runs
+        with TestClient(app):
+            loader = maybe_get_pricing_loader()
+            assert loader is not None, "lifespan startup did not install PricingLoader"
+            # Proves the yaml was actually parsed (gpt-5.4 is a known azure key).
+            assert (
+                loader.get_llm_pricing("azure_openai", "gpt-5.4") is not None
+            ), "PricingLoader installed but config/llm_pricing.yml not loaded"
+    finally:
+        reset_pricing_loader()

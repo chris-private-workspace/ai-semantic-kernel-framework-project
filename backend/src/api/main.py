@@ -24,9 +24,10 @@ Description:
     - Static / CORS config (depends on frontend deploy decision; Phase 55)
 
 Created: 2026-04-29 (Sprint 49.4 Day 5)
-Last Modified: 2026-04-29
+Last Modified: 2026-05-31
 
 Modification History (newest-first):
+    - 2026-05-31: FIX-022 — _wire_pricing_loader() at startup (cost_ledger §5.1 H1)
     - 2026-05-10: Sprint 57.13 US-B4 — mount telemetry router (frontend beacons; anonymous)
     - 2026-05-09: Sprint 57.7 US-A2 — mount auth router (3 OIDC PKCE endpoints; WorkOS skeleton)
     - 2026-05-08: Sprint 57.6 US-2 — _lifespan() autoload .env via dotenv (closes AD-Reality-2)
@@ -116,6 +117,41 @@ def _wire_rate_limit_counter() -> None:
         )
 
 
+def _wire_pricing_loader() -> None:
+    """Install the PricingLoader singleton at startup (fail-soft).
+
+    FIX-022 (runtime-verification 2026-05-30 §5.1 H1): the chat router builds a
+    per-request CostLedgerService ONLY when maybe_get_pricing_loader() is non-None
+    (router.py — `if pricing_loader is not None`). Until this wiring, nothing in
+    the app ever called set_pricing_loader(), so the loader stayed None, the
+    CostLedgerService was never constructed, and the cost_ledger write was always
+    skipped — a real billable LLM call persisted sessions + tool_calls but zero
+    cost rows. Sprint 56.3 US-4 wired the router consumer but never the startup
+    producer (AP-4: wired-but-never-activated).
+
+    Loads config/llm_pricing.yml into a process-wide PricingLoader. Fail-soft: if
+    the yaml is missing / malformed the loader stays None and cost-ledger writes
+    degrade to a no-op (best-effort, same philosophy as the router's try/except
+    around record_llm_call) rather than blocking startup.
+    """
+    try:
+        from pathlib import Path
+
+        from platform_layer.billing.pricing import PricingLoader, set_pricing_loader
+
+        # main.py = backend/src/api/main.py → parents[2] = backend → backend/config/.
+        pricing_yaml = Path(__file__).resolve().parents[2] / "config" / "llm_pricing.yml"
+        loader = PricingLoader()
+        loader.load_from_yaml(pricing_yaml)
+        set_pricing_loader(loader)
+        logger.info("api.main: pricing loader wired (%s)", pricing_yaml)
+    except Exception:  # noqa: BLE001 — fail-soft: never block startup on pricing config
+        logger.warning(
+            "api.main: pricing loader not wired; cost ledger writes disabled (fail-soft)",
+            exc_info=True,
+        )
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Startup: load .env + structured logging + OTel SDK. Shutdown: flush + dispose engine."""
@@ -126,6 +162,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_json_logging()
     setup_opentelemetry(app)
     _wire_rate_limit_counter()
+    _wire_pricing_loader()
     logger.info("api.main: startup complete")
     try:
         yield
