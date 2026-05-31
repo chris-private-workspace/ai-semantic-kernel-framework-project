@@ -273,7 +273,7 @@ Frontend Foundation (57.13-57.17; auth flow + design-system + telemetry + i18n +
 |---------|--------|
 | Sprint merge SHA + PR # + date | `git log main --oneline -50` |
 | Sprint goal / scope / AD / carryover | `memory/MEMORY.md`（per-sprint quality pointer index）+ `memory/project_phase*.md`（subfile）+ `docs/03-implementation/agent-harness-execution/phase-XX/sprint-XX-Y/retrospective.md`（完整 Q1-Q7 retro） |
-| Calibration ratio + class trend | `.claude/rules/sprint-workflow.md` §Scope-class multiplier matrix（canonical 16 active classes 全部 per-sprint 資料點 + 3-sprint window decision rule） |
+| Calibration ratio + class trend | active table → `.claude/rules/sprint-workflow.md` §Scope-class multiplier matrix（current multiplier + 3-sprint mean + 1-line status per class）+ §agent_factor tier-4 table；full per-sprint history → `docs/03-implementation/agent-harness-execution/calibration-log.md`（REFACTOR-005, 2026-05-31） |
 | Open items / next sprint candidates | `claudedocs/1-planning/next-phase-candidates.md`（權威單一來源） |
 | Sprint plan + checklist 原始版 | `docs/03-implementation/agent-harness-planning/phase-XX-*/sprint-XX-Y-plan.md` + `-checklist.md` |
 | 變更紀錄（FIX / CHANGE / REFACTOR） | `claudedocs/4-changes/{bug-fixes,feature-changes,refactoring}/` |
