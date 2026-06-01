@@ -11,9 +11,15 @@
 #   This workflow closes that gap: spins up Postgres + Redis + V2 backend,
 #   posts a single real-LLM chat request via api.main:app, and verifies:
 #     - HTTP 200 (NOT 503)
-#     - SSE stream contains `loop_completed` event
+#     - SSE stream contains `loop_end` event (LoopCompleted; sse.py:199)
 #     - cost_ledger row count delta ≥ 2 (input + output split per 57.2)
 #     - audit_log row count delta ≥ 1 (Sprint 57.6 Day 2 wiring)
+#
+#   Auth: the chat endpoint is NOT in TenantContextMiddleware's exempt list,
+#   so it requires a V2 JWT (the X-Tenant-Id header path was removed in Sprint
+#   52.5 Day 6.1). We mint one via POST /api/v1/auth/dev-login (exempt route,
+#   dev-only, settings.env defaults to "development"), which auto-creates a
+#   dev Tenant + User and sets the v2_jwt cookie the middleware reads.
 #
 # Triggers:
 #   - workflow_dispatch (manual only — always available)
@@ -29,6 +35,12 @@
 #   (negligible vs Phase 56-58 SaaS Stage 1 production budget).
 #
 # Modification History:
+#   - 2026-06-01: Fix two latent bugs (gate never ran green — Azure secrets
+#     unprovisioned — so both sat undetected): (1) auth — replace removed
+#     X-Tenant-Id header path with /auth/dev-login v2_jwt cookie (chat endpoint
+#     requires JWT since 52.5 Day 6.1) + drop broken inline seed (wrong session
+#     sig + wrong Tenant columns); (2) SSE assertion `loop_completed` →
+#     `loop_end` (the real serialized event name, sse.py:199).
 #   - 2026-05-08: Sprint 57.6 US-5 — initial creation (closes AD-Reality-5)
 #
 # Related:
@@ -111,6 +123,8 @@ jobs:
           DB_PORT=5432
           REDIS_HOST=localhost
           REDIS_PORT=6379
+          ENV=development
+          COOKIE_SECURE=false
           AZURE_OPENAI_ENDPOINT=${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_API_KEY=${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_DEPLOYMENT_NAME=${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
@@ -121,26 +135,6 @@ jobs:
       - name: Run Alembic migrations
         working-directory: backend
         run: alembic upgrade head
-
-      - name: Seed default tenant + admin user (smoke setup)
-        working-directory: backend
-        run: |
-          python -c "
-          import asyncio
-          from infrastructure.db.session import get_db_session_with_tenant
-          from infrastructure.db.models.identity import Tenant, User
-          import uuid
-          async def seed():
-              async with get_db_session_with_tenant(tenant_id=None) as db:
-                  t = Tenant(id=uuid.uuid4(), name='smoke-tenant', state='active', plan='enterprise')
-                  db.add(t)
-                  await db.flush()
-                  u = User(id=uuid.uuid4(), tenant_id=t.id, email='smoke@example.com')
-                  db.add(u)
-                  await db.commit()
-                  print(f'TENANT_ID={t.id}')
-          asyncio.run(seed())
-          "
 
       - name: Start backend
         working-directory: backend
@@ -153,9 +147,24 @@ jobs:
             sleep 1
           done
 
+      - name: Authenticate (dev-login → v2_jwt cookie)
+        working-directory: backend
+        run: |
+          # dev-login auto-creates a dev Tenant + User and returns the v2_jwt
+          # cookie the chat endpoint requires (X-Tenant-Id header path removed
+          # in Sprint 52.5 Day 6.1). settings.env=development so the route is
+          # live (404 only in prod). Cookie saved to /tmp/cookies.txt.
+          set -eo pipefail
+          curl -sf -X POST -c /tmp/cookies.txt \
+            "http://localhost:8000/api/v1/auth/dev-login?tenant_code=smoke&email=smoke@example.com" \
+            -o /tmp/devlogin.json
+          grep -q "v2_jwt" /tmp/cookies.txt || (echo "FAIL: dev-login did not set v2_jwt cookie" && cat /tmp/devlogin.json && exit 1)
+
       - name: Capture pre-chat row counts
         working-directory: backend
         run: |
+          # Captured AFTER dev-login so any rows it writes are in the baseline;
+          # the delta then reflects only the chat request below.
           PRE_AUDIT=$(PGPASSWORD=ipa psql -h localhost -U ipa -d ipa_v2_test -tAc "SELECT count(*) FROM audit_log;")
           PRE_COST=$(PGPASSWORD=ipa psql -h localhost -U ipa -d ipa_v2_test -tAc "SELECT count(*) FROM cost_ledger;")
           echo "PRE_AUDIT=$PRE_AUDIT" >> $GITHUB_ENV
@@ -164,13 +173,14 @@ jobs:
       - name: POST /api/v1/chat (real_llm mode, single message, max_tokens guard)
         run: |
           set -eo pipefail
-          curl -sf -N \
+          curl -sf -N -b /tmp/cookies.txt \
             -H "Content-Type: application/json" \
-            -H "X-Tenant-Id: ${{ env.TENANT_ID }}" \
             -d '{"mode":"real_llm","message":"Say hello in 5 words"}' \
             http://localhost:8000/api/v1/chat/ | tee /tmp/sse.log
-          # Verify SSE stream contains loop_completed frame.
-          grep -q "event: loop_completed" /tmp/sse.log || (echo "MISSING loop_completed event" && exit 1)
+          # Verify SSE stream contains the loop-completion frame. The serializer
+          # maps LoopCompleted → `event: loop_end` (sse.py:199), NOT
+          # "loop_completed" — the original assertion would never match.
+          grep -q "event: loop_end" /tmp/sse.log || (echo "MISSING loop_end event" && exit 1)
 
       - name: Capture post-chat row counts + verify deltas
         working-directory: backend
