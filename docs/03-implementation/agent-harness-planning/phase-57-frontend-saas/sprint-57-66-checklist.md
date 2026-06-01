@@ -27,23 +27,23 @@
 ## Day 1 — Backend serializer (US-1 + US-2)
 
 ### 1.1 Four diagnostic-event serializer branches (US-1) — `sse.py`
-- [ ] `PromptBuilt` → `prompt_built` `{messages_count, estimated_tokens, cache_breakpoints_count, memory_layers_used (scope-key list), duration_ms}` + trace_id
-  - DoD: `serialize_loop_event(PromptBuilt(...))` returns `prompt_built` frame; no raw memory content in payload
-- [ ] `ContextCompacted` → `context_compacted` (exact fields per Day-0 Prong 2) + trace_id
-- [ ] `StateCheckpointed` → `state_checkpointed` `{version}` (NO snapshot body) + trace_id
-- [ ] `TripwireTriggered` → `tripwire_triggered` `{violation_type, detail}` + trace_id
-  - DoD: all four previously hit `NotImplementedError` (`sse.py:298`) → now return a frame; mirror `GuardrailTriggered` branch shape
+- [x] `PromptBuilt` → `prompt_built` `{messages_count, estimated_input_tokens, cache_breakpoints_count, memory_layers_used (list scope-keys), position_strategy_used, duration_ms}` + trace_id (D6: real fields)
+- [x] `ContextCompacted` → `context_compacted` `{tokens_before, tokens_after, compaction_strategy, messages_compacted, duration_ms}` + trace_id
+- [x] `StateCheckpointed` → `state_checkpointed` `{version}` (NO snapshot body) + trace_id
+- [x] `TripwireTriggered` → `tripwire_triggered` `{violation_type, detail}` + trace_id
+  - DoD ✅: all four previously hit `NotImplementedError` (`sse.py:298`) → now return a frame; mirror `GuardrailTriggered` branch shape (commit pending Day-1 bundle)
 
 ### 1.2 D3 cache-field carry (US-2) — `sse.py`
-- [ ] `llm_response` payload (`:142-156`) += `cached_input_tokens` (None/0-safe)
-- [ ] `loop_end` payload (`:197-204`) += `cached_input_tokens` + `cache_hit_rate` (None/0-safe)
-  - DoD: existing `llm_response`/`loop_end` consumers unaffected (additive); fields present when `cached_input_tokens>0`
+- [x] `llm_response` payload (`:140-156`) += `cached_input_tokens` (default-0-safe)
+- [x] `loop_end` payload (`:197-204`) += `cached_input_tokens` + `cache_hit_rate` (default 0/0.0-safe)
+  - DoD ✅: existing payloads' keys unchanged (additive); fields present when set + default when unset
 
 ### 1.3 Backend tests (US-4)
-- [ ] NEW `test_chat_sse_diagnostic_events.py` (or extend existing SSE test): per-event serializer wire-type + payload; cache fields present + None-safe
-- [ ] Integration: driven guardrail violation → `tripwire_triggered` frame in SSE stream alongside `loop_end` (AP-4 prove-reaches-client)
-- [ ] Multi-tenant: `prompt_built.memory_layers_used` = scope-key list only, no cross-tenant/raw content (鐵律)
-  - DoD: backend suite green; mypy src 0; `check_llm_sdk_leak` 0
+- [x] Extended existing `tests/unit/api/v1/chat/test_sse.py` (the "or extend existing" path): 7 new + 2 augmented — per-event serializer wire-type + payload; cache fields >0 + default; round-trip wire-frame; re-pointed `test_unsupported_event_raises` to `ErrorRetried` (still-unwired)
+- [x] Integration: `test_chat_e2e.py::TestDiagnosticEventsE2E` — router-level `run_with_verification` mock → 4 diagnostic frames in SSE stream + cache fields on `llm_response`/`loop_end` (AP-4 prove-reaches-client through full pipeline)
+- [x] Multi-tenant: `test_prompt_built` + e2e assert exact key set / scope-key list only, no raw content leak — 鐵律
+- [x] **FIX-025** (discovered via the router e2e): `_jsonable` `hasattr(value,"hex")` heuristic stringified floats (`float.hex` exists) → `cache_hit_rate`/`duration_ms` wired as JSON strings; fixed to `isinstance(value, UUID)` + regression test `test_float_wire_fields_serialize_as_json_numbers`
+  - DoD ✅: pytest **1964 passed / 4 skipped** (+9) / mypy src **0/319** / **9/9 V2 lints** (SDK leak 0) / black+isort+flake8 clean on 3 files
 
 ---
 

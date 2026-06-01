@@ -62,9 +62,24 @@ Read the frozen-dataclass bodies for the 4 target events + the 57.65 cache field
 
 ---
 
-## Day 1 — Backend serializer (US-1 + US-2)
+## Day 1 — Backend serializer (US-1 + US-2) — ✅
 
-(pending)
+Staged code-implementer delegation (Stage 1 backend) + parent independent re-verification (read the full diff, did not trust self-report — 57.64/57.65 discipline).
+
+### Delivered
+- `sse.py`: 4 net-new serializer branches — `PromptBuilt`→`prompt_built`, `ContextCompacted`→`context_compacted`, `StateCheckpointed`→`state_checkpointed`, `TripwireTriggered`→`tripwire_triggered` (mirror the `GuardrailTriggered` 53.6 branch; scope-safe payloads — `memory_layers_used` is a scope-key list, `state_checkpointed` is `version` only). 4 imports added. **No loop.py change** (events already yielded).
+- `sse.py`: D3 cache-field carry — `cached_input_tokens` on `llm_response`; `cached_input_tokens` + `cache_hit_rate` on `loop_end` (additive; existing keys untouched).
+- `test_sse.py`: 7 new + 2 augmented serializer unit tests (incl. `test_prompt_built` exact-key-set scope-safety assertion + round-trip wire-frame); re-pointed `test_unsupported_event_raises` from now-wired `TripwireTriggered` → still-unwired `ErrorRetried`.
+- `test_chat_e2e.py`: `TestDiagnosticEventsE2E` router-level AP-4 e2e — patches `api.v1.chat.router.run_with_verification` with a fake 7-event async-gen, drives the REAL `_stream_loop_events`→`serialize_loop_event`→`format_sse_message` pipeline, asserts the 4 events now surface as wire frames (were dropped at `router.py:354-359` pre-Stage-1) + cache fields present.
+
+### Drift / bug found mid-Day-1
+- **FIX-025** (real pre-existing production bug, surfaced by the router e2e — the only test that round-trips a float through `format_sse_message`): `_jsonable`'s UUID fallback `hasattr(value, "hex") and not isinstance(value, (bytes,bytearray,str,int))` ALSO matched `float` (`float.hex` exists, `float` is not `int`) → `cache_hit_rate`/`duration_ms` emitted as JSON **strings** (`"0.5"`). Root-cause fix: `isinstance(value, UUID)` (explicit; floats now wire as numbers). NOT deferred — `cache_hit_rate` is a NEW wire field THIS sprint adds, so a string on the wire is a defect in the feature + would make the Stage-2 FE TS type (`number`) a lie. FIX-025 record + regression test `test_float_wire_fields_serialize_as_json_numbers`. Parent decision: fix in-sprint (root cause, not workaround).
+
+### Validation
+- pytest **1964 passed / 4 skipped** (baseline 1955 +9: 7 serializer unit + 1 router e2e + 1 FIX-025 regression); `mypy src/ --strict` **0/319**; `run_all.py` **9/9 V2 lints** (check_llm_sdk_leak 0); black+isort+flake8 clean on the 3 changed source/test files.
+
+### Independent re-verification verdict
+PASS — sse.py diff matches spec exactly (4 imports alpha-ordered, branches mirror GuardrailTriggered, payloads additive, MHist 1-line); cache tests cover >0 + default; `test_prompt_built` asserts exact key set (no content leak); re-pointed deferred-event test correct; FIX-025 fix is the intent-revealing root-cause fix.
 
 ---
 

@@ -339,3 +339,126 @@ class TestAdapterTracerSpanIntegration:
             "(P0 #16 — adapter LLM-call span)."
         )
         assert params["tracer"].kind == inspect.Parameter.KEYWORD_ONLY
+
+
+# ============================================================
+# Sprint 57.66 (A-5a+) acceptance — diagnostic events reach client E2E
+# ============================================================
+
+
+class TestDiagnosticEventsE2E:
+    """End-to-end proof (honors AP-4 — prove events reach the client through the
+    full router pipeline, not just the isolated serializer):
+
+    Before Sprint 57.66 Stage 1, ContextCompacted / PromptBuilt /
+    StateCheckpointed / TripwireTriggered were yielded on the chat path but
+    silently dropped at ``router.py`` (``except NotImplementedError: continue``,
+    L354-359). Stage 1 added their ``sse.py`` isinstance branches; this test
+    drives the real router pipeline (``run_with_verification`` →
+    ``serialize_loop_event`` → ``format_sse_message`` → SSE frame) with a mocked
+    loop and asserts the 4 events now surface as wire frames, plus the two 57.65
+    cache fields are carried on ``llm_response`` / ``loop_end``.
+
+    The loop generator is replaced by patching
+    ``api.v1.chat.router.run_with_verification`` (patched where used, not where
+    defined). Finalization deps (quota / SLA / cost_ledger / db) default to None
+    in the minimal ``app`` fixture, so the fake LoopCompleted skips those gated
+    branches.
+    """
+
+    def test_four_diagnostic_events_plus_cache_fields_reach_client(
+        self, client: TestClient
+    ) -> None:
+        from unittest.mock import patch
+
+        from agent_harness._contracts import (
+            ContextCompacted,
+            LLMResponded,
+            LoopCompleted,
+            LoopStarted,
+            PromptBuilt,
+            StateCheckpointed,
+            TraceContext,
+            TripwireTriggered,
+        )
+
+        sid = uuid4()
+        tc = TraceContext(tenant_id=DEFAULT_TENANT, session_id=sid, user_id=DEFAULT_USER_ID)
+
+        async def _fake_run_with_verification(**_kwargs: object):  # type: ignore[no-untyped-def]
+            """Deterministic fake loop — ignores agent_loop / other kwargs.
+
+            Yields a fixed sequence including the 4 previously-dropped
+            diagnostic events plus the 57.65 cache carriers.
+            """
+            yield LoopStarted(session_id=sid, trace_context=tc)
+            yield PromptBuilt(
+                messages_count=5,
+                estimated_input_tokens=1000,
+                cache_breakpoints_count=2,
+                memory_layers_used=("session", "tenant"),
+                position_strategy_used="lost_in_middle",
+                duration_ms=2.0,
+                trace_context=tc,
+            )
+            yield ContextCompacted(
+                tokens_before=9000,
+                tokens_after=3500,
+                compaction_strategy="summarize",
+                messages_compacted=10,
+                duration_ms=5.0,
+                trace_context=tc,
+            )
+            yield StateCheckpointed(version=3, trace_context=tc)
+            yield TripwireTriggered(
+                violation_type="pii_leak", detail="ssn detected", trace_context=tc
+            )
+            yield LLMResponded(content="ok", cached_input_tokens=128, trace_context=tc)
+            yield LoopCompleted(
+                stop_reason="end_turn",
+                total_turns=1,
+                cached_input_tokens=256,
+                cache_hit_rate=0.5,
+                trace_context=tc,
+            )
+
+        with patch(
+            "api.v1.chat.router.run_with_verification",
+            side_effect=_fake_run_with_verification,
+        ):
+            with client.stream(
+                "POST",
+                "/api/v1/chat/",
+                json={"message": "x", "mode": "echo_demo"},
+            ) as resp:
+                assert resp.status_code == 200
+                body = b"".join(chunk for chunk in resp.iter_bytes())
+
+        events = _parse_sse(body)
+        types = [e["type"] for e in events]
+
+        # The 4 events silently dropped before Stage 1 now appear as frames.
+        for diag_type in (
+            "prompt_built",
+            "context_compacted",
+            "state_checkpointed",
+            "tripwire_triggered",
+        ):
+            assert diag_type in types, f"{diag_type} frame missing from SSE stream"
+
+        # prompt_built: scope-key list (no memory-content leak) + trace_id carried.
+        prompt_built = next(e for e in events if e["type"] == "prompt_built")
+        assert prompt_built["data"]["memory_layers_used"] == ["session", "tenant"]
+        assert prompt_built["data"]["trace_id"] == tc.trace_id
+
+        # llm_response carries the 57.65 cached_input_tokens.
+        llm_response = next(e for e in events if e["type"] == "llm_response")
+        assert llm_response["data"]["cached_input_tokens"] == 128
+
+        # loop_end carries the 57.65 cache fields.
+        loop_end = next(e for e in events if e["type"] == "loop_end")
+        assert loop_end["data"]["cached_input_tokens"] == 256
+        # FIX-025 (same sprint): `_jsonable` now str-coerces only UUID, not
+        # float, so cache_hit_rate round-trips as a JSON number (was "0.5").
+        assert loop_end["data"]["cache_hit_rate"] == 0.5
+        assert isinstance(loop_end["data"]["cache_hit_rate"], float)
