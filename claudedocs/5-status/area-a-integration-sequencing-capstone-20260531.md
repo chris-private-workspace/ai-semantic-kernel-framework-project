@@ -7,6 +7,7 @@
 **Status**: Active(decision aid)
 
 **Modification History (newest-first)**:
+- 2026-06-01: Sprint 57.64 closeout — 候選 Sprint A ✅ SHIPPED (Cat 5/3/11 keystone wiring); D3 修正 runtime-confirmed; AP-2 假綠 CLOSED; real_llm leg 改述為卡 A-5
 - 2026-05-31: Initial creation — 收斂 A-1~A-6 六份分析為依賴圖 + 排序表 + sprint bundle 建議
 
 **Related(本檔為下列 6 份之 capstone,精確 file:line 證據以子檔為準)**:
@@ -106,9 +107,8 @@
 
 > rolling 紀律:以下只是**候選排序**,不是 sprint plan。實際開 sprint 時才寫 plan+checklist,且一次只寫當前 sprint。
 
-- **候選 Sprint A(首發,價值最高、不動 loop.py)**
-  「**Agent 會用記憶 + 結構化 prompt + 會用 subagent 工具**」= A-2 Tier1 + A-1 Tier1 + A-3a。
-  三者共用「在 chat executor 註冊 builtin 工具 / 傳 builder」的同一批改動,合做攤平成本,且解鎖最多下游。
+- **候選 Sprint A ✅ SHIPPED(Sprint 57.64,2026-06-01)** —「**Agent 會用記憶 + 結構化 prompt + 會用 subagent 工具**」= A-2 Tier1 + A-1 Tier1 + A-3a。三者於 api/factory 層接線(`make_default_executor` opt-in deps + 3 個 `make_chat_*` factory + `build_real_llm_handler` 注入),**未動 loop.py**。整合測試證實三者同時在 chat SSE flow 發火;**closes AP-8 + AP-2 假綠 lint**;real_llm live leg 延後(confirmatory,卡在 A-5 OOS + Azure cost)。
+  - **D3 修正 runtime-confirmed**:capstone 原premise「A-1/A-3a 共用同一 `register_builtin_tools` 呼叫」**經 Day-0 + 實作證實為部分錯誤** —— `register_builtin_tools` 只註冊 memory,**不註冊 subagent 工具**;A-3a 需要 `make_task_spawn_tool` **獨立註冊**(+ Cat11→Cat2 `_adapt_subagent_handler` bridge)。bundle 仍 coherent(同批檔案、無 loop.py),但是「一個改動面、兩次註冊呼叫」。詳見 `CHANGE-032` + sprint-57-64 retrospective。
 
 - **候選 Sprint B**:A-1 Tier2(auto-inject)+ A-2 Tier2(prompt caching)。承 A,動 loop.py,把「被動帶記憶 + 省 token」一起做。
 
@@ -124,10 +124,10 @@
 
 ## 5. 紀律與風險備忘
 
-- **AP-2 假綠陷阱**:`check_promptbuilder` lint 目前對「handler 不傳 builder」是假綠(見 A-2)。做候選 Sprint A 時必須順手**讓 lint 真綠**(偵測 call-site 真的傳 `prompt_builder=`),否則改完仍可能回退。
+- **AP-2 假綠陷阱 ✅ CLOSED(Sprint 57.64)**:`check_promptbuilder_usage` 已加 path-targeted AST 正向檢查,偵測 chat call-site 真的傳 `prompt_builder=`(移掉 kwarg 會 regress)—— 假綠翻真綠。
 - **AP-4 Potemkin**:`HandoffExecutor` 空殼 + `make_default_executor` 不註冊工具,都是「結構在、內容無」。接線 sprint 的 DoD 必須含「關掉會壞什麼」的負面測試。
 - **Mockup-Fidelity**:A-6 的 ~7 頁 fixture 是**設計好的 interim debt**(fixture + BackendGapBanner),不是 regression;只有 admin-tenants / memory 兩處是 rebuild 真正弄丟的接線。
-- **real_llm 未實跑**:Sprint 57.63 已把 Cat 4/7/8/10 注入 production `real_llm` 路徑,但無 Azure key 未端到端驗證 —— 上述候選 sprint 的最終驗收應含一次 real_llm e2e(需先補 key)。
+- **real_llm e2e leg 待補(非阻塞)**:Sprint 57.63(Cat 4/7/8/10)+ 57.64(Cat 5/3/11 keystone)皆已注入 production `real_llm` 路徑,mock 整合測試為主 gate。HTTP 層的 `PromptBuilt`-in-stream 斷言**卡在 A-5(events→SSE)未做** —— PromptBuilt 是 in-process LoopEvent,尚非 client SSE 事件。建議候選 Sprint B 或 A-5 sprint 順手讓 keystone 在 real 路徑外部可觀測(C-11 已證 real_llm 路徑本身可達 END_TURN)。
 - **17.md single-source**:任何接線若新增/改 contract(如 `subagent_dispatcher` param),必須回登 `17-cross-category-interfaces.md`,不在本檔或子檔平行定義。
 
 ---

@@ -40,8 +40,14 @@ Description:
     - Subagent failure (mock raises) does NOT crash the parent loop (fail_soft).
     - Negative: with no dispatcher, task_spawn is unregistered.
 
+    Combined (Day 3):
+    - All three active in ONE chat SSE run: PromptBuilt (Cat 5) + a memory_write→
+      memory_search round-trip (Cat 3) + a FORK task_spawn merge (Cat 11), proving
+      build_real_llm_handler wires them simultaneously (not just in isolation) and
+      that memory scoping round-trips on the live SSE flow with all three active.
+
 Created: 2026-06-01 (Sprint 57.64 Day 1)
-Last Modified: 2026-06-01 (Sprint 57.64 Day 2 — Cat 3 + Cat 11 tests)
+Last Modified: 2026-06-01 (Sprint 57.64 Day 3 — combined all-three-active test)
 """
 
 from __future__ import annotations
@@ -420,6 +426,98 @@ def test_cat11_negative_no_dispatcher_unregistered() -> None:
 
     registry, _executor = make_default_executor()  # no dispatcher
     assert registry.get("task_spawn") is None
+
+
+# ============================================================
+# Combined — Cat 5 + Cat 3 + Cat 11 all active in ONE chat SSE run (Day 3)
+# ============================================================
+
+
+@pytest.mark.asyncio
+async def test_combined_all_three_active_one_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    """One chat SSE run exercises all three keystone capabilities together.
+
+    build_real_llm_handler wires Cat 5 (prompt_builder) + Cat 3 (memory deps) +
+    Cat 11 (subagent dispatcher) simultaneously. A single scripted run proves they
+    co-exist on the live SSE flow — not just in the isolated per-cat tests:
+
+    - Cat 5: a PromptBuilt event is emitted (structured build path, not fallback).
+    - Cat 3: memory_write then memory_search both ToolCallExecuted, AND the search
+      finds the just-written session memory (per-tenant round-trip on the live path).
+    - Cat 11: a FORK task_spawn ToolCallExecuted with a merged SubagentResult.
+
+    The MockChatClient is shared by parent + subagent fork (sequential counter), so
+    the scripted responses are ordered: parent t1 (write) → parent t2 (spawn) →
+    subagent single-shot → parent t3 (search) → parent t4 (END_TURN).
+    """
+    import json
+
+    from agent_harness._contracts import TraceContext
+    from agent_harness._contracts.events import ToolCallExecuted
+
+    _set_fake_azure(monkeypatch)
+    tenant_id = uuid4()
+    user_id = uuid4()
+    session_id = uuid4()
+    loop, _registry = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id)
+
+    mock = MockChatClient(
+        responses=[
+            _tool_call_response(
+                "memory_write",
+                {
+                    "scope": "session",
+                    "key": "k1",
+                    "content": "combined-run secret",
+                    "time_scale": "short_term",
+                },
+                "call_w",
+            ),
+            _tool_call_response("task_spawn", {"task": "research", "mode": "fork"}, "call_t"),
+            ChatResponse(
+                model="mock",
+                content="subagent findings",
+                stop_reason=StopReason.END_TURN,
+                usage=TokenUsage(prompt_tokens=5, completion_tokens=3, total_tokens=8),
+            ),
+            _tool_call_response(
+                "memory_search",
+                {"query": "combined-run", "scopes": ["session"], "time_scales": ["short_term"]},
+                "call_s",
+            ),
+            _final_response("all done"),
+        ]
+    )
+    loop._chat_client = mock  # type: ignore[attr-defined]
+    # Point the subagent FORK executor at the same mock (offline determinism).
+    assert _redirect_subagent_chat(loop, mock) is True
+
+    trace_ctx = TraceContext(tenant_id=tenant_id, user_id=user_id, session_id=session_id)
+    events = [
+        ev
+        async for ev in loop.run(
+            session_id=session_id, user_input="do everything", trace_context=trace_ctx
+        )
+    ]
+
+    # Cat 5 — structured build path reached.
+    assert sum(1 for ev in events if isinstance(ev, PromptBuilt)) >= 1
+
+    executed = [ev for ev in events if isinstance(ev, ToolCallExecuted)]
+    names = {ev.tool_name for ev in executed}
+    # Cat 3 + Cat 11 — all three tool kinds fired in this one run.
+    assert {"memory_write", "memory_search", "task_spawn"} <= names
+
+    # Cat 3 — the search round-trips the memory written earlier in the SAME run.
+    search_ev = next(ev for ev in executed if ev.tool_name == "memory_search")
+    hints = json.loads(search_ev.result_content)["hints"]
+    assert any("combined-run secret" in h["summary"] for h in hints)
+
+    # Cat 11 — the subagent summary merged back through the tool result.
+    spawn_ev = next(ev for ev in executed if ev.tool_name == "task_spawn")
+    merged = json.loads(spawn_ev.result_content)
+    assert merged["success"] is True
+    assert "subagent findings" in merged["summary"]
 
 
 # ---- Cat 11 test helpers ----

@@ -65,20 +65,20 @@
 
 ## Day 3 — Cross-cutting Tests + lint true-green + real_llm e2e
 
-- [ ] Combined integration test: Cat 5 + Cat 3 + Cat 11 all active in one chat SSE run + multi-tenant scoping (memory + subagent per tenant)
+- [x] Combined integration test: Cat 5 + Cat 3 + Cat 11 all active in one chat SSE run + multi-tenant scoping (memory + subagent per tenant) (Day 3 ✅ — `test_combined_all_three_active_one_run`: PromptBuilt + memory_write→memory_search round-trip + FORK task_spawn merge in one run; keystone file 10 → 11 passed)
 - [x] Flip `check_promptbuilder_usage.py` false-green → true-green (detect chat call-site `prompt_builder=`); confirm it FAILS when kwarg removed (Day 1 ✅ — coupled w/ Cat 5; path-targeted AST positive check; regression confirmed)
   - Verify: `python scripts/lint/check_promptbuilder_usage.py` (green) + manual kwarg-removal regression check
-- [ ] `real_llm` e2e: benign multi-turn Azure run → END_TURN with `PromptBuilt` event (gated on C-11 secrets)
-  - Verify: `pytest -m real_llm tests/integration/api/test_chat_e2e_real_llm.py -q` (or GitHub Actions "E2E Real-LLM Smoke")
-- [ ] Confirm LLM SDK leak 0 + mypy strict + 9/9 V2 lints
+- 🚧 `real_llm` e2e live leg DEFERRED (confirmatory, not primary gate) — reason: (1) PromptBuilt on the chat SSE flow is proven DETERMINISTICALLY by the mock integration tests (`test_cat5_chat_path_emits_prompt_built` + combined), the plan's stated primary gate; (2) a clean HTTP-level `PromptBuilt`-in-stream assertion is blocked by A-5 (LoopEvent→SSE surfacing) being OUT of scope (§9) — PromptBuilt is an in-process LoopEvent, not yet a client SSE event; (3) the live real_llm path was ALREADY exercised end-to-end in C-11 (`64f29259`, reached END_TURN + audit_log Δ=1); (4) re-running incurs Azure cost and the `cost_ledger Δ≥2` assertion is FIX-024 known-red on gpt-5.2. Live confirmation available on request.
+  - Verify (when run): `pytest -m real_llm tests/integration/api/test_chat_e2e_real_llm.py -q` (or GitHub Actions "E2E Real-LLM Smoke")
+- [x] Confirm LLM SDK leak 0 + mypy strict + 9/9 V2 lints (Day 3 ✅ — `check_llm_sdk_leak` 0; `mypy src/` 0/319; `python scripts/lint/run_all.py` 9/9 green)
 
 ---
 
 ## Day 4 — Closeout
 
-- [ ] Full validation sweep: `pytest` (all) / `mypy --strict` / `python scripts/lint/run_all.py` / frontend untouched / LLM SDK leak 0
-- [ ] `claudedocs/4-changes/feature-changes/CHANGE-0XX-chat-path-keystone-wiring.md`
-- [ ] progress.md (Day 0-4 actuals) + retrospective.md (Q1-Q7)
-- [ ] Calibration: record `medium-backend` ratio + `agent_factor` (if delegated) in `.claude/rules/sprint-workflow.md §Scope-class multiplier matrix`
-- [ ] Update Area-A capstone: mark 候選 Sprint A shipped; note D3 correction confirmed in runtime
+- [x] Full validation sweep: `pytest` (all) / `mypy --strict` / `python scripts/lint/run_all.py` / frontend untouched / LLM SDK leak 0 (Day 4 ✅ — pytest 1934 passed / 4 skipped; mypy src 0/319; 9/9 V2 lints; frontend untouched; SDK leak 0)
+- [x] `claudedocs/4-changes/feature-changes/CHANGE-032-chat-path-keystone-wiring.md` (Day 4 ✅)
+- [x] progress.md (Day 0-4 actuals) + retrospective.md (Q1-Q7) (Day 4 ✅)
+- [x] Calibration: recorded in `calibration-log.md §3` (the post-REFACTOR-005 home for per-sprint calibration-retro entries) — `medium-backend` 0.80 + `agent_factor` `mechanical-greenfield-design-decisions` 0.65 as a **CAVEATED low-confidence point** (multi-session + `/compact`); KEEP 0.65, no baseline change, does NOT trigger the below-band-watch (needs clean measurement). `sprint-workflow.md §Active` block unchanged (no multiplier change). (Day 4 ✅)
+- [x] Update Area-A capstone: mark 候選 Sprint A shipped; note D3 correction confirmed in runtime (Day 4 ✅)
 - [ ] PR (no push without authorization)
