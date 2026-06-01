@@ -29,11 +29,11 @@
 ## Day 1 — Shared surface + Cat 5 (keystone)
 
 ### 1.1 Shared change surface
-- [ ] Extend `make_default_executor` (`_register_all.py`) to accept opt-in memory deps + subagent dispatcher (backward-compatible when absent); thread `user_id` through `router.py`/`handler.py`
+- [x] Extend `make_default_executor` (`_register_all.py`) to accept opt-in memory deps + subagent dispatcher (backward-compatible when absent); thread `user_id` through `router.py`/`handler.py` (Day 2 ✅ — params default None, byte-identical 55.2 when absent; user_id via router→handler + TraceContext)
   - DoD: existing chat tests still pass; default (no deps) path unchanged
   - Verify: `pytest tests/integration/api/test_chat_e2e.py -q`
-- [ ] ADD `make_chat_prompt_builder` / `make_chat_memory_deps` / `make_chat_subagent_dispatcher` to `_category_factories.py` (mirror existing `make_chat_*` pattern)
-  - 🔸 `make_chat_prompt_builder` DONE (Day 1 ✅); `make_chat_memory_deps` / `make_chat_subagent_dispatcher` → Day 2
+- [x] ADD `make_chat_prompt_builder` / `make_chat_memory_deps` / `make_chat_subagent_dispatcher` to `_category_factories.py` (mirror existing `make_chat_*` pattern)
+  - ✅ all 3 done (`make_chat_prompt_builder` Day 1; `make_chat_memory_deps` + `make_chat_subagent_dispatcher` Day 2)
   - DoD: mypy strict clean; no SDK import in `agent_harness/**`
   - Verify: `python scripts/lint/run_all.py` (check_llm_sdk_leak green)
 
@@ -49,17 +49,17 @@
 ## Day 2 — Cat 3 Memory + Cat 11 Subagent
 
 ### 2.1 Cat 3 memory tools (US-2)
-- [ ] Wire `make_chat_memory_deps(db, tenant_id, user_id)` → `register_builtin_tools(...)` in `make_default_executor`; assert REAL handler (not `memory_placeholder_handler`)
-  - DoD: memory tools registered with real retrieval/layers; tenant-scoped
-- [ ] Integration test: `memory_search`/`memory_save` `ToolCallExecuted` on chat path; cross-tenant isolation; negative (no deps → memory tools absent)
-  - Verify: `pytest tests/integration/api/test_chat_keystone_wiring.py -k cat3 -q`
+- [x] Wire `make_chat_memory_deps` → `register_builtin_tools(...)` in `make_default_executor`; assert REAL handler (not `memory_placeholder_handler`) (Day 2 ✅ — `is not` identity guard)
+  - DoD: memory tools registered with real retrieval/layers; tenant-scoped (per-call via ExecutionContext from TraceContext)
+- [x] Integration test: `memory_search`/`memory_write` exec on chat path; cross-tenant isolation; negative (no deps → memory tools unregistered) (Day 2 ✅ — 4 tests; cross-tenant: tenant_b same session → `[]`)
+  - Verify: `pytest tests/integration/api/test_chat_keystone_wiring.py -q` → 10 passed
 
 ### 2.2 Cat 11 subagent tools — A-3a (US-3)
-- [ ] Resolve `SubagentResultReducer` (define in `_contracts/subagent.py` or reuse merge); update 17.md (`task_spawn` risk_level + reducer registration)
-- [ ] Register `make_task_spawn_tool(dispatcher, parent_session_id=…)` + AS_TOOL wrappers into the executor registry (EXCLUDE `make_handoff_tool`)
-  - DoD: FORK/TEAMMATE/AS_TOOL spawnable; HANDOFF stub tests unchanged (`test_handoff.py`, `test_loop.py:311-330` still assert `HANDOFF_NOT_IMPLEMENTED`)
-- [ ] Integration test: FORK subagent spawn + `SubagentResult` merge on chat path; subagent failure does not crash parent (fail_soft); negative (no dispatcher → `task_spawn` unregistered)
-  - Verify: `pytest tests/integration/api/test_chat_keystone_wiring.py -k cat11 -q`
+- [x] Resolve `SubagentResultReducer`: **REUSE** — handler merges `SubagentResult` internally (spawn→wait_for→dict); no new contract. 17.md `task_spawn` risk_level = SEQUENTIAL/AUTO/MEDIUM (Day 2 ✅)
+- [x] Register `make_task_spawn_tool(dispatcher, parent_session_id=…)` + 1 AS_TOOL (`agent_researcher`) into the executor registry (EXCLUDE `make_handoff_tool`) (Day 2 ✅ — `_adapt_subagent_handler` Cat11→Cat2 bridge in registration layer)
+  - DoD: FORK/TEAMMATE/AS_TOOL spawnable; HANDOFF stub tests unchanged (`test_handoff.py`, `test_loop.py` still assert `HANDOFF_NOT_IMPLEMENTED` — 57 passed)
+- [x] Integration test: FORK subagent spawn + `SubagentResult` merge on chat path; subagent failure does not crash parent (fail_soft); negative (no dispatcher → `task_spawn` unregistered) (Day 2 ✅ — 3 tests)
+  - Verify: `pytest tests/integration/api/test_chat_keystone_wiring.py -q` → 10 passed
 
 ---
 

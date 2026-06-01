@@ -162,7 +162,7 @@ backend/src/agent_harness/{範疇}/_abc.py
 | `memory_search` | **範疇 3 (Memory)** | 跨 5 層搜尋記憶 + 多軸 `time_scales`（short_term / long_term / semantic）；**51.2 Day 4** ships real handler 經 `make_memory_search_handler(retrieval)` 注入；51.1 placeholder fallback 保留為 dev-mode safety net | RO_PARALLEL / AUTO / LOW | LLM via 範疇 2 Registry |
 | `memory_write` | **範疇 3 (Memory)** | 寫入指定 scope + `time_scale` + `confidence`；scope=system 拒絕（read-only at runtime）；**51.2 Day 4** ships real handler 經 `make_memory_write_handler(layers)` 注入 | SEQUENTIAL / AUTO / LOW | LLM via 範疇 2 Registry |
 | `memory_extract` | **範疇 3 (Memory)** | 內部 worker（`MemoryExtractor.extract_session_to_user`）；**51.2 Day 3** ships 手動觸發版（非 ToolSpec exposed）；自動觸發 Celery / Redis queue → CARRY-027（Phase 53.1） | N/A（internal）| MemoryExtractor caller |
-| `task_spawn` | **範疇 11 (Subagent)** | Fork subagent（54.2+） | TBD | LLM via 範疇 2 Registry |
+| `task_spawn` | **範疇 11 (Subagent)** | Fork / Teammate subagent（54.2+；**57.64 Day 2** wired on chat path 經 `make_task_spawn_tool(dispatcher, parent_session_id)`；`SubagentResult` 由 handler 內部 merge — **無獨立 `SubagentResultReducer`**） | SEQUENTIAL / AUTO / MEDIUM | LLM via 範疇 2 Registry |
 | `handoff` | **範疇 11 (Subagent)** | Handoff 控制權（54.2+） | TBD | LLM via 範疇 2 Registry |
 | `request_approval` | **§HITL 中央化** | 觸發人工審批（**51.1 Day 4 ships placeholder**：handler 返回 `pending_approval_id` JSON；ApprovalManager wires 53.3） | SEQUENTIAL / **ALWAYS_ASK** / MEDIUM | LLM via 範疇 2 Registry |
 | `verify` | **範疇 10 (Verification)** | 觸發 verifier 檢查當前 output（54.1+） | TBD | LLM via 範疇 2 Registry |

@@ -35,9 +35,10 @@ Description:
     actual loop run lives in the worker.
 
 Created: 2026-04-30 (Sprint 50.2 Day 1.5)
-Last Modified: 2026-05-31
+Last Modified: 2026-06-01
 
 Modification History (newest-first):
+    - 2026-06-01: Sprint 57.64 Day 2 — thread user_id into build_handler + TraceContext (Cat 3)
     - 2026-05-31: FIX-022 §6.2 — consolidate gpt-5.4 pricing fallback into named const
     - 2026-05-10: Sprint 57.7 US-R1 — sessions + tool_calls observer (AD-Reality-3a/3b)
     - 2026-05-08: Sprint 57.6 US-3 — audit_log observer at LoopCompleted (AD-Reality-3-audit_log)
@@ -212,6 +213,7 @@ async def chat(
             db=db,
             session_id=session_id,
             tenant_id=current_tenant,
+            user_id=current_user,
         )
     except (RuntimeError, ValueError) as exc:
         # Misconfiguration (env vars / unsupported mode) → 503.
@@ -251,9 +253,13 @@ async def chat(
     # P0 #12 — root TraceContext established at API boundary. The loop
     # already accepts trace_context; sse.py will copy trace_id into every
     # SSE frame's data so SSE consumers can correlate with backend traces.
+    # Sprint 57.64 Day 2: include user_id so the loop's ExecutionContext
+    # (loop.py:1136) attributes memory_search / memory_write to the
+    # authenticated user (Cat 3 dual-axis tenant_id + user_id scoping).
     trace_ctx = TraceContext(
         tenant_id=current_tenant,
         session_id=session_id,
+        user_id=current_user,
     )
 
     # Sprint 56.3 Day 1 (US-1 — SLA Metric Recording): chat_start_time
