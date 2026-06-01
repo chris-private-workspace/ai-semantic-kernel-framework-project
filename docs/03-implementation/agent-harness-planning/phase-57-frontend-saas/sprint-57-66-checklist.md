@@ -12,15 +12,15 @@
 ## Day 0 — Plan-vs-Repo Verify + Branch
 
 ### 0.1 Three-prong Day-0 verify (per `.claude/rules/sprint-workflow.md §Step 2.5`)
-- [ ] **Prong 1 (path)**: confirm `backend/src/api/v1/chat/sse.py` (serializer + `NotImplementedError` fallthrough `:298` + `llm_response` `:142-156` + `loop_end` `:197-204` + frame `:304-307`) / `router.py` silent-skip `:354-359` / `_contracts/events.py` (PromptBuilt `:206` / ContextCompacted `:194` / StateCheckpointed `:233` / TripwireTriggered `:273` / LLMResponded.cached_input_tokens `:114` / LoopCompleted cache `:149-150`); confirm exact FE paths for `types.ts` `KNOWN_LOOP_EVENT_TYPES` `:177-192` + `chatService.ts` gate `:121-124`
-- [ ] **Prong 2 (content)**: READ event bodies (not names) for the exact field sets to serialize — `ContextCompacted` (`events.py:194`) + `StateCheckpointed` (`events.py:233`) + `PromptBuilt` (`events.py:206`) + `TripwireTriggered` (`events.py:273`); confirm `loop.py` yields all four (919/863/1013+1324/456+527+747) so NO loop.py change; confirm `GuardrailTriggered` serializer (`sse.py:237`) as the mirror pattern; confirm the existing 14 wire-type strings to mirror snake_case naming
-- [ ] **Prong 3 (schema)**: N/A — no DB table / migration / ORM change this sprint (serializer + FE wire-contract only). Confirm 0 Alembic delta.
-- [ ] **Doc-location verify**: confirm whether the LoopEvent→client-SSE wire-type catalog is in `02-architecture-design.md §SSE` (per `sse.py:58` ref) vs 17.md §4.1 (emit-ownership only); 17.md needs NO new row (4 events already registered — D4)
-- [ ] Catalogue residual drift (if any) + go/no-go in progress.md Day 0 table; **expected GO** (audit already shifted scope < 20%)
+- [x] **Prong 1 (path)**: confirmed `sse.py` (serializer + `NotImplementedError` `:298` + `llm_response` `:140-156` + `loop_end` `:197-204` + frame `:304-307` + trace_id inject `:108-109` + import block `:69-87`) / `_contracts/events.py` single-source / FE `chat_v2/types.ts` KNOWN set `:177-192` + union `:161-175` / `chat_v2/services/chatService.ts` gate `:121-124`
+- [x] **Prong 2 (content)**: read exact field sets — `ContextCompacted`{tokens_before/after,compaction_strategy,messages_compacted,duration_ms} / `PromptBuilt`{messages_count,estimated_input_tokens,cache_breakpoints_count,memory_layers_used(tuple),position_strategy_used,duration_ms} / `StateCheckpointed`{version} / `TripwireTriggered`{violation_type,detail}; cache fields `LLMResponded.cached_input_tokens` `:114` + `LoopCompleted` `:149-150`; **D6 minor drift** (plan §3.1 said `estimated_tokens`→real `estimated_input_tokens`+`position_strategy_used`); `memory_layers_used`=scope-key list (scope-safe); `GuardrailTriggered` `sse.py:237` = mirror + FE precedent (in KNOWN set + typed, no rich UI)
+- [x] **Prong 3 (schema)**: N/A — no DB/migration/ORM change; 0 Alembic delta confirmed
+- [x] **Doc-location verify**: `02-architecture-design.md §SSE` = wire-type catalog (sse.py header + raise both ref it); 17.md §4.1 emit-ownership needs NO new row (D4)
+- [x] Catalogued D6 + D1-D5 in progress.md Day 0 table; **go/no-go = GO** (all prongs GREEN, D6 <5% scope)
 
 ### 0.2 Branch + decisions
 - [x] Branch `feature/sprint-57-66-events-sse-serialize` created from `b57c0cdf`; plan+checklist committed (1st commit)
-- [ ] Scope decisions resolved: 4 wire-types = `prompt_built`/`context_compacted`/`state_checkpointed`/`tripwire_triggered` (snake_case mirror); cache fields additive on existing `llm_response`/`loop_end`; payloads scope-safe (memory_layers_used = scope-key list, StateCheckpointed = version only, NO raw content/snapshot); FE = `rawEvents`-level only (NO Inspector UI — A-5c OOS); **Agent-delegated: yes** (57.64 staged pattern); real_llm leg = closes 57.63/64/65 (gated C-11 secrets)
+- [x] Scope decisions resolved: 4 wire-types = `prompt_built`/`context_compacted`/`state_checkpointed`/`tripwire_triggered` (snake_case mirror); cache fields additive on existing `llm_response`/`loop_end`; payloads scope-safe (memory_layers_used = scope-key list, StateCheckpointed = version only, NO raw content/snapshot); FE = mirror `GuardrailTriggered` treatment (KNOWN set + typed, NO Inspector UI — A-5c OOS); **Agent-delegated: yes** (57.64 staged pattern); real_llm leg = closes 57.63/64/65 (gated C-11 secrets)
 
 ---
 
