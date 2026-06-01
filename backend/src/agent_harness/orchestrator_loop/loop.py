@@ -45,6 +45,7 @@ Created: 2026-04-30 (Sprint 50.1 Day 2.2)
 Last Modified: 2026-06-01
 
 Modification History (newest-first):
+    - 2026-06-01: Sprint 57.65 A-2 — accumulate cached_input_tokens + emit cache_hit_rate
     - 2026-06-01: Sprint 57.65 — scope PromptBuilder.build user_id to ctx.user_id (A-1 Tier2)
     - 2026-05-05: Sprint 55.6 — close AD-Cat8-2 (retry wrap at L1044+L1092 — Option H)
     - 2026-05-05: Sprint 55.4 — close AD-Cat8-3 narrow Option C (error_class_str param)
@@ -963,8 +964,13 @@ class AgentLoopImpl(AgentLoop):
                 _provider = self._chat_client.model_info().provider
                 _input_tokens = response.usage.prompt_tokens if response.usage else 0
                 _output_tokens = response.usage.completion_tokens if response.usage else 0
+                # Sprint 57.65 A-2 Tier2: cached-input tokens (prompt-cache
+                # observability). Neutral signal from TokenUsage; dropped before
+                # 57.65 (flowed only to billing). Feeds LoopCompleted.cache_hit_rate.
+                _cached_input_tokens = response.usage.cached_input_tokens if response.usage else 0
                 metrics_acc.cumulative_input_tokens += _input_tokens
                 metrics_acc.cumulative_output_tokens += _output_tokens
+                metrics_acc.cumulative_cached_input_tokens += _cached_input_tokens
                 if _provider:
                     metrics_acc.last_provider = _provider
                 if response.model:
@@ -985,6 +991,7 @@ class AgentLoopImpl(AgentLoop):
                     model=response.model,
                     input_tokens=_input_tokens,
                     output_tokens=_output_tokens,
+                    cached_input_tokens=_cached_input_tokens,
                     trace_context=ctx,
                 )
                 yield Thinking(text=parsed.text, trace_context=ctx)
@@ -1030,6 +1037,9 @@ class AgentLoopImpl(AgentLoop):
                         output_tokens=metrics_acc.cumulative_output_tokens,
                         provider=metrics_acc.last_provider,
                         model=metrics_acc.last_model,
+                        # Sprint 57.65 A-2 Tier2: prompt-cache observability
+                        cached_input_tokens=metrics_acc.cumulative_cached_input_tokens,
+                        cache_hit_rate=metrics_acc.cache_hit_rate,
                         trace_context=ctx,
                     )
                     return
@@ -1047,6 +1057,9 @@ class AgentLoopImpl(AgentLoop):
                         output_tokens=metrics_acc.cumulative_output_tokens,
                         provider=metrics_acc.last_provider,
                         model=metrics_acc.last_model,
+                        # Sprint 57.65 A-2 Tier2: prompt-cache observability
+                        cached_input_tokens=metrics_acc.cumulative_cached_input_tokens,
+                        cache_hit_rate=metrics_acc.cache_hit_rate,
                         trace_context=ctx,
                     )
                     return

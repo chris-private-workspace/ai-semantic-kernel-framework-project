@@ -26,6 +26,7 @@ Created: 2026-05-07 (Sprint 57.2 Day 1)
 Last Modified: 2026-05-07
 
 Modification History (newest-first):
+    - 2026-06-01: Sprint 57.65 A-2 — accumulate cached_input_tokens + cache_hit_rate prop
     - 2026-05-07: Sprint 57.2 Day 1 — initial (closes AD-Cat10-Cat11-LoopMetricsAccumulator)
 
 Related:
@@ -63,6 +64,11 @@ class LoopMetricsAccumulator:
     total_turns: int = 0
     cumulative_input_tokens: int = 0
     cumulative_output_tokens: int = 0
+    # Sprint 57.65 A-2 Tier2: cumulative cached-input tokens (prompt-cache
+    # observability). Sourced from the neutral TokenUsage.cached_input_tokens
+    # via LLMResponded.cached_input_tokens; dropped before 57.65 (flowed only
+    # to billing). Feeds LoopCompleted.cache_hit_rate.
+    cumulative_cached_input_tokens: int = 0
     verification_iterations: int = 0
     subagent_dispatched: int = 0
     last_provider: str = ""
@@ -84,6 +90,7 @@ class LoopMetricsAccumulator:
             self.total_turns += 1
             self.cumulative_input_tokens += event.input_tokens
             self.cumulative_output_tokens += event.output_tokens
+            self.cumulative_cached_input_tokens += event.cached_input_tokens
             if event.provider:
                 self.last_provider = event.provider
             if event.model:
@@ -97,6 +104,18 @@ class LoopMetricsAccumulator:
     def total_tokens(self) -> int:
         """Cumulative input + output (invariant: == LoopCompleted.total_tokens)."""
         return self.cumulative_input_tokens + self.cumulative_output_tokens
+
+    @property
+    def cache_hit_rate(self) -> float:
+        """Prompt-cache hit rate = cached_input / input (div-by-0 guarded → 0.0).
+
+        Sprint 57.65 A-2 Tier2: single DRY source for the rate consumed by both
+        LoopCompleted emission sites. Returns 0.0 when no input tokens have been
+        accumulated (early-termination before any LLM call).
+        """
+        if self.cumulative_input_tokens <= 0:
+            return 0.0
+        return self.cumulative_cached_input_tokens / self.cumulative_input_tokens
 
     def to_loop_completed_payload(self) -> dict[str, int | str]:
         """Return accumulator-sourced LoopCompleted field values.

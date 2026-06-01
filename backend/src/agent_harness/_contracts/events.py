@@ -23,6 +23,7 @@ Created: 2026-04-29 (Sprint 49.1)
 Last Modified: 2026-04-29
 
 Modification History (newest-first):
+    - 2026-06-01: Sprint 57.65 A-2 — add cached_input_tokens + cache_hit_rate (prompt-cache obs)
     - 2026-04-30: Add 3 new Cat 1-owned events (Sprint 50.2 Day 2.2) —
         TurnStarted / LLMRequested / LLMResponded for per-turn SSE granularity.
         Extend ToolCallExecuted with `result_content: str = ""` so tool result
@@ -105,6 +106,12 @@ class LLMResponded(LoopEvent):
     model: str = ""
     input_tokens: int = 0
     output_tokens: int = 0
+    # Sprint 57.65 A-2 Tier2: prompt-cache observability. Neutral cached-input
+    # token count sourced from TokenUsage.cached_input_tokens (Azure
+    # prompt_tokens_details.cached_tokens). LoopMetricsAccumulator sums this
+    # per-event so LoopCompleted can report a cache-hit-rate. Default 0 covers
+    # providers/turns with no cache hit.
+    cached_input_tokens: int = 0
 
 
 @dataclass(frozen=True)
@@ -133,6 +140,14 @@ class LoopCompleted(LoopEvent):
     output_tokens: int = 0
     provider: str = ""
     model: str = ""
+    # Sprint 57.65 A-2 Tier2 (prompt-cache observability): accumulator-sourced
+    # cumulative cached-input tokens across the loop + the derived cache-hit
+    # rate (cached_input_tokens / input_tokens; 0.0 when input_tokens == 0,
+    # div-by-0 guarded). Cat 12 consumes these off the event (no separate
+    # Tracer/MetricsRegistry — loop metrics travel as LoopCompleted fields).
+    # Default 0 / 0.0 covers early-termination paths before any LLM call.
+    cached_input_tokens: int = 0
+    cache_hit_rate: float = 0.0
 
 
 # === Category 6: Output Parser ==============================================

@@ -24,6 +24,10 @@ Description:
 
 Created: 2026-06-01 (Sprint 57.65)
 Last Modified: 2026-06-01
+
+Modification History (newest-first):
+    - 2026-06-01: Sprint 57.65 A-2 Tier2 — add prompt-cache observability section
+        (LoopCompleted.cached_input_tokens + cache_hit_rate from MockChatClient usage)
 """
 
 from __future__ import annotations
@@ -289,3 +293,144 @@ async def test_tier2_no_memory_deps_renders_no_block(monkeypatch: pytest.MonkeyP
     prompt_built = [ev for ev in events if isinstance(ev, PromptBuilt)]
     assert prompt_built and all(pb.memory_layers_used == () for pb in prompt_built)
     assert any(isinstance(ev, LoopCompleted) for ev in events)
+
+
+# ============================================================
+# A-2 Tier2 — prompt-cache observability on LoopCompleted
+# ============================================================
+
+
+def _final_response_cached(
+    text: str = "done", *, prompt_tokens: int = 100, cached_input_tokens: int = 60
+) -> ChatResponse:
+    """A final response whose usage carries cached_input_tokens (Azure auto-cache
+    warm). Neutral TokenUsage field — no provider SDK involved."""
+    return ChatResponse(
+        model="mock",
+        content=text,
+        stop_reason=StopReason.END_TURN,
+        tool_calls=None,
+        usage=TokenUsage(
+            prompt_tokens=prompt_tokens,
+            completion_tokens=10,
+            cached_input_tokens=cached_input_tokens,
+            total_tokens=prompt_tokens + 10,
+        ),
+    )
+
+
+@pytest.mark.asyncio
+async def test_tier2_cache_hit_metric_emitted(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A run whose usage carries cached_input_tokens>0 → the final LoopCompleted
+    reports cached_input_tokens>0 and cache_hit_rate ≈ cached / input."""
+    from agent_harness._contracts import LoopCompleted, TraceContext
+
+    _set_fake_azure(monkeypatch)
+    tenant_id = uuid4()
+    session_id = uuid4()
+    loop, _registry = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id)
+
+    mock = MockChatClient(
+        responses=[_final_response_cached(prompt_tokens=100, cached_input_tokens=60)]
+    )
+    loop._chat_client = mock  # type: ignore[attr-defined]
+
+    trace_ctx = TraceContext(tenant_id=tenant_id, session_id=session_id)
+    events = [
+        ev
+        async for ev in loop.run(
+            session_id=session_id, user_input="hello", trace_context=trace_ctx
+        )
+    ]
+
+    completed = [ev for ev in events if isinstance(ev, LoopCompleted)]
+    assert completed, "expected a LoopCompleted event"
+    final = completed[-1]
+    assert final.cached_input_tokens == 60
+    assert final.input_tokens == 100
+    assert final.cache_hit_rate == pytest.approx(0.6)
+
+
+@pytest.mark.asyncio
+async def test_tier2_cache_hit_metric_accumulates_across_turns(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A 2-turn run sums cached_input_tokens; cache_hit_rate uses the totals
+    (turn 1 cold = 0 cached, turn 2 warm = cached>0)."""
+    from agent_harness._contracts import LoopCompleted, TraceContext
+
+    _set_fake_azure(monkeypatch)
+    tenant_id = uuid4()
+    session_id = uuid4()
+    loop, _registry = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id)
+
+    # Turn 1: a tool call (cold cache, 0 cached); Turn 2: final (warm cache).
+    # memory_write is the proven-good tool path (see render test); its cold-cache
+    # turn carries 0 cached tokens so the accumulation across turns is exercised.
+    cold = ChatResponse(
+        model="mock",
+        content="",
+        stop_reason=StopReason.TOOL_USE,
+        tool_calls=[
+            ToolCall(
+                id="call_w",
+                name="memory_write",
+                arguments={
+                    "scope": "session",
+                    "key": "k",
+                    "content": "noted",
+                    "time_scale": "short_term",
+                },
+            )
+        ],
+        usage=TokenUsage(
+            prompt_tokens=100, completion_tokens=2, cached_input_tokens=0, total_tokens=102
+        ),
+    )
+    mock = MockChatClient(
+        responses=[cold, _final_response_cached(prompt_tokens=100, cached_input_tokens=80)]
+    )
+    loop._chat_client = mock  # type: ignore[attr-defined]
+
+    trace_ctx = TraceContext(tenant_id=tenant_id, session_id=session_id)
+    events = [
+        ev
+        async for ev in loop.run(
+            session_id=session_id, user_input="hello", trace_context=trace_ctx
+        )
+    ]
+
+    final = [ev for ev in events if isinstance(ev, LoopCompleted)][-1]
+    # cumulative input = 100 + 100 = 200; cached = 0 + 80 = 80 → 0.4
+    assert final.cached_input_tokens == 80
+    assert final.input_tokens == 200
+    assert final.cache_hit_rate == pytest.approx(0.4)
+
+
+@pytest.mark.asyncio
+async def test_tier2_no_cached_tokens_rate_is_zero_no_crash(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A run with cached_input_tokens=0 (default) → cache_hit_rate==0.0
+    (div-by-0 guarded) and the run completes."""
+    from agent_harness._contracts import LoopCompleted, TraceContext
+
+    _set_fake_azure(monkeypatch)
+    tenant_id = uuid4()
+    session_id = uuid4()
+    loop, _registry = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id)
+
+    mock = MockChatClient(responses=[_final_response("done")])
+    loop._chat_client = mock  # type: ignore[attr-defined]
+
+    trace_ctx = TraceContext(tenant_id=tenant_id, session_id=session_id)
+    events = [
+        ev
+        async for ev in loop.run(
+            session_id=session_id, user_input="hello", trace_context=trace_ctx
+        )
+    ]
+
+    final = [ev for ev in events if isinstance(ev, LoopCompleted)][-1]
+    assert final.cached_input_tokens == 0
+    assert final.cache_hit_rate == 0.0

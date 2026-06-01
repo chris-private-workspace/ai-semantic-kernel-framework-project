@@ -57,7 +57,25 @@ Covered checklist §1.1 + §1.2 + §2.1 (the whole A-1 builder/factory surface �
 
 **New tests**: `test_chat_tier2_wiring.py` (4 integration) + `test_builder_tier2.py` (11 unit) + 1 `test_templates.py` assertion update.
 
-## Day 2 — Stage 2 = A-2 Tier2 (cache observability) — (pending)
+## Day 2 — Stage 2 = A-2 Tier2 (cache observability) — code-implementer delegated, parent re-verified
+
+Covered checklist §2.2. The Azure cache pipe was already complete (Day-0 D1/D2); this is observability-only.
+
+**Implemented** (`a46b648b9e1d26730`):
+- `_contracts/events.py`: `LLMResponded.cached_input_tokens: int = 0`; `LoopCompleted.cached_input_tokens: int = 0` + `cache_hit_rate: float = 0.0` (safe defaults — no existing constructor breaks).
+- `_metrics.py`: `LoopMetricsAccumulator.cumulative_cached_input_tokens`; on_event LLMResponded branch accumulates it; NEW `cache_hit_rate` property (cached/input, `input<=0 → 0.0`) = single DRY rate source.
+- `loop.py:964-973`: inline `metrics_acc.cumulative_cached_input_tokens += response.usage.cached_input_tokens` (the path that runs) + `LLMResponded(... cached_input_tokens=...)` emission (`:991`); BOTH `LoopCompleted` sites (END_TURN terminator `:1037-1046` + FINAL `:1057-1066`) populate `cached_input_tokens` + `cache_hit_rate=metrics_acc.cache_hit_rate`.
+- `17-cross-category-interfaces.md`: registered the 3 new LoopEvent fields (§4.1).
+
+**Parent independent re-verification** (57.64 discipline):
+- Re-ran `pytest test_chat_tier2_wiring.py test_chat_keystone_wiring.py tests/unit/.../orchestrator_loop/` → **59 passed**.
+- Re-ran `mypy src/` → 0/319; `run_all.py` → 9/9 green.
+- Read `events.py`/`_metrics.py`/`loop.py` diffs: inline AND on_event both accumulate (AP-10 — no mock/real divergence); div-0 guarded; DRY `cache_hit_rate` property consumed by both emission sites; LoopCompleted constructed manually (NOT via `to_loop_completed_payload`) so no double-spec.
+- Read the new tests: `test_tier2_cache_hit_metric_emitted` asserts the RATE VALUE (`cache_hit_rate == pytest.approx(0.6)` for cached=60/input=100) — substantive, not just `>0`; 2-turn accumulation (cold→warm) + zero/div-0 cases.
+- Minor (retro): `to_loop_completed_payload()` accumulator helper was NOT updated with the 2 new fields (still returns 6; pinned by `test_..._returns_six_fields`). The loop emission doesn't use the helper (manual construction), so not a runtime bug — but it's a latent inconsistency if a future caller builds `LoopCompleted(**payload)`. Note for cleanup.
+
+**New tests**: `test_chat_tier2_wiring.py` +3 integration (cache-hit value / 2-turn accum / zero-guard) + `test_metrics_accumulator.py` +2 unit.
+
 ## Day 3 — combined tests + real_llm e2e — (pending)
 ## Day 4 — closeout — (pending)
 
@@ -66,3 +84,4 @@ Covered checklist §1.1 + §1.2 + §2.1 (the whole A-1 builder/factory surface �
 |--------|-----------|
 | (plan+checklist commit) | plan + checklist |
 | (Stage 1 commit) | Day 1 §1.1 + §1.2 + Day 2 §2.1 (A-1 render + cap + verify) |
+| (Stage 2 commit) | Day 2 §2.2 (A-2 cache observability) |

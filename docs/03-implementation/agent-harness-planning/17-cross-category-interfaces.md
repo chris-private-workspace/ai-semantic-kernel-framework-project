@@ -233,7 +233,7 @@ def register_memory_tools(registry: ToolRegistry) -> None:
 | `LoopStarted` | 範疇 1 | Loop run 開始 |
 | `TurnStarted` | 範疇 1 | Loop 每個 TAO 迭代開頭（Sprint 50.2 加） |
 | `LLMRequested` | 範疇 1 | LLM call 發出前（含 model 名 + best-effort tokens_in；Sprint 50.2 加） |
-| `LLMResponded` | 範疇 1 | LLM 回應收到（canonical SSE `llm_response` 載體：content + tool_calls + thinking；Sprint 50.2 加） |
+| `LLMResponded` | 範疇 1 | LLM 回應收到（canonical SSE `llm_response` 載體：content + tool_calls + thinking；Sprint 50.2 加。Sprint 57.2 加 `provider` / `model` / `input_tokens` / `output_tokens` per-call metadata；**Sprint 57.65 A-2 Tier2 加 `cached_input_tokens`**（neutral `TokenUsage.cached_input_tokens` 來源，prompt-cache observability，LoopMetricsAccumulator 逐 event 累加）） |
 | `Thinking` | 範疇 1 | 模型 thinking text（50.1 backward-compat；50.2+ SSE 不發） |
 | `ToolCallRequested` | 範疇 6 | output parser 解析出 tool_calls |
 | `ToolCallExecuted` | 範疇 2 | Tool executor 完成 |
@@ -251,7 +251,7 @@ def register_memory_tools(registry: ToolRegistry) -> None:
 | `SubagentCompleted` | 範疇 11 | Subagent 結束 |
 | `ApprovalRequested` | §HITL 中央化 | HITL 觸發等待 |
 | `ApprovalReceived` | §HITL 中央化 | HITL 結果回到 loop |
-| `LoopCompleted` | 範疇 1 | Loop 終止 |
+| `LoopCompleted` | 範疇 1 | Loop 終止（Sprint 57.2 加 accumulator-sourced `total_tokens` / `input_tokens` / `output_tokens` / `provider` / `model`；**Sprint 57.65 A-2 Tier2 加 `cached_input_tokens` + 衍生 `cache_hit_rate`**（= cached / input，div-by-0 → 0.0；Cat 12 prompt-cache-hit-rate metric，無 Tracer/MetricsRegistry，metric 隨 event 欄位下游消費）） |
 | `SpanStarted` | **範疇 12** | OTel span 開始 |
 | `SpanEnded` | **範疇 12** | OTel span 結束 |
 | `MetricRecorded` | **範疇 12** | latency / token / cost 三軸 metric |

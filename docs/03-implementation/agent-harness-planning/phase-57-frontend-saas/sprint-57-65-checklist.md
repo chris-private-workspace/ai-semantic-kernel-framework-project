@@ -45,12 +45,11 @@
 - [x] `_build_verify_before_use_block` injects lead-then-verify text + flagged summaries into system role when any hint `verify_before_use=True`; absent otherwise (Stage 1 ✅)
   - DoD: `test_builder_tier2.py` (present/absent/skips-capped-hint) + `test_chat_tier2_wiring.py::test_tier2_verify_before_use_rule_present`
 
-### 2.2 A-2 prompt-cache observability (US-2)
-- [ ] Accumulate `cached_input_tokens` in `metrics_acc` (`loop.py:961-969`) alongside prompt/completion (today dropped — D2)
-  - DoD: a loop run with `cached_input_tokens>0` carries it through to completion
-- [ ] Emit Cat 12 cache-hit-rate (= cached/prompt, div-0 guarded) on `LoopCompleted` (`loop.py:1026-1046`) via existing Tracer/metrics path (or new field if Day-0 decided); register in 17.md if contract changed
-  - DoD: metric emitted with mock usage `cached_input_tokens>0`; =0 / no-crash when absent
-  - Verify: `pytest tests/integration/api/test_chat_tier2_wiring.py -q` (cache-metric case)
+### 2.2 A-2 prompt-cache observability (US-2) — Stage 2
+- [x] Accumulate `cached_input_tokens` in `metrics_acc` — inline `loop.py:964-973` AND on_event `_metrics.py` LLMResponded branch (both, AP-10 no divergence); NEW `cumulative_cached_input_tokens` on `LoopMetricsAccumulator` (Stage 2 ✅)
+  - DoD: a run with `cached_input_tokens>0` carries it to completion → asserted (cached=60)
+- [x] Emit Cat 12 cache-hit-rate on `LoopCompleted` — NEW `cached_input_tokens` + `cache_hit_rate` fields (div-0 guarded `cache_hit_rate` property = DRY source); both emission sites (`:1037-1046` + `:1057-1066`); `LLMResponded.cached_input_tokens` too; registered in 17.md §4.1 (Stage 2 ✅)
+  - DoD: `test_tier2_cache_hit_metric_emitted` asserts `cache_hit_rate == approx(0.6)`; 2-turn accum + zero/div-0 cases → 59 passed; mypy 0/319; 9/9 lints
 
 ---
 

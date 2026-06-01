@@ -164,6 +164,49 @@ def test_accumulator_to_loop_completed_payload_returns_six_fields() -> None:
     }
 
 
+def test_accumulator_cached_input_tokens_accumulate() -> None:
+    """Sprint 57.65 A-2 Tier2: cached_input_tokens sum across LLMResponded events."""
+    acc = LoopMetricsAccumulator()
+    acc.on_event(
+        LLMResponded(
+            content="a",
+            input_tokens=100,
+            output_tokens=10,
+            cached_input_tokens=40,
+            trace_context=_ctx(),
+        )
+    )
+    acc.on_event(
+        LLMResponded(
+            content="b",
+            input_tokens=200,
+            output_tokens=20,
+            cached_input_tokens=120,
+            trace_context=_ctx(),
+        )
+    )
+    assert acc.cumulative_cached_input_tokens == 160
+    assert acc.cumulative_input_tokens == 300
+
+
+def test_accumulator_cache_hit_rate_computed_and_div0_guarded() -> None:
+    """Sprint 57.65 A-2 Tier2: cache_hit_rate = cached / input; 0.0 when no input."""
+    empty = LoopMetricsAccumulator()
+    assert empty.cache_hit_rate == 0.0  # div-by-0 guarded (no input tokens yet)
+
+    acc = LoopMetricsAccumulator()
+    acc.on_event(
+        LLMResponded(
+            content="x",
+            input_tokens=100,
+            output_tokens=5,
+            cached_input_tokens=75,
+            trace_context=_ctx(),
+        )
+    )
+    assert acc.cache_hit_rate == 0.75
+
+
 def test_accumulator_empty_provider_model_does_not_overwrite() -> None:
     """LLMResponded with empty provider/model doesn't clear previously-captured values."""
     acc = LoopMetricsAccumulator()
