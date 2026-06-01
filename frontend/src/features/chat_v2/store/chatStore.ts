@@ -9,7 +9,7 @@
  *   state + Sprint 57.x cross-cutting slices (rawEvents / approvals / verifications
  *   / subagents) that are still consumed by non-chat components.
  *
- *   Sprint 57.21 mergeEvent rewrite — folds 14 SSE event types into Turn blocks:
+ *   Sprint 57.21 mergeEvent rewrite — folds 14 (Sprint 57.66: 18) SSE event types into Turn blocks:
  *     - loop_start         → set sessionId + status=running (preserve turns)
  *     - turn_start         → push new AgentTurn with empty blocks + null metadata
  *     - llm_request        → update active AgentTurn.tokensIn
@@ -20,6 +20,8 @@
  *     - approval_requested → push HITLTurn + update approvals dict (dual-emit)
  *     - approval_received  → update HITLTurn decision + approvals dict (dual-emit)
  *     - guardrail_triggered → rawEvents only (Phase-2+ may render warning)
+ *     - prompt_built / context_compacted / state_checkpointed / tripwire_triggered
+ *                          → rawEvents only (Sprint 57.66; rich render DEFERRED A-5c)
  *     - verification_*     → append VerificationBlock + verifications slice (dual-emit)
  *     - subagent_spawned   → append/extend SubagentForkBlock + subagents slice (dual-emit)
  *     - subagent_completed → update SubagentEntry.status + subagents slice (dual-emit)
@@ -29,9 +31,10 @@
  *   ALSO feeding the new Turn block render path for /chat-v2 mockup-fidelity.
  *
  * Created: 2026-04-30 (Sprint 50.2 Day 3.3)
- * Last Modified: 2026-05-17
+ * Last Modified: 2026-06-02
  *
  * Modification History:
+ *   - 2026-06-02: Sprint 57.66 — +4 diagnostic event passthrough cases (rawEvents-only)
  *   - 2026-05-17: Sprint 57.21 Day 1 — mergeEvent SSE → Turn block sequence; dual-emit
  *   - 2026-05-10: Sprint 57.12 US-6 — subagents slice + reducers (AD-Cat11-SSEEvents)
  *   - 2026-04-30: Initial creation (Sprint 50.2 Day 3.3)
@@ -389,6 +392,15 @@ export const useChatStore = create<ChatStoreState>((set) => ({
 
         case "guardrail_triggered": {
           // Sprint 53.6 D2: rawEvents only — Phase-2+ may render warning banner.
+          return { ...s, rawEvents };
+        }
+
+        case "prompt_built":
+        case "context_compacted":
+        case "state_checkpointed":
+        case "tripwire_triggered": {
+          // Sprint 57.66: recognized + typed + audit-trail only (rawEvents).
+          // Rich Inspector render DEFERRED to A-5c (mirror guardrail_triggered).
           return { ...s, rawEvents };
         }
 

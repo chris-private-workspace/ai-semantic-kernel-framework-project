@@ -1,12 +1,12 @@
 /**
  * File: frontend/src/features/chat_v2/types.ts
- * Purpose: SSE LoopEvent types (14) + Turn/Block/Session UI aggregate types (Sprint 57.21).
+ * Purpose: SSE LoopEvent types (18) + Turn/Block/Session UI aggregate types (Sprint 57.21).
  * Category: Frontend / chat_v2
  * Scope: Phase 50 / Sprint 50.2 + Phase 57.21 (Day 1 — Turn block model rewrite per mockup)
  *
  * Description:
  *   Three discriminated unions:
- *   1. LoopEvent — 14 SSE wire types (Sprint 50.2 + 53.5 + 53.6 + 57.11 + 57.12);
+ *   1. LoopEvent — 18 SSE wire types (Sprint 50.2 + 53.5 + 53.6 + 57.11 + 57.12 + 57.66);
  *      1:1 backend serialize_loop_event output. Preserved EXACTLY in Sprint 57.21.
  *   2. Turn — UI aggregate per-turn model (user / agent / hitl) per mockup
  *      reference/design-mockups/page-chat.jsx L17-70 + L159-313. NEW in Sprint 57.21.
@@ -22,9 +22,10 @@
  *   Message removed — replaced by Turn. tsc compile gate surfaces consumer updates.
  *
  * Created: 2026-04-30 (Sprint 50.2 Day 3.2)
- * Last Modified: 2026-05-17
+ * Last Modified: 2026-06-02
  *
  * Modification History:
+ *   - 2026-06-02: Sprint 57.66 — +4 diagnostic events + cache fields on llm_response/loop_end
  *   - 2026-05-17: Sprint 57.21 Day 1 — Turn/Block/Session unions; remove Message
  *   - 2026-05-10: Sprint 57.12 US-6 — Subagent{Spawned,Completed}Event + KNOWN set
  *   - 2026-05-04: Sprint 53.6 D2 — GuardrailTriggeredEvent defensive type
@@ -68,6 +69,8 @@ export type LLMResponseEvent = {
     content: string;
     tool_calls: LLMToolCall[];
     thinking: string | null;
+    // Sprint 57.66: prompt-cache observability (FIX-025 numeric wire).
+    cached_input_tokens: number;
   };
 };
 
@@ -93,7 +96,13 @@ export type ToolCallResultEvent = {
 
 export type LoopEndEvent = {
   type: "loop_end";
-  data: { stop_reason: string; total_turns: number };
+  data: {
+    stop_reason: string;
+    total_turns: number;
+    // Sprint 57.66: prompt-cache observability (FIX-025 numeric wire).
+    cached_input_tokens: number;
+    cache_hit_rate: number;
+  };
 };
 
 export type ApprovalRequestedEvent = {
@@ -158,6 +167,43 @@ export type SubagentCompletedEvent = {
   };
 };
 
+// Sprint 57.66: 4 diagnostic wire types (Cat 4/5/7/9). Recognized + typed +
+// flow through to rawEvents; NO rich UI block this sprint (mirror
+// guardrail_triggered treatment; rich Inspector render DEFERRED to A-5c).
+
+export type PromptBuiltEvent = {
+  type: "prompt_built";
+  data: {
+    messages_count: number;
+    estimated_input_tokens: number;
+    cache_breakpoints_count: number;
+    memory_layers_used: string[];
+    position_strategy_used: string;
+    duration_ms: number;
+  };
+};
+
+export type ContextCompactedEvent = {
+  type: "context_compacted";
+  data: {
+    tokens_before: number;
+    tokens_after: number;
+    compaction_strategy: string;
+    messages_compacted: number;
+    duration_ms: number;
+  };
+};
+
+export type StateCheckpointedEvent = {
+  type: "state_checkpointed";
+  data: { version: number };
+};
+
+export type TripwireTriggeredEvent = {
+  type: "tripwire_triggered";
+  data: { violation_type: string; detail: string };
+};
+
 export type LoopEvent =
   | LoopStartEvent
   | TurnStartEvent
@@ -172,7 +218,11 @@ export type LoopEvent =
   | VerificationPassedEvent
   | VerificationFailedEvent
   | SubagentSpawnedEvent
-  | SubagentCompletedEvent;
+  | SubagentCompletedEvent
+  | PromptBuiltEvent
+  | ContextCompactedEvent
+  | StateCheckpointedEvent
+  | TripwireTriggeredEvent;
 
 export const KNOWN_LOOP_EVENT_TYPES = new Set<string>([
   "loop_start",
@@ -189,6 +239,10 @@ export const KNOWN_LOOP_EVENT_TYPES = new Set<string>([
   "verification_failed",
   "subagent_spawned",
   "subagent_completed",
+  "prompt_built",
+  "context_compacted",
+  "state_checkpointed",
+  "tripwire_triggered",
 ]);
 
 // === Sprint 57.21: Block discriminated union ==============================

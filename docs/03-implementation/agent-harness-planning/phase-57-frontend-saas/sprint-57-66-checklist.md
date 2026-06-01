@@ -50,16 +50,16 @@
 ## Day 2 — Frontend wire-contract (US-3) + doc
 
 ### 2.1 FE wire-type recognition (US-3) — `types.ts`
-- [ ] Add `prompt_built`/`context_compacted`/`state_checkpointed`/`tripwire_triggered` to `KNOWN_LOOP_EVENT_TYPES` (`:177-192`) + TS payload types
-- [ ] Add `cached_input_tokens`/`cache_hit_rate` to `llm_response`/`loop_end` TS types
-  - DoD: tsc 0; the 4 types pass the gate (`chatService.ts:121-124`)
+- [x] Added `PromptBuiltEvent`/`ContextCompactedEvent`/`StateCheckpointedEvent`/`TripwireTriggeredEvent` types + union members + 4 strings to `KNOWN_LOOP_EVENT_TYPES`; docstring count 14→18 + MHist
+- [x] Added `cached_input_tokens` to `LLMResponseEvent.data` + `cached_input_tokens`/`cache_hit_rate` to `LoopEndEvent.data` (all `number` — FIX-025 numeric wire)
+  - DoD ✅: tsc EXIT 0 (re-run by parent); the 4 types pass the gate
 
-### 2.2 FE minimal consumer (US-3) — `chatService.ts`
-- [ ] 4 new types land in `rawEvents` (not dropped); NO Inspector UI (A-5c OOS); optional lightweight `tripwire_triggered` surfacing only if cheap in the existing switch
-  - DoD: Vitest — 4 wire-types recognized + parsed into typed events + appended to rawEvents; cache fields parsed on llm_response/loop_end
+### 2.2 FE minimal consumer (US-3)
+- [x] `chatService.ts` needed NO change (gate uses `KNOWN_LOOP_EVENT_TYPES` → auto-passes once strings added). Consumer = `chatStore.ts` `mergeEvent` **exhaustive switch** (`const _exhaustive: never`) → added 4 passthrough cases `return { ...s, rawEvents }` mirroring `guardrail_triggered` (rawEvents-only, NO turn mutation, NO Inspector UI — A-5c OOS). tsc-ripple fix: `orchestrator-loop/_fixtures/demoLoopEvents.ts` cache fields on llm_response/loop_end literals.
+  - DoD ✅: Vitest 686→693 (+7) — 4 wire-types recognized (not dropped) + cache fields parsed (`cache_hit_rate === 0.5`, `typeof number`) + unknown-type still dropped
 
 ### 2.3 Doc single-source
-- [ ] `02-architecture-design.md §SSE` wire-type catalog += 4 new types + 2 cache fields (single-source); 17.md §4.1 unchanged (D4 — emit-ownership already has the 4 events)
+- [x] `02-architecture-design.md §SSE` += Sprint 57.66 real-serializer registration note (4 real wire-types + 2 cache fields; flags catalog's aspirational `tripwire_fired`/`compaction_triggered` vs real names; preserves drifted catalog per Naming Drift Note precedent); 17.md §4.1 unchanged (D4 — emit-ownership already has the 4 events)
 
 ---
 

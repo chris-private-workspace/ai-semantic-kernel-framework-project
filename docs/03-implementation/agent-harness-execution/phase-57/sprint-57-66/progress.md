@@ -83,9 +83,22 @@ PASS — sse.py diff matches spec exactly (4 imports alpha-ordered, branches mir
 
 ---
 
-## Day 2 — Frontend wire-contract (US-3) + doc
+## Day 2 — Frontend wire-contract (US-3) + doc — ✅
 
-(pending)
+Stage 2 frontend delegated to a fresh code-implementer + parent independent re-verification (read all 3 diffs + re-ran tsc + the new Vitest file myself).
+
+### Delivered
+- `chat_v2/types.ts`: 4 new event types (`PromptBuiltEvent`/`ContextCompactedEvent`/`StateCheckpointedEvent`/`TripwireTriggeredEvent`; field shapes mirror backend payloads, no `trace_id` per existing convention) + union members + 4 strings in `KNOWN_LOOP_EVENT_TYPES`; `cached_input_tokens` on `LLMResponseEvent.data`, `cached_input_tokens`+`cache_hit_rate` on `LoopEndEvent.data` (all `number`); docstring "14→18 wire types" + MHist.
+- `chat_v2/store/chatStore.ts`: consumer chain DIFFERED from the brief — `mergeEvent` uses an **exhaustive `switch` with `const _exhaustive: never = ev`** default, so the 4 new union members broke the `never` assignment. Implementer added 4 explicit passthrough cases (`return { ...s, rawEvents }`) right after `guardrail_triggered`, mirroring it exactly (rawEvents-only, no turn mutation, no UI — A-5c deferred). `chatService.ts` needed NO change (its gate reads `KNOWN_LOOP_EVENT_TYPES`).
+- `orchestrator-loop/_fixtures/demoLoopEvents.ts`: tsc-required ripple — the now-required cache fields were missing on the fixture's `llm_response`×2 + `loop_end` literals; added representative values (0 / 896 / 0.34).
+- `02-architecture-design.md §SSE`: added a Sprint 57.66 real-serializer-registration note (the 4 real wire-types + 2 cache fields; flags the catalog's aspirational `tripwire_fired`/`compaction_triggered` vs the real serializer names; preserves the drifted catalog per the doc's own Naming Drift Note precedent — single-source). 17.md §4.1 emit-ownership unchanged (D4).
+- NEW `frontend/tests/unit/chat_v2/chatService.parseSSEFrame.test.ts`: 7 tests via the public `streamChat` path (`parseSSEFrame` is module-private; `fetchWithAuth` mocked to a `ReadableStream` of SSE frames) — 4 new wire-types recognized-not-dropped + cache fields parse as numbers (`cache_hit_rate === 0.5`, `typeof === "number"`) + unknown-type still dropped.
+
+### Validation
+- Vitest **686 → 693** (+7); `npx tsc --noEmit` EXIT 0 (re-run by parent); `npm run lint` clean (only pre-existing unrelated `jsx-ast-utils` notices; `--max-warnings 0` passed).
+
+### Independent re-verification verdict
+PASS — types.ts diff matches spec exactly (4 types, no trace_id, union+set, cache fields `number`); chatStore added minimal passthrough mirroring guardrail_triggered (no turn mutation/UI); demoLoopEvents fixture is a legit tsc ripple; 02.md note preserves the drifted catalog. Parent re-ran tsc (EXIT 0) + the 7 new tests (7/7 pass).
 
 ---
 
