@@ -30,6 +30,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.4)
 Last Modified: 2026-06-01
 
 Modification History (newest-first):
+    - 2026-06-01: Sprint 57.65 — share executor's MemoryRetrieval into prompt builder (A-1)
     - 2026-06-01: Sprint 57.64 Day 2 — register Cat 3 memory + Cat 11 subagent tools; thread user_id
     - 2026-06-01: Sprint 57.64 Day 1 — inject Cat 5 prompt_builder (keystone)
     - 2026-05-04: (Sprint 55.2 Day 3.4) build_handler + build_echo_demo_handler
@@ -241,8 +242,13 @@ def build_real_llm_handler(
     # loop takes its structured build() path (loop.py:881 true-branch, emits
     # PromptBuilt) instead of the naked fallback. Closes the AP-8 / AP-2
     # false-green: before this, self._prompt_builder was always None on the
-    # production chat path. Cat 5 works standalone (no memory_provider yet; Day 2).
-    prompt_builder = make_chat_prompt_builder(chat_client)
+    # production chat path.
+    #
+    # Sprint 57.65 (A-1 Tier2): share the SAME MemoryRetrieval already built for
+    # the executor's memory tools (above) so the prompt renders a per-turn,
+    # capped (≤2000-token) memory summary + verify-before-use rules from the same
+    # 5-scope layers the tools read/write — one retrieval, no second instance.
+    prompt_builder = make_chat_prompt_builder(chat_client, memory_retrieval=memory_retrieval)
     reducer, checkpointer = make_chat_state_deps(db, session_id, tenant_id)
     # Sprint 57.63 Day 2: Cat 8 (error handling) — the 5 deps activate
     # `_handle_tool_error` (classify → budget → terminator) on the production

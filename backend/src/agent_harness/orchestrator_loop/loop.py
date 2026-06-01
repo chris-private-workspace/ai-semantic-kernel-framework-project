@@ -42,9 +42,10 @@ Description:
     revisit if per-run override is needed.
 
 Created: 2026-04-30 (Sprint 50.1 Day 2.2)
-Last Modified: 2026-05-01
+Last Modified: 2026-06-01
 
 Modification History (newest-first):
+    - 2026-06-01: Sprint 57.65 — scope PromptBuilder.build user_id to ctx.user_id (A-1 Tier2)
     - 2026-05-05: Sprint 55.6 — close AD-Cat8-2 (retry wrap at L1044+L1092 — Option H)
     - 2026-05-05: Sprint 55.4 — close AD-Cat8-3 narrow Option C (error_class_str param)
     - 2026-05-02: Cat 7 State Mgmt integration (Sprint 53.1 Day 3) — optional
@@ -901,7 +902,9 @@ class AgentLoopImpl(AgentLoop):
                     artifact = await self._prompt_builder.build(
                         state=build_state,
                         tenant_id=self._tenant_id or session_id,  # 53.1: real tenant when set
-                        user_id=None,
+                        # 57.65 (A-1 Tier2): scope the user-layer memory to the
+                        # authenticated user from the request TraceContext.
+                        user_id=ctx.user_id,
                         tools=self._tool_registry.list(),
                         trace_context=ctx,
                     )

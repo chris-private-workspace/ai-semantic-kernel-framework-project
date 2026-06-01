@@ -17,6 +17,10 @@ Description:
     priority before calling _memory_as_messages).
 
 Created: 2026-05-01 (Sprint 52.2 Day 1.5)
+Last Modified: 2026-06-01
+
+Modification History (newest-first):
+    - 2026-06-01: Sprint 57.65 — enrich hint line + verify-before-use header (A-1)
 
 Related:
     - sprint-52-2-plan.md §2.4 / §2.5
@@ -41,19 +45,53 @@ SYSTEM_ROLE_TEMPLATE = (
 MEMORY_SECTION_HEADER = "=== {layer} Memory ==="
 """Header prefix for each memory layer's system message."""
 
-MEMORY_HINT_FORMAT = "- {summary}"
-"""Single-line format for one MemoryHint inside a layer section."""
+MEMORY_HINT_FORMAT = "- {summary} (confidence {confidence:.2f}{verified})"
+"""Single-line format for one MemoryHint inside a layer section.
+
+Sprint 57.65 (A-1 Tier2): enriched from bare ``- {summary}`` to surface the
+hint's intrinsic ``confidence`` and (when present) ``last_verified_at`` so the
+model can weight stale / low-credibility hints. ``{verified}`` is a pre-formatted
+suffix ("", or ", last verified <iso>") supplied by ``_format_hint_line``.
+"""
+
+VERIFY_BEFORE_USE_HEADER = (
+    "Some memory hints below are marked verify-before-use: confirm them against "
+    "live state before acting, and correct via memory_write on mismatch. Hints to "
+    "verify:"
+)
+"""Lead-then-verify instruction injected into the system prompt whenever any
+rendered hint carries verify_before_use=True (Sprint 57.65, per 10.md §原則3)."""
 
 # ---------------------------------------------------------------------------
 # Format helpers (used by DefaultPromptBuilder + PositionStrategy implementations)
 # ---------------------------------------------------------------------------
 
 
+def _format_hint_line(hint: MemoryHint) -> str:
+    """Render one MemoryHint as a single deterministic prompt line.
+
+    Sprint 57.65 (A-1 Tier2): surfaces summary + confidence + last_verified_at
+    (when present) so the model can weight credibility. The summary is the only
+    text inlined — full_content_pointer is a DB / vector ref and is NOT inlined
+    (it would be a wasted, unusable token cost; resolve on demand via tools).
+    """
+    verified = (
+        f", last verified {hint.last_verified_at.isoformat()}"
+        if hint.last_verified_at is not None
+        else ""
+    )
+    return MEMORY_HINT_FORMAT.format(
+        summary=hint.summary, confidence=hint.confidence, verified=verified
+    )
+
+
 def _memory_as_messages(memory_layers: dict[str, list[MemoryHint]]) -> list[Message]:
     """Convert memory hints grouped by layer into system messages.
 
     Each non-empty layer becomes one system message containing the formatted
-    hints. Caller controls layer ordering.
+    hints. Caller controls layer ordering (DefaultPromptBuilder emits the layers
+    in the fixed system→tenant→role→user→session order so the rendered block is
+    deterministic across builds).
 
     Args:
         memory_layers: dict[layer_name -> list[MemoryHint]]. Layer names are
@@ -70,7 +108,7 @@ def _memory_as_messages(memory_layers: dict[str, list[MemoryHint]]) -> list[Mess
         lines = [MEMORY_SECTION_HEADER.format(layer=layer_name.title())]
         for h in hints:
             # MemoryHint uses `summary` (token-cheap text); see _contracts/memory.py
-            lines.append(MEMORY_HINT_FORMAT.format(summary=h.summary))
+            lines.append(_format_hint_line(h))
         out.append(
             Message(
                 role="system",

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from agent_harness.prompt_builder.templates import (
-    MEMORY_HINT_FORMAT,
     MEMORY_SECTION_HEADER,
     SYSTEM_ROLE_TEMPLATE,
+    _format_hint_line,
     _memory_as_messages,
 )
 from tests.unit.agent_harness.prompt_builder.conftest import make_memory_hint
@@ -22,8 +22,9 @@ def test_memory_section_header() -> None:
     assert "Tenant Memory" in rendered
     # The same template applied to different layer name gives different output
     assert MEMORY_SECTION_HEADER.format(layer="User") != rendered
-    # Hint format renders summary
-    assert MEMORY_HINT_FORMAT.format(summary="abc") == "- abc"
+    # Hint line renders summary + confidence (Sprint 57.65 A-1 Tier2 enrichment)
+    line = _format_hint_line(make_memory_hint(summary="abc", confidence=0.7))
+    assert line == "- abc (confidence 0.70)"
 
 
 def test_memory_as_messages_groups_by_layer() -> None:

@@ -36,6 +36,10 @@ Description:
 Owner: 01-eleven-categories-spec.md §範疇 5
 
 Created: 2026-05-01 (Sprint 52.2 Day 1.6)
+Last Modified: 2026-06-01
+
+Modification History (newest-first):
+    - 2026-06-01: Sprint 57.65 — memory render enrich + token cap + verify_before_use (A-1)
 
 Related:
     - sprint-52-2-plan.md §2.4 / §2.5 / §2.6
@@ -71,7 +75,12 @@ from agent_harness.prompt_builder.strategies import (
     PositionStrategy,
     PromptSections,
 )
-from agent_harness.prompt_builder.templates import SYSTEM_ROLE_TEMPLATE
+from agent_harness.prompt_builder.templates import (
+    SYSTEM_ROLE_TEMPLATE,
+    VERIFY_BEFORE_USE_HEADER,
+    _format_hint_line,
+    _memory_as_messages,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -83,6 +92,11 @@ _TIME_SCALE_PRIORITY: dict[str, int] = {
     "semantic": 1,  # vector matches → middle
     "short_term": 2,  # working memory → least important
 }
+
+# Fixed scope render order for the memory block (Sprint 57.65 A-1 Tier2).
+# Broadest scope first (system) → narrowest (session) so the prompt reads
+# deterministically across builds regardless of MemoryRetrieval merge order.
+_LAYER_RENDER_ORDER: tuple[str, ...] = ("system", "tenant", "role", "user", "session")
 
 # ---------------------------------------------------------------------------
 # Tracer protocol (Cat 12 Day 1 minimal stub; replaced by real OTel in 53.x)
@@ -160,6 +174,9 @@ class DefaultPromptBuilder(PromptBuilder):
       - default_strategy: PositionStrategy (default = LostInMiddleStrategy)
       - default_cache_policy: CachePolicy (default = CachePolicy() with all flags)
       - system_role_text: override of SYSTEM_ROLE_TEMPLATE for tenant-specific role
+      - max_memory_tokens: budget cap for the rendered memory block (Sprint 57.65;
+        default 2000). When the retrieved hints exceed this, the builder drops the
+        lowest-confidence (then oldest) hints until the block fits.
     """
 
     def __init__(
@@ -172,6 +189,7 @@ class DefaultPromptBuilder(PromptBuilder):
         default_strategy: PositionStrategy | None = None,
         default_cache_policy: CachePolicy | None = None,
         system_role_text: str | None = None,
+        max_memory_tokens: int = 2000,
     ) -> None:
         self._memory_retrieval = memory_retrieval
         self._cache_manager = cache_manager
@@ -184,6 +202,7 @@ class DefaultPromptBuilder(PromptBuilder):
             default_cache_policy if default_cache_policy is not None else CachePolicy()
         )
         self._system_role_text = system_role_text or SYSTEM_ROLE_TEMPLATE
+        self._max_memory_tokens = max_memory_tokens
 
     async def build(
         self,
@@ -228,9 +247,14 @@ class DefaultPromptBuilder(PromptBuilder):
                 query=query_text,
                 trace_context=child_ctx,
             )
+            # Sprint 57.65 (A-1 Tier2): cap the rendered memory block to
+            # max_memory_tokens (drop lowest-confidence / oldest first). The cap
+            # applies to the memory block only — system / tools / conversation
+            # are not counted against it.
+            memory_layers = self._apply_memory_budget(memory_layers, tools=tools_list)
 
             sections = PromptSections(
-                system=self._build_system_section(),
+                system=self._build_system_section(memory_layers),
                 tools=tools_list,
                 memory_layers=memory_layers,
                 conversation=self._extract_conversation(state, user_msg),
@@ -280,9 +304,106 @@ class DefaultPromptBuilder(PromptBuilder):
     # Section builders
     # ------------------------------------------------------------------
 
-    def _build_system_section(self) -> Message:
-        """Default system role; override via system_role_text constructor arg."""
-        return Message(role="system", content=self._system_role_text)
+    def _build_system_section(
+        self, memory_layers: dict[str, list[MemoryHint]] | None = None
+    ) -> Message:
+        """Default system role; override via system_role_text constructor arg.
+
+        Sprint 57.65 (A-1 Tier2): when any post-cap hint carries
+        verify_before_use=True, a static lead-then-verify instruction block plus
+        the flagged hint summaries are appended to the system role so the model
+        is told to confirm stale hints against live state before acting. Absent
+        when no flagged hint exists (the system role is byte-identical to the
+        pre-57.65 default — keeps the no-memory path unchanged).
+        """
+        text = self._system_role_text
+        verify_block = self._build_verify_before_use_block(memory_layers or {})
+        if verify_block:
+            text = f"{text}\n\n{verify_block}"
+        return Message(role="system", content=text)
+
+    @staticmethod
+    def _build_verify_before_use_block(memory_layers: dict[str, list[MemoryHint]]) -> str:
+        """Lead-then-verify instruction + flagged summaries, or "" when none flagged."""
+        flagged = [h for hints in memory_layers.values() for h in hints if h.verify_before_use]
+        if not flagged:
+            return ""
+        lines = [VERIFY_BEFORE_USE_HEADER]
+        lines.extend(_format_hint_line(h) for h in flagged)
+        return "\n".join(lines)
+
+    # ------------------------------------------------------------------
+    # Memory budget cap (Sprint 57.65 A-1 Tier2)
+    # ------------------------------------------------------------------
+
+    def _apply_memory_budget(
+        self,
+        memory_layers: dict[str, list[MemoryHint]],
+        *,
+        tools: list[ToolSpec],
+    ) -> dict[str, list[MemoryHint]]:
+        """Cap the rendered memory block to self._max_memory_tokens.
+
+        The rendered memory block = the system messages _memory_as_messages()
+        produces for these layers. We measure it with the injected token_counter
+        (the neutral count() path — no provider SDK) and, while over budget, drop
+        the single least-valuable hint: lowest confidence first, ties broken by
+        oldest timestamp. Empty / already-fitting input is returned unchanged.
+
+        The cap is memory-block-only: tools are passed to count() purely so the
+        per-tool overhead does not skew the per-message arithmetic — they are not
+        themselves capped here.
+        """
+        if not memory_layers:
+            return memory_layers
+        if self._measure_memory_tokens(memory_layers, tools=tools) <= self._max_memory_tokens:
+            return memory_layers
+
+        # Work on a mutable copy; drop one hint at a time until under budget.
+        trimmed: dict[str, list[MemoryHint]] = {
+            layer: list(hints) for layer, hints in memory_layers.items()
+        }
+        while self._measure_memory_tokens(trimmed, tools=tools) > self._max_memory_tokens:
+            victim = self._least_valuable_hint(trimmed)
+            if victim is None:
+                break  # nothing left to drop (defensive; loop guard)
+            layer_name, hint = victim
+            trimmed[layer_name].remove(hint)
+            if not trimmed[layer_name]:
+                del trimmed[layer_name]
+        return trimmed
+
+    def _measure_memory_tokens(
+        self, memory_layers: dict[str, list[MemoryHint]], *, tools: list[ToolSpec]
+    ) -> int:
+        """Token cost of the rendered memory messages (0 when no layers).
+
+        Counts ONLY the memory system messages, not tools — `tools` is forwarded
+        to count() only so its overhead model is consistent; we subtract a
+        tools-only baseline so the returned number is the memory block's marginal
+        cost.
+        """
+        memory_msgs = _memory_as_messages(memory_layers)
+        if not memory_msgs:
+            return 0
+        try:
+            with_memory = self._token_counter.count(messages=memory_msgs, tools=None)
+        except Exception as exc:  # pragma: no cover - defensive degrade path
+            _logger.warning("TokenCounter.count failed during memory budget cap: %s", exc)
+            return 0
+        return with_memory
+
+    @staticmethod
+    def _least_valuable_hint(
+        memory_layers: dict[str, list[MemoryHint]],
+    ) -> tuple[str, MemoryHint] | None:
+        """Pick (layer, hint) to drop first: lowest confidence, then oldest."""
+        candidates: list[tuple[str, MemoryHint]] = [
+            (layer, h) for layer, hints in memory_layers.items() for h in hints
+        ]
+        if not candidates:
+            return None
+        return min(candidates, key=lambda pair: (pair[1].confidence, pair[1].timestamp))
 
     def _extract_last_user_message(self, state: LoopState) -> Message | None:
         """Return the last role='user' message from transient.messages, or None."""
@@ -365,13 +486,22 @@ class DefaultPromptBuilder(PromptBuilder):
             )
             return {}
 
-        by_layer: dict[str, list[MemoryHint]] = {}
+        grouped: dict[str, list[MemoryHint]] = {}
         for h in hints:
-            by_layer.setdefault(h.layer, []).append(h)
+            grouped.setdefault(h.layer, []).append(h)
 
-        for layer_name in by_layer:
-            by_layer[layer_name].sort(key=lambda h: _TIME_SCALE_PRIORITY.get(h.time_scale, 99))
+        for layer_name in grouped:
+            grouped[layer_name].sort(key=lambda h: _TIME_SCALE_PRIORITY.get(h.time_scale, 99))
 
+        # Emit in fixed scope order (system→tenant→role→user→session) so the
+        # rendered block is deterministic across builds (Sprint 57.65 A-1 Tier2);
+        # any unexpected layer name falls to the end in insertion order.
+        by_layer: dict[str, list[MemoryHint]] = {
+            layer: grouped[layer] for layer in _LAYER_RENDER_ORDER if layer in grouped
+        }
+        for layer_name, layer_hints in grouped.items():
+            if layer_name not in by_layer:
+                by_layer[layer_name] = layer_hints
         return by_layer
 
     # ------------------------------------------------------------------

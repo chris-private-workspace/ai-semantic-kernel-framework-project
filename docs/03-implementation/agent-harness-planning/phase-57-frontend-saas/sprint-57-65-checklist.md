@@ -12,46 +12,38 @@
 ## Day 0 — Plan-vs-Repo Verify + Branch
 
 ### 0.1 Three-prong Day-0 verify (per `.claude/rules/sprint-workflow.md §Step 2.5`)
-- [ ] **Prong 1 (path)**: confirm `make_chat_prompt_builder` at `_category_factories.py:104` (hard-codes `MemoryRetrieval(layers={})` `:131`); `make_chat_memory_deps` `:137`; `DefaultPromptBuilder` ctor `memory_retrieval` `builder.py:168/176`; `_inject_memory_layers` `:224/:350-359`; `_build_system_section` `:283`; loop metrics_acc `loop.py:961-969` + `LoopCompleted` `:1026-1046` + `build()` call `:901-918` (user_id=None `:904`)
-  - Verify: `grep -n "def make_chat_prompt_builder\|MemoryRetrieval(layers={})" backend/src/api/v1/chat/_category_factories.py`
-- [ ] **Prong 2 (content)**: confirm (a) `_build_system_section` does NOT consume `memory_layers` today (D3); (b) NO `max_memory_tokens` anywhere (`grep -rn max_memory_tokens backend/src` = 0); (c) NO `verify_before_use` in `prompt_builder/**` (`grep -rn verify_before_use backend/src/agent_harness/prompt_builder` = 0); (d) `loop.py:961-964` metrics_acc reads only prompt/completion (drops `cached_input_tokens`); (e) Azure adapter `_compute_prompt_cache_key` + `extra_body[prompt_cache_key]` `adapter.py:216-218` + populates `cached_input_tokens` `:437-443`; (f) `PromptCacheManager.apply_breakpoints` zero prod call sites; (g) **InMemoryCacheManager emits non-empty cache_breakpoints?** (chat path `_category_factories.py:132`) — if no-op, note as the only caching-side fix
-  - Verify: `grep -rn "verify_before_use\|max_memory_tokens" backend/src/agent_harness/prompt_builder`
-- [ ] **Prong 3 (schema)**: NO new DB table/migration (memory tables exist); confirm `LoopCompleted` (`_contracts/events.py`) current fields → decide reuse-existing-metrics-path vs add cache-hit field; confirm `TokenUsage.cached_input_tokens` `_contracts/chat.py:104`
-  - Verify: `grep -n "class LoopCompleted\|cached_input_tokens" backend/src/agent_harness/_contracts/events.py backend/src/agent_harness/_contracts/chat.py`
-- [ ] Catalogue drift findings (re-confirm D1-D6 + the InMemoryCacheManager breakpoint question) in progress.md; go/no-go for Day 1
+- [x] **Prong 1 (path)**: confirmed all paths (audit + residual re-verify) — `make_chat_prompt_builder` `:104`/empty retrieval `:131`; `_inject_memory_layers` `:224/:350-359`; `_build_system_section` `:283`; loop metrics_acc `:961-969` + `LoopCompleted` `:1026-1046` + build() `:901-918` (user_id=None `:904`)
+- [x] **Prong 2 (content)**: confirmed (a) `_build_system_section` ignores `memory_layers` (D3); (b) NO `max_memory_tokens` (0 hits); (c) NO `verify_before_use` in prompt_builder (0 hits); (d) metrics_acc drops `cached_input_tokens` (D2); (e) Azure `prompt_cache_key` + populates cached_input_tokens (D1); (f) `apply_breakpoints` dead in prod; (g) **InMemoryCacheManager emits NON-empty per-section breakpoints** (`cache_manager.py:186-215`), Azure key from `section_id` only → stable cross-turn → metric measurable (Q1)
+- [x] **Prong 3 (schema)**: NO new DB table/migration. `LoopCompleted` fields = stop_reason/total_turns/total_tokens/input_tokens/output_tokens/provider/model (no cached field → ADD `cached_input_tokens`); metrics via event fields NOT registry (Q2); `TokenUsage.cached_input_tokens` `chat.py:104` confirmed
+- [x] Catalogued D1-D6 + Q1-Q4 in progress.md Day 0 table; **go/no-go = GO** (scope shift < 20%)
 
 ### 0.2 Branch + decisions
-- [ ] Create branch `feature/sprint-57-65-memory-autoinject-cache-observability` from main
-- [ ] Confirm scope decisions: render-grouping shape (scope-grouped hint block); cap truncation order (lowest-confidence/oldest first); verify-rule text source; user_id via trace_context vs threaded param; cache-hit metric via existing Tracer path vs new `LoopCompleted` field; Agent-delegated yes/no (Workload 4-segment); C-11 secrets set? (real_llm e2e leg gated)
+- [x] Branch `feature/sprint-57-65-memory-autoinject-cache-observability` created; plan+checklist committed (1st commit)
+- [x] Scope decisions resolved: render = scope(`layer`)-grouped `summary` block; cap truncation = lowest-confidence/oldest first via `token_counter`; verify-rule = static lead-then-verify block + flagged-hint list; user_id = one-line `loop.py:904` `ctx.user_id` (Q4); cache-hit metric = NEW `cached_input_tokens` field on `LoopMetricsAccumulator` + `LoopCompleted` (no registry — Q2); **Agent-delegated: yes** (staged, 57.64 pattern); C-11 real_llm leg gated (defer per A-5 OOS like 57.64)
 
 ---
 
 ## Day 1 — Shared surface + A-1 render core
 
 ### 1.1 Shared change surface
-- [ ] Extend `make_chat_prompt_builder(chat_client, memory_retrieval=None)` to use the real retrieval (default empty preserves 57.64 standalone); thread the SAME `MemoryRetrieval` built for the executor + real `user_id` through `handler.py`
-  - DoD: existing 57.64 keystone tests still pass; default (no retrieval) path byte-identical to 57.64
-  - Verify: `pytest tests/integration/api/test_chat_keystone_wiring.py -q`
-- [ ] Confirm tools + prompt share ONE `MemoryRetrieval` instance (no double-build); mypy strict clean; no SDK import
-  - Verify: `python scripts/lint/run_all.py` (check_llm_sdk_leak green)
+- [x] `make_chat_prompt_builder(chat_client, memory_retrieval=None)` uses real retrieval (default empty preserves 57.64); `handler.py` threads the SAME `MemoryRetrieval` (`:216`, shared with executor) + `user_id` (Stage 1 ✅ — parent re-verified)
+  - DoD: 57.64 keystone tests still pass; default path byte-identical → 64 passed (incl. 11 keystone unchanged)
+- [x] Tools + prompt share ONE `MemoryRetrieval` (handler reuses the `:216` instance — verified in diff); mypy 0/319; no SDK import (check_llm_sdk_leak green)
 
 ### 1.2 A-1 memory render (US-1)
-- [ ] `_build_system_section` (`builder.py:283`) consumes `PromptSections.memory_layers` → deterministic scope-grouped system-prompt text block (hint summary + confidence + last_verified_at)
-  - DoD: a build() with non-empty retrieval renders a memory block IN `artifact.messages` system content; empty retrieval → no block, no crash (AP-4: prove render, not just fetch)
-  - Verify: `pytest tests/unit/agent_harness/prompt_builder/test_builder.py -q`
-- [ ] Integration: chat SSE run with real layers → `PromptBuilt.memory_layers_used` non-empty + memory text present in assembled system prompt
-  - Verify: new `test_chat_tier2_wiring.py` (memory-render case)
+- [x] Memory render wired (Stage 1 ✅) — NOTE: render machinery pre-existed via `templates._memory_as_messages` + `LostInMiddleStrategy` (52.2; Day-0 D3 misdiagnosed it as missing — see progress.md Day 1 correction). Real fix = feed real layers + fixed `system→tenant→role→user→session` order + enriched hint line (summary + confidence + last_verified_at). `_build_system_section` carries only the verify block (avoids duplicate memory block)
+  - DoD: build() with real retrieval renders memory IN assembled prompt; empty retrieval → no block, no crash (AP-4) → asserted in `test_builder_tier2.py` (11) + `test_chat_tier2_wiring.py` negative case
+- [x] Integration: chat SSE run with real layers → `PromptBuilt.memory_layers_used` non-empty + stored memory text present in `mock.last_request.messages` (Stage 1 ✅ — `test_tier2_memory_renders_into_assembled_prompt`)
 
 ---
 
 ## Day 2 — A-1 cap + verify + A-2 observability
 
-### 2.1 A-1 token cap + verify_before_use (US-1)
-- [ ] `max_memory_tokens` (default 2000) added to builder config/ctor (`_abc.py` / `builder.py`); render step truncates lowest-confidence/oldest hints first until under budget (via neutral `token_counter`)
-  - DoD: a render with > 2000 tokens of hints is truncated to ≤2000; test asserts the cap
-- [ ] `verify_before_use` lead-then-verify rule block injected into system prompt when any rendered hint has `verify_before_use=True` (static rule text + to-verify list); absent when no flagged hint
-  - DoD: test asserts presence with a flagged hint, absence without; per `10.md §原則3`
-  - Verify: `pytest tests/unit/agent_harness/prompt_builder/ -q`
+### 2.1 A-1 token cap + verify_before_use (US-1) — done in Stage 1 (with A-1)
+- [x] `max_memory_tokens=2000` on `DefaultPromptBuilder` ctor; `_apply_memory_budget` drops lowest-confidence→oldest via neutral `token_counter` until ≤2000 (Stage 1 ✅)
+  - DoD: cap asserted in `test_builder_tier2.py` (under-budget / drops-lowest-confidence / ties-on-oldest / no-op cases)
+- [x] `_build_verify_before_use_block` injects lead-then-verify text + flagged summaries into system role when any hint `verify_before_use=True`; absent otherwise (Stage 1 ✅)
+  - DoD: `test_builder_tier2.py` (present/absent/skips-capped-hint) + `test_chat_tier2_wiring.py::test_tier2_verify_before_use_rule_present`
 
 ### 2.2 A-2 prompt-cache observability (US-2)
 - [ ] Accumulate `cached_input_tokens` in `metrics_acc` (`loop.py:961-969`) alongside prompt/completion (today dropped — D2)

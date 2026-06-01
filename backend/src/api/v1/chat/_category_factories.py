@@ -20,7 +20,7 @@ Description:
 
 Key Components:
     - make_chat_compactor(chat_client) -> Compactor  (Cat 4)
-    - make_chat_prompt_builder(chat_client) -> PromptBuilder  (Cat 5)
+    - make_chat_prompt_builder(chat_client, memory_retrieval=None) -> PromptBuilder  (Cat 5)
     - make_chat_memory_deps(db) -> (MemoryRetrieval, dict[str, MemoryLayer])  (Cat 3)
     - make_chat_subagent_dispatcher(chat_client) -> SubagentDispatcher  (Cat 11)
     - make_chat_state_deps(db, session_id, tenant_id) -> (Reducer|None, Checkpointer|None)  (Cat 7)
@@ -29,6 +29,7 @@ Created: 2026-05-31 (Sprint 57.63 Day 1)
 Last Modified: 2026-06-01
 
 Modification History (newest-first):
+    - 2026-06-01: Sprint 57.65 — make_chat_prompt_builder accepts real MemoryRetrieval (A-1 Tier2)
     - 2026-06-01: Sprint 57.64 Day 2 — add Cat 3 memory deps + Cat 11 subagent dispatcher factories
     - 2026-06-01: Add make_chat_prompt_builder (Sprint 57.64 Day 1) — Cat 5 keystone factory
     - 2026-05-31: Initial creation (Sprint 57.63 Day 1) — Cat 4 + Cat 7 chat-path factories
@@ -101,7 +102,10 @@ def make_chat_compactor(chat_client: ChatClient) -> Compactor:
     )
 
 
-def make_chat_prompt_builder(chat_client: ChatClient) -> PromptBuilder:
+def make_chat_prompt_builder(
+    chat_client: ChatClient,
+    memory_retrieval: MemoryRetrieval | None = None,
+) -> PromptBuilder:
     """Cat 5 (KEYSTONE): the centralized DefaultPromptBuilder for the chat path.
 
     Wiring this into AgentLoopImpl(prompt_builder=...) flips the loop from its
@@ -110,25 +114,32 @@ def make_chat_prompt_builder(chat_client: ChatClient) -> PromptBuilder:
     PromptBuilt and feeds memory layers / cache breakpoints. This closes AP-8
     (no centralized PromptBuilder) on the production main flow.
 
-    Day 1 scope is Cat 5 standalone — no memory_provider yet (Cat 3 memory tool
-    wiring is Day 2). DefaultPromptBuilder works without live memory: an empty
-    MemoryRetrieval (no layers) makes _inject_memory_layers return {} and the
-    builder still assembles system + tools + conversation + user sections. The
-    Tier2 memory auto-inject path is a follow-up sprint (候選 Sprint B).
+    Sprint 57.65 (A-1 Tier2 — memory auto-inject): when `memory_retrieval` is
+    supplied, the builder renders a per-turn, scope-grouped memory summary block
+    (capped ≤2000 tokens) into the prompt and injects verify-before-use rules for
+    flagged hints. When None, an empty MemoryRetrieval (no layers) makes
+    _inject_memory_layers return {} and the builder still assembles system +
+    tools + conversation + user sections — preserving the 57.64 standalone
+    behaviour for callers that have no memory deps (echo demo / tests).
 
-    LLM-neutrality: the only LLM-touching dep is the SemanticCompactor-free
-    TiktokenCounter (pure tokenizer, no provider SDK). The ChatClient ABC is
-    accepted for signature parity with the other make_chat_* factories and to
-    keep the future memory_provider wiring point obvious; the builder itself
-    issues no provider call. No openai / anthropic import here or downstream.
+    LLM-neutrality: the only LLM-touching dep is the TiktokenCounter (pure
+    tokenizer, no provider SDK; used both for the prompt estimate and the Tier2
+    memory cap). The ChatClient ABC is accepted for signature parity with the
+    other make_chat_* factories; the builder itself issues no provider call. No
+    openai / anthropic import here or downstream.
 
     Args:
-        chat_client: the adapter (ChatClient ABC) the loop runs on; reserved for
-            the Day 2 memory_provider wiring point (Cat 5 build() makes no LLM
-            call itself).
+        chat_client: the adapter (ChatClient ABC) the loop runs on; accepted for
+            signature parity (Cat 5 build() makes no LLM call itself).
+        memory_retrieval: the real 5-scope MemoryRetrieval (from
+            make_chat_memory_deps) so the prompt and the executor's memory tools
+            share ONE retrieval; None preserves the empty-memory standalone path.
     """
+    del chat_client  # signature parity; the builder issues no provider call
     return DefaultPromptBuilder(
-        memory_retrieval=MemoryRetrieval(layers={}),
+        memory_retrieval=(
+            memory_retrieval if memory_retrieval is not None else MemoryRetrieval(layers={})
+        ),
         cache_manager=InMemoryCacheManager(),
         token_counter=TiktokenCounter(model="gpt-4o"),
     )
