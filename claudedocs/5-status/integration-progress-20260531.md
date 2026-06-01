@@ -8,6 +8,7 @@
 **Author**: AI 助手盤點（4 並行唯讀調查 agent 蒐證 + 主 session 針對性 file:line 驗證）
 
 > **Modification History**
+> - 2026-06-01: Correct 2 stale phrasings per A+B+C capstone — §B-9「~13 頁待重建」→ 22/22 PARITY 已達（CI gate 親跑綠）；§15「無 Terraform」→ 有 Bicep IaC（誤導措辭）。strikethrough 保留原文 + 指向 b9/c15 分析。
 > - 2026-05-31: Restore comprehensive ZH version after accidental EN overwrite; ground-truth re-verified `.env.example` exists (root + backend, git-tracked) + dev port 3007 @ `vite.config.ts:18`
 > - 2026-05-31: Initial creation — integration progress snapshot at Sprint 57.63 in-progress
 
@@ -120,7 +121,7 @@
 
 7. **Cat 8 ErrorBudget 換 RedisBudgetStore** — 現 `InMemoryBudgetStore`（per-process，非跨實例）。
 8. **Cat 10 Verification 預設開啟前的驗證** — 現 `disabled`，需先驗證成本 / 品質。
-9. **Mockup re-point ~13 頁** — 眼湊 HSL → 逐字複製 mockup class + Playwright 視覺 gate（目前僅 overview 過）。
+9. **Mockup re-point** — ~~~13 頁待重建；眼湊 HSL → 逐字複製 mockup class；目前僅 overview 過~~ **【2026-06-01 校正：此前提過時】** 實況：**22/22 active 頁 PARITY 已達**（5 個 CATASTROPHIC 於 Sprint 57.40-57.45 逐一重建），CI gate `check-mockup-fidelity.mjs` 親跑綠（byte-identical CSS + 48/48 baseline）。剩餘非「重建 drift 頁」而是 14 PROP stub promote（feature sprint，非 re-point）+ 4 條二階債（baseline 未下修 / shell 層未比對 / 無 per-page 視覺 CI / 5 頁無專屬 mockup）。詳見 `b9-mockup-repoint-status-analysis-20260601.md`。
 10. **`_verifier_factory.py` 去留** — 57.63 approach A 後 production 無人用，只剩 4 個測試引用（`AD-Cat10-VerifierFactory-Disposition`）。
 
 ### C. 研究 / 分析（需設計決策）
@@ -129,7 +130,7 @@
 12. **IAM Block B/C**（Phase 58+）— `invites` / `mfa` / `tenants/register` 端點前端已呼叫但後端不存在（回 501 / gap banner）。
 13. **未建核心頁 `agents` / `workflows`** 的設計與 sprint 排程。
 14. **企業合規軸** — SOC 2（0% 規劃，enterprise sales blocker）、APAC PDPA（台灣個資法 / 香港 PDPO，目標市場強制，0%）、EU CRA / AI Act（2026-08/09 硬截止，0%）。
-15. **DevOps IaC / multi-region**（~30%，無 Terraform、DR drill 從未執行）、**Data platform / Outbox pattern**（billing 雙扣風險、analytics 0%）。
+15. **DevOps IaC / multi-region** — ~~~30%，無 Terraform~~ **【2026-06-01 校正：措辭誤導】** 實況：`infra/` **有完整 Bicep IaC**（main.bicep + deploy.sh + 5 模組 + parameters，未驗證部署過）；正確說法是「有 Bicep、無 Terraform/Helm，deploy pipeline disabled」。真缺口：DR 自動化 / multi-region / WAL = 0、DR drill 從未執行。**Data platform / Outbox pattern**（**Outbox 0 實作**只有 schema 設計 → billing 雙扣/漏扣風險、analytics 0%）。詳見 `c15-devops-data-platform-analysis-20260601.md`。
 
 ---
 
