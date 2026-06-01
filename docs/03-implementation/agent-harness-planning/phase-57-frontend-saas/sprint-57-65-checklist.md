@@ -55,19 +55,19 @@
 
 ## Day 3 — Cross-cutting tests + real_llm e2e + lint
 
-- [ ] Combined integration test: one chat SSE run renders capped memory block + verify rules + emits cache-hit metric; cross-tenant isolation (tenant-B prompt shows none of tenant-A's hints); negative guards (empty retrieval → no block; no cached tokens → metric 0)
-- [ ] `real_llm` e2e: 2-turn Azure run → turn-2 `cached_input_tokens>0` + non-empty memory block when memory exists (gated on C-11 secrets; assert via loop event/metric — A-5 OOS for HTTP-level)
-  - Verify: `pytest -m real_llm tests/integration/api/test_chat_e2e_real_llm.py -q` (or GitHub Actions "E2E Real-LLM Smoke")
-- [ ] Confirm LLM SDK leak 0 + mypy strict + 9/9 V2 lints + frontend untouched
+- [x] Combined integration test: `test_tier2_memory_render_and_cache_metric_one_run` — ONE run renders memory (stored text in prompt + `memory_layers_used` "session") AND `cache_hit_rate == approx(0.4)` (cached=80/input=200) → A-1 + A-2 co-exist, no interference. Cross-tenant + negative + cap covered by the 7 prior tier2 tests (Day 3 ✅ — tier2 file 8 passed)
+- 🚧 `real_llm` live e2e leg DEFERRED (confirmatory, same rationale as 57.64): HTTP-level assertion of memory-block / cache_hit_rate blocked by A-5 (events→SSE) OUT of scope — both are in-process LoopEvent/loop-state, not yet client SSE; the live real_llm path was already exercised in C-11; Azure cost + `cost_ledger` FIX-024 known-red. Mock integration tests (memory render + `cache_hit_rate` value) are the primary gate per plan §3.3. Live confirmation available on request.
+  - Verify (when run): `pytest -m real_llm tests/integration/api/test_chat_e2e_real_llm.py -q`
+- [x] LLM SDK leak 0 + mypy strict 0/319 + 9/9 V2 lints + frontend untouched (Day 3 ✅ — full sweep **1955 passed / 4 skipped**; +21 tests vs 1934 baseline)
 
 ---
 
 ## Day 4 — Closeout
 
-- [ ] Full validation sweep: `pytest` (all) / `mypy --strict` / `python scripts/lint/run_all.py` / frontend untouched / LLM SDK leak 0
-- [ ] `claudedocs/4-changes/feature-changes/CHANGE-0XX-memory-autoinject-cache-observability.md`
-- [ ] progress.md (Day 0-4 actuals) + retrospective.md (Q1-Q7)
-- [ ] Calibration: record `medium-backend` ratio + `agent_factor` (if delegated) in `calibration-log.md §3`
-- [ ] Update Area-A capstone: mark 候選 Sprint B shipped; note D1/D2/D3 drift corrections runtime-confirmed
-- [ ] MEMORY.md pointer + `memory/project_phase57_65_*.md` subfile (per §Sprint Closeout) + CLAUDE.md lean Current Sprint/Last Updated
+- [x] Full validation sweep: pytest **1955 passed / 4 skipped**; `mypy src/` 0/319; `run_all.py` 9/9; frontend untouched; SDK leak 0 (Day 4 ✅)
+- [x] `claudedocs/4-changes/feature-changes/CHANGE-033-memory-autoinject-cache-observability.md` (Day 4 ✅)
+- [x] progress.md (Day 0-4) + retrospective.md (Q1-Q7) (Day 4 ✅)
+- [x] Calibration: `medium-backend` 0.80 + `agent_factor` `mechanical-greenfield-design-decisions` 0.65 caveated low-confidence (3rd consec agent-delegated no-clean-wall-clock) → KEEP, no baseline change; new `AD-Calibration-AgentDelegated-WallClock-Measure`; recorded `calibration-log.md §3` (Day 4 ✅)
+- [x] Area-A capstone: 候選 Sprint B shipped; D1/D2/D3 corrections runtime-confirmed (Day 4 ✅)
+- [x] MEMORY.md pointer + `project_phase57_65_*.md` subfile + CLAUDE.md lean Current Sprint/Last Updated (Day 4 ✅)
 - [ ] PR (no push without authorization)

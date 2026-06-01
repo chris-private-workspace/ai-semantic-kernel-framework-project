@@ -70,7 +70,7 @@ Build enterprise AI agent teams that work like **human professional teams** — 
 | Attribute | Value |
 |-----------|-------|
 | **Phase** | V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend ongoing (Phase 57+) |
-| **Current Sprint** | Sprint 57.64 closed 2026-06-01 (PR #226) — **Chat-Path Keystone Wiring** (候選 Sprint A): Cat 5 PromptBuilder (keystone) + Cat 3 memory tools + Cat 11 subagent (A-3a) wired onto the production `real_llm` chat path at the api/factory layer (**no `loop.py` edits**); closes AP-8 + AP-2 false-green lint. pytest 1934 / mypy src 0/319 / 9/9 V2 lints. real_llm live leg deferred (A-5 events→SSE out of scope). Detail: `memory/project_phase57_64_chat_path_keystone_wiring.md`. Next candidates: `claudedocs/1-planning/next-phase-candidates.md`. |
+| **Current Sprint** | Sprint 57.65 closed 2026-06-01 (PR pending) — **Memory Auto-Inject (A-1 Tier2) + Prompt-Cache Observability (A-2 Tier2)** (候選 Sprint B): the chat path now renders a per-turn ≤2000-token memory summary + `verify_before_use` rules into the system prompt, and emits a Cat 12 `cache_hit_rate` on `LoopCompleted`. Day-0 audit reshaped scope (caching call-site already wired; memory render machinery already existed — real gap was empty retrieval): **no LLM-call-site rewrite**, only a 1-line `loop.py` user_id + metrics accumulation. pytest 1955 / mypy src 0/319 / 9/9 V2 lints. real_llm live leg deferred (A-5 OOS). Detail: `memory/project_phase57_65_memory_autoinject_cache_observability.md`. Next candidates: `claudedocs/1-planning/next-phase-candidates.md`. |
 | **Sprint History** | See [`memory/MEMORY.md`](memory/MEMORY.md) §Recent Sprints + per-sprint subfile `memory/project_phase57_XX_*.md` + retrospective.md under `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-XX/` |
 | **Pending / Next Phase** | See [`claudedocs/1-planning/next-phase-candidates.md`](claudedocs/1-planning/next-phase-candidates.md) |
 | **Roadmap** | Phase 49-55 V2 ✅ / Phase 56-58 SaaS Stage 1 3/3 ✅ / Phase 57+ Frontend ongoing |
@@ -586,7 +586,7 @@ V1 完整 CLAUDE.md 已保留於 `CLAUDE.backup.md`。如需查閱 V1 架構（M
 
 ---
 
-**Last Updated**: 2026-06-01 (Sprint 57.64 — Chat-Path Keystone Wiring: Cat 5 PromptBuilder + Cat 3 memory tools + Cat 11 subagent A-3a on the `real_llm` chat path at the api/factory layer, no `loop.py` edits; closes AP-8 + AP-2 false-green; pytest 1934 / 9/9 V2 lints; real_llm live leg deferred (A-5 OOS); CHANGE-032; PR #226); see `memory/` for sprint history
+**Last Updated**: 2026-06-01 (Sprint 57.65 — Memory Auto-Inject (A-1 Tier2) + Prompt-Cache Observability (A-2 Tier2): chat path renders a ≤2000-token memory summary + verify_before_use rules + emits a Cat 12 cache_hit_rate on LoopCompleted; Day-0 audit reshaped scope (caching already wired, render machinery already existed) → no LLM-call-site rewrite, only 1-line loop.py user_id + metrics accum; pytest 1955 / 9/9 V2 lints; real_llm live leg deferred (A-5 OOS); CHANGE-033; PR pending); see `memory/` for sprint history
 **Project Start**: 2025-11-14
 **V2 Authority**: `docs/03-implementation/agent-harness-planning/` (21 docs — 20 規劃 + 1 review)
 **V1 Reference**: `CLAUDE.backup.md` + `docs/07-analysis/V9/00-index.md`

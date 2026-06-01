@@ -434,3 +434,75 @@ async def test_tier2_no_cached_tokens_rate_is_zero_no_crash(
     final = [ev for ev in events if isinstance(ev, LoopCompleted)][-1]
     assert final.cached_input_tokens == 0
     assert final.cache_hit_rate == 0.0
+
+
+# ============================================================
+# Combined — A-1 render + A-2 cache metric co-exist in ONE chat SSE run (Day 3)
+# ============================================================
+
+
+@pytest.mark.asyncio
+async def test_tier2_memory_render_and_cache_metric_one_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """One run exercises BOTH Tier2 capabilities together (they must not interfere):
+
+    - A-1: a session memory written on turn 1 renders into turn-2's system prompt.
+    - A-2: turn-2's cached usage flows into LoopCompleted.cache_hit_rate.
+
+    Turn 1 (memory_write) is a cold-cache tool turn (0 cached); turn 2 is the warm
+    final response. cumulative input = 100 + 100 = 200; cached = 0 + 80 = 80 → 0.4.
+    """
+    from agent_harness._contracts import LoopCompleted, TraceContext
+
+    _set_fake_azure(monkeypatch)
+    tenant_id = uuid4()
+    user_id = uuid4()
+    session_id = uuid4()
+    loop, _registry = build_real_llm_handler(
+        session_id=session_id, tenant_id=tenant_id, user_id=user_id
+    )
+
+    token = "combined-tier2-token"
+    stored = f"the user prefers {token} per their last note"
+    cold_write = ChatResponse(
+        model="mock",
+        content="",
+        stop_reason=StopReason.TOOL_USE,
+        tool_calls=[
+            ToolCall(
+                id="call_w",
+                name="memory_write",
+                arguments={
+                    "scope": "session",
+                    "key": "k1",
+                    "content": stored,
+                    "time_scale": "short_term",
+                },
+            )
+        ],
+        usage=TokenUsage(
+            prompt_tokens=100, completion_tokens=2, cached_input_tokens=0, total_tokens=102
+        ),
+    )
+    mock = MockChatClient(
+        responses=[cold_write, _final_response_cached(prompt_tokens=100, cached_input_tokens=80)]
+    )
+    loop._chat_client = mock  # type: ignore[attr-defined]
+
+    trace_ctx = TraceContext(tenant_id=tenant_id, user_id=user_id, session_id=session_id)
+    events = [
+        ev async for ev in loop.run(session_id=session_id, user_input=token, trace_context=trace_ctx)
+    ]
+
+    # A-1: memory rendered into the final turn's assembled prompt.
+    prompt_text = _assembled_prompt_text(mock)
+    assert stored in prompt_text
+    prompt_built = [ev for ev in events if isinstance(ev, PromptBuilt)]
+    assert any("session" in pb.memory_layers_used for pb in prompt_built)
+
+    # A-2: cache metric on LoopCompleted reflects the warm turn.
+    final = [ev for ev in events if isinstance(ev, LoopCompleted)][-1]
+    assert final.cached_input_tokens == 80
+    assert final.input_tokens == 200
+    assert final.cache_hit_rate == pytest.approx(0.4)

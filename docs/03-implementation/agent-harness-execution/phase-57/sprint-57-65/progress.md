@@ -76,12 +76,24 @@ Covered checklist §2.2. The Azure cache pipe was already complete (Day-0 D1/D2)
 
 **New tests**: `test_chat_tier2_wiring.py` +3 integration (cache-hit value / 2-turn accum / zero-guard) + `test_metrics_accumulator.py` +2 unit.
 
-## Day 3 — combined tests + real_llm e2e — (pending)
-## Day 4 — closeout — (pending)
+## Day 3 — combined test + full sweep
+
+- NEW `test_tier2_memory_render_and_cache_metric_one_run` (parent-authored, mirrors 57.64 combined pattern): ONE run proves A-1 (stored memory text in assembled prompt + `memory_layers_used` "session") AND A-2 (`cache_hit_rate == approx(0.4)`, cached=80/input=200) co-exist without interference. tier2 file → **8 passed**.
+- **Full sweep**: `pytest` → **1955 passed / 4 skipped** (+21 vs 1934 baseline: 11 builder + 8 tier2 + 2 metrics-accum); `mypy src/` 0/319; `run_all.py` 9/9 green; frontend untouched; 57.64 keystone (11) + strategy (8) unchanged-green.
+- 🚧 real_llm live e2e leg DEFERRED (confirmatory; A-5 events→SSE OOS for HTTP-level memory/cache assertion; live path verified C-11; Azure cost + FIX-024 cost red).
+
+## Day 4 — closeout
+
+- CHANGE-033 + retrospective.md (Q1-Q7) + this progress.md.
+- Calibration: `medium-backend` 0.80 + `agent_factor mechanical-greenfield-design-decisions` 0.65 — **caveated low-confidence** (3rd consecutive agent-delegated sprint with no clean wall-clock) → KEEP 0.65, no baseline change, does NOT trigger below-band-watch. New `AD-Calibration-AgentDelegated-WallClock-Measure`. Recorded `calibration-log.md §3`.
+- Area-A capstone: 候選 Sprint B shipped; D1/D2/D3 corrections runtime-confirmed.
+- MEMORY.md pointer + `project_phase57_65_*.md` subfile; CLAUDE.md lean Current Sprint/Last Updated.
+- Commit Day 3+4 + push + PR (user-authorized, 57.64 pattern).
 
 ## Commit ↔ checklist mapping
 | Commit | Checklist |
 |--------|-----------|
 | (plan+checklist commit) | plan + checklist |
-| (Stage 1 commit) | Day 1 §1.1 + §1.2 + Day 2 §2.1 (A-1 render + cap + verify) |
-| (Stage 2 commit) | Day 2 §2.2 (A-2 cache observability) |
+| (Stage 1 commit `a526a019`-built) | Day 1 §1.1 + §1.2 + Day 2 §2.1 (A-1 render + cap + verify) |
+| (Stage 2 commit `a46b648b`-built) | Day 2 §2.2 (A-2 cache observability) |
+| (Day 3+4 commit) | Day 3 combined test + Day 4 closeout docs |

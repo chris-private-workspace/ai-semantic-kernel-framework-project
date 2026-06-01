@@ -7,6 +7,7 @@
 **Status**: Active(decision aid)
 
 **Modification History (newest-first)**:
+- 2026-06-01: Sprint 57.65 closeout — 候選 Sprint B ✅ SHIPPED (A-1 Tier2 memory auto-inject + A-2 Tier2 cache observability); D1/D2/D3 修正 runtime-confirmed (caching already wired; render machinery already existed; gap was empty retrieval); observability-only A-2, 1-line loop.py user_id
 - 2026-06-01: Sprint 57.64 closeout — 候選 Sprint A ✅ SHIPPED (Cat 5/3/11 keystone wiring); D3 修正 runtime-confirmed; AP-2 假綠 CLOSED; real_llm leg 改述為卡 A-5
 - 2026-05-31: Initial creation — 收斂 A-1~A-6 六份分析為依賴圖 + 排序表 + sprint bundle 建議
 
@@ -110,7 +111,9 @@
 - **候選 Sprint A ✅ SHIPPED(Sprint 57.64,2026-06-01)** —「**Agent 會用記憶 + 結構化 prompt + 會用 subagent 工具**」= A-2 Tier1 + A-1 Tier1 + A-3a。三者於 api/factory 層接線(`make_default_executor` opt-in deps + 3 個 `make_chat_*` factory + `build_real_llm_handler` 注入),**未動 loop.py**。整合測試證實三者同時在 chat SSE flow 發火;**closes AP-8 + AP-2 假綠 lint**;real_llm live leg 延後(confirmatory,卡在 A-5 OOS + Azure cost)。
   - **D3 修正 runtime-confirmed**:capstone 原premise「A-1/A-3a 共用同一 `register_builtin_tools` 呼叫」**經 Day-0 + 實作證實為部分錯誤** —— `register_builtin_tools` 只註冊 memory,**不註冊 subagent 工具**;A-3a 需要 `make_task_spawn_tool` **獨立註冊**(+ Cat11→Cat2 `_adapt_subagent_handler` bridge)。bundle 仍 coherent(同批檔案、無 loop.py),但是「一個改動面、兩次註冊呼叫」。詳見 `CHANGE-032` + sprint-57-64 retrospective。
 
-- **候選 Sprint B**:A-1 Tier2(auto-inject)+ A-2 Tier2(prompt caching)。承 A,動 loop.py,把「被動帶記憶 + 省 token」一起做。
+- **候選 Sprint B ✅ SHIPPED(Sprint 57.65,2026-06-01)**:A-1 Tier2(memory auto-inject)+ A-2 Tier2(prompt-cache observability)。
+  - **D1/D2/D3 修正 runtime-confirmed**:Day-0 audit 推翻了本 capstone「承 A,動 loop.py」的前提 —— (D1) A-2 的 caching call-site **早已 wired**(loop.py forward breakpoints + Azure `prompt_cache_key` 已套),(D2) `cached_input_tokens` **早已 populated** 卻被 loop metrics 丟掉,(D3) memory render 機制 **早已存在**(`_memory_as_messages`/LostInMiddleStrategy,52.2),真正缺口是**空 `MemoryRetrieval` + 缺 cap/verify/user_id**。
+  - 實際:A-1 = `builder.py` render+`≤2000` cap+`verify_before_use` + 接真 retrieval/user_id;A-2 = **observability-only**(accumulate `cached_input_tokens` + `cache_hit_rate` on `LoopCompleted`)。**唯一 loop.py 邏輯改動 = 1 行 user_id + metrics 累加**,無 LLM-call-site 重寫。pytest 1955(+21)/ 9/9 lints。詳見 `CHANGE-033` + sprint-57-65 retrospective。
 
 - **候選 Sprint C(獨立 infra)**:A-5b(schema codegen + CI parity)+ A-5a(Tripwire serialize)。把「未來事件靜默漂移」變成 CI 失敗 —— 最高槓桿的防呆,愈早做愈省。
 
