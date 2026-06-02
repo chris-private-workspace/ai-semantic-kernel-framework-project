@@ -49,41 +49,42 @@
 ## Day 2 — Stage 2: full span set + tree tests
 
 ### 2.1 Extra operation spans — PROMPT_BUILD / COMPACTION / VERIFICATION / MEMORY_OP (US-2/US-3)
-- [ ] Locate call sites via existing `trace_context=` threading (`loop.py:847/901/939/972/1141/...`); open a span only when the operation actually runs that turn (no empty spans)
-- [ ] PROMPT_BUILD (cat=PROMPT_BUILDER) / COMPACTION (cat=CONTEXT_MGMT) / MEMORY_OP (cat=MEMORY) / VERIFICATION (cat=VERIFICATION) — each `{span_type: ...}` attr, child of `turn_ctx`
-- [ ] Confirm no double-instrumentation: adapter/executor/parser internal tracers remain NoOp (not wired); verification `_obs.py:53` existing span not double-opened by loop (loop opens its own VERIFICATION around the call boundary — confirm no overlap or scope to one)
+- [x] Located call sites; opened spans only when the operation runs (no empty spans)
+- [x] PROMPT_BUILD (`loop.py:931`, cat=PROMPT_BUILDER, `trace_context=turn_ctx`, gated by prompt_builder) + COMPACTION (`loop.py:877`, cat=CONTEXT_MGMT, `trace_context=root_ctx` — runs pre-TURN, gated by compactor)
+- 🚧 VERIFICATION + MEMORY_OP **DEFERRED (N/A at loop level)**: `AgentLoopImpl.run()` has no verifier call (verification is the outer wrapper `correction_loop.py:run_with_verification`, verifiers own `verifier.{name}` spans); memory is inside `prompt_builder.build()` (→ PROMPT_BUILD) / via tools (→ TOOL_EXEC). No clean call boundary → forcing a span = AP-4 Potemkin. Carryover = "nest existing internal spans" DRY refactor (plan §9)
+- [x] Confirmed no double-instrumentation: adapter/executor/parser internal tracers remain NoOp (loop is single owner, D8)
 
 ### 2.2 SpanCategory decision recorded (US-3)
-- [ ] `02-architecture-design.md §Naming Drift Note` — record: KEEP by-category enum; express span-type via span name + `attributes["span_type"]` (rationale: enum load-bearing in `metrics.py` + 8 sites; zero blast radius)
+- [x] `02-architecture-design.md §Naming Drift Note` — recorded: KEEP by-category enum; express span-type via span name + `attributes["span_type"]` (enum load-bearing in `metrics.py` + 8 sites; zero blast radius)
 
 ### 2.3 RecordingTracer tree tests (US-4)
-- [ ] Extend `RecordingTracer` (`test_observability_coverage.py:50-89`) to capture parent linkage (span_id / parent ctx) → flat list becomes reconstructable tree
-- [ ] Assert multi-turn run reconstructs LOOP→N×TURN→{LLM_CALL, TOOL_EXEC×k, PROMPT_BUILD, COMPACTION?, VERIFICATION?, MEMORY_OP?} with correct parent/child nesting
-- [ ] Assert LLM_CALL carries token attributes; TOOL_EXEC carries latency; span status ERROR on a raised exception
-- [ ] Existing membership assertions (`:131-142`) still pass (now under the real tree)
-  - Verify: `pytest backend/tests/integration/orchestrator_loop/test_observability_coverage.py -v`
+- [x] Extended `RecordingTracer` to mint a child `TraceContext` (fresh span_id, parent_span_id = incoming) + capture status/exception → reconstructable tree (test-only; production tracer untouched)
+- [x] `test_reconstructs_loop_turn_operation_tree_with_correct_nesting` — asserts TURN.parent==LOOP + LLM_CALL/TOOL_EXEC.parent ∈ TURN ids (≠ root LOOP) — the D1 nesting fix
+- [x] LLM_CALL token attrs (by-reference) + TOOL_EXEC tool attr asserted; `test_raised_exception_sets_error_span_status` (ERROR on LLM_CALL+TURN+LOOP)
+- [x] Existing membership assertions extended (now under the real tree); `test_observability_coverage.py` 9/9
+  - Verify: `pytest backend/tests/integration/orchestrator_loop/test_observability_coverage.py -v` ✅
 
 ---
 
 ## Day 3 — Full sweep + edge cases
 
-- [ ] Full `pytest tests/unit tests/integration` → all green (tracer additions + no regression); record count
-- [ ] Edge: zero-tool turn (no TOOL_EXEC span) / multi-tool turn (sibling TOOL_EXEC) / exception mid-turn (ERROR status + spans still `end()`) / NoOp tracer path (default, no real tracer) still works
-- [ ] Confirm no span→cost-ledger write (router recorders unchanged; grep loop.py for any ledger/cost-recorder call inside spans)
-- [ ] Parent decisive re-verify: pytest full; `mypy src/` 0; `run_all.py` 10/10; black unchanged + isort/flake8 0; Vitest unchanged (no FE)
-- [ ] No drift beyond Day-0 D1-D9
+- [x] Full `pytest tests/unit tests/integration` → **2057 passed / 4 skipped** (= 57.70 baseline 2049 + 8 new; no regression)
+- [x] Edge (new tests): zero-tool turn (no TOOL_EXEC) / multi-tool turn (sibling TOOL_EXEC under one TURN) / exception → ERROR status / NoOp default path runs clean
+- [x] Confirmed no span→cost-ledger write (router recorders unchanged; span token/cost = attribute only)
+- [x] Parent decisive re-verify: pytest 2057; `mypy src/` 0/329; `run_all.py` 10/10; black 605 unchanged + isort/flake8 0; Vitest unchanged (no FE)
+- [x] No drift beyond Day-0 D1-D9
 
 ---
 
 ## Day 4 — Closeout
 
 ### 4.1 Closeout docs
-- [ ] `02.md §Naming Drift Note` (Day 2) + `01.md §範疇12` note (Tier 0+1 shipped; Tier 2 deferred; SpanStarted/SpanEnded→SSE = A-5); CHANGE-039 created
-- [ ] progress.md (Day 0-4) + retrospective.md (Q1-Q7) — NO design note (feature-continuation)
-- [ ] Calibration: `cat12-loop-tracer-additive` 0.60 (NEW, 1 pt) + `agent_factor` 0.65 (CAVEATED — 9th consecutive no-clean-wall-clock 57.63→71); record `calibration-log.md §3`
-- [ ] MEMORY.md pointer + `project_phase57_71_loop_tracer.md` subfile + CLAUDE.md lean (Current Sprint row + footer)
+- [x] `02.md §Naming Drift Note` (SpanCategory resolution) + `01.md §範疇12` note (Tier 0+1 shipped; Tier 2 deferred; SpanStarted/SpanEnded→SSE = A-5; VERIFICATION/MEMORY_OP deferred); CHANGE-039 created
+- [x] progress.md (Day 0-4) + retrospective.md (Q1-Q7) — NO design note (feature-continuation)
+- [x] Calibration: `cat12-loop-tracer-additive` 0.60 (NEW, 1 pt) + `agent_factor` 0.65 (CAVEATED — 9th consecutive no-clean-wall-clock 57.63→71); record `calibration-log.md §3`
+- [x] MEMORY.md pointer + `project_phase57_71_loop_tracer.md` subfile + CLAUDE.md lean (Current Sprint row + footer)
 
 ### 4.2 Final verify + ship
-- [ ] **Final-commit `black --check`** (AD-Final-Commit-Black-Check): black unchanged + isort/flake8 0 + mypy src 0 + run_all 10/10
+- [x] **Final-commit `black --check`** (AD-Final-Commit-Black-Check): black 605 unchanged + isort/flake8 0 + mypy src 0/329 + run_all 10/10
 - [ ] commit (Day 1-4) + push + PR — **user-authorized** (push/PR pending user approval)
-- [ ] Carryover recorded (plan §9 + retrospective §Q5 + memory subfile): Tier 2 Jaeger export (Area-C/DevOps); SpanStarted/SpanEnded→SSE (A-5); nest internal spans (DRY refactor); cross-process subagent parent_span_id; A-5c Inspector UI; A-6 + FE /subagents wiring
+- [x] Carryover recorded (plan §9 + retrospective §Q5 + memory subfile): Tier 2 Jaeger export (Area-C/DevOps); SpanStarted/SpanEnded→SSE (A-5); VERIFICATION/MEMORY_OP via nest-existing-spans refactor; token attrs→OTel (Tracer set-attribute API); cross-process subagent parent_span_id; A-5c Inspector UI; A-6 + FE /subagents wiring

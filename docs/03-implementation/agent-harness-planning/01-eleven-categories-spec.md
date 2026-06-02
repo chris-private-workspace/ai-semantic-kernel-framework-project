@@ -1202,6 +1202,8 @@ V1 的 MAF Workflow Builders（GroupChat / Concurrent / Magentic / Handoff / Seq
 
 > **新增理由**：原 11 範疇來自業界 educational framing，但 enterprise server-side production 必須有完整 observability。OpenAI Agents SDK 內建 trace、LangGraph + LangSmith 是業界標配、企業 SLA 必須 OTel。原 spec 中「事件流」只是雛形未獨立成範疇。
 
+> **實作狀態 (Sprint 57.71, A-4 loop tracer — Tier 0 + Tier 1)**：loop-internal span tree 已上線——`build_real_llm_handler` 注入真 `OTelTracer`（Tier 0），`loop.py` 開出 reconstructable `LOOP → TURN → {LLM_CALL, TOOL_EXEC, PROMPT_BUILD, COMPACTION}` span tree（root span bound `as child` 修好 nesting）。span-type 以 span name + `attributes["span_type"]` 表達，`SpanCategory` enum 不動（見 `02.md §Naming Drift Note`）。**Deferred**：(a) **Tier 2** — real OTLP→Jaeger export（需 collector + `OTEL_*` env）→ Area-C / DevOps；(b) `SpanStarted`/`SpanEnded`→SSE（§4.1 LoopEvent 子類）→ **A-5**；(c) **VERIFICATION / MEMORY_OP** loop-level span — 無乾淨 call site（verification 是 loop 外層 wrapper `correction_loop.py` 且 verifier 自有 span；memory 在 PromptBuilder 內 / 經 tool）→ 待「nest 既有內部 span」DRY refactor。
+
 ### 業界原文（綜合 OpenAI Agents SDK / LangSmith / OpenTelemetry semantic conventions）
 > Observability for agent systems must capture three axes simultaneously: latency (per turn / per tool / per LLM call), tokens (input / output / cached), and cost (USD per request, per tenant). Every event must propagate trace_context (W3C TraceContext or OTel SpanContext) to enable distributed reconstruction. Span boundaries cover: per loop, per turn, per LLM call, per tool execution, per subagent, per HITL wait. Metrics complement traces with aggregable counters and histograms.
 
