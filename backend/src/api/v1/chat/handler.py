@@ -30,6 +30,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.4)
 Last Modified: 2026-06-01
 
 Modification History (newest-first):
+    - 2026-06-02: Sprint 57.69 A-3b — append carried_context block to resolved persona (fail-open)
     - 2026-06-02: Sprint 57.68 A-3b — per-session persona (agent_role) resolution for HANDOFF child
     - 2026-06-01: Sprint 57.65 — share executor's MemoryRetrieval into prompt builder (A-1)
     - 2026-06-01: Sprint 57.64 Day 2 — register Cat 3 memory + Cat 11 subagent tools; thread user_id
@@ -377,11 +378,19 @@ async def resolve_session_persona(
     `agent_role` that resolves in the persona registry; otherwise (no DB /
     missing row / no agent_role / unknown persona / lookup error) returns
     DEMO_SYSTEM_PROMPT.
+
+    Sprint 57.69 A-3b slice 2: when the session also carries a
+    meta_data["carried_context"] (the parent's conversation captured at
+    HANDOFF), the rendered carried-context block is appended to the resolved
+    persona prompt so the child agent sees the prior conversation. A nested
+    fail-open guard ensures a malformed carried_context NEVER loses the resolved
+    persona (the persona prompt is returned without the block on any render error).
     """
     if db is None or session_id is None or tenant_id is None:
         return DEMO_SYSTEM_PROMPT
     try:
         from infrastructure.db.repositories.session_repository import SessionRepository
+        from platform_layer.handoff.context_carry import render_carried_context_block
         from platform_layer.handoff.persona_registry import resolve_persona
 
         session = await SessionRepository(db).get_session(
@@ -389,10 +398,24 @@ async def resolve_session_persona(
         )
         if session is None:
             return DEMO_SYSTEM_PROMPT
-        agent_role = (session.meta_data or {}).get("agent_role")
+        meta = session.meta_data or {}
+        agent_role = meta.get("agent_role")
         if not agent_role:
             return DEMO_SYSTEM_PROMPT
         persona = resolve_persona(str(agent_role))
-        return persona if persona is not None else DEMO_SYSTEM_PROMPT
+        prompt = persona if persona is not None else DEMO_SYSTEM_PROMPT
+
+        # Append the carried parent conversation (if any) to the persona prompt.
+        # Nested fail-open: a malformed carried_context must not crash resolution
+        # nor lose the persona — fall back to the persona prompt alone.
+        carried = meta.get("carried_context")
+        if carried:
+            try:
+                block = render_carried_context_block(carried)
+                if block:
+                    prompt = f"{prompt}\n\n{block}"
+            except Exception:  # noqa: BLE001
+                return prompt
+        return prompt
     except Exception:  # noqa: BLE001
         return DEMO_SYSTEM_PROMPT

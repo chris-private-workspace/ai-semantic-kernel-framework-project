@@ -33,7 +33,7 @@ Description:
     event loop (Risk Class C).
 
 Created: 2026-06-02 (Sprint 57.68 A-3b Stage 2)
-Last Modified: 2026-06-02 (Sprint 57.68 A-3b — relocate 3 router-hook tests from unit file)
+Last Modified: 2026-06-02 (Sprint 57.69 A-3b — add parent-context carry integration test)
 """
 
 from __future__ import annotations
@@ -49,11 +49,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agent_harness._contracts import LoopCompleted, LoopEvent, TraceContext
+from agent_harness._contracts.chat import Message
+from api.v1.chat.handler import resolve_session_persona
 from api.v1.chat.router import _stream_loop_events
 from api.v1.chat.session_registry import get_default_registry
 from infrastructure.db.models import Session as SessionModel
 from infrastructure.db.models.audit import AuditLog
-from platform_layer.handoff import HandoffError, HandoffResult
+from platform_layer.handoff import DEFAULT_MAX_CARRY_MESSAGES, HandoffError, HandoffResult
+from platform_layer.handoff.context_carry import _CARRIED_CONTEXT_HEADER
 from tests.conftest import seed_tenant, seed_user
 
 # The `api.v1.chat` package re-exports `router` (the APIRouter instance), which
@@ -69,9 +72,16 @@ class _HandoffLoop:
     generator signature consumed by run_with_verification (passthrough mode).
     """
 
-    def __init__(self, *, target_agent: str, reason: str) -> None:
+    def __init__(
+        self,
+        *,
+        target_agent: str,
+        reason: str,
+        context: list[Message] | None = None,
+    ) -> None:
         self._target = target_agent
         self._reason = reason
+        self._context = context
 
     async def run(
         self,
@@ -85,6 +95,7 @@ class _HandoffLoop:
             total_turns=1,
             handoff_target=self._target,
             handoff_reason=self._reason,
+            handoff_context=self._context,
             trace_context=trace_context,
         )
 
@@ -189,6 +200,71 @@ async def test_chat_handoff_boots_child_and_emits_frame(db_session: AsyncSession
     assert len(audit_rows) == 1
     assert audit_rows[0].operation_data["target_agent"] == "researcher"
     assert audit_rows[0].operation_data["new_session_id"] == str(new_session_id)
+
+
+@pytest.mark.asyncio
+async def test_chat_handoff_carries_parent_context(db_session: AsyncSession) -> None:
+    """Sprint 57.69 A-3b slice 2: the parent conversation is carried to the child.
+
+    A handoff loop whose LoopCompleted carries a non-trivial handoff_context
+    drives the router hook to boot a child whose meta_data["carried_context"] is
+    populated (capped + tenant-scoped); the carried snapshot stays SERVER-SIDE
+    (NOT in the loop_end SSE frame); and resolving the child's persona returns a
+    prompt STRING that embeds the carried-context block.
+    """
+    tenant = await seed_tenant(db_session, code="HANDOFF_CARRY")
+    user = await seed_user(db_session, tenant, email="carry@test.com")
+    parent = await _seed_parent_session(db_session, tenant_id=tenant.id, user_id=user.id)
+
+    # Build more than the cap so we also prove the last-N cap (drop oldest).
+    over = DEFAULT_MAX_CARRY_MESSAGES + 4
+    convo = [
+        Message(role="user" if i % 2 == 0 else "assistant", content=f"turn-{i}")
+        for i in range(over)
+    ]
+
+    trace_ctx = TraceContext(tenant_id=tenant.id, session_id=parent.id, user_id=user.id)
+    loop = _HandoffLoop(target_agent="researcher", reason="carry it", context=convo)
+    registry = get_default_registry()
+    await registry.register(tenant.id, parent.id)
+
+    raw = [
+        frame
+        async for frame in _stream_loop_events(
+            loop,
+            tenant.id,
+            parent.id,
+            registry,
+            user_input="hand this off with context",
+            trace_context=trace_ctx,
+            db=db_session,
+        )
+    ]
+    frames = _collect_frames(raw)
+
+    # The carried snapshot must stay server-side — NOT on the loop_end frame.
+    loop_end = [d for t, d in frames if t == "loop_end"]
+    assert len(loop_end) == 1
+    assert "handoff_context" not in loop_end[0]
+
+    handoff_frames = [d for t, d in frames if t == "agent_handoff"]
+    assert len(handoff_frames) == 1
+    new_session_id = UUID(handoff_frames[0]["new_session_id"])
+
+    # Child carries the capped carried_context, tenant-scoped to the parent.
+    child = (
+        await db_session.execute(select(SessionModel).where(SessionModel.id == new_session_id))
+    ).scalar_one()
+    assert child.tenant_id == tenant.id
+    carried = child.meta_data["carried_context"]
+    assert len(carried) == DEFAULT_MAX_CARRY_MESSAGES
+    assert carried[-1] == {"role": "assistant", "content": f"turn-{over - 1}"}
+
+    # Resolving the child persona returns a STRING embedding the carried block.
+    prompt = await resolve_session_persona(db_session, new_session_id, tenant.id)
+    assert isinstance(prompt, str)
+    assert _CARRIED_CONTEXT_HEADER in prompt
+    assert f"turn-{over - 1}" in prompt
 
 
 @pytest.mark.asyncio

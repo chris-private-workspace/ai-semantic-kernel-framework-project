@@ -27,25 +27,26 @@
 ## Day 1 — Backend context-carry (Stage 1)
 
 ### 1.1 Loop context snapshot (US-1)
-- [ ] `_contracts/events.py` `LoopCompleted` += in-process `handoff_context: list[Message] | None = None` (additive, NOT wire-mapped)
-- [ ] `loop.py:1073-1091` HANDOFF branch snapshots `state.messages` (shallow copy) onto the `LoopCompleted` it already builds; no control-flow change
-- [ ] Assert `sse.py` `loop_end` serializer ignores `handoff_context` (server-side only — no client leak)
+- [x] `_contracts/events.py` `LoopCompleted` += in-process `handoff_context: list[Message] | None = None` (additive, NOT wire-mapped; `from agent_harness._contracts.chat import Message`)
+- [x] `loop.py:1090` HANDOFF branch snapshots `list(messages)` (shallow copy) onto the `LoopCompleted` it already builds; no control-flow change
+- [x] Confirmed `sse.py:208-217` `loop_end` serializer maps only 4 fields (ignores `handoff_context`) — server-side only, no client leak (D-DAY0-2; integration test asserts)
 
 ### 1.2 Context-carry budget helper (US-2)
-- [ ] `platform_layer/handoff/context_carry.py` (NEW) — `cap_and_serialize(messages, *, token_budget, token_counter) -> list[dict]`: serialize neutral `Message` shape → drop-OLDEST over budget (mirror 57.65 `_apply_memory_budget`) → return capped JSON-able list; module-const default budget; LLM-neutral
-- [ ] Unit: under/over budget, empty, drop-oldest order, serialize shape
+- [x] `platform_layer/handoff/context_carry.py` (NEW) — `cap_and_serialize(messages, *, max_messages=20) -> list[dict]`: serialize neutral `Message` shape → drop-OLDEST over **message-count** cap (D-DAY0-4: count not token budget → ChatClient-free) → JSON-able list; `_render_content` (str | list[ContentBlock]); `render_carried_context_block`; LLM-neutral
+- [x] Unit (`test_context_carry.py`, 10): under/over budget, empty/None, drop-oldest order, str + list[ContentBlock] content, render block header
+- [x] **NOTE (D-DAY0-4)**: budget = last-N message COUNT (not token budget) so `boot_handoff` stays ChatClient-free/neutral; refined from plan §3.2 wording (progress.md Day 0)
 
 ### 1.3 Boot-handoff carry storage (US-2)
-- [ ] `service.py` `boot_handoff` += `parent_context: list[Message] | None = None`; inside the atomic txn, set child `meta_data={"agent_role":…, "carried_context": cap_and_serialize(parent_context,…)}` when non-empty (else 57.68-identical `{"agent_role":…}`)
-- [ ] Unit: with/without `parent_context` (backward-compat); carried context tenant-scoped (parent tenant); cross-tenant still rejected (57.68 guard)
+- [x] `service.py` `boot_handoff` += `parent_context: list[Message] | None = None`; inside the atomic txn, set child `meta_data={"agent_role":…, "carried_context": cap_and_serialize(parent_context)}` when non-empty (else 57.68-identical `{"agent_role":…}`)
+- [x] Unit (`test_service.py` +2): with/without `parent_context` (backward-compat); carried context tenant-scoped (parent tenant); cross-tenant still rejected (57.68 guard)
 
 ### 1.4 Router wiring (US-2)
-- [ ] `router.py` post-loop hook passes `event.handoff_context` → `boot_handoff(parent_context=…)`; fail-soft unchanged
+- [x] `router.py:504-510` post-loop hook passes `event.handoff_context` → `boot_handoff(parent_context=…)`; fail-soft unchanged
 
 ### 1.5 Handler seeds carried context (US-3)
-- [ ] `handler.py` (~:369) reads `meta_data["carried_context"]` → deserialize → seed into the child's initial `LoopState.messages` (prior turns before new user input); fail-open on missing/malformed
-- [ ] Unit: seed present / absent / malformed (fail-open, no crash)
-- [ ] Backend green: black/isort/flake8; `mypy src/` 0; `check_llm_sdk_leak` 0; new unit tests pass
+- [x] `handler.py:398-418` `resolve_session_persona` reads `meta_data["carried_context"]` → `render_carried_context_block` → appends to the resolved persona **system prompt** (D-DAY0-3: text block in the persona prompt, NOT LoopState.messages — simpler + avoids tool_call_id fragility; delivers agent-side context); nested fail-open on malformed
+- [x] Unit (`test_chat_handoff_unit.py` +3): seed present (block in prompt) / absent (plain persona) / malformed (fail-open, no crash)
+- [x] Backend green: black/isort/flake8 0; `mypy src/` 0/325; `run_all.py` 10/10 (`check_llm_sdk_leak` 0); 35 handoff tests + full unit 1439 pass (parent independently re-verified)
 
 ---
 

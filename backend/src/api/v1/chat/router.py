@@ -38,6 +38,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.5)
 Last Modified: 2026-06-01
 
 Modification History (newest-first):
+    - 2026-06-02: Sprint 57.69 A-3b — pass parent_context to boot_handoff (carry parent convo)
     - 2026-06-02: Sprint 57.68 A-3b — post-loop HANDOFF hook: boot child session + emit AgentHandoff
     - 2026-06-01: Sprint 57.64 Day 2 — thread user_id into build_handler + TraceContext (Cat 3)
     - 2026-05-31: FIX-022 §6.2 — consolidate gpt-5.4 pricing fallback into named const
@@ -503,6 +504,10 @@ async def _stream_loop_events(
                             tenant_id=tenant_id,
                             user_id=trace_context.user_id or tenant_id,
                             db=db,
+                            # Sprint 57.69 A-3b slice 2: carry the parent's
+                            # in-memory conversation snapshot into the booted
+                            # child's meta_data["carried_context"].
+                            parent_context=event.handoff_context,
                         )
                         handoff_payload = serialize_loop_event(
                             AgentHandoff(

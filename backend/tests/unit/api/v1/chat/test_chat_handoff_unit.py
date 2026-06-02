@@ -20,7 +20,7 @@ Description:
     closed event loop (Risk Class C).
 
 Created: 2026-06-02 (Sprint 57.68 A-3b Stage 2)
-Last Modified: 2026-06-02 (Sprint 57.68 A-3b — relocate router-hook tests to integration file)
+Last Modified: 2026-06-02 (Sprint 57.69 A-3b — add carried_context persona-append cases)
 """
 
 from __future__ import annotations
@@ -32,6 +32,7 @@ import pytest
 
 import api.v1.chat.handler as handler_mod
 from api.v1.chat.handler import DEMO_SYSTEM_PROMPT, resolve_session_persona
+from platform_layer.handoff.context_carry import _CARRIED_CONTEXT_HEADER
 
 # ============================================================
 # Handler persona resolution (resolve_session_persona)
@@ -96,6 +97,62 @@ async def test_persona_falls_back_when_no_db() -> None:
     assert await resolve_session_persona(None, uuid4(), uuid4()) == DEMO_SYSTEM_PROMPT
     assert await resolve_session_persona(object(), None, uuid4()) == DEMO_SYSTEM_PROMPT
     assert await resolve_session_persona(object(), uuid4(), None) == DEMO_SYSTEM_PROMPT
+
+
+# === Sprint 57.69 A-3b slice 2: carried_context appended to persona ==========
+
+
+@pytest.mark.asyncio
+async def test_persona_appends_carried_context_block(monkeypatch: pytest.MonkeyPatch) -> None:
+    """carried_context present → persona prompt embeds the carried-context block."""
+    _patch_repo(
+        monkeypatch,
+        returns=_FakeSessionRow(
+            {
+                "agent_role": "researcher",
+                "carried_context": [
+                    {"role": "user", "content": "what is X?"},
+                    {"role": "assistant", "content": "X is Y"},
+                ],
+            }
+        ),
+    )
+    prompt = await resolve_session_persona(object(), uuid4(), uuid4())
+    assert prompt != DEMO_SYSTEM_PROMPT
+    # Persona prompt still present AND the carried block appended below it.
+    assert "research specialist" in prompt
+    assert _CARRIED_CONTEXT_HEADER in prompt
+    assert "[user] what is X?" in prompt
+    assert "[assistant] X is Y" in prompt
+
+
+@pytest.mark.asyncio
+async def test_persona_no_carried_context_is_plain_persona(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No carried_context → resolved persona prompt with no carried block."""
+    _patch_repo(monkeypatch, returns=_FakeSessionRow({"agent_role": "researcher"}))
+    prompt = await resolve_session_persona(object(), uuid4(), uuid4())
+    assert "research specialist" in prompt
+    assert _CARRIED_CONTEXT_HEADER not in prompt
+
+
+@pytest.mark.asyncio
+async def test_persona_malformed_carried_context_fails_open(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A malformed carried_context never crashes nor loses the resolved persona.
+
+    A non-list / non-dict carried_context makes the render raise; the nested
+    fail-open guard returns the persona prompt WITHOUT the carried block.
+    """
+    # carried_context is a string of dicts-worth of nonsense → render iterates a
+    # str → entry.get(...) raises AttributeError → fail-open to persona prompt.
+    _patch_repo(
+        monkeypatch,
+        returns=_FakeSessionRow({"agent_role": "researcher", "carried_context": "not-a-list"}),
+    )
+    prompt = await resolve_session_persona(object(), uuid4(), uuid4())
+    assert "research specialist" in prompt  # persona NOT lost
+    assert _CARRIED_CONTEXT_HEADER not in prompt  # carried block omitted
 
 
 def test_handler_module_exposes_resolve() -> None:
