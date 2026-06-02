@@ -51,22 +51,22 @@
 ## Day 2 — Admin CRUD API + backend integration (Stage 1b)
 
 ### 2.1 CRUD API (US-4)
-- [ ] `api/v1/admin/agents.py` (NEW) — mirror `admin/tenants.py`: sub-resource `/admin/tenants/{tenant_id}/agents` (GET/POST) + `/{agent_id}` (PUT/DELETE) [or per Day-1 prefix]; Pydantic Create/Update/Response (AgentSpec fields); `require_admin_platform_role` + `require_tenant_match_or_platform_admin`; `append_audit` on mutations; `db.flush()`; register router; **distinct from `/subagents` invocations STUB (untouched)**
-- [ ] Integration: CRUD happy path + `require_admin_platform_role` 403 + cross-tenant 404 + audit rows written
+- [x] `api/v1/admin/agents.py` (NEW, separate router prefix `/admin/tenants`, mirrors `cost_summary.py`/`sla_reports.py` sibling convention) — `GET /{tenant_id}/agents` (`require_tenant_match_or_platform_admin`) + `POST` (201) + `PUT /{agent_id}` + `DELETE /{agent_id}` (204) (writes `require_admin_platform_role`); Pydantic Create(extra=forbid)/Update(partial)/Response(from_attributes); 409 IntegrityError+rollback; 404 tenant-scoped; `append_audit` (`agent_catalog.{create,update,delete}`) + commit; registered in `main.py`; **`/subagents` invocations STUB untouched**
+- [x] Integration (`test_admin_agent_catalog_api.py`, 15): create/list/update/delete + 409 dup-key + 403 no-admin + 401 no-JWT + 3 cross-tenant; audit rows asserted
 
 ### 2.2 RLS + multi-tenant + handoff-from-DB (US-5)
-- [ ] Integration: RLS enforced (cross-tenant SELECT blocked at DB); tenant A agents invisible to B (repo + RLS double defense)
-- [ ] `test_chat_handoff.py` EXTEND — target resolves from DB catalog (override proven) + empty-catalog default fallback (contract preserved)
-- [ ] Test-isolation: new resolver DB read doesn't leak conns in TestClient suites (Risk Class C, 57.68 FIX-026 lesson)
+- [x] Integration: RLS enforced (cross-tenant blocked); tenant A agents invisible to B (repo + RLS double defense — repo test + API cross-tenant tests)
+- [x] `test_chat_handoff.py` EXTEND (+2) — target resolves from DB catalog (override proven) + empty-catalog default fallback (contract preserved)
+- [x] Test-isolation: full sweep ordering clean (no conn leak); conftest `AGENT_PUT_%` cleanup sweep added (mirrors `QUOTA_PUT_%`)
 
 ---
 
 ## Day 3 — Full sweep + edge cases
 
-- [ ] Full `pytest tests/unit tests/integration` green (catalog + 57.68/69 + no regression)
-- [ ] Edge: empty catalog (defaults) / inactive agent / cross-tenant reject / unknown key reject / override (tenant row beats default)
-- [ ] Parent decisive re-verify: pytest full count; `mypy src/` 0; `run_all.py` 10/10; Alembic 0023 up/down; codegen `--check` 0 (no change); Vitest unchanged (no FE)
-- [ ] If any drift from plan → catalog in progress.md + adjust (do NOT silently rewrite)
+- [x] Full `pytest tests/unit tests/integration` → **2049 passed / 4 skipped / 0 failed** (catalog + 57.68/69 + no regression)
+- [x] Edge: empty catalog → defaults / inactive agent → fallback / cross-tenant reject / unknown key → None reject / DB-error → fallback / override (tenant row beats default) — covered by repo + resolver + integration tests
+- [x] Parent decisive re-verify: pytest full 2049; `mypy src/` 0/329; `run_all.py` 10/10; black 603 unchanged + isort/flake8 0; Alembic 0023 up/down verified (Stage-1a); Vitest unchanged (no FE)
+- [x] No drift beyond Day-0 D1-D7 (reframe) — Stage-1a/1b matched the revised plan
 
 ---
 

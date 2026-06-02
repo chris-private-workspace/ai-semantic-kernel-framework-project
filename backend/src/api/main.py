@@ -27,6 +27,7 @@ Created: 2026-04-29 (Sprint 49.4 Day 5)
 Last Modified: 2026-05-31
 
 Modification History (newest-first):
+    - 2026-06-02: Sprint 57.70 Stage-1b — mount admin_agents router (agent_catalog CRUD)
     - 2026-05-31: FIX-022 — _wire_pricing_loader() at startup (cost_ledger §5.1 H1)
     - 2026-05-10: Sprint 57.13 US-B4 — mount telemetry router (frontend beacons; anonymous)
     - 2026-05-09: Sprint 57.7 US-A2 — mount auth router (3 OIDC PKCE endpoints; WorkOS skeleton)
@@ -56,6 +57,7 @@ from typing import AsyncIterator
 from dotenv import load_dotenv
 from fastapi import FastAPI
 
+from api.v1.admin.agents import router as admin_agents_router
 from api.v1.admin.cost_summary import router as admin_cost_summary_router
 from api.v1.admin.sla_reports import router as admin_sla_reports_router
 from api.v1.admin.tenants import router as admin_tenants_router
@@ -204,6 +206,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_tenants_router, prefix="/api/v1")
     app.include_router(admin_sla_reports_router, prefix="/api/v1")
     app.include_router(admin_cost_summary_router, prefix="/api/v1")
+    app.include_router(admin_agents_router, prefix="/api/v1")
 
     return app
 
