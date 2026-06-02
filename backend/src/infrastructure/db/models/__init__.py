@@ -22,6 +22,9 @@ inherit `TenantScopedMixin` from `infrastructure.db.base`.
 
 from __future__ import annotations
 
+# Sprint 57.70 — AgentCatalog (per-tenant AgentSpec definitions, Cat 11)
+from infrastructure.db.models.agent_catalog import AgentCatalog
+
 # Day 2.1 (Sprint 49.3) — API auth + quotas
 # Sprint 57.59 — RateLimitConfig (config two-table split; AP-4 close)
 # Sprint 57.62 — RateLimitAlert (80%-threshold usage alert log)
@@ -165,4 +168,6 @@ __all__ = [
     # Verification Log (Sprint 57.11 Day 1 — US-1)
     "VerificationLog",
     "VerifierType",
+    # Agent Catalog (Sprint 57.70 — per-tenant AgentSpec definitions, Cat 11)
+    "AgentCatalog",
 ]

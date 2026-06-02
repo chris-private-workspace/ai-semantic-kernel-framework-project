@@ -33,7 +33,7 @@ Description:
     event loop (Risk Class C).
 
 Created: 2026-06-02 (Sprint 57.68 A-3b Stage 2)
-Last Modified: 2026-06-02 (Sprint 57.69 A-3b — add parent-context carry integration test)
+Last Modified: 2026-06-02 (Sprint 57.70 Stage-1a — add DB-catalog override + fallback handoff tests)
 """
 
 from __future__ import annotations
@@ -55,7 +55,13 @@ from api.v1.chat.router import _stream_loop_events
 from api.v1.chat.session_registry import get_default_registry
 from infrastructure.db.models import Session as SessionModel
 from infrastructure.db.models.audit import AuditLog
-from platform_layer.handoff import DEFAULT_MAX_CARRY_MESSAGES, HandoffError, HandoffResult
+from infrastructure.db.repositories import AgentCatalogRepository
+from platform_layer.handoff import (
+    DEFAULT_AGENTS,
+    DEFAULT_MAX_CARRY_MESSAGES,
+    HandoffError,
+    HandoffResult,
+)
 from platform_layer.handoff.context_carry import _CARRIED_CONTEXT_HEADER
 from tests.conftest import seed_tenant, seed_user
 
@@ -461,3 +467,107 @@ async def test_router_hook_skips_when_no_target(
     frames = _collect_frames(raw)
     assert called["n"] == 0
     assert not any(t == "agent_handoff" for t, _ in frames)
+
+
+# ============================================================
+# Sprint 57.70 Stage-1a: HANDOFF persona resolves from the DB catalog
+# ============================================================
+# The handoff target's persona is now resolved per-tenant from agent_catalog
+# (override) → hardcoded DEFAULT_AGENTS (empty catalog) → reject. These prove
+# both branches end-to-end against a real DB (the resolver runs inside
+# HandoffService.boot_handoff BEFORE the child boot).
+
+
+@pytest.mark.asyncio
+async def test_chat_handoff_resolves_persona_from_db_catalog(db_session: AsyncSession) -> None:
+    """A tenant's agent_catalog row (override) resolves the handoff target persona.
+
+    The child session is booted with the target role; resolving the child's
+    persona returns the TENANT-SPECIFIC catalog system_prompt (NOT the hardcoded
+    default), proving the per-tenant DB catalog is consulted on the handoff path.
+    """
+    tenant = await seed_tenant(db_session, code="HANDOFF_CAT_OVR")
+    user = await seed_user(db_session, tenant, email="catovr@test.com")
+    parent = await _seed_parent_session(db_session, tenant_id=tenant.id, user_id=user.id)
+
+    # Per-tenant override for "researcher" — a custom prompt distinct from default.
+    custom_prompt = "TENANT-CUSTOM researcher persona for HANDOFF_CAT_OVR."
+    await AgentCatalogRepository(db_session).create(
+        tenant_id=tenant.id,
+        key="researcher",
+        name="Researcher",
+        system_prompt=custom_prompt,
+        allowed_modes=["handoff"],
+    )
+
+    trace_ctx = TraceContext(tenant_id=tenant.id, session_id=parent.id, user_id=user.id)
+    loop = _HandoffLoop(target_agent="researcher", reason="resolve from catalog")
+    registry = get_default_registry()
+    await registry.register(tenant.id, parent.id)
+
+    raw = [
+        frame
+        async for frame in _stream_loop_events(
+            loop,
+            tenant.id,
+            parent.id,
+            registry,
+            user_input="hand off via catalog",
+            trace_context=trace_ctx,
+            db=db_session,
+        )
+    ]
+    frames = _collect_frames(raw)
+    handoff_frames = [d for t, d in frames if t == "agent_handoff"]
+    assert len(handoff_frames) == 1
+    new_session_id = UUID(handoff_frames[0]["new_session_id"])
+
+    # Resolving the child's persona returns the TENANT-CUSTOM prompt (override).
+    prompt = await resolve_session_persona(db_session, new_session_id, tenant.id)
+    assert prompt == custom_prompt
+    assert prompt != DEFAULT_AGENTS["researcher"]
+
+
+@pytest.mark.asyncio
+async def test_chat_handoff_resolves_default_when_catalog_empty(
+    db_session: AsyncSession,
+) -> None:
+    """An EMPTY tenant catalog still resolves the hardcoded DEFAULT_AGENTS persona.
+
+    No agent_catalog row exists for this freshly-seeded tenant; the handoff still
+    boots (the default fallback resolves a non-None prompt) and the child persona
+    resolves to the hardcoded default — contract preserved.
+    """
+    tenant = await seed_tenant(db_session, code="HANDOFF_CAT_EMPTY")
+    user = await seed_user(db_session, tenant, email="catempty@test.com")
+    parent = await _seed_parent_session(db_session, tenant_id=tenant.id, user_id=user.id)
+
+    # Sanity: this tenant has NO catalog rows.
+    rows = await AgentCatalogRepository(db_session).list_by_tenant(tenant_id=tenant.id)
+    assert rows == []
+
+    trace_ctx = TraceContext(tenant_id=tenant.id, session_id=parent.id, user_id=user.id)
+    loop = _HandoffLoop(target_agent="reviewer", reason="empty catalog fallback")
+    registry = get_default_registry()
+    await registry.register(tenant.id, parent.id)
+
+    raw = [
+        frame
+        async for frame in _stream_loop_events(
+            loop,
+            tenant.id,
+            parent.id,
+            registry,
+            user_input="hand off empty catalog",
+            trace_context=trace_ctx,
+            db=db_session,
+        )
+    ]
+    frames = _collect_frames(raw)
+    handoff_frames = [d for t, d in frames if t == "agent_handoff"]
+    assert len(handoff_frames) == 1
+    new_session_id = UUID(handoff_frames[0]["new_session_id"])
+
+    # Child persona resolves to the hardcoded DEFAULT_AGENTS prompt (fallback).
+    prompt = await resolve_session_persona(db_session, new_session_id, tenant.id)
+    assert prompt == DEFAULT_AGENTS["reviewer"]

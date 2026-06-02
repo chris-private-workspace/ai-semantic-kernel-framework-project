@@ -5,12 +5,15 @@ Category: Tests
 Created: 2026-06-02
 Modified: 2026-06-02
 
-Mocks SessionRepository + append_audit at the service module so the atomic
-boot logic (persona resolve → tenant guard → child create → parent mark →
-audit) is verified without a live DB. The multi-tenant 鐵律 (child uses the
-parent's tenant_id; foreign/missing parent rejected) and unknown-target
-rejection (no boot) are exercised. Sprint 57.69 adds the parent_context carry
-cases (absent → no carried_context key; present → capped carried_context).
+Mocks SessionRepository + append_audit + resolve_persona at the service module
+so the atomic boot logic (persona resolve → tenant guard → child create →
+parent mark → audit) is verified without a live DB. The multi-tenant 鐵律
+(child uses the parent's tenant_id; foreign/missing parent rejected) and
+unknown-target rejection (no boot) are exercised. Sprint 57.69 adds the
+parent_context carry cases (absent → no carried_context key; present → capped
+carried_context). Sprint 57.70: resolve_persona is now async + tenant-scoped
+(db, tenant_id, key); a fake async resolver over DEFAULT_AGENTS replaces it so
+this stays DB-connection-free.
 """
 
 from __future__ import annotations
@@ -23,6 +26,7 @@ import pytest
 import platform_layer.handoff.service as service_mod
 from agent_harness._contracts.chat import Message
 from platform_layer.handoff.context_carry import DEFAULT_MAX_CARRY_MESSAGES
+from platform_layer.handoff.persona_registry import DEFAULT_AGENTS
 from platform_layer.handoff.service import (
     HandoffError,
     HandoffResult,
@@ -96,7 +100,7 @@ class _FakeRepo:
 
 @pytest.fixture
 def _wire(monkeypatch: pytest.MonkeyPatch) -> Any:
-    """Install fake repo + audit capture; return a builder for the test setup."""
+    """Install fake repo + audit capture + async resolver; builder for the test."""
     audit_calls: list[dict[str, Any]] = []
 
     async def _fake_append_audit(db: Any, **kwargs: Any) -> Any:
@@ -104,6 +108,14 @@ def _wire(monkeypatch: pytest.MonkeyPatch) -> Any:
         return object()
 
     monkeypatch.setattr(service_mod, "append_audit", _fake_append_audit)
+
+    # Sprint 57.70: resolve_persona is async + tenant-scoped. Replace it with a
+    # DB-free fake over DEFAULT_AGENTS so boot_handoff resolves known keys and
+    # rejects unknown ones without opening an asyncpg connection.
+    async def _fake_resolve_persona(db: Any, tenant_id: UUID, key: str) -> str | None:
+        return DEFAULT_AGENTS.get((key or "").strip())
+
+    monkeypatch.setattr(service_mod, "resolve_persona", _fake_resolve_persona)
 
     state: dict[str, Any] = {"repo": None, "audit_calls": audit_calls}
 

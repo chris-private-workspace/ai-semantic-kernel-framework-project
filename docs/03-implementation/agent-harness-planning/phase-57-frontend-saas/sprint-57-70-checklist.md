@@ -28,23 +28,23 @@
 ## Day 1 — Table + repo + resolver (Stage 1a)
 
 ### 1.1 Table + migration (US-1)
-- [ ] `agent_catalog.py` (NEW) — `AgentCatalog(Base, TenantScopedMixin)` (Group 9): key/name/model/system_prompt/allowed_modes/status/meta_data(JSONB budget+tools)/is_active/timestamps; UniqueConstraint(tenant_id, key) + tenant index; correct domain-group file per `09-db-schema-design.md §Group 9`
-- [ ] Alembic `0023_agent_catalog` — create table + indexes + RLS 2 policies (`tenant_isolation_agent_catalog` USING + `tenant_insert_agent_catalog` WITH CHECK) + FORCE; up/down/re-up clean vs live Postgres; `check_rls_policies` green
+- [x] `agent_catalog.py` (NEW) — `AgentCatalog(Base, TenantScopedMixin)` (Group 9): key/name/model/system_prompt/allowed_modes(JSONB)/status/meta_data(physical "metadata" JSONB budget+tools)/is_active/timestamps; UniqueConstraint(tenant_id, key) + tenant index
+- [x] Alembic `0023_agent_catalog` — create table + index + RLS 2 policies (`tenant_isolation_agent_catalog` USING + `tenant_insert_agent_catalog` WITH CHECK) + FORCE (mirror 0019); verified up/down/re-up vs live Postgres (RLS present + FORCE=True); `check_rls_policies` green
 
 ### 1.2 Repository (US-2)
-- [ ] `AgentCatalogRepository(db)` (mirror SessionRepository) — async, tenant_id required kw-only: `list_by_tenant`/`get_by_key`/`create`/`update`/`delete`; tenant filter in every WHERE; caller-owned flush
-- [ ] Unit: CRUD + tenant filter + UniqueConstraint(tenant_id,key)
+- [x] `AgentCatalogRepository(db)` (mirror SessionRepository) — async, tenant_id required kw-only: `list_by_tenant`/`get_by_key`/`create`/`update`/`delete`; tenant filter in every WHERE; caller-owned flush
+- [x] Unit (`test_agent_catalog_repository.py`, 9, DB-backed): CRUD + tenant filter (A not visible to B) + UniqueConstraint(tenant_id,key)
 
 ### 1.3 Default seed (US-2)
-- [ ] `persona_registry.py` — `PERSONA_REGISTRY`→`DEFAULT_AGENTS` (same 3 prompts); `0023` data migration loops existing tenants → INSERT 3 defaults (raw SQL quotes `"metadata"`)
-- [ ] Migration data-seed verified (existing tenants get 3 rows)
+- [x] `persona_registry.py` — `PERSONA_REGISTRY`→`DEFAULT_AGENTS` (same 3 prompts); `0023` data migration loops existing tenants → INSERT 3 defaults (raw SQL quotes physical `"metadata"`; allowed_modes `["handoff"]`)
+- [x] Migration data-seed verified (7599 rows = 2533 tenants × 3: planner/researcher/reviewer)
 
 ### 1.4 Async resolver rewire (US-3)
-- [ ] `persona_registry.py` — NEW async `resolve_persona(db, tenant_id, key) -> str | None` (DB row active → prompt → else DEFAULT_AGENTS → else None) + sync `resolve_default_persona(key)`; `__all__` + `__init__.py` re-export
-- [ ] `service.py:131` `boot_handoff` — `await resolve_persona(db, tenant_id, target_agent)`; None → HandoffError (unchanged; resolves before txn)
-- [ ] `handler.py:405` `resolve_session_persona` — `await resolve_persona(db, tenant_id, agent_role)`; None → DEMO (unchanged)
-- [ ] Unit: resolver DB-hit / DB-miss→default / unknown→None / inactive→fallback; boot_handoff reject; handler DEMO fallback
-- [ ] Backend green: black/isort/flake8 0; `mypy src/` 0; `check_llm_sdk_leak` 0
+- [x] `persona_registry.py` — NEW async `resolve_persona(db, tenant_id, key)` (DB active row → prompt → else DEFAULT_AGENTS → else None; **DB-error fail-safe → DEFAULT_AGENTS**) + sync `resolve_default_persona(key)`; `__all__` + `__init__.py` re-export
+- [x] `service.py:131` `boot_handoff` — `await resolve_persona(db, tenant_id, target_agent)`; None → HandoffError (unchanged; resolves before txn)
+- [x] `handler.py:405` `resolve_session_persona` — `await resolve_persona(db, tenant_id, agent_role)`; None → DEMO (unchanged; carried_context append preserved)
+- [x] Unit: resolver DB-hit / DB-miss→default / unknown→None / inactive→fallback / DB-error→fallback; boot_handoff reject; handler DEMO fallback; updated 57.68/69 tests for the async signature
+- [x] Backend green (parent re-verified): black/isort/flake8 0; `mypy src/` 0/328; `run_all.py` 10/10 (`check_llm_sdk_leak` 0); 54 targeted + full unit 1456 pass
 
 ---
 

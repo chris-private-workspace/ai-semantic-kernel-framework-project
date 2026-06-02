@@ -17,7 +17,10 @@ Created: 2026-05-10 (Sprint 57.7 Day 3 Tier 2)
 Last Modified: 2026-05-10
 """
 
+from infrastructure.db.repositories.agent_catalog_repository import (
+    AgentCatalogRepository,
+)
 from infrastructure.db.repositories.session_repository import SessionRepository
 from infrastructure.db.repositories.tool_call_repository import ToolCallRepository
 
-__all__ = ["SessionRepository", "ToolCallRepository"]
+__all__ = ["AgentCatalogRepository", "SessionRepository", "ToolCallRepository"]

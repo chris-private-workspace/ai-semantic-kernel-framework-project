@@ -805,6 +805,49 @@ CREATE TABLE subagent_messages (
 );
 ```
 
+### `agent_catalog`（Sprint 57.70 — per-tenant AgentSpec definitions）
+> 每租戶的 AgentSpec 定義目錄：Cat 11 Subagent Registry 與 HANDOFF persona 解析的持久後盾。
+> 取代 Sprint 57.68 的硬編碼 3-entry persona stand-in（`persona_registry.py`）。
+> 欄位對齊 mockup AgentSpec（`reference/design-mockups/page-agents.jsx`）。
+> Multi-tenant 鐵律：`TenantScopedMixin` + RLS（2 policy + FORCE，mirror `0019`）；
+> `UNIQUE(tenant_id, key)` 使 role key 每租戶唯一。budget/tools/allowed_modes 已 STORED（JSONB），
+> 但尚未在 loop 中 enforce（Sprint 57.70 §9 — 延後）。
+
+```sql
+CREATE TABLE agent_catalog (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,  -- TenantScopedMixin
+
+    key VARCHAR(64) NOT NULL,                  -- role / immutable id (e.g. "researcher")
+    name VARCHAR(128) NOT NULL,
+    model VARCHAR(128),                        -- nullable
+    system_prompt TEXT NOT NULL,
+    allowed_modes JSONB NOT NULL DEFAULT '[]',  -- subset of fork/as_tool/teammate/handoff
+    status VARCHAR(32) NOT NULL DEFAULT 'live',  -- live / staging
+    metadata JSONB NOT NULL DEFAULT '{}',       -- budget{max_tokens,duration,concurrent,depth} + tools[]
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT uq_agent_catalog_tenant_key UNIQUE (tenant_id, key)
+);
+
+CREATE INDEX idx_agent_catalog_tenant ON agent_catalog(tenant_id);
+
+-- RLS（2 policy + FORCE；check_rls_policies lint）
+ALTER TABLE agent_catalog ENABLE ROW LEVEL SECURITY;
+ALTER TABLE agent_catalog FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_agent_catalog ON agent_catalog
+    USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
+CREATE POLICY tenant_insert_agent_catalog ON agent_catalog
+    FOR INSERT WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+```
+
+> Alembic `0023_agent_catalog` 建表 + RLS + 為**既有**租戶 materialize 3 個 default agents
+> （researcher/reviewer/planner）；新/空租戶在 runtime 由 `persona_registry.py:DEFAULT_AGENTS`
+> 硬編碼 fallback 覆蓋（無 read-path lazy-write）。
+
 ---
 
 ## Group 10: Workers & Queue

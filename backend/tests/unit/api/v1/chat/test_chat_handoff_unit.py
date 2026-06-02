@@ -20,7 +20,7 @@ Description:
     closed event loop (Risk Class C).
 
 Created: 2026-06-02 (Sprint 57.68 A-3b Stage 2)
-Last Modified: 2026-06-02 (Sprint 57.69 A-3b — add carried_context persona-append cases)
+Last Modified: 2026-06-02 (Sprint 57.70 Stage-1a — stub AgentCatalogRepository for resolve_persona)
 """
 
 from __future__ import annotations
@@ -45,7 +45,15 @@ class _FakeSessionRow:
 
 
 def _patch_repo(monkeypatch: pytest.MonkeyPatch, *, returns: _FakeSessionRow | None) -> None:
-    """Patch the SessionRepository symbol resolve_session_persona imports."""
+    """Patch the SessionRepository + AgentCatalogRepository symbols resolution imports.
+
+    Sprint 57.70: resolve_session_persona resolves the role via the async
+    per-tenant resolve_persona, which constructs AgentCatalogRepository(db).
+    Stub it to return no catalog row so resolution falls back to the hardcoded
+    DEFAULT_AGENTS — keeping this unit file DB-connection-free + deterministic
+    (no reliance on the fail-safe exception path).
+    """
+    import infrastructure.db.repositories.agent_catalog_repository as catalog_mod
     import infrastructure.db.repositories.session_repository as repo_mod
 
     class _FakeRepo:
@@ -55,7 +63,15 @@ def _patch_repo(monkeypatch: pytest.MonkeyPatch, *, returns: _FakeSessionRow | N
         async def get_session(self, *, session_id: UUID, tenant_id: UUID) -> Any:
             return returns
 
+    class _FakeCatalogRepo:
+        def __init__(self, db: Any) -> None:
+            self._db = db
+
+        async def get_by_key(self, *, tenant_id: UUID, key: str) -> Any:
+            return None  # no per-tenant override → DEFAULT_AGENTS fallback
+
     monkeypatch.setattr(repo_mod, "SessionRepository", _FakeRepo)
+    monkeypatch.setattr(catalog_mod, "AgentCatalogRepository", _FakeCatalogRepo)
 
 
 @pytest.mark.asyncio

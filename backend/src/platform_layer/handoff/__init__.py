@@ -16,7 +16,8 @@ from platform_layer.handoff.context_carry import (
     render_carried_context_block,
 )
 from platform_layer.handoff.persona_registry import (
-    PERSONA_REGISTRY,
+    DEFAULT_AGENTS,
+    resolve_default_persona,
     resolve_persona,
 )
 from platform_layer.handoff.service import (
@@ -31,8 +32,9 @@ __all__ = [
     "cap_and_serialize",
     "render_carried_context_block",
     # persona_registry
-    "PERSONA_REGISTRY",
+    "DEFAULT_AGENTS",
     "resolve_persona",
+    "resolve_default_persona",
     # service
     "HandoffError",
     "HandoffResult",

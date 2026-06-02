@@ -35,6 +35,7 @@ Created: 2026-06-02 (Sprint 57.68 A-3b)
 Last Modified: 2026-06-02
 
 Modification History (newest-first):
+    - 2026-06-02: Sprint 57.70 Stage-1a — await async per-tenant resolve_persona
     - 2026-06-02: Sprint 57.69 A-3b — boot_handoff carries parent_context into child meta_data
     - 2026-06-02: Initial creation (Sprint 57.68 A-3b) — atomic handoff session-boot
 
@@ -128,7 +129,9 @@ class HandoffService:
                 does not exist in this tenant (foreign / missing parent).
         """
         # 1. Resolve persona FIRST — reject unknown target before any write.
-        persona = resolve_persona(target_agent)
+        #    Per-tenant DB catalog → hardcoded defaults → None (Sprint 57.70).
+        #    Resolved BEFORE the transaction (db + tenant_id are in scope).
+        persona = await resolve_persona(db, tenant_id, target_agent)
         if persona is None:
             raise HandoffError(f"unknown handoff target_agent: {target_agent!r}")
 

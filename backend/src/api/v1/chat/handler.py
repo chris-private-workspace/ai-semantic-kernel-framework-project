@@ -27,9 +27,10 @@ Key Components:
     - build_handler(mode: ChatMode, message: str) -> AgentLoopImpl  (dispatcher)
 
 Created: 2026-04-30 (Sprint 50.2 Day 1.4)
-Last Modified: 2026-06-01
+Last Modified: 2026-06-02
 
 Modification History (newest-first):
+    - 2026-06-02: Sprint 57.70 Stage-1a — await async per-tenant resolve_persona
     - 2026-06-02: Sprint 57.69 A-3b — append carried_context block to resolved persona (fail-open)
     - 2026-06-02: Sprint 57.68 A-3b — per-session persona (agent_role) resolution for HANDOFF child
     - 2026-06-01: Sprint 57.65 — share executor's MemoryRetrieval into prompt builder (A-1)
@@ -402,7 +403,9 @@ async def resolve_session_persona(
         agent_role = meta.get("agent_role")
         if not agent_role:
             return DEMO_SYSTEM_PROMPT
-        persona = resolve_persona(str(agent_role))
+        # Sprint 57.70: per-tenant DB catalog → hardcoded defaults → None
+        # (async, tenant-scoped). db + tenant_id are non-None here (guarded above).
+        persona = await resolve_persona(db, tenant_id, str(agent_role))
         prompt = persona if persona is not None else DEMO_SYSTEM_PROMPT
 
         # Append the carried parent conversation (if any) to the persona prompt.
