@@ -675,6 +675,15 @@ Phase 49.1 V2 foundation skeleton 起初按 paper flat-layer 結構建立(`platf
 
 This Sprint 57.6 closeout adopts (b) by adding this Naming Drift Note。Future sprint cleanup may revise §Architecture Diagram inline to match reality(low priority,not blocking)。
 
+### SpanCategory: by-category enum vs by-span-type granularity (Sprint 57.71 — A-4 loop tracer)
+
+The `Tracer` `SpanCategory` enum (`agent_harness/_contracts/observability.py`) is **by-category** (13 values: ORCHESTRATOR / TOOLS / MEMORY / CONTEXT_MGMT / PROMPT_BUILDER / OUTPUT_PARSER / STATE_MGMT / ERROR_HANDLING / GUARDRAILS / VERIFICATION / SUBAGENT / OBSERVABILITY / HITL), but the Cat 12 spec (`01.md §範疇12`) intended a **by-span-type** set (LOOP / TURN / LLM_CALL / TOOL_EXEC …). Sprint 57.71 (A-4 loop tracer) opened the loop-internal span tree and resolved this drift.
+
+**Decision: KEEP the by-category enum unchanged + express span-type granularity via span name + `attributes["span_type"]`.**
+- **Rationale**: the by-category enum is load-bearing (used at ~8 sites + the `observability/metrics.py` name→category map); renaming to by-span-type = high blast radius, no upside. Span name was already the granularity convention (`tool.{name}`, `output_parser.parse`).
+- **Implementation**: each loop span carries `attributes["span_type"]` (LOOP / TURN / LLM_CALL / TOOL_EXEC / PROMPT_BUILD / COMPACTION) + the closest existing `SpanCategory` (TURN→ORCHESTRATOR, TOOL_EXEC→TOOLS, PROMPT_BUILD→PROMPT_BUILDER, COMPACTION→CONTEXT_MGMT). `observability/helpers.category_span` extended with optional `attributes` / `span_type` (additive). Enum untouched.
+- **Rejected**: by-span-type enum rename (blast radius — `metrics.py` map + 8 sites); hybrid dual-enum (two semantics → confusion).
+
 ---
 
 ## 下一步

@@ -20,15 +20,22 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Any
 
 import pytest
 
-from agent_harness._contracts import SpanCategory
+from agent_harness._contracts import SpanCategory, TraceContext
 from agent_harness.observability import Tracer, category_span
 
 
 class _RecordingTracer(Tracer):
-    """Test tracer recording every span name + category (mirrors verification test pattern)."""
+    """Test tracer recording every span name + category (mirrors verification test pattern).
+
+    Sprint 57.71: start_span now matches the full Tracer ABC signature
+    (trace_context + attributes kwargs) since category_span always forwards
+    `attributes=` after the loop-span-tree extension. The recorded tuple is
+    still (name, category) — the extra kwargs are accepted but not asserted here.
+    """
 
     def __init__(self) -> None:
         self.spans: list[tuple[str, SpanCategory]] = []
@@ -36,7 +43,12 @@ class _RecordingTracer(Tracer):
 
     @asynccontextmanager
     async def start_span(  # type: ignore[override]
-        self, *, name: str, category: SpanCategory
+        self,
+        *,
+        name: str,
+        category: SpanCategory,
+        trace_context: TraceContext | None = None,
+        attributes: dict[str, Any] | None = None,
     ) -> AsyncIterator[None]:
         self.spans.append((name, category))
         yield

@@ -164,6 +164,30 @@ def test_real_handler_cat10_enabled_registers_llm_judge(
     assert isinstance(verifier, LLMJudgeVerifier)
 
 
+def test_real_handler_tracer_defaults_to_noop(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sprint 57.71 (A-4 Tier 0): without an injected tracer, the loop falls
+    back to NoOpTracer (pre-57.71 baseline — no spans exported)."""
+    from agent_harness.observability import NoOpTracer
+
+    _set_fake_azure(monkeypatch)
+    loop, _registry = build_real_llm_handler()
+    assert isinstance(loop._tracer, NoOpTracer)  # type: ignore[attr-defined]
+
+
+def test_real_handler_injects_real_tracer(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sprint 57.71 (A-4 Tier 0): when the router threads its real OTelTracer in,
+    the loop runs on THAT tracer (not NoOp), so the root + per-turn span tree is
+    real. Guards against the Cat 12 Potemkin (AP-4): a NoOp loop emits no
+    reconstructable trace tree even though the root span code exists."""
+    from agent_harness.observability import NoOpTracer, OTelTracer
+
+    _set_fake_azure(monkeypatch)
+    real_tracer = OTelTracer()
+    loop, _registry = build_real_llm_handler(tracer=real_tracer)
+    assert loop._tracer is real_tracer  # type: ignore[attr-defined]
+    assert not isinstance(loop._tracer, NoOpTracer)  # type: ignore[attr-defined]
+
+
 # ============================================================
 # Group B — Cat 7 real DB persistence + tenant isolation
 # ============================================================
