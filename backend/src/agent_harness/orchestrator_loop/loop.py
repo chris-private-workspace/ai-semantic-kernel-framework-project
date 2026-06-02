@@ -45,6 +45,7 @@ Created: 2026-04-30 (Sprint 50.1 Day 2.2)
 Last Modified: 2026-06-02
 
 Modification History (newest-first):
+    - 2026-06-02: Sprint 57.71 — add PROMPT_BUILD + COMPACTION spans (A-4 Tier 1 Stage 2)
     - 2026-06-02: Sprint 57.71 — root span as-child + TURN/LLM_CALL/TOOL_EXEC spans (A-4 Tier 1)
     - 2026-06-02: Sprint 57.69 A-3b — HANDOFF branch carries handoff_context (in-memory msgs)
     - 2026-06-02: Sprint 57.68 A-3b — HANDOFF branch yields stop_reason=handoff + target/reason
@@ -862,9 +863,26 @@ class AgentLoopImpl(AgentLoop):
                             created_by_category="orchestrator_loop",
                         ),
                     )
-                    compaction_result = await self._compactor.compact_if_needed(
-                        compact_state, trace_context=ctx
-                    )
+                    # Sprint 57.71 (A-4 Tier 1, Stage 2): COMPACTION span brackets
+                    # the compaction check. Opened only when a compactor is injected
+                    # (gated above) — so a None-compactor turn emits no empty span.
+                    # compact_if_needed always does real work when present (token
+                    # counting + threshold eval), so the span is non-empty even on a
+                    # no-trigger turn. The compactor's own internal tracer stays NoOp
+                    # (loop is the single trace-tree owner, D8). NESTING: this check
+                    # runs structurally BEFORE the per-turn TURN span opens (a
+                    # surgical, no-control-flow-change wrap), so COMPACTION nests
+                    # under root_ctx (the pre-turn loop-level position) rather than
+                    # turn_ctx — faithfully reflecting the loop's real structure.
+                    async with self._tracer.start_span(
+                        name="agent_loop.compaction",
+                        category=SpanCategory.CONTEXT_MGMT,
+                        trace_context=root_ctx,
+                        attributes={"span_type": "COMPACTION"},
+                    ):
+                        compaction_result = await self._compactor.compact_if_needed(
+                            compact_state, trace_context=ctx
+                        )
                     if (
                         compaction_result.triggered
                         and compaction_result.compacted_state is not None
@@ -927,15 +945,34 @@ class AgentLoopImpl(AgentLoop):
                             ),
                         )
                         t0 = time.perf_counter()
-                        artifact = await self._prompt_builder.build(
-                            state=build_state,
-                            tenant_id=self._tenant_id or session_id,  # 53.1: real tenant when set
-                            # 57.65 (A-1 Tier2): scope the user-layer memory to the
-                            # authenticated user from the request TraceContext.
-                            user_id=ctx.user_id,
-                            tools=self._tool_registry.list(),
-                            trace_context=ctx,
-                        )
+                        # Sprint 57.71 (A-4 Tier 1, Stage 2): PROMPT_BUILD span
+                        # brackets the Cat 5 build() call, nested under turn_ctx.
+                        # Opened only inside the `prompt_builder is not None` branch
+                        # → the naked-fallback turn (no builder) emits no empty span.
+                        # NOTE: any memory-layer injection happens INSIDE build()
+                        # (the prompt builder's 5-scope render), so a standalone
+                        # loop-level MEMORY_OP span has no clean call boundary here
+                        # (memory tools go through tool_executor.execute → already
+                        # covered by TOOL_EXEC). MEMORY_OP is therefore N/A at the
+                        # loop level this sprint — deferred (plan §9 carryover).
+                        # The builder's own internal tracer stays NoOp (loop is the
+                        # single trace-tree owner, D8).
+                        async with self._tracer.start_span(
+                            name="agent_loop.prompt_build",
+                            category=SpanCategory.PROMPT_BUILDER,
+                            trace_context=turn_ctx,
+                            attributes={"span_type": "PROMPT_BUILD"},
+                        ):
+                            artifact = await self._prompt_builder.build(
+                                state=build_state,
+                                tenant_id=self._tenant_id
+                                or session_id,  # 53.1: real tenant when set
+                                # 57.65 (A-1 Tier2): scope the user-layer memory to the
+                                # authenticated user from the request TraceContext.
+                                user_id=ctx.user_id,
+                                tools=self._tool_registry.list(),
+                                trace_context=ctx,
+                            )
                         duration_ms = (time.perf_counter() - t0) * 1000.0
                         chat_messages = list(artifact.messages)
                         cache_breakpoints = (
