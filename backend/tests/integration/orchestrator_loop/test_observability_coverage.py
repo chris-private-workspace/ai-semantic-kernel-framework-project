@@ -131,10 +131,25 @@ async def test_e2e_emits_per_turn_loop_and_tool_spans() -> None:
     # 1. Loop owns its run() span exactly once.
     assert ("agent_loop.run", "orchestrator_loop") in span_keys
 
-    # 2. Tool execute span emitted per tool call (exactly 1 here).
+    # 1b. Sprint 57.71 (A-4 Tier 1): the loop now opens its own per-turn span
+    # tree — a TURN span + an LLM_CALL span per turn (both ORCHESTRATOR-category,
+    # distinguished by name + attributes["span_type"]). 2 turns → 2 TURN +
+    # 2 LLM_CALL spans.
+    assert ("agent_loop.turn", "orchestrator_loop") in span_keys
+    assert ("agent_loop.llm_call", "orchestrator_loop") in span_keys
+    assert len([k for k in span_keys if k == ("agent_loop.turn", "orchestrator_loop")]) == 2
+    assert len([k for k in span_keys if k == ("agent_loop.llm_call", "orchestrator_loop")]) == 2
+
+    # 2. Tool spans (category="tools") now come from TWO owners (Sprint 57.71):
+    #    - the executor's internal `tool.echo_tool` span (Cat 2; pre-existing)
+    #    - the loop's own `agent_loop.tool.echo_tool` TOOL_EXEC span (Cat 1 wrap)
+    # exactly 1 tool call here → 1 of each (2 total tools-category spans). The
+    # loop is the trace-tree owner; the executor span stays NoOp on the real
+    # chat path (here both share the RecordingTracer for coverage assertions).
     assert ("tool.echo_tool", "tools") in span_keys
+    assert ("agent_loop.tool.echo_tool", "tools") in span_keys
     tool_spans = [k for k in span_keys if k[1] == "tools"]
-    assert len(tool_spans) == 1
+    assert len(tool_spans) == 2
 
     # 3. Output parser span emitted per turn (2 turns → 2 parse spans).
     parser_spans = [k for k in span_keys if k[1] == "output_parser"]

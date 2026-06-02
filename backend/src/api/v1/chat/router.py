@@ -35,9 +35,10 @@ Description:
     actual loop run lives in the worker.
 
 Created: 2026-04-30 (Sprint 50.2 Day 1.5)
-Last Modified: 2026-06-01
+Last Modified: 2026-06-02
 
 Modification History (newest-first):
+    - 2026-06-02: Sprint 57.71 — thread real tracer into build_handler (A-4 Tier 0)
     - 2026-06-02: Sprint 57.69 A-3b — pass parent_context to boot_handoff (carry parent convo)
     - 2026-06-02: Sprint 57.68 A-3b — post-loop HANDOFF hook: boot child session + emit AgentHandoff
     - 2026-06-01: Sprint 57.64 Day 2 — thread user_id into build_handler + TraceContext (Cat 3)
@@ -225,6 +226,11 @@ async def chat(
             tenant_id=current_tenant,
             user_id=current_user,
             system_prompt=system_prompt,
+            # Sprint 57.71 (A-4 Tier 0): thread the already-resolved real
+            # OTelTracer (Depends(get_tracer)) into the loop so its root +
+            # per-turn span tree run on a real tracer (was NoOp on the chat
+            # path). Reuses the existing dependency — no new Depends.
+            tracer=tracer,
         )
     except (RuntimeError, ValueError) as exc:
         # Misconfiguration (env vars / unsupported mode) → 503.

@@ -30,6 +30,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.4)
 Last Modified: 2026-06-02
 
 Modification History (newest-first):
+    - 2026-06-02: Sprint 57.71 — thread tracer param through build_handler to loop (A-4 Tier 0)
     - 2026-06-02: Sprint 57.70 Stage-1a — await async per-tenant resolve_persona
     - 2026-06-02: Sprint 57.69 A-3b — append carried_context block to resolved persona (fail-open)
     - 2026-06-02: Sprint 57.68 A-3b — per-session persona (agent_role) resolution for HANDOFF child
@@ -88,6 +89,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from agent_harness.hitl import HITLManager
+    from agent_harness.observability import Tracer
     from agent_harness.verification import VerifierRegistry
     from business_domain._service_factory import BusinessServiceFactory
     from platform_layer.governance.service_factory import ServiceFactory
@@ -171,6 +173,7 @@ def build_real_llm_handler(
     tenant_id: "UUID | None" = None,
     user_id: "UUID | None" = None,
     system_prompt: str = DEMO_SYSTEM_PROMPT,
+    tracer: "Tracer | None" = None,
 ) -> tuple[AgentLoopImpl, "VerifierRegistry | None"]:
     """Wire AgentLoopImpl with AzureOpenAIAdapter. Requires env vars.
 
@@ -270,6 +273,12 @@ def build_real_llm_handler(
         output_parser=parser,
         tool_executor=executor,
         tool_registry=registry,
+        # Sprint 57.71 (A-4 Tier 0): inject the router's real OTelTracer so the
+        # loop's root span + per-turn span tree run on a real tracer instead of
+        # the NoOpTracer fallback. None preserves the pre-57.71 baseline (NoOp).
+        # The loop is the single trace-tree owner; the adapter / executor /
+        # parser internal tracers stay NoOp (not wired) → no double spans (D8).
+        tracer=tracer,
         # Sprint 57.68 A-3b (US-3): a HANDOFF-booted child session runs as its
         # target persona, NOT the demo persona (= Potemkin). The router resolves
         # the session's meta_data["agent_role"] → persona prompt and passes it
@@ -314,6 +323,7 @@ def build_handler(
     tenant_id: "UUID | None" = None,
     user_id: "UUID | None" = None,
     system_prompt: str = DEMO_SYSTEM_PROMPT,
+    tracer: "Tracer | None" = None,
 ) -> tuple[AgentLoopImpl, "VerifierRegistry | None"]:
     """Dispatch to the per-mode builder. Single entry-point for the router.
 
@@ -349,6 +359,9 @@ def build_handler(
             tenant_id=tenant_id,
             user_id=user_id,
             system_prompt=system_prompt,
+            # Sprint 57.71 (A-4 Tier 0): thread the router's real tracer through
+            # to the loop. echo_demo path is unaffected (no tracer arg).
+            tracer=tracer,
         )
     raise ValueError(f"Unsupported mode: {mode!r}")
 

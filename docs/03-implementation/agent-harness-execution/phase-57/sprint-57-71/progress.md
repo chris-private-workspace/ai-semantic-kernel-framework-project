@@ -31,3 +31,15 @@ The A-4 analysis (`cat12-loop-tracer-analysis-20260531.md`) was written at Sprin
 ### Decisions
 - Scope = full span set; SpanCategory = keep enum + span-type via name/attributes (zero blast radius); loop = single trace-tree owner (adapter/executor/parser tracers stay NoOp — avoids D8 double-instrumentation); span token/cost = attribute only (no ledger double-write); Tier 2 (Jaeger) + SpanStarted/SpanEnded→SSE = deferred (Area-C / A-5).
 - **Agent-delegated: yes** — Stage-1 (Tier 0 inject + nesting fix + TURN/LLM_CALL/TOOL_EXEC); Stage-2 (PROMPT_BUILD/COMPACTION/VERIFICATION/MEMORY_OP + RecordingTracer tree tests). Parent independently re-verifies each stage (reads loop.py diffs for span lifecycle + ctx threading correctness).
+
+---
+
+## Day 1 — 2026-06-02 — Stage-1: Tier 0 + nesting fix + core spans (agent-delegated + parent re-verify)
+
+`code-implementer` agent built Stage-1; parent independently re-verified (read the span-boundary diffs + ran gates).
+
+- **Changes**: `handler.py` (`build_real_llm_handler` + `build_handler` gain `tracer` param → `AgentLoopImpl(tracer=)`); `router.py:226` (thread existing `Depends(get_tracer)` into `build_handler`); `loop.py` (root span bound `as root_ctx` + `span_type=LOOP` at :796; TURN span at :894 `trace_context=root_ctx` `as turn_ctx`, opened after pre-LLM terminators; LLM_CALL span at :984 `trace_context=turn_ctx` + token attrs post-response; TOOL_EXEC span at :1252 `trace_context=turn_ctx`); `helpers.py:44` (`category_span` += optional `attributes`/`span_type`).
+- **Re-indent**: the TURN span wraps the per-turn body → ~472-line +4 re-indent (888→1359), done programmatically + `py_compile`-verified. Parent confirmed the span boundaries (LOOP→while→TURN→{PromptBuild,LLM_CALL,TOOL_EXEC}) by reading :785-988 / :1222-1266 / :1340-1374 — nesting correct; control flow intact (1346 integration+unit tests pass).
+- **Tests**: 2 NEW Tier-0 injection tests (`test_chat_category_activation_wiring.py`); `test_observability_coverage.py` membership assertions EXTENDED (agent_loop.turn×2 / llm_call×2 / agent_loop.tool.echo_tool); 2 unit test doubles' `start_span` signatures aligned to the ABC (`category_span` now forwards `attributes=`) — assertions unchanged, none weakened (parent verified all 4 test diffs).
+- **Known limitation (carryover)**: token attrs written post-response into a shared `llm_attrs` dict → RecordingTracer (by-reference) sees them, but OTelTracer copies attrs at span-open so per-token OTel export awaits a Tracer-ABC set-attribute API (Tier-2-adjacent). `cost_usd` intentionally deferred (no adapter-pricing coupling; span attrs never feed the cost ledger).
+- **Parent re-verify gates**: black/isort/flake8 0; `mypy src/` 0/329; `run_all.py` 10/10 (`check_llm_sdk_leak` 0); pytest broad sweep (unit/agent_harness + unit/business_domain + integration/orchestrator_loop + integration/api) 1346 passed / 1 skipped (pre-existing). Verdict: **PASS**. Commit `<stage-1>`.

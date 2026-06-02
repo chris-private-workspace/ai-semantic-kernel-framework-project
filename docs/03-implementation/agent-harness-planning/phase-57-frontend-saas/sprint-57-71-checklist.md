@@ -19,31 +19,30 @@
 - [x] Catalogued drift D1-D9 in plan §0; **go/no-go = GO** (scope unchanged across 57.64-70; analysis Tier 0+1 still valid; <20% drift — only line-ref corrections + D8 single-owner design decision)
 
 ### 0.2 Branch + decisions
-- [ ] Branch `feature/sprint-57-71-loop-tracer` from `48e19846`
-- [ ] plan+checklist commit; Day-0 progress commit
-- [ ] Decisions: scope = **full span set** (TURN/LLM_CALL/TOOL_EXEC + PROMPT_BUILD/COMPACTION/VERIFICATION/MEMORY_OP); SpanCategory = **keep by-category enum + span-type via name/attributes** (zero blast radius); loop = **single trace-tree owner** (adapter/executor/parser tracers stay NoOp — avoids D8 double-instrumentation); span cost = **attribute only** (no ledger double-write); Tier 2 (Jaeger) + SpanStarted/SpanEnded→SSE = **deferred** (Area-C / A-5); **Agent-delegated: yes** (Stage-1 Tier0+core spans / Stage-2 extra spans+tests; parent re-verify each)
+- [x] Branch `feature/sprint-57-71-loop-tracer` from `48e19846`
+- [x] plan+checklist commit; Day-0 progress commit (`ced0616a`)
+- [x] Decisions: scope = **full span set** (TURN/LLM_CALL/TOOL_EXEC + PROMPT_BUILD/COMPACTION/VERIFICATION/MEMORY_OP); SpanCategory = **keep by-category enum + span-type via name/attributes** (zero blast radius); loop = **single trace-tree owner** (adapter/executor/parser tracers stay NoOp — avoids D8 double-instrumentation); span cost = **attribute only** (no ledger double-write); Tier 2 (Jaeger) + SpanStarted/SpanEnded→SSE = **deferred** (Area-C / A-5); **Agent-delegated: yes** (Stage-1 Tier0+core spans / Stage-2 extra spans+tests; parent re-verify each)
 
 ---
 
 ## Day 1 — Stage 1: Tier 0 injection + nesting fix + core spans (TURN/LLM_CALL/TOOL_EXEC)
 
 ### 1.1 Tier 0 — real tracer injection (US-1)
-- [ ] `handler.py:164` — add `tracer: Tracer | None = None` to `build_real_llm_handler`; pass `tracer=tracer` into `AgentLoopImpl(...)` (`:268-292`) (mirror prompt_builder/reducer dep pattern `:255-256`/`:283-285`)
-- [ ] `router.py` — thread the existing `get_tracer()` real tracer (`:144`) into the `build_real_llm_handler(...)` call (no new `Depends`; confirm any `build_handler` indirection)
-- [ ] Integration test: build via `build_real_llm_handler(... tracer=real)` → assert `loop._tracer` is NOT `NoOpTracer`; a run opens a real `agent_loop.run` root span
-  - Verify: `pytest backend/tests/integration -k tracer_injection`
+- [x] `handler.py:173` — added `tracer: Tracer | None = None` to `build_real_llm_handler`; passed `tracer=tracer` into `AgentLoopImpl(...)`; also threaded through `build_handler` dispatcher (`:323/:359`) (TYPE_CHECKING `Tracer` import)
+- [x] `router.py:226` — threaded the existing `Depends(get_tracer)` real tracer into the `build_handler(...)` call (no new `Depends`)
+- [x] Integration test: `test_real_handler_injects_real_tracer` + `test_real_handler_tracer_defaults_to_noop` (`test_chat_category_activation_wiring.py`) → assert `loop._tracer is real OTelTracer` / NoOp default
+  - Verify: `pytest backend/tests/integration/api/test_chat_category_activation_wiring.py -k tracer` ✅
 
 ### 1.2 Nesting fix + helper extend (US-2)
-- [ ] `loop.py:788-792` — bind root span `as root_ctx` (capture yield); thread `root_ctx` (not outer `ctx`) downward
-- [ ] `helpers.py:40` — extend `category_span` with optional `attributes: dict | None = None` + `span_type: str | None = None` (folds span_type into attributes); grep existing `category_span(` callers → confirm unaffected
-  - Verify: `grep -rn "category_span(" backend/src`
+- [x] `loop.py:796-801` — bound root span `as root_ctx` + `attributes={"span_type":"LOOP"}`; thread `root_ctx` → TURN spans (D1 nesting fix)
+- [x] `helpers.py:44` — extended `category_span` with optional `attributes` + `span_type` (additive default None; folds span_type into attributes); grep confirmed existing 3-arg callers unaffected (verification/business_domain)
 
 ### 1.3 Core operation spans — TURN / LLM_CALL / TOOL_EXEC (US-2/US-3)
-- [ ] TURN span wrapping the per-turn `while` body — `name="agent_loop.turn"`, cat=ORCHESTRATOR, attrs `{span_type: TURN, turn: n}`, `as turn_ctx`; thread `turn_ctx` into the turn's operations
-- [ ] LLM_CALL span around `chat_client.chat(...)` (`loop.py:950`) — `name="agent_loop.llm_call"`, cat=ORCHESTRATOR, attrs `{span_type: LLM_CALL, model, prompt_tokens, completion_tokens, cached_input_tokens, total_tokens, cost_usd}` (tokens from `ChatResponse.usage`; cost via adapter pricing — **span-attribute ONLY, no ledger write**)
-- [ ] TOOL_EXEC span around each `tool_executor.execute(...)` (`loop.py:1183`) — `name=f"agent_loop.tool.{name}"`, cat=TOOLS, attrs `{span_type: TOOL_EXEC, tool, latency_ms}` (latency from span timing); parallel tools = sibling spans
-- [ ] All via `async with` → `end()` guaranteed; ERROR status + `record_exception` on raised exception (confirm ABC error API)
-- [ ] Backend green (parent re-verify): black/isort/flake8 0; `mypy src/` 0; `run_all.py` 10/10 (SDK leak 0); targeted observability tests pass
+- [x] TURN span (`loop.py:894-899`) — `name="agent_loop.turn"`, cat=ORCHESTRATOR, `trace_context=root_ctx`, attrs `{span_type: TURN, turn}`, `as turn_ctx`; opened AFTER pre-LLM terminators (no empty TURN on MAX_TURNS exit); wraps the genuine per-turn body
+- [x] LLM_CALL span (`loop.py:984`) — `name="agent_loop.llm_call"`, cat=ORCHESTRATOR, `trace_context=turn_ctx`, attrs `{span_type: LLM_CALL, model}` + token attrs written post-response into shared `llm_attrs` dict (🚧 by-reference — RecordingTracer sees tokens; OTel per-token export awaits Tier 2 set-attribute API; **cost_usd deferred** to avoid adapter-pricing coupling + ledger double-count)
+- [x] TOOL_EXEC span (`loop.py:1252-1257`) — `name=f"agent_loop.tool.{tc.name}"`, cat=TOOLS, `trace_context=turn_ctx`, attrs `{span_type: TOOL_EXEC, tool}` (latency from span timing); parallel tools = sibling spans
+- [x] All via `async with` → `end()` guaranteed; ERROR status + `record_exception` fire automatically via the tracer's `_span_cm` (`tracer.py:192-195`) when an exception propagates
+- [x] Backend green (parent re-verified): black/isort/flake8 0; `mypy src/` 0/329; `run_all.py` 10/10 (SDK leak 0); pytest broad sweep 1346 passed / 1 skipped (pre-existing)
 
 ---
 

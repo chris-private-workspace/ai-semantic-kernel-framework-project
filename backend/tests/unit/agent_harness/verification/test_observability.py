@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import cast
+from typing import Any, cast
 
 import pytest
 
@@ -28,6 +28,7 @@ from agent_harness._contracts import (
     SpanCategory,
     StopReason,
     TokenUsage,
+    TraceContext,
 )
 from agent_harness.observability import Tracer
 from agent_harness.verification import LLMJudgeVerifier, RulesBasedVerifier
@@ -50,8 +51,15 @@ class _RecordingTracer(Tracer):
 
     @asynccontextmanager
     async def start_span(  # type: ignore[override]
-        self, *, name: str, category: SpanCategory
+        self,
+        *,
+        name: str,
+        category: SpanCategory,
+        trace_context: TraceContext | None = None,
+        attributes: dict[str, Any] | None = None,
     ) -> AsyncIterator[None]:
+        # Sprint 57.71: match the full Tracer ABC signature (category_span now
+        # always forwards attributes=). Recorded tuple still (name, category).
         self.spans.append((name, category))
         yield
 
