@@ -65,6 +65,13 @@ jobs:
       - name: Lint 6 — AP-8 (PromptBuilder usage; no bare messages list)
         run: python scripts/lint/check_promptbuilder_usage.py --root backend/src
 
+      # Sprint 57.67 (A-5b): event-schema codegen parity. Fails if the committed
+      # generated FE artifacts (events.json / loopEvents.generated.ts) drift from
+      # the single-source registry backend/src/api/v1/chat/event_wire_schema.py
+      # (i.e. someone changed the registry but forgot to re-run the codegen).
+      - name: Lint 7 — event schema codegen parity
+        run: python scripts/lint/check_event_schema_sync.py
+
       - name: Lint rule unit tests (PASS + FAIL fixtures)
         working-directory: backend
         run: pytest tests/unit/scripts/lint -v

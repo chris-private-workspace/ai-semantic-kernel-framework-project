@@ -1,6 +1,6 @@
 """
 File: scripts/lint/run_all.py
-Purpose: One-stop wrapper that invokes all 7 V2 architecture lint scripts with
+Purpose: One-stop wrapper that invokes all V2 architecture lint scripts with
     the correct CLI arguments + emits a per-script timing summary + final
     aggregated pass/fail count. Replaces the separate manual invocations
     that historically caused silent-skip false-greens when the `--root` arg
@@ -9,6 +9,7 @@ Category: Cross-cutting / DevOps tooling
 Scope: Sprint 53.7 US-1 (closes AD-Lint-1) / Sprint 55.3 (adds 7th lint via AD-Cat7-1)
 
 Modification History:
+    - 2026-06-02: Sprint 57.67 — add 10th lint check_event_schema_sync (A-5b codegen parity)
     - 2026-05-08: Sprint 57.6 Day 3 — add 9th lint check_ap4_frontend_placeholder (closes AD-Reality-5)
     - 2026-05-06: Sprint 56.1 Day 4 — add 8th lint check_rls_policies (closes US-5)
     - 2026-05-04: Sprint 55.3 — add 7th lint check_sole_mutator (closes AD-Cat7-1)
@@ -33,12 +34,12 @@ Description:
     This wrapper hardcodes the correct args per-script.
 
 Usage:
-    python scripts/lint/run_all.py            # exit 0 if all 7 green
+    python scripts/lint/run_all.py            # exit 0 if all lints green
     python scripts/lint/run_all.py --verbose  # also print per-lint stdout
 
 Exit codes:
-    0 = all 7 lints green
-    N = N of 7 lints failed (1..7); per-script status printed to stdout
+    0 = all lints green
+    N = N lints failed; per-script status printed to stdout
 
 Created: 2026-05-04 (Sprint 53.7 Day 1)
 
@@ -78,6 +79,9 @@ LINTS: list[tuple[str, list[str]]] = [
     # are EXPECTED non-zero findings until Phase 57.7-57.9 ship per
     # 16-frontend-design.md §V2 Ship Timeline (closes AD-Reality-4-partial).
     ("check_ap4_frontend_placeholder.py", ["--root", "frontend/src/pages"]),
+    # Sprint 57.67 (A-5b): SSE event-schema codegen parity — fails if the
+    # committed FE generated artifacts drift from the wire-schema registry.
+    ("check_event_schema_sync.py", []),
 ]
 
 
@@ -99,7 +103,7 @@ def run_one(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Run all 9 V2 architecture lint scripts with correct args."
+        description="Run all V2 architecture lint scripts with correct args."
     )
     parser.add_argument(
         "--verbose",

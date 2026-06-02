@@ -613,6 +613,18 @@ type LoopEvent =
 > (`KNOWN_LOOP_EVENT_TYPES`, 18 types). 17.md §4.1 emit-ownership unchanged (these `LoopEvent`
 > subclasses already existed; this sprint only added their SSE projection).
 
+> **Sprint 57.67 (A-5b) — codegen single-source**: the FE contract above is no longer
+> hand-maintained. The 18 wire-types + their payload shapes are now declared once in
+> **`backend/src/api/v1/chat/event_wire_schema.py`** (`WIRE_SCHEMA`), from which
+> `scripts/codegen/generate_event_schemas.py` GENERATES `frontend/src/features/chat_v2/generated/`
+> `events.json` + `loopEvents.generated.ts` (the latter re-exported by `types.ts`). Two gates make
+> drift un-mergeable: a pytest parity test (`test_event_wire_schema_parity.py` — every `sse.py`
+> serializer branch's wire-type + `data` keys must match the registry) and the `check_event_schema_sync`
+> lint (10th V2 lint in `run_all.py` + `lint.yml` `v2-lints`, a required check — regenerates + diffs).
+> `sse.py` keeps its hand-written branches (locked by the parity test, not rewritten). To add/change a
+> wire-type: edit the registry → re-run the codegen → commit. The aspirational catalog block (top) is
+> retained for historical context; the registry is the authoritative wire contract.
+
 ---
 
 ## §Naming Drift Note (Sprint 57.6+ — closes AD-Reality-6)

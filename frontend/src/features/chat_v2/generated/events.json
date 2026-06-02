@@ -1,0 +1,115 @@
+{
+  "wire_types": [
+    "approval_received",
+    "approval_requested",
+    "context_compacted",
+    "guardrail_triggered",
+    "llm_request",
+    "llm_response",
+    "loop_end",
+    "loop_start",
+    "prompt_built",
+    "state_checkpointed",
+    "subagent_completed",
+    "subagent_spawned",
+    "tool_call_request",
+    "tool_call_result",
+    "tripwire_triggered",
+    "turn_start",
+    "verification_failed",
+    "verification_passed"
+  ],
+  "events": {
+    "loop_start": {
+      "session_id": "string | null",
+      "request_id": "string"
+    },
+    "turn_start": {
+      "turn_num": "number"
+    },
+    "llm_request": {
+      "model": "string",
+      "tokens_in": "number"
+    },
+    "llm_response": {
+      "content": "string",
+      "tool_calls": "LLMToolCall[]",
+      "thinking": "string | null",
+      "cached_input_tokens": "number"
+    },
+    "tool_call_request": {
+      "tool_call_id": "string",
+      "tool_name": "string",
+      "args": "Record<string, unknown>"
+    },
+    "tool_call_result": {
+      "tool_call_id": "string",
+      "tool_name": "string",
+      "duration_ms": "number",
+      "result": "string",
+      "is_error": "boolean"
+    },
+    "loop_end": {
+      "stop_reason": "string",
+      "total_turns": "number",
+      "cached_input_tokens": "number",
+      "cache_hit_rate": "number"
+    },
+    "approval_requested": {
+      "approval_request_id": "string | null",
+      "risk_level": "string"
+    },
+    "approval_received": {
+      "approval_request_id": "string | null",
+      "decision": "string"
+    },
+    "guardrail_triggered": {
+      "guardrail_type": "string",
+      "action": "string",
+      "reason": "string"
+    },
+    "tripwire_triggered": {
+      "violation_type": "string",
+      "detail": "string"
+    },
+    "verification_passed": {
+      "verifier": "string",
+      "verifier_type": "\"rules_based\" | \"llm_judge\" | \"external\"",
+      "score": "number | null"
+    },
+    "verification_failed": {
+      "verifier": "string",
+      "verifier_type": "\"rules_based\" | \"llm_judge\" | \"external\"",
+      "reason": "string | null",
+      "suggested_correction": "string | null"
+    },
+    "subagent_spawned": {
+      "subagent_id": "string | null",
+      "mode": "string",
+      "parent_session_id": "string | null"
+    },
+    "subagent_completed": {
+      "subagent_id": "string | null",
+      "summary": "string",
+      "tokens_used": "number"
+    },
+    "context_compacted": {
+      "tokens_before": "number",
+      "tokens_after": "number",
+      "compaction_strategy": "string",
+      "messages_compacted": "number",
+      "duration_ms": "number"
+    },
+    "prompt_built": {
+      "messages_count": "number",
+      "estimated_input_tokens": "number",
+      "cache_breakpoints_count": "number",
+      "memory_layers_used": "string[]",
+      "position_strategy_used": "string",
+      "duration_ms": "number"
+    },
+    "state_checkpointed": {
+      "version": "number"
+    }
+  }
+}

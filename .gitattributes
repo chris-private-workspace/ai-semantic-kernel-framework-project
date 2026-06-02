@@ -1,0 +1,6 @@
+# Sprint 57.67 (A-5b): codegen-owned SSE event schema artifacts. The codegen
+# (scripts/codegen/generate_event_schemas.py) writes LF; pinning these to
+# eol=lf keeps `git diff` + the `--check` parity lint stable across
+# Windows-dev and Linux-CI (no CRLF false-positive drift).
+frontend/src/features/chat_v2/generated/*.ts text eol=lf
+frontend/src/features/chat_v2/generated/events.json text eol=lf

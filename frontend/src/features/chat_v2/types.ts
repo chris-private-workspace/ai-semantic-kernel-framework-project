@@ -25,6 +25,7 @@
  * Last Modified: 2026-06-02
  *
  * Modification History:
+ *   - 2026-06-02: Sprint 57.67 — event types now re-exported from generated/loopEvents.generated (A-5b codegen)
  *   - 2026-06-02: Sprint 57.66 — +4 diagnostic events + cache fields on llm_response/loop_end
  *   - 2026-05-17: Sprint 57.21 Day 1 — Turn/Block/Session unions; remove Message
  *   - 2026-05-10: Sprint 57.12 US-6 — Subagent{Spawned,Completed}Event + KNOWN set
@@ -40,210 +41,15 @@
  */
 
 // === LoopEvent SSE wire types ============================================
-// PRESERVE EXACTLY from Sprint 50.2-57.12 — 1:1 backend contract.
-
-export type LoopStartEvent = {
-  type: "loop_start";
-  data: { session_id: string | null; request_id: string };
-};
-
-export type TurnStartEvent = {
-  type: "turn_start";
-  data: { turn_num: number };
-};
-
-export type LLMRequestEvent = {
-  type: "llm_request";
-  data: { model: string; tokens_in: number };
-};
-
-export type LLMToolCall = {
-  id: string;
-  name: string;
-  arguments: Record<string, unknown>;
-};
-
-export type LLMResponseEvent = {
-  type: "llm_response";
-  data: {
-    content: string;
-    tool_calls: LLMToolCall[];
-    thinking: string | null;
-    // Sprint 57.66: prompt-cache observability (FIX-025 numeric wire).
-    cached_input_tokens: number;
-  };
-};
-
-export type ToolCallRequestEvent = {
-  type: "tool_call_request";
-  data: {
-    tool_call_id: string;
-    tool_name: string;
-    args: Record<string, unknown>;
-  };
-};
-
-export type ToolCallResultEvent = {
-  type: "tool_call_result";
-  data: {
-    tool_call_id: string;
-    tool_name: string;
-    duration_ms: number;
-    result: string;
-    is_error: boolean;
-  };
-};
-
-export type LoopEndEvent = {
-  type: "loop_end";
-  data: {
-    stop_reason: string;
-    total_turns: number;
-    // Sprint 57.66: prompt-cache observability (FIX-025 numeric wire).
-    cached_input_tokens: number;
-    cache_hit_rate: number;
-  };
-};
-
-export type ApprovalRequestedEvent = {
-  type: "approval_requested";
-  data: {
-    approval_request_id: string | null;
-    risk_level: string;
-  };
-};
-
-export type ApprovalReceivedEvent = {
-  type: "approval_received";
-  data: {
-    approval_request_id: string | null;
-    decision: string;
-  };
-};
-
-export type GuardrailTriggeredEvent = {
-  type: "guardrail_triggered";
-  data: {
-    guardrail_type: string;
-    action: string;
-    reason: string;
-  };
-};
-
-export type VerificationPassedEvent = {
-  type: "verification_passed";
-  data: {
-    verifier: string;
-    verifier_type: "rules_based" | "llm_judge" | "external";
-    score: number | null;
-  };
-};
-
-export type VerificationFailedEvent = {
-  type: "verification_failed";
-  data: {
-    verifier: string;
-    verifier_type: "rules_based" | "llm_judge" | "external";
-    reason: string | null;
-    suggested_correction: string | null;
-  };
-};
-
-export type SubagentSpawnedEvent = {
-  type: "subagent_spawned";
-  data: {
-    subagent_id: string | null;
-    mode: string;
-    parent_session_id: string | null;
-  };
-};
-
-export type SubagentCompletedEvent = {
-  type: "subagent_completed";
-  data: {
-    subagent_id: string | null;
-    summary: string;
-    tokens_used: number;
-  };
-};
-
-// Sprint 57.66: 4 diagnostic wire types (Cat 4/5/7/9). Recognized + typed +
-// flow through to rawEvents; NO rich UI block this sprint (mirror
-// guardrail_triggered treatment; rich Inspector render DEFERRED to A-5c).
-
-export type PromptBuiltEvent = {
-  type: "prompt_built";
-  data: {
-    messages_count: number;
-    estimated_input_tokens: number;
-    cache_breakpoints_count: number;
-    memory_layers_used: string[];
-    position_strategy_used: string;
-    duration_ms: number;
-  };
-};
-
-export type ContextCompactedEvent = {
-  type: "context_compacted";
-  data: {
-    tokens_before: number;
-    tokens_after: number;
-    compaction_strategy: string;
-    messages_compacted: number;
-    duration_ms: number;
-  };
-};
-
-export type StateCheckpointedEvent = {
-  type: "state_checkpointed";
-  data: { version: number };
-};
-
-export type TripwireTriggeredEvent = {
-  type: "tripwire_triggered";
-  data: { violation_type: string; detail: string };
-};
-
-export type LoopEvent =
-  | LoopStartEvent
-  | TurnStartEvent
-  | LLMRequestEvent
-  | LLMResponseEvent
-  | ToolCallRequestEvent
-  | ToolCallResultEvent
-  | LoopEndEvent
-  | ApprovalRequestedEvent
-  | ApprovalReceivedEvent
-  | GuardrailTriggeredEvent
-  | VerificationPassedEvent
-  | VerificationFailedEvent
-  | SubagentSpawnedEvent
-  | SubagentCompletedEvent
-  | PromptBuiltEvent
-  | ContextCompactedEvent
-  | StateCheckpointedEvent
-  | TripwireTriggeredEvent;
-
-export const KNOWN_LOOP_EVENT_TYPES = new Set<string>([
-  "loop_start",
-  "turn_start",
-  "llm_request",
-  "llm_response",
-  "tool_call_request",
-  "tool_call_result",
-  "loop_end",
-  "approval_requested",
-  "approval_received",
-  "guardrail_triggered",
-  "verification_passed",
-  "verification_failed",
-  "subagent_spawned",
-  "subagent_completed",
-  "prompt_built",
-  "context_compacted",
-  "state_checkpointed",
-  "tripwire_triggered",
-]);
+// Sprint 57.67 (A-5b): the 18 event interfaces + LLMToolCall element + the
+// LoopEvent union + KNOWN_LOOP_EVENT_TYPES are now GENERATED from the single
+// declarative registry backend/src/api/v1/chat/event_wire_schema.py (via
+// scripts/codegen/generate_event_schemas.py). Re-exported here so every
+// downstream `import { ... } from "../types"` keeps working unchanged. To add
+// or change a wire-type, edit the registry + re-run the codegen — never edit
+// the generated file or hand-write the type here. Drift is gated by
+// scripts/lint/check_event_schema_sync.py + the pytest parity test.
+export * from "./generated/loopEvents.generated";
 
 // === Sprint 57.21: Block discriminated union ==============================
 // 4 of 5 mockup block types ship Phase-1. Memory block (mockup L224-232)
