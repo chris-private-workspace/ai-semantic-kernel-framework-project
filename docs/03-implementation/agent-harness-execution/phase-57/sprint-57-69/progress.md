@@ -38,3 +38,24 @@
 ### Decisions
 - Carry source = in-memory `messages` snapshot (D1); storage = message-count-capped verbatim in `meta_data["carried_context"]` (D-DAY0-4, no migration D-DAY0-5); seed = text block in the persona system prompt (D-DAY0-3); summarize-via-Cat-4 = deferred design alternative.
 - **Agent-delegated: yes** — Stage-1 backend (events field + loop snapshot + context_carry + boot_handoff + router + handler seed + backend tests); Stage-2 frontend (pivotSession + HandoffBanner + i18n + FE tests); design note parent-authored. Parent independently re-verifies (57.64+ discipline).
+
+---
+
+## Day 1 — 2026-06-02 — Stage-1 backend (agent-delegated + parent re-verify)
+
+`code-implementer` agent implemented the 6 backend changes; parent independently re-verified (read diffs + ran gates).
+
+- **Changes**: `events.py` `LoopCompleted.handoff_context` (in-process, additive); `loop.py:1090` `handoff_context=list(messages)`; `context_carry.py` (NEW — `cap_and_serialize` last-N=20 message-count cap + `render_carried_context_block`, LLM-neutral); `service.py boot_handoff(+parent_context)` → child `meta_data["carried_context"]` when non-empty (57.68 backward-compat); `router.py:504` passes `event.handoff_context`; `handler.py:398-418 resolve_session_persona` appends the carried block to the persona prompt (D-DAY0-3, nested fail-open).
+- **Tests**: `test_context_carry.py` (10) + `test_service.py` (+2) + `test_chat_handoff_unit.py` (+3) + integration `test_chat_handoff.py` (+1: carried_context populated/capped/tenant-scoped + loop_end has no handoff_context + persona string embeds block).
+- **Parent re-verify (independent)**: `mypy src/` 0/325; `run_all.py` 10/10 (`check_llm_sdk_leak` 0, `check_event_schema_sync` clean — no codegen drift); 35 handoff tests pass; full `tests/unit` 1439 pass. Diffs confirmed correct + LLM-neutral + handoff_context not wire-mapped.
+- Commit `955a55b9`.
+
+## Day 2 — 2026-06-02 — Stage-2 frontend (agent-delegated + parent re-verify)
+
+`code-implementer` agent implemented the FE session-pivot; parent independently re-verified.
+
+- **Changes**: `chatStore.ts` — `HandoffBanner` type + `handoffBanner` state (+ `_initial` + Pick<>) + `pivotSession`/`dismissHandoffBanner` actions + shared pure `applyPivot` helper (preserve `sessions`/`mode`, keep `rawEvents`, reset conversation slices, set both ids, set banner); `agent_handoff` case → `applyPivot`; `loop_start` clears banner. `HandoffBanner.tsx` (NEW — `.badge info`/`.btn ghost` + `var(--info)` tint, dismissible, AP-2 honesty). `ChatLayout.tsx` mounts it. i18n: chat_v2 has no keyed system → local `COPY` map in 繁中.
+- **Tests**: `chatStore.mergeEvent.test.ts` (+8) + `HandoffBanner.test.tsx` (NEW, 3).
+- **Drift finding D-DAY2-1 (parent re-verify catch)**: the FE agent ran `npm run lint`/`build`/`test` but NOT `npm run check:mockup-fidelity` (a CI gate in `frontend-ci.yml`). The HandoffBanner's 2 `oklch(from var(--info) ...)` tints + 1 comment-mention pushed the grep guard to 51 vs `HEX_OKLCH_BASELINE` 48 → would have failed CI (the AD-silent-constraint-delta / Sprint 57.49 silent-drift pattern). **Fix**: reworded the `eslint-disable` comment to drop the literal `oklch(` substring (the checker is code-aware for `/** */` docstrings but not the `/* eslint-disable */` block, so the comment was false-counted) → live count 50; bumped `HEX_OKLCH_BASELINE` 48→50 + MHist (token-vocabulary precedent 57.30/57.35/57.37/57.38/57.40). Lesson: agent-delegated FE work must run ALL CI gates incl. `check:mockup-fidelity`, not just lint/build/test.
+- **Parent re-verify (independent)**: `check:mockup-fidelity` ✓ (styles byte-identical + grep guard 50=50); `lint` exit 0; `test` 709 passed (+11); `build` ✓. chatStore/ChatLayout diffs confirmed correct.
+- Commit (Stage-2) pending.

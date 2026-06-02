@@ -53,23 +53,24 @@
 ## Day 2 — Backend integration + FE session-pivot (Stage 2)
 
 ### 2.1 Backend integration (US-5)
-- [ ] `test_chat_handoff.py` EXTEND — HANDOFF with non-trivial `state.messages` → child `meta_data["carried_context"]` populated + tenant-scoped + capped (drop-oldest); follow-up request to `new_session_id` boots a child loop whose initial `LoopState.messages` contains the carried prior turns; `loop_end` frame has NO `handoff_context`; 57.68 assertions still pass
-- [ ] `run_all.py` 10/10 (no codegen drift — `WIRE_SCHEMA` 19); codegen `--check` 0; mypy src 0
+- [x] `test_chat_handoff.py` EXTEND (+1) — HANDOFF with non-trivial `messages` → child `meta_data["carried_context"]` populated + tenant-scoped + capped; `loop_end` frame has NO `handoff_context` (server-side only); follow-up `resolve_session_persona` returns a prompt embedding the carried block; 57.68 assertions still pass (done in Stage 1)
+- [x] `run_all.py` 10/10 (no codegen drift — `WIRE_SCHEMA` 19); codegen `--check` 0; mypy src 0/325 (Stage 1)
 
 ### 2.2 FE pivot action + agent_handoff case (US-4)
-- [ ] `chatStore.ts` `pivotSession(newSessionId, banner)` action — reset turns/status/stopReason/errorMessage/approvals/verifications/subagents; set `sessionId = activeSessionId = newSessionId`; set `handoffBanner`
-- [ ] `handoffBanner: {targetAgent, reason} | null` state (cleared on next `loop_start`/`send`)
-- [ ] `agent_handoff` case (`:408-414`): record rawEvent + `pivotSession(ev.data.new_session_id, {targetAgent, reason})`; exhaustive `never` switch stays type-safe
+- [x] `chatStore.ts` `pivotSession` + shared `applyPivot` helper — preserve `sessions`/`mode`, keep `rawEvents`, reset turns/status/stopReason/errorMessage/totalTurns/approvals/verifications/subagents; set `sessionId = activeSessionId = newSessionId`; set `handoffBanner`
+- [x] `handoffBanner: HandoffBanner | null` state (+ `_initial` + Pick<> union); cleared on `loop_start` + `dismissHandoffBanner`
+- [x] `agent_handoff` case (`:466`): record rawEvent + `applyPivot(...)`; comment updated (drops DEFERRED); exhaustive `never` switch stays type-safe
 
 ### 2.3 FE banner + i18n + render (US-4)
-- [ ] `HandoffBanner.tsx` (NEW) — reads `handoffBanner`, renders target/reason from existing oklch primitives (`.badge.info`/`.hitl-card`), dismissible; AP-2 honesty comment (no mockup source)
-- [ ] `ChatLayout.tsx` renders `<HandoffBanner>` above `TurnList`
-- [ ] i18n handoff banner copy keys (繁中 user-facing; no mockup `i18n.jsx` source — documented)
+- [x] `HandoffBanner.tsx` (NEW) — reads `handoffBanner` + `dismissHandoffBanner`; `.badge info` + `.btn ghost` primitives + `var(--info)`-derived tint; dismissible; AP-2 honesty docstring + `no-restricted-syntax` escape comment
+- [x] `ChatLayout.tsx` renders `<HandoffBanner>` above the conversation
+- [x] i18n: chat_v2 has NO keyed i18n system (siblings use inline strings) → local `COPY` map in 繁中 (`已交棒給 {agent}` / `原因` / `關閉`); documented in component docstring
 
 ### 2.4 FE tests + sweep (US-5)
-- [ ] `chatStore.mergeEvent.test.ts` — `agent_handoff` pivots (turns reset, `sessionId`+`activeSessionId` set, `handoffBanner` set, rawEvent recorded)
-- [ ] `HandoffBanner.test.tsx` (NEW) — render target/reason + dismiss
-- [ ] `eventSchema.generated.test.ts` unchanged (no wire change); tsc 0; Vitest green; `npm run build` ✓ (NO `--silent`)
+- [x] `chatStore.mergeEvent.test.ts` (+8) — `agent_handoff` pivots (turns reset, `sessionId`+`activeSessionId` set, `handoffBanner` set, rawEvent recorded, `sessions` preserved); `loop_start` clears banner; `dismissHandoffBanner`; `pivotSession` direct
+- [x] `HandoffBanner.test.tsx` (NEW, 3) — null→nothing, render target/reason, dismiss
+- [x] `eventSchema.generated.test.ts` unchanged (no wire change); lint exit 0; Vitest 709 passed (+11); `npm run build` ✓
+- [x] **mockup-fidelity (parent re-verify catch)**: FE agent ran lint/build/test but NOT `check:mockup-fidelity` → +2 `oklch(from var(--info) ...)` tints exceeded `HEX_OKLCH_BASELINE` (48→51, incl. 1 comment false-positive). Fixed: reworded the escape comment to drop the `oklch(` literal (count 50) + bumped baseline 48→50 + MHist (precedent 57.30/57.35/57.37/57.38/57.40). check `✓ 50=50` (AD-silent-constraint-delta caught pre-PR)
 
 ---
 
