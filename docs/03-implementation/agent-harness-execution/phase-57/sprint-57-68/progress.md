@@ -29,3 +29,26 @@ SPIKE (Day-0 verdict). Scope = backend session-boot slice of the user-chosen ful
 - §3.6 migration number **resolved to `0022`** (D-DAY0-3).
 
 ---
+
+## Day 1+2 — 2026-06-02 — Implementation (staged code-implementer delegation)
+
+**Stage 1 (backend core)** — `code-implementer`: Alembic `0022` (`handoff_parent_id` FK+index) + `Session` ORM/`SessionRepository` (`create_session(+handoff_parent_id,+meta_data)` + `mark_handed_off`) + `platform_layer/handoff/{persona_registry,service}.py` (atomic `boot_handoff` + tenant guard) + `loop.py` HANDOFF stop_reason swap (target from the `handoff` tool_call — **Day-1 correction: NO `response.handoff_request`**, removed dead `HANDOFF_NOT_IMPLEMENTED`) + `AgentHandoff` event. Backend green: mypy src 0/324, 31 handoff/service/persona unit tests, run_all 10/10, SDK leak 0; migration up/down/re-up clean vs live Postgres.
+
+**Stage 2 (SSE + router + handler + integration)** — `code-implementer`: `agent_handoff` wire-type (`event_wire_schema.py` 18→19) + codegen regen + `sse.py` branch + parity test 19; `router.py:488-538` post-loop hook (boot + emit AgentHandoff, fail-soft); `handler.py:369 resolve_session_persona` (per-session persona, fallback DEMO) + builders `system_prompt`; integration `test_chat_handoff.py`; FE `chatStore` passthrough + `eventSchema.generated.test.ts` 18→19. Green: codegen --check 0, integration 2, tsc 0, Vitest 698.
+
+### Parent independent re-verification (57.64 discipline)
+Read loop HANDOFF branch + `service.py` + `persona_registry.py` (atomic tx + tenant guard + thin stand-in confirmed) + router hook + handler change. Re-ran: run_all **10/10**, handoff/termination/persona/service **31 passed**, mypy src **0/324**.
+
+## Day 3 — 2026-06-02 — Test-isolation root-cause (FIX-026) + full sweep
+
+- **Full-suite 1 failed** (`business_domain/incident/test_service.py::test_create_returns_incident`, UNTOUCHED module, `Event loop is closed`). Parent bisected: NOT incident's bug, NOT (initially-guessed) the router-hook tests — the fix agent's per-file bisection refined it to **`test_router.py`** (TestClient overrides tenant/user but NOT `get_db_session`; my new `resolve_session_persona` SELECT in `chat()` opened a real asyncpg socket on the TestClient loop → no `dispose_engine()` → pooled dead conn → poisons next db_session test; Risk Class C; my +tests shifted collection order). **FIX-026** (root-cause, no skip): `test_router.py` overrides `get_db_session→None` (endpoint handles db=None) + 3 router-hook tests relocated to integration with `db_session`.
+- **Parent decisive re-verify**: full `pytest tests/unit tests/integration` **1999 passed / 4 skipped / 0 failed**; `tests/unit` alone 1424/0-failed; integration `test_chat_handoff.py` **5 passed**; run_all **10/10**; codegen `--check` 0; mypy src 0/324.
+
+## Day 4 — 2026-06-02 — Design note (8-point) + closeout
+
+- **Design note** `18-handoff-design.md` (8-point gate all ✅; verified-ratio ≥95% — every §3 invariant file:line-cited) — the SPIKE deliverable (decision matrix B/in-loop/mechanism/Potemkin; verified vs deferred open invariants; rollback; 17.md cross-ref).
+- 17.md §4.1 `AgentHandoff` emit-ownership; CHANGE-036 + FIX-026; retrospective.md (Q1-Q7 + Design Note Extract record); calibration-log §3; MEMORY subfile/pointer; CLAUDE.md lean.
+- Checklist Day 0-4 all `[x]` except commit/push/PR (user-gated).
+- **Calibration**: `backend-control-transfer-spike` 0.55 (NEW, 1 data point) + `agent_factor` 0.65 (CAVEATED — 6th consecutive no-clean-wall-clock); NEW `AD-Source-DB-Call-Test-Isolation`; `AD-Day0-Codegen-Existing-Shape-Capture` recurred (4th).
+
+---

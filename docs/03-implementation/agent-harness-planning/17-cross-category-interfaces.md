@@ -249,6 +249,7 @@ def register_memory_tools(registry: ToolRegistry) -> None:
 | `VerificationFailed` | 範疇 10 | Verifier 拒絕 |
 | `SubagentSpawned` | 範疇 11 | Subagent 啟動 |
 | `SubagentCompleted` | 範疇 11 | Subagent 結束 |
+| `AgentHandoff` | 範疇 11 | HANDOFF 控制轉移：父 agent 退出 + target 子 session 啟動（Sprint 57.68 A-3b；loop 終止 stop_reason="handoff"，platform `HandoffService` boot 子 session 後 router emit `agent_handoff` 含 `new_session_id`） |
 | `ApprovalRequested` | §HITL 中央化 | HITL 觸發等待 |
 | `ApprovalReceived` | §HITL 中央化 | HITL 結果回到 loop |
 | `LoopCompleted` | 範疇 1 | Loop 終止（Sprint 57.2 加 accumulator-sourced `total_tokens` / `input_tokens` / `output_tokens` / `provider` / `model`；**Sprint 57.65 A-2 Tier2 加 `cached_input_tokens` + 衍生 `cache_hit_rate`**（= cached / input，div-by-0 → 0.0；Cat 12 prompt-cache-hit-rate metric，無 Tracer/MetricsRegistry，metric 隨 event 欄位下游消費）） |
