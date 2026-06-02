@@ -318,6 +318,7 @@ claudedocs/6-ai-assistant/prompts/
 | Feature changes | `4-changes/feature-changes/CHANGE-{NNN}-*` |
 | Bug fixes | `4-changes/bug-fixes/FIX-{NNN}-*` |
 | Test reports | `5-status/testing/` |
+| Integration-gap analysis (A/B/C, 16 docs) | `5-status/README-integration-gap-abc.md` |
 | Weekly reports | `3-progress/weekly/` |
 | AI workflows | `6-ai-assistant/prompts/` |
 
