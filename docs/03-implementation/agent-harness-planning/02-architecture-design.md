@@ -595,6 +595,24 @@ type LoopEvent =
   | { type: "loop_end"; data: { result, total_turns, total_tokens } };
 ```
 
+> **Sprint 57.66 (A-5a+) — real serializer registration**: the catalog above is the
+> original aspirational design; the live `sse.py` serializer (single-source for the actual
+> wire) names some events differently and Sprint 57.66 surfaces four more diagnostic events
+> that were already yielded on the chat loop but previously dropped at the serializer. The
+> **real** wire-types now emitted on the chat SSE stream:
+>
+> - `prompt_built` — `{ messages_count, estimated_input_tokens, cache_breakpoints_count, memory_layers_used: string[], position_strategy_used, duration_ms }` (Cat 5)
+> - `context_compacted` — `{ tokens_before, tokens_after, compaction_strategy, messages_compacted, duration_ms }` (Cat 4; the catalog's aspirational `compaction_triggered`)
+> - `state_checkpointed` — `{ version }` (Cat 7)
+> - `tripwire_triggered` — `{ violation_type, detail }` (Cat 9; the catalog's aspirational `tripwire_fired`)
+>
+> Plus two prompt-cache fields carried on existing frames: `llm_response.data.cached_input_tokens`
+> and `loop_end.data.{ cached_input_tokens, cache_hit_rate }` (genuine JSON numbers — FIX-025
+> stopped `_jsonable` from stringifying floats on the wire). All frames carry the injected `trace_id`.
+> Single-source serializer: `backend/src/api/v1/chat/sse.py`; FE contract: `frontend/src/features/chat_v2/types.ts`
+> (`KNOWN_LOOP_EVENT_TYPES`, 18 types). 17.md §4.1 emit-ownership unchanged (these `LoopEvent`
+> subclasses already existed; this sprint only added their SSE projection).
+
 ---
 
 ## §Naming Drift Note (Sprint 57.6+ — closes AD-Reality-6)

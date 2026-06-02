@@ -34,9 +34,11 @@ Key Components:
     - format_sse_message(event_type, data) -> bytes
 
 Created: 2026-04-30 (Sprint 50.2 Day 1.3)
-Last Modified: 2026-05-10
+Last Modified: 2026-06-01
 
 Modification History (newest-first):
+    - 2026-06-02: FIX-025 — _jsonable: str-coerce UUID only, not float (cache_hit_rate wire type)
+    - 2026-06-01: Sprint 57.66 (A-5a+) — serialize 4 diagnostic events + carry 57.65 cache fields
     - 2026-05-10: Sprint 57.12 US-1 — add Subagent SSE mappers (AD-Cat11-SSEEvents)
     - 2026-05-04: Add GuardrailTriggered serializer (Sprint 53.6 D2 — Day 0 探勘)
         — yielded 7× from loop.py (Cat 9 Stage 1/2/3) but missing isinstance
@@ -65,22 +67,27 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, is_dataclass
 from typing import Any
+from uuid import UUID
 
 from agent_harness._contracts import (
     ApprovalReceived,
     ApprovalRequested,
+    ContextCompacted,
     GuardrailTriggered,
     LLMRequested,
     LLMResponded,
     LoopCompleted,
     LoopEvent,
     LoopStarted,
+    PromptBuilt,
+    StateCheckpointed,
     SubagentCompleted,
     SubagentSpawned,
     Thinking,
     ToolCallExecuted,
     ToolCallFailed,
     ToolCallRequested,
+    TripwireTriggered,
     TurnStarted,
     VerificationFailed,
     VerificationPassed,
@@ -152,6 +159,8 @@ def _serialize_inner(event: LoopEvent) -> dict[str, Any] | None:
                     for tc in event.tool_calls
                 ],
                 "thinking": event.thinking,
+                # Sprint 57.65 A-2 Tier2 cache field (carried to client).
+                "cached_input_tokens": event.cached_input_tokens,
             },
         }
 
@@ -200,6 +209,9 @@ def _serialize_inner(event: LoopEvent) -> dict[str, Any] | None:
             "data": {
                 "stop_reason": event.stop_reason,
                 "total_turns": event.total_turns,
+                # Sprint 57.65 A-2 Tier2 cache fields (carried to client).
+                "cached_input_tokens": event.cached_input_tokens,
+                "cache_hit_rate": event.cache_hit_rate,
             },
         }
 
@@ -241,6 +253,18 @@ def _serialize_inner(event: LoopEvent) -> dict[str, Any] | None:
                 "guardrail_type": event.guardrail_type,
                 "action": event.action,
                 "reason": event.reason,
+            },
+        }
+
+    # Sprint 57.66 (A-5a+): TripwireTriggered serializer — Cat 9 severe-policy
+    # violation that terminates the loop (per 17.md §6). Already yielded on the
+    # chat path but previously dropped at the serializer (no isinstance branch).
+    if isinstance(event, TripwireTriggered):
+        return {
+            "type": "tripwire_triggered",
+            "data": {
+                "violation_type": event.violation_type,
+                "detail": event.detail,
             },
         }
 
@@ -295,6 +319,45 @@ def _serialize_inner(event: LoopEvent) -> dict[str, Any] | None:
             },
         }
 
+    # Sprint 57.66 (A-5a+): diagnostic events already yielded on the chat path
+    # (Cat 4 context compaction / Cat 5 prompt build / Cat 7 state checkpoint)
+    # but previously dropped at the serializer (no isinstance branch). Surfacing
+    # them lets the client observe per-turn loop internals without a loop.py edit.
+    if isinstance(event, ContextCompacted):
+        return {
+            "type": "context_compacted",
+            "data": {
+                "tokens_before": event.tokens_before,
+                "tokens_after": event.tokens_after,
+                "compaction_strategy": event.compaction_strategy,
+                "messages_compacted": event.messages_compacted,
+                "duration_ms": event.duration_ms,
+            },
+        }
+
+    if isinstance(event, PromptBuilt):
+        return {
+            "type": "prompt_built",
+            "data": {
+                "messages_count": event.messages_count,
+                "estimated_input_tokens": event.estimated_input_tokens,
+                "cache_breakpoints_count": event.cache_breakpoints_count,
+                # Scope-key names (e.g. ["session", "tenant"]), not memory
+                # content — safe to expose. tuple → list for JSON.
+                "memory_layers_used": list(event.memory_layers_used),
+                "position_strategy_used": event.position_strategy_used,
+                "duration_ms": event.duration_ms,
+            },
+        }
+
+    if isinstance(event, StateCheckpointed):
+        return {
+            "type": "state_checkpointed",
+            "data": {
+                "version": event.version,
+            },
+        }
+
     raise NotImplementedError(
         f"SSE serialization for {type(event).__name__} is not in Sprint 50.2 scope."
         " See sprint-50-2-plan.md §3.2 deferred / 02-architecture-design.md §SSE for owner sprint."
@@ -315,9 +378,12 @@ def _jsonable(value: Any) -> Any:
         return {k: _jsonable(v) for k, v in value.items()}
     if isinstance(value, (list, tuple)):
         return [_jsonable(v) for v in value]
-    # uuid.UUID, datetime, etc. — fall back to str repr
+    # datetime → ISO string; UUID → canonical hyphenated string.
     if hasattr(value, "isoformat"):  # datetime
         return value.isoformat()
-    if hasattr(value, "hex") and not isinstance(value, (bytes, bytearray, str, int)):
-        return str(value)  # UUID
+    # FIX-025: match UUID explicitly. The prior `hasattr(value, "hex")` heuristic
+    # also matched float (float.hex exists) + bool, stringifying them — so float
+    # wire fields (cache_hit_rate / duration_ms) were emitted as JSON strings.
+    if isinstance(value, UUID):
+        return str(value)
     return value

@@ -48,6 +48,7 @@
  * Created: 2026-05-24 (Sprint 57.37 Day 1 US-A1)
  *
  * Modification History:
+ *   - 2026-06-02: Sprint 57.66 — add cache fields to llm_response/loop_end literals (type contract)
  *   - 2026-05-24: Initial creation (Sprint 57.37 Day 1 US-A1)
  *
  * Related:
@@ -82,6 +83,7 @@ export const DEMO_LOOP_EVENTS: LoopEvent[] = [
         { id: "tc_demo_1", name: "incidents.list", arguments: {} },
       ],
       thinking: "User flagged P1. SLO at 1% breached — checking recent incidents to find correlated events.",
+      cached_input_tokens: 0,
     },
   },
   {
@@ -145,6 +147,7 @@ export const DEMO_LOOP_EVENTS: LoopEvent[] = [
         { id: "tc_demo_3", name: "k8s.set_env", arguments: { svc: "payment-gateway", key: "REDIS_MAX_CONN", value: "256" } },
       ],
       thinking: "Root cause likely connection-pool exhaustion. High-risk tool requires HITL.",
+      cached_input_tokens: 896,
     },
   },
   {
@@ -153,6 +156,6 @@ export const DEMO_LOOP_EVENTS: LoopEvent[] = [
   },
   {
     type: "loop_end",
-    data: { stop_reason: "hitl", total_turns: 4 },
+    data: { stop_reason: "hitl", total_turns: 4, cached_input_tokens: 896, cache_hit_rate: 0.34 },
   },
 ];

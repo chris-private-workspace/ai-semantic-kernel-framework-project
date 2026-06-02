@@ -15,10 +15,14 @@ from uuid import uuid4
 import pytest
 
 from agent_harness._contracts import (
+    ContextCompacted,
+    ErrorRetried,
     LLMRequested,
     LLMResponded,
     LoopCompleted,
     LoopStarted,
+    PromptBuilt,
+    StateCheckpointed,
     Thinking,
     ToolCall,
     ToolCallExecuted,
@@ -80,6 +84,16 @@ class TestSerializeLoopEvent:
         assert out["data"]["tool_calls"] == [
             {"id": "c1", "name": "echo_tool", "arguments": {"text": "X"}}
         ]
+        # Sprint 57.66: cache field present, defaults to 0 when unset.
+        assert out["data"]["cached_input_tokens"] == 0
+
+    def test_llm_responded_cached_input_tokens(self) -> None:
+        """Sprint 57.66 (A-5a+): llm_response carries 57.65 cached_input_tokens."""
+        ev = LLMResponded(content="hi", cached_input_tokens=321)
+        out = serialize_loop_event(ev)
+        assert out is not None
+        assert out["type"] == "llm_response"
+        assert out["data"]["cached_input_tokens"] == 321
 
     def test_tool_call_failed(self) -> None:
         ev = ToolCallFailed(
@@ -125,6 +139,22 @@ class TestSerializeLoopEvent:
         assert out["type"] == "loop_end"
         assert out["data"]["stop_reason"] == "end_turn"
         assert out["data"]["total_turns"] == 2
+        # Sprint 57.66: cache fields present, default to 0 / 0.0 when unset.
+        assert out["data"]["cached_input_tokens"] == 0
+        assert out["data"]["cache_hit_rate"] == 0.0
+
+    def test_loop_completed_cache_fields(self) -> None:
+        """Sprint 57.66 (A-5a+): loop_end carries 57.65 cache fields when set."""
+        ev = LoopCompleted(
+            stop_reason="end_turn",
+            total_turns=3,
+            cached_input_tokens=512,
+            cache_hit_rate=0.42,
+        )
+        out = serialize_loop_event(ev)
+        assert out["type"] == "loop_end"
+        assert out["data"]["cached_input_tokens"] == 512
+        assert out["data"]["cache_hit_rate"] == 0.42
 
     def test_approval_requested(self) -> None:
         """Sprint 53.5 US-2: Cat 9 ESCALATE → ApprovalRequested → SSE."""
@@ -249,13 +279,85 @@ class TestSerializeLoopEvent:
         assert out["data"]["summary"] == "Subagent finished task X with result Y."
         assert out["data"]["tokens_used"] == 147
 
+    def test_context_compacted(self) -> None:
+        """Sprint 57.66 (A-5a+): Cat 4 ContextCompacted → 'context_compacted'."""
+        ev = ContextCompacted(
+            tokens_before=8000,
+            tokens_after=3000,
+            compaction_strategy="summarize",
+            messages_compacted=12,
+            duration_ms=4.5,
+        )
+        out = serialize_loop_event(ev)
+        assert out is not None
+        assert out["type"] == "context_compacted"
+        assert out["data"]["tokens_before"] == 8000
+        assert out["data"]["tokens_after"] == 3000
+        assert out["data"]["compaction_strategy"] == "summarize"
+        assert out["data"]["messages_compacted"] == 12
+        assert out["data"]["duration_ms"] == 4.5
+
+    def test_prompt_built(self) -> None:
+        """Sprint 57.66 (A-5a+): Cat 5 PromptBuilt → 'prompt_built'.
+
+        memory_layers_used must serialize as a JSON list of scope-key names
+        (NOT memory content). Asserts no raw-content key leaks into the payload.
+        """
+        ev = PromptBuilt(
+            messages_count=6,
+            estimated_input_tokens=1200,
+            cache_breakpoints_count=2,
+            memory_layers_used=("session", "tenant"),
+            position_strategy_used="lost_in_middle",
+            duration_ms=2.3,
+        )
+        out = serialize_loop_event(ev)
+        assert out is not None
+        assert out["type"] == "prompt_built"
+        assert out["data"]["messages_count"] == 6
+        assert out["data"]["estimated_input_tokens"] == 1200
+        assert out["data"]["cache_breakpoints_count"] == 2
+        assert out["data"]["position_strategy_used"] == "lost_in_middle"
+        assert out["data"]["duration_ms"] == 2.3
+        # tuple → JSON list of scope-key strings (not memory content).
+        assert out["data"]["memory_layers_used"] == ["session", "tenant"]
+        assert isinstance(out["data"]["memory_layers_used"], list)
+        # No raw memory-content key leaks — only the scope-name list is exposed.
+        assert set(out["data"].keys()) == {
+            "messages_count",
+            "estimated_input_tokens",
+            "cache_breakpoints_count",
+            "memory_layers_used",
+            "position_strategy_used",
+            "duration_ms",
+            "trace_id",
+        }
+
+    def test_state_checkpointed(self) -> None:
+        """Sprint 57.66 (A-5a+): Cat 7 StateCheckpointed → 'state_checkpointed'."""
+        ev = StateCheckpointed(version=7)
+        out = serialize_loop_event(ev)
+        assert out is not None
+        assert out["type"] == "state_checkpointed"
+        assert out["data"]["version"] == 7
+
+    def test_tripwire_triggered(self) -> None:
+        """Sprint 57.66 (A-5a+): Cat 9 TripwireTriggered → 'tripwire_triggered'."""
+        ev = TripwireTriggered(violation_type="pii_leak", detail="ssn detected")
+        out = serialize_loop_event(ev)
+        assert out is not None
+        assert out["type"] == "tripwire_triggered"
+        assert out["data"]["violation_type"] == "pii_leak"
+        assert out["data"]["detail"] == "ssn detected"
+
     def test_unsupported_event_raises_with_sprint_pointer(self) -> None:
         # Sprint 54.1 US-3: VerificationPassed/Failed are now wired.
         # Sprint 57.12 US-1: SubagentSpawned/SubagentCompleted are now wired.
-        # Use TripwireTriggered (Cat 9; still unwired in 50.2 scope) as a
-        # canonical "deferred event type" — kept in sync as future sprints
-        # add owner branches.
-        ev = TripwireTriggered(violation_type="pii_leak", detail="ssn detected")
+        # Sprint 57.66 (A-5a+): ContextCompacted / PromptBuilt / StateCheckpointed
+        # / TripwireTriggered are now wired.
+        # Use ErrorRetried (Cat 8; still unwired) as a canonical "deferred event
+        # type" — kept in sync as future sprints add owner branches.
+        ev = ErrorRetried(attempt=1, error_class="TimeoutError", backoff_ms=250.0)
         with pytest.raises(NotImplementedError, match="Sprint 50.2"):
             serialize_loop_event(ev)
 
@@ -280,3 +382,45 @@ class TestFormatSseMessage:
         data_line = [line for line in body.split("\n") if line.startswith("data: ")][0]
         parsed = json.loads(data_line[len("data: ") :])
         assert parsed["session_id"] == str(sid)
+
+    def test_prompt_built_round_trip_wire_frame(self) -> None:
+        """Sprint 57.66 (A-5a+): a new diagnostic event round-trips to a wire frame."""
+        ev = PromptBuilt(
+            messages_count=4,
+            estimated_input_tokens=900,
+            memory_layers_used=("user", "session"),
+            position_strategy_used="lost_in_middle",
+        )
+        payload = serialize_loop_event(ev)
+        assert payload is not None
+        frame = format_sse_message(payload["type"], payload["data"])
+        body = frame.decode("utf-8")
+        assert body.startswith("event: prompt_built\n")
+        data_line = [line for line in body.split("\n") if line.startswith("data: ")][0]
+        parsed = json.loads(data_line[len("data: ") :])
+        assert parsed["messages_count"] == 4
+        assert parsed["memory_layers_used"] == ["user", "session"]
+        assert body.endswith("\n\n")
+
+    def test_float_wire_fields_serialize_as_json_numbers(self) -> None:
+        """FIX-025: float payload fields (cache_hit_rate / duration_ms) must wire
+        as JSON numbers, not strings. Regression guard for the `_jsonable`
+        UUID-fallback bug where `float.hex` existing made 0.5 serialize as "0.5".
+        """
+        ev = LoopCompleted(
+            stop_reason="end_turn",
+            total_turns=1,
+            cached_input_tokens=256,
+            cache_hit_rate=0.5,
+        )
+        payload = serialize_loop_event(ev)
+        assert payload is not None
+        frame = format_sse_message(payload["type"], payload["data"])
+        data_line = [
+            line for line in frame.decode("utf-8").split("\n") if line.startswith("data: ")
+        ][0]
+        parsed = json.loads(data_line[len("data: ") :])
+        # JSON number, not the string "0.5".
+        assert parsed["cache_hit_rate"] == 0.5
+        assert isinstance(parsed["cache_hit_rate"], float)
+        assert parsed["cached_input_tokens"] == 256
