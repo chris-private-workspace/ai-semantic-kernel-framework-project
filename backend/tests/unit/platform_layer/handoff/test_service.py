@@ -1,6 +1,6 @@
 """
 File: backend/tests/unit/platform_layer/handoff/test_service.py
-Purpose: Unit tests for HandoffService.boot_handoff (Sprint 57.68 A-3b)
+Purpose: Unit tests for HandoffService.boot_handoff (Sprint 57.68 A-3b + 57.69 carry)
 Category: Tests
 Created: 2026-06-02
 Modified: 2026-06-02
@@ -9,7 +9,8 @@ Mocks SessionRepository + append_audit at the service module so the atomic
 boot logic (persona resolve → tenant guard → child create → parent mark →
 audit) is verified without a live DB. The multi-tenant 鐵律 (child uses the
 parent's tenant_id; foreign/missing parent rejected) and unknown-target
-rejection (no boot) are exercised.
+rejection (no boot) are exercised. Sprint 57.69 adds the parent_context carry
+cases (absent → no carried_context key; present → capped carried_context).
 """
 
 from __future__ import annotations
@@ -20,6 +21,8 @@ from uuid import UUID, uuid4
 import pytest
 
 import platform_layer.handoff.service as service_mod
+from agent_harness._contracts.chat import Message
+from platform_layer.handoff.context_carry import DEFAULT_MAX_CARRY_MESSAGES
 from platform_layer.handoff.service import (
     HandoffError,
     HandoffResult,
@@ -233,3 +236,67 @@ async def test_boot_handoff_uses_begin_nested_when_in_transaction(_wire: Any) ->
     # so we just assert it committed (the in_tx branch was taken without error).
     assert db.transaction.committed is True
     assert state["repo"].created["meta_data"] == {"agent_role": "reviewer"}
+
+
+# === Sprint 57.69 A-3b slice 2: parent_context carry =========================
+
+
+@pytest.mark.asyncio
+async def test_boot_handoff_without_parent_context_no_carried_key(_wire: Any) -> None:
+    """57.68 backward-compat: no parent_context → meta_data has no carried_context."""
+    tenant_id = uuid4()
+    parent_id = uuid4()
+    state = _wire({(parent_id, tenant_id): _FakeParent(id=parent_id, tenant_id=tenant_id)})
+    db = _FakeSession()
+
+    await HandoffService().boot_handoff(
+        parent_session_id=parent_id,
+        target_agent="researcher",
+        reason="x",
+        tenant_id=tenant_id,
+        user_id=uuid4(),
+        db=db,
+    )
+
+    # Exactly the 57.68 shape — agent_role only, no carried_context key.
+    assert state["repo"].created["meta_data"] == {"agent_role": "researcher"}
+
+
+@pytest.mark.asyncio
+async def test_boot_handoff_with_parent_context_populates_carried(_wire: Any) -> None:
+    """With parent_context → meta_data["carried_context"] populated + capped."""
+    tenant_id = uuid4()
+    parent_id = uuid4()
+    state = _wire({(parent_id, tenant_id): _FakeParent(id=parent_id, tenant_id=tenant_id)})
+    db = _FakeSession()
+
+    # Build more than the cap so we also assert capping (drop oldest).
+    over = DEFAULT_MAX_CARRY_MESSAGES + 5
+    parent_context = [
+        Message(role="user" if i % 2 == 0 else "assistant", content=f"msg-{i}") for i in range(over)
+    ]
+
+    await HandoffService().boot_handoff(
+        parent_session_id=parent_id,
+        target_agent="reviewer",
+        reason="carry it",
+        tenant_id=tenant_id,
+        user_id=uuid4(),
+        db=db,
+        parent_context=parent_context,
+    )
+
+    meta = state["repo"].created["meta_data"]
+    assert meta["agent_role"] == "reviewer"
+    carried = meta["carried_context"]
+    # Capped to DEFAULT_MAX_CARRY_MESSAGES; oldest dropped → keeps the last N.
+    assert len(carried) == DEFAULT_MAX_CARRY_MESSAGES
+    # First kept = original index (over - N); last kept = original index (over - 1).
+    first_idx = over - DEFAULT_MAX_CARRY_MESSAGES
+    last_idx = over - 1
+
+    def _role(i: int) -> str:
+        return "user" if i % 2 == 0 else "assistant"
+
+    assert carried[0] == {"role": _role(first_idx), "content": f"msg-{first_idx}"}
+    assert carried[-1] == {"role": _role(last_idx), "content": f"msg-{last_idx}"}

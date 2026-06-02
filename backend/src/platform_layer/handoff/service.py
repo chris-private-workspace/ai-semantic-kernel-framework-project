@@ -35,9 +35,11 @@ Created: 2026-06-02 (Sprint 57.68 A-3b)
 Last Modified: 2026-06-02
 
 Modification History (newest-first):
+    - 2026-06-02: Sprint 57.69 A-3b — boot_handoff carries parent_context into child meta_data
     - 2026-06-02: Initial creation (Sprint 57.68 A-3b) — atomic handoff session-boot
 
 Related:
+    - platform_layer/handoff/context_carry.py — cap_and_serialize (Sprint 57.69)
     - platform_layer/handoff/persona_registry.py — resolve_persona (US-3)
     - infrastructure/db/repositories/session_repository.py — create/get/mark
     - infrastructure/db/audit_helper.py — append_audit (hash-chained)
@@ -48,12 +50,15 @@ Related:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from agent_harness._contracts.chat import Message
 from infrastructure.db.audit_helper import append_audit
 from infrastructure.db.repositories.session_repository import SessionRepository
+from platform_layer.handoff.context_carry import cap_and_serialize
 from platform_layer.handoff.persona_registry import resolve_persona
 
 
@@ -93,6 +98,7 @@ class HandoffService:
         tenant_id: UUID,
         user_id: UUID,
         db: AsyncSession,
+        parent_context: list[Message] | None = None,
     ) -> HandoffResult:
         """Boot a child session for `target_agent`, mark parent handed-off, audit.
 
@@ -107,6 +113,12 @@ class HandoffService:
             db: AsyncSession; this method owns the transaction (begin/commit or
                 rollback). Use a nested transaction if the caller already has
                 one open.
+            parent_context: the parent's in-memory conversation snapshot at
+                HANDOFF (Sprint 57.69 A-3b slice 2). When provided, it is
+                capped + serialized into the child's
+                meta_data["carried_context"] so the child agent sees the prior
+                conversation. None / empty → no carried_context key (backward
+                compatible with the 57.68 boot).
 
         Returns:
             HandoffResult with the new child session_id.
@@ -136,7 +148,15 @@ class HandoffService:
                 )
 
             # 3. Create the child session under the PARENT's tenant_id, linked
-            #    + carrying the target persona role in meta_data.
+            #    + carrying the target persona role in meta_data. When a parent
+            #    conversation snapshot is supplied, cap + serialize it into
+            #    meta_data["carried_context"] (Sprint 57.69) so the child agent
+            #    sees the prior context; absent/empty → no carried_context key
+            #    (57.68 backward-compat).
+            carried = cap_and_serialize(parent_context)
+            meta_data: dict[str, Any] = {"agent_role": target_agent}
+            if carried:
+                meta_data["carried_context"] = carried
             new_session_id = uuid4()
             await repo.create_session(
                 session_id=new_session_id,
@@ -144,7 +164,7 @@ class HandoffService:
                 tenant_id=tenant_id,
                 title=f"Handoff → {target_agent}",
                 handoff_parent_id=parent_session_id,
-                meta_data={"agent_role": target_agent},
+                meta_data=meta_data,
             )
 
             # 4. Mark the parent handed-off (tenant-scoped UPDATE).

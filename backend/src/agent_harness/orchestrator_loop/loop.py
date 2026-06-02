@@ -45,6 +45,7 @@ Created: 2026-04-30 (Sprint 50.1 Day 2.2)
 Last Modified: 2026-06-02
 
 Modification History (newest-first):
+    - 2026-06-02: Sprint 57.69 A-3b — HANDOFF branch carries handoff_context (in-memory msgs)
     - 2026-06-02: Sprint 57.68 A-3b — HANDOFF branch yields stop_reason=handoff + target/reason
     - 2026-06-01: Sprint 57.65 A-2 — accumulate cached_input_tokens + emit cache_hit_rate
     - 2026-06-01: Sprint 57.65 — scope PromptBuilder.build user_id to ctx.user_id (A-1 Tier2)
@@ -1089,6 +1090,11 @@ class AgentLoopImpl(AgentLoop):
                         total_turns=turn_count,
                         handoff_target=str(handoff_args.get("target_agent", "")),
                         handoff_reason=str(handoff_args.get("reason", "")),
+                        # Sprint 57.69 A-3b slice 2: shallow snapshot of the
+                        # in-memory conversation so the platform layer can seed
+                        # the booted child with the prior context (carried only;
+                        # not on the loop_end wire schema).
+                        handoff_context=list(messages),
                         trace_context=ctx,
                     )
                     return

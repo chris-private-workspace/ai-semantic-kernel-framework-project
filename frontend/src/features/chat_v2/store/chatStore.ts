@@ -34,6 +34,7 @@
  * Last Modified: 2026-06-02
  *
  * Modification History:
+ *   - 2026-06-02: Sprint 57.69 A-3b slice 2 — agent_handoff now pivots session (pivotSession + handoffBanner state)
  *   - 2026-06-02: Sprint 57.68 A-3b — +agent_handoff passthrough case (rawEvents-only, Cat 11)
  *   - 2026-06-02: Sprint 57.66 — +4 diagnostic event passthrough cases (rawEvents-only)
  *   - 2026-05-17: Sprint 57.21 Day 1 — mergeEvent SSE → Turn block sequence; dual-emit
@@ -66,6 +67,14 @@ import type {
   Turn,
 } from "../types";
 
+/**
+ * Sprint 57.69 A-3b slice 2: transition banner shown after a Cat 11 HANDOFF
+ * pivots the active session to the child. Sourced from the `agent_handoff`
+ * SSE event (target_agent + reason). Cleared on the next `loop_start` (the
+ * child session's first turn) or via `dismissHandoffBanner`.
+ */
+export type HandoffBanner = { targetAgent: string; reason: string };
+
 type ChatStoreState = {
   // Session metadata (preserved)
   sessionId: string | null;
@@ -74,6 +83,9 @@ type ChatStoreState = {
   stopReason: string | null;
   errorMessage: string | null;
   mode: ChatMode;
+
+  // Sprint 57.69: HANDOFF transition banner (null when no active handoff notice)
+  handoffBanner: HandoffBanner | null;
 
   // Sprint 57.21: Turn-based rendering replaces messages: Message[]
   turns: Turn[];
@@ -94,6 +106,8 @@ type ChatStoreState = {
   setError: (msg: string | null) => void;
   setSessions: (sessions: Session[]) => void;
   setActiveSessionId: (id: string | null) => void;
+  pivotSession: (newSessionId: string, banner: HandoffBanner) => void;
+  dismissHandoffBanner: () => void;
   pushUserMessage: (content: string) => void;
   mergeEvent: (ev: LoopEvent) => void;
   appendVerification: (event: VerificationEvent) => void;
@@ -109,6 +123,7 @@ const _initial = (): Pick<
   | "totalTurns"
   | "stopReason"
   | "errorMessage"
+  | "handoffBanner"
   | "turns"
   | "sessions"
   | "activeSessionId"
@@ -122,6 +137,7 @@ const _initial = (): Pick<
   totalTurns: 0,
   stopReason: null,
   errorMessage: null,
+  handoffBanner: null,
   turns: [],
   sessions: [],
   activeSessionId: null,
@@ -167,6 +183,41 @@ const updateLastAgentTurn = (
   return turns;
 };
 
+/**
+ * Sprint 57.69 A-3b slice 2: pure HANDOFF session-pivot transform. Shared by
+ * BOTH the `agent_handoff` mergeEvent case and the `pivotSession` action (the
+ * store factory exposes only `set`, no `get`, so the pivot logic must live in
+ * a pure helper to avoid duplication).
+ *
+ * Preserves the sidebar `sessions` list + `mode`; keeps the accumulated
+ * `rawEvents` audit log (caller passes the already-appended array); resets the
+ * conversation slices (turns / status / counters / approvals / verifications /
+ * subagents) for the fresh child session; points BOTH `sessionId` and
+ * `activeSessionId` at the child (they were unlinked — `sessionId` is set only
+ * by `loop_start`, `activeSessionId` by the sidebar) so the next message routes
+ * to the child; and raises the transition banner.
+ */
+const applyPivot = (
+  s: ChatStoreState,
+  newSessionId: string,
+  banner: HandoffBanner,
+  rawEvents: LoopEvent[],
+): ChatStoreState => ({
+  ...s,
+  rawEvents,
+  sessionId: newSessionId,
+  activeSessionId: newSessionId,
+  handoffBanner: banner,
+  turns: [],
+  status: "idle",
+  totalTurns: 0,
+  stopReason: null,
+  errorMessage: null,
+  approvals: {},
+  verifications: [],
+  subagents: [],
+});
+
 export const useChatStore = create<ChatStoreState>((set) => ({
   ..._initial(),
   mode: "echo_demo",
@@ -176,6 +227,12 @@ export const useChatStore = create<ChatStoreState>((set) => ({
   setError: (msg) => set({ errorMessage: msg }),
   setSessions: (sessions) => set({ sessions }),
   setActiveSessionId: (id) => set({ activeSessionId: id }),
+
+  // Sprint 57.69: HANDOFF pivot — reset the conversation onto the child session.
+  pivotSession: (newSessionId, banner) =>
+    set((s) => applyPivot(s, newSessionId, banner, [...s.rawEvents])),
+
+  dismissHandoffBanner: () => set({ handoffBanner: null }),
 
   pushUserMessage: (content) =>
     set((s) => ({
@@ -191,12 +248,15 @@ export const useChatStore = create<ChatStoreState>((set) => ({
 
       switch (ev.type) {
         case "loop_start": {
+          // Sprint 57.69: a new turn cycle in the (possibly child) session
+          // dismisses any handoff transition notice.
           return {
             ...s,
             rawEvents,
             sessionId: ev.data.session_id ?? null,
             status: "running",
             errorMessage: null,
+            handoffBanner: null,
           };
         }
 
@@ -406,11 +466,17 @@ export const useChatStore = create<ChatStoreState>((set) => ({
         }
 
         case "agent_handoff": {
-          // Sprint 57.68 A-3b (Cat 11 HANDOFF): recognized + typed + audit-trail
-          // only (rawEvents). The client-side pivot to new_session_id + a rich
-          // handoff Inspector render are DEFERRED to a later frontend sprint
-          // (this Stage-2 slice is backend-only). Mirrors the diagnostic group.
-          return { ...s, rawEvents };
+          // Sprint 57.69 A-3b slice 2 (Cat 11 HANDOFF): record the rawEvent, then
+          // PIVOT the active session to the booted child (new_session_id) — reset
+          // the conversation, point sessionId + activeSessionId at the child, and
+          // raise the transition banner. Arrives post-stream (after loop_end per
+          // the 57.68 router post-loop hook), so there is no mid-stream race.
+          return applyPivot(
+            s,
+            ev.data.new_session_id,
+            { targetAgent: ev.data.target_agent, reason: ev.data.reason },
+            rawEvents,
+          );
         }
 
         case "verification_passed":

@@ -28,6 +28,7 @@
  * Created: 2026-05-22 (Sprint 57.28 Day 3 US-D1)
  *
  * Modification History:
+ *   - 2026-06-02: Sprint 57.69 — bump HEX_OKLCH_BASELINE 48→50 (+2 verbatim `oklch(from var(--info) l c h / α)` tints in HandoffBanner production-only AP-2 widget, no mockup source D8; --info token not raw colour)
  *   - 2026-05-26: Sprint 57.50 Day 2 hotfix — bump HEX_OKLCH_BASELINE 47→48 catching up Sprint 57.49 silent +1 drift (Sprint 57.49 dual-track frontend migration wave introduced +1 oklch literal without bumping baseline; main `33e9f2aa` CI silently exceeded baseline at merge; PR #200 first PR to surface the drift via failing Mockup-fidelity guard). Sprint 57.50 itself added 0 new oklch literals (GeneralTab.tsx Identity Card refactor uses only `var(--danger)` token references, no literals); fix-forward catch-up rather than fix-back to keep baseline aligned with merged main state.
  *   - 2026-05-25: Sprint 57.40 Day 2 — bump HEX_OKLCH_BASELINE 45→46 (+1 verbatim `oklch(from var(--primary) l c h / 0.08)` literal from ApprovalList Sprint 57.40 Day 1 rebuild — selected row highlight per mockup page-governance.jsx:347; derives from --primary token, NOT raw colour; same vocabulary precedent as Sprint 57.30/57.35/57.37/57.38)
  *   - 2026-05-24: Sprint 57.38 Day 1 — bump HEX_OKLCH_BASELINE 50→51 (+1 verbatim `oklch(from var(--primary) l c h / 0.10)` literal from SubagentsPage Sprint 57.38 Domain B re-point — selected row highlight per mockup page-agents.jsx:352; derives from --primary design token, NOT raw colour; same vocabulary precedent as Sprint 57.30/57.35/57.37)
@@ -82,7 +83,10 @@ const SCAN_DIRS = [path.join(FRONTEND, "src/features"), path.join(FRONTEND, "src
 // mockup page-admin.jsx:588 — `linear-gradient(135deg, oklch(0.65 0.15 ${m.c}),
 // oklch(0.5 0.16 ${(m.c + 60) % 360}))`. Per STYLE.md §3 verbatim-CSS escape hatch
 // for mockup-inline oklch literals. Plan §3.6 predicted "+0-2 bump"; actual +1 within range.
-const HEX_OKLCH_BASELINE = 48;
+// +2 Sprint 57.69: HandoffBanner (production-only AP-2 widget — no mockup source, Day-0 D8)
+// wrapper border+background `oklch(from var(--info) l c h / α)` tints; derive from the --info
+// design token, NOT a raw colour; same token-vocabulary precedent as 57.30/57.35/57.37/57.38/57.40.
+const HEX_OKLCH_BASELINE = 50;
 
 let failed = false;
 

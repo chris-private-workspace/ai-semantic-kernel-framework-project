@@ -23,6 +23,7 @@ Created: 2026-04-29 (Sprint 49.1)
 Last Modified: 2026-04-29
 
 Modification History (newest-first):
+    - 2026-06-02: Sprint 57.69 A-3b — add LoopCompleted.handoff_context (in-process carry)
     - 2026-06-02: Sprint 57.68 A-3b — add AgentHandoff event + LoopCompleted.handoff_target/reason
     - 2026-06-01: Sprint 57.65 A-2 — add cached_input_tokens + cache_hit_rate (prompt-cache obs)
     - 2026-04-30: Add 3 new Cat 1-owned events (Sprint 50.2 Day 2.2) —
@@ -46,6 +47,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
+from agent_harness._contracts.chat import Message
 from agent_harness._contracts.observability import TraceContext
 
 
@@ -155,6 +157,12 @@ class LoopCompleted(LoopEvent):
     # boot). Default None covers every non-handoff termination path.
     handoff_target: str | None = None
     handoff_reason: str | None = None
+    # Sprint 57.69 A-3b slice 2 (HANDOFF agent-side context carry): in-process
+    # snapshot of the parent's in-memory conversation at HANDOFF, carried to the
+    # platform layer (router post-loop hook -> boot_handoff) to seed the child with
+    # the prior conversation. NOT in the loop_end wire schema (sse.py maps 4 fields)
+    # -> server-side only. Default None covers non-handoff terminations.
+    handoff_context: list[Message] | None = None
 
 
 # === Category 6: Output Parser ==============================================

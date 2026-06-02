@@ -15,6 +15,7 @@
  * Created: 2026-05-17 (Sprint 57.21 Day 1)
  *
  * Modification History:
+ *   - 2026-06-02: Sprint 57.69 — agent_handoff pivot + handoffBanner / pivotSession / dismiss coverage
  *   - 2026-05-17: Initial creation (Sprint 57.21 Day 1 / US-B3)
  */
 
@@ -25,6 +26,7 @@ import type {
   AgentTurn,
   HITLTurn,
   LoopEvent,
+  Session,
   SubagentForkBlock,
   ThinkingBlock,
   ToolBlock,
@@ -111,6 +113,25 @@ const approvalReceived = (id: string, decision = "APPROVED"): LoopEvent => ({
 const guardrailTriggered = (): LoopEvent => ({
   type: "guardrail_triggered",
   data: { guardrail_type: "input", action: "block", reason: "PII detected" },
+});
+
+const loopStart = (sessionId: string): LoopEvent => ({
+  type: "loop_start",
+  data: { session_id: sessionId },
+});
+
+const agentHandoff = (
+  newSessionId = "sess-child",
+  targetAgent = "researcher",
+  reason = "needs deep research",
+): LoopEvent => ({
+  type: "agent_handoff",
+  data: {
+    target_agent: targetAgent,
+    reason,
+    parent_session_id: "sess-parent",
+    new_session_id: newSessionId,
+  },
 });
 
 const lastAgentTurn = (turns: Turn[]): AgentTurn => {
@@ -393,5 +414,108 @@ describe("chatStore.mergeEvent Turn block sequence (Sprint 57.21 Day 1)", () => 
     expect(agent.stopReason).toBe("end_turn");
     expect(agent.blocks.map((b) => b.type)).toEqual(["thinking", "tool"]);
     expect((agent.blocks[1] as ToolBlock).status).toBe("ok");
+  });
+});
+
+// === Sprint 57.69 A-3b slice 2 — HANDOFF session-pivot + banner =============
+
+const sessionFixture = (id: string): Session => ({
+  id,
+  title: `Session ${id}`,
+  agent: "incident_responder",
+  turns: 3,
+  status: "done",
+  time: "10:00",
+  domain: "incident",
+});
+
+describe("chatStore HANDOFF pivot + banner (Sprint 57.69)", () => {
+  beforeEach(() => {
+    useChatStore.getState().reset();
+  });
+  afterEach(() => {
+    useChatStore.getState().reset();
+  });
+
+  test("agent_handoff pivots: sessionId + activeSessionId = new_session_id", () => {
+    // Build up some parent-session state first.
+    useChatStore.getState().mergeEvent(loopStart("sess-parent"));
+    useChatStore.getState().mergeEvent(turnStart());
+    useChatStore.getState().mergeEvent(loopEnd("handoff", 1));
+
+    useChatStore.getState().mergeEvent(agentHandoff("sess-child", "researcher", "go deep"));
+    const state = useChatStore.getState();
+    expect(state.sessionId).toBe("sess-child");
+    expect(state.activeSessionId).toBe("sess-child");
+  });
+
+  test("agent_handoff resets turns + conversation slices to the empty child", () => {
+    useChatStore.getState().mergeEvent(turnStart());
+    useChatStore.getState().mergeEvent(approvalRequested("ap-h", "HIGH"));
+    expect(useChatStore.getState().turns.length).toBeGreaterThan(0);
+
+    useChatStore.getState().mergeEvent(agentHandoff());
+    const state = useChatStore.getState();
+    expect(state.turns).toEqual([]);
+    expect(state.status).toBe("idle");
+    expect(state.totalTurns).toBe(0);
+    expect(state.stopReason).toBeNull();
+    expect(state.errorMessage).toBeNull();
+    expect(state.approvals).toEqual({});
+    expect(state.verifications).toEqual([]);
+    expect(state.subagents).toEqual([]);
+  });
+
+  test("agent_handoff sets handoffBanner to {targetAgent, reason}", () => {
+    useChatStore
+      .getState()
+      .mergeEvent(agentHandoff("sess-child", "reviewer", "policy review needed"));
+    expect(useChatStore.getState().handoffBanner).toEqual({
+      targetAgent: "reviewer",
+      reason: "policy review needed",
+    });
+  });
+
+  test("agent_handoff still records the rawEvent (audit trail preserved)", () => {
+    useChatStore.getState().mergeEvent(turnStart()); // rawEvents[0]
+    useChatStore.getState().mergeEvent(agentHandoff()); // rawEvents[1]
+    const { rawEvents } = useChatStore.getState();
+    expect(rawEvents).toHaveLength(2);
+    expect(rawEvents[1].type).toBe("agent_handoff");
+  });
+
+  test("agent_handoff preserves the sessions sidebar list", () => {
+    useChatStore.getState().setSessions([sessionFixture("a"), sessionFixture("b")]);
+    useChatStore.getState().mergeEvent(agentHandoff());
+    const { sessions } = useChatStore.getState();
+    expect(sessions.map((s) => s.id)).toEqual(["a", "b"]);
+  });
+
+  test("loop_start clears the handoffBanner (continuing in the child dismisses it)", () => {
+    useChatStore.getState().mergeEvent(agentHandoff());
+    expect(useChatStore.getState().handoffBanner).not.toBeNull();
+    useChatStore.getState().mergeEvent(loopStart("sess-child"));
+    expect(useChatStore.getState().handoffBanner).toBeNull();
+  });
+
+  test("dismissHandoffBanner clears the banner", () => {
+    useChatStore.getState().mergeEvent(agentHandoff());
+    expect(useChatStore.getState().handoffBanner).not.toBeNull();
+    useChatStore.getState().dismissHandoffBanner();
+    expect(useChatStore.getState().handoffBanner).toBeNull();
+  });
+
+  test("pivotSession action pivots + sets banner directly (no event)", () => {
+    useChatStore.getState().mergeEvent(turnStart());
+    useChatStore.getState().setSessions([sessionFixture("keep")]);
+    useChatStore
+      .getState()
+      .pivotSession("sess-direct", { targetAgent: "planner", reason: "decompose plan" });
+    const state = useChatStore.getState();
+    expect(state.sessionId).toBe("sess-direct");
+    expect(state.activeSessionId).toBe("sess-direct");
+    expect(state.turns).toEqual([]);
+    expect(state.handoffBanner).toEqual({ targetAgent: "planner", reason: "decompose plan" });
+    expect(state.sessions.map((s) => s.id)).toEqual(["keep"]); // preserved
   });
 });
