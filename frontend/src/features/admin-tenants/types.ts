@@ -14,11 +14,12 @@
  * Last Modified: 2026-06-03
  *
  * Modification History (newest-first):
+ *   - 2026-06-03: Sprint 57.74 — add FleetStats/PerTenantStat/TenantsStatsResponse for the /admin/tenants/stats aggregate
  *   - 2026-06-03: Sprint 57.73 — sync TenantListItem with backend 57.47 LIST 7→12 (region/locale/retention_days/sso_enabled/seats) for real-data table wiring
  *   - 2026-05-07: Initial creation (Sprint 57.4 Day 2)
  *
  * Related:
- *   - backend/src/api/v1/admin/tenants.py (TenantListItem + TenantListResponse)
+ *   - backend/src/api/v1/admin/tenants.py (TenantListItem + TenantListResponse + TenantsStatsResponse)
  *   - ../tenant-settings/types (TenantState + TenantPlan source of truth)
  *   - ./services/adminTenantsService.ts (consumer)
  *   - ./store/adminTenantsStore.ts (consumer)
@@ -73,4 +74,37 @@ export interface TenantListQuery {
   search?: string;
   limit: number;
   offset: number;
+}
+
+/**
+ * Fleet-wide aggregate counts powering the admin-tenants stats strip
+ * (Sprint 57.74; mirrors backend FleetStats). Trend deltas + the Anomalies
+ * stat have no backend source → honest-gapped in the UI (reported via the
+ * response `gapped` list, never fabricated).
+ */
+export interface FleetStats {
+  active_tenants: number;
+  total_seats: number;
+  agents_deployed: number;
+}
+
+/**
+ * Per-tenant counts for the table's Agents + Runs·24h columns
+ * (Sprint 57.74; mirrors backend PerTenantStat). `tenant_id` keys back to
+ * TenantListItem.id.
+ */
+export interface PerTenantStat {
+  tenant_id: string;
+  agents: number;
+  runs24: number;
+}
+
+/**
+ * GET /admin/tenants/stats response — fleet aggregate + per-tenant map +
+ * names of the un-backable gapped bits (`["anomalies", "deltas"]`).
+ */
+export interface TenantsStatsResponse {
+  fleet: FleetStats;
+  per_tenant: PerTenantStat[];
+  gapped: string[];
 }

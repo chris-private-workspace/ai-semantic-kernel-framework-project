@@ -46,6 +46,7 @@ Created: 2026-05-06 (Sprint 56.1 Day 1)
 Last Modified: 2026-05-10
 
 Modification History:
+    - 2026-06-03: Sprint 57.74 — add GET /stats fleet aggregate (closes AD-AdminTenants-Stats)
     - 2026-05-29: Sprint 57.62 Track A — add GET /rate-limits/alerts (80%-threshold alert log)
     - 2026-05-29: Sprint 57.61 — RateLimits PUT field_validator (422 on malformed value/label)
     - 2026-05-29: Sprint 57.60 — RateLimits GET/usage/PUT drop meta_data fallback+dual-write
@@ -79,7 +80,7 @@ Related:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
@@ -91,9 +92,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from agent_harness._contracts.hitl import HITLPolicy, RiskLevel
 from core.feature_flags import FeatureFlagNotFoundError, get_feature_flags_service
 from infrastructure.db.audit_helper import append_audit
+from infrastructure.db.models.agent_catalog import AgentCatalog
 from infrastructure.db.models.api_keys import RateLimit
 from infrastructure.db.models.feature_flag import FeatureFlag
 from infrastructure.db.models.identity import Tenant, TenantPlan, TenantState, User
+from infrastructure.db.models.sessions import Session
 from infrastructure.db.session import get_db_session
 from platform_layer.governance.hitl.policy_store import DBHITLPolicyStore
 from platform_layer.identity.auth import (
@@ -272,6 +275,128 @@ async def list_tenants(
         total=total,
         limit=limit,
         offset=offset,
+    )
+
+
+# ---------------------------------------------------------------------
+# Sprint 57.74 (US-1/US-2/US-6): Fleet stats aggregate endpoint
+# Closes AD-AdminTenants-Stats-Aggregate-Endpoint (A-6a carryover from 57.73).
+# ---------------------------------------------------------------------
+# Route order note (Day-0 D-DAY0-1): GET /stats MUST be registered ABOVE the
+# GET /{tenant_id} detail route (line ~443), otherwise FastAPI matches "stats"
+# as the {tenant_id} path param. It is placed here (right after the list
+# endpoint, before the /{tenant_id}/... onboarding + detail routes) so the
+# static "/stats" segment is resolved first.
+#
+# Deps: require_admin_platform_role + plain get_db_session (fleet-wide
+# cross-tenant aggregate by design — NOT get_db_session_with_tenant; mirrors
+# list_tenants). Un-backable bits (the Anomalies stat + trend deltas) have no
+# backend source → reported in `gapped`, never fabricated (AP-4 honesty).
+
+
+class FleetStats(BaseModel):
+    """Fleet-wide aggregate counts powering the admin-tenants stats strip."""
+
+    active_tenants: int
+    total_seats: int
+    agents_deployed: int
+
+
+class PerTenantStat(BaseModel):
+    """Per-tenant counts for the table's Agents + Runs·24h columns."""
+
+    tenant_id: UUID
+    agents: int
+    runs24: int
+
+
+class TenantsStatsResponse(BaseModel):
+    """Fleet aggregate + per-tenant map + names of the un-backable gapped bits."""
+
+    fleet: FleetStats
+    per_tenant: list[PerTenantStat]
+    gapped: list[str]
+
+
+@router.get(
+    "/stats",
+    response_model=TenantsStatsResponse,
+    dependencies=[Depends(require_admin_platform_role)],
+)
+async def get_tenants_stats(
+    db: AsyncSession = Depends(get_db_session),
+) -> TenantsStatsResponse:
+    """Fleet-wide tenant stats aggregate (platform-admin, cross-tenant).
+
+    Sprint 57.74 (US-1/US-2) — closes AD-AdminTenants-Stats-Aggregate-Endpoint.
+
+    Returns:
+      - fleet: active-tenant count, total seats, deployed-agent count
+      - per_tenant: [{tenant_id, agents, runs24}] (union of tenants appearing
+        in the active-agent GROUP BY OR the 24h-session GROUP BY; missing side
+        defaults to 0)
+      - gapped: ["anomalies", "deltas"] — the Anomalies stat + every trend
+        delta have no backend source and are reported here, never fabricated.
+
+    runs24 = sessions whose started_at falls within the last 24h (tz-aware
+    cutoff bound param, not a DB now() literal). Fleet-wide by design: plain
+    session, no RLS tenant scope (mirrors list_tenants).
+    """
+    # --- Fleet aggregates ---
+    active_tenants_raw = (
+        await db.execute(
+            select(func.count()).select_from(Tenant).where(Tenant.state == TenantState.ACTIVE)
+        )
+    ).scalar()
+    active_tenants = int(active_tenants_raw or 0)
+
+    total_seats_raw = (await db.execute(select(func.coalesce(func.sum(Tenant.seats), 0)))).scalar()
+    total_seats = int(total_seats_raw or 0)
+
+    agents_deployed_raw = (
+        await db.execute(
+            select(func.count()).select_from(AgentCatalog).where(AgentCatalog.is_active.is_(True))
+        )
+    ).scalar()
+    agents_deployed = int(agents_deployed_raw or 0)
+
+    # --- Per-tenant maps (two GROUP BY queries, merged on tenant_id) ---
+    agents_rows = (
+        await db.execute(
+            select(AgentCatalog.tenant_id, func.count())
+            .where(AgentCatalog.is_active.is_(True))
+            .group_by(AgentCatalog.tenant_id)
+        )
+    ).all()
+    agents_by_tenant: dict[UUID, int] = {tid: int(cnt) for tid, cnt in agents_rows}
+
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    runs_rows = (
+        await db.execute(
+            select(Session.tenant_id, func.count())
+            .where(Session.started_at >= cutoff)
+            .group_by(Session.tenant_id)
+        )
+    ).all()
+    runs_by_tenant: dict[UUID, int] = {tid: int(cnt) for tid, cnt in runs_rows}
+
+    per_tenant = [
+        PerTenantStat(
+            tenant_id=tid,
+            agents=agents_by_tenant.get(tid, 0),
+            runs24=runs_by_tenant.get(tid, 0),
+        )
+        for tid in (agents_by_tenant.keys() | runs_by_tenant.keys())
+    ]
+
+    return TenantsStatsResponse(
+        fleet=FleetStats(
+            active_tenants=active_tenants,
+            total_seats=total_seats,
+            agents_deployed=agents_deployed,
+        ),
+        per_tenant=per_tenant,
+        gapped=["anomalies", "deltas"],
     )
 
 

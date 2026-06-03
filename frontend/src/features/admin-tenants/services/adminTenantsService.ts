@@ -12,20 +12,25 @@
  *   IAM JWT) + signal forwarded for TanStack auto-cancellation.
  *
  * Created: 2026-05-07 (Sprint 57.4 Day 2)
- * Last Modified: 2026-05-09
+ * Last Modified: 2026-06-03
  *
  * Modification History (newest-first):
+ *   - 2026-06-03: Sprint 57.74 — add fetchStats() for GET /admin/tenants/stats fleet aggregate
  *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — swap raw fetch to fetchWithAuth + signal param
  *   - 2026-05-07: Initial creation (Sprint 57.4 Day 2)
  *
  * Related:
- *   - backend/src/api/v1/admin/tenants.py (GET "" list endpoint)
- *   - ../types.ts (TenantListQuery + TenantListResponse)
- *   - ../hooks/useAdminTenants.ts (TanStack consumer)
+ *   - backend/src/api/v1/admin/tenants.py (GET "" list + GET /stats endpoints)
+ *   - ../types.ts (TenantListQuery + TenantListResponse + TenantsStatsResponse)
+ *   - ../hooks/{useAdminTenants,useAdminTenantsStats}.ts (TanStack consumers)
  */
 
 import { fetchWithAuth } from "../../auth/services/authService";
-import type { TenantListQuery, TenantListResponse } from "../types";
+import type {
+  TenantListQuery,
+  TenantListResponse,
+  TenantsStatsResponse,
+} from "../types";
 
 const API_BASE = "/api/v1/admin";
 
@@ -69,4 +74,17 @@ export async function listTenants(
     signal,
   });
   return _handleResponse<TenantListResponse>(response);
+}
+
+/**
+ * Fetch the fleet-wide tenant stats aggregate (Sprint 57.74) — fleet counts
+ * for the stats strip + per-tenant agents/runs24 map for the table columns.
+ * Platform-admin only server-side (cross-tenant by design).
+ */
+export async function fetchStats(signal?: AbortSignal): Promise<TenantsStatsResponse> {
+  const response = await fetchWithAuth(`${API_BASE}/tenants/stats`, {
+    method: "GET",
+    signal,
+  });
+  return _handleResponse<TenantsStatsResponse>(response);
 }

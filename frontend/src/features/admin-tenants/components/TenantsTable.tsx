@@ -10,13 +10,18 @@
  *   Runs · 24h / Status badge+dot / Created / dots). Toolbar = cmdk filter
  *   visual stub + 2 ghost buttons (Plan: all + Sort: runs(24h)).
  *
- *   Sprint 57.73 (A-6a) re-wires the rows to REAL GET /api/v1/admin/tenants
- *   data via props (TenantListItem[]). The two unbacked columns Agents +
- *   Runs · 24h render a literal "—" (no backend surface); the stats strip is
- *   likewise placeholder. Loading / error / empty states are MOCKUP-NATIVE
- *   table rows (the table's own markup + mockup classes + var(--*) tokens) —
- *   NOT the shadcn-token shared TableSkeleton/ErrorRetry (those would inject
- *   residue into this verbatim-mockup page).
+ *   Sprint 57.73 (A-6a) re-wired the rows to REAL GET /api/v1/admin/tenants
+ *   data via props (TenantListItem[]). Sprint 57.74 fills the two formerly
+ *   unbacked columns Agents + Runs · 24h from a `statsByTenant` map (real
+ *   per-tenant counts from GET /api/v1/admin/tenants/stats); a subtle "—"
+ *   renders only when a tenant is absent from the map OR its count is 0 (the
+ *   mockup's empty-cell convention). With agents/runs24 now backed, the table
+ *   no longer carries a gap banner — the stats strip owns the remaining
+ *   Anomalies/deltas gap (single honest banner per gap; no double banner).
+ *   Loading / error / empty states stay MOCKUP-NATIVE table rows (the table's
+ *   own markup + mockup classes + var(--*) tokens) — NOT the shadcn-token
+ *   shared TableSkeleton/ErrorRetry (those would inject residue into this
+ *   verbatim-mockup page).
  *
  * Key Components:
  *   - TenantsTable: prop-driven visual table component (real data + states)
@@ -25,22 +30,21 @@
  * Last Modified: 2026-06-03
  *
  * Modification History (newest-first):
+ *   - 2026-06-03: Sprint 57.74 — fill agents/runs24 columns from statsByTenant map + drop gap banner (strip owns Anomalies/deltas gap) (A-6a)
  *   - 2026-06-03: Sprint 57.73 — accept real TenantListItem[] via props + loading/error/empty mockup-native rows + "—" for unbacked agents/runs24 (A-6a)
  *   - 2026-05-26: Sprint 57.49 — add optional onRowClick prop for Members drawer drill-down (Track B)
  *   - 2026-05-25: Initial creation (Sprint 57.43 Day 1) — admin-tenants full mockup-fidelity rebuild
  *
  * Related:
  *   - reference/design-mockups/page-admin.jsx L357-407
- *   - frontend/src/features/admin-tenants/types.ts (TenantListItem)
+ *   - frontend/src/features/admin-tenants/types.ts (TenantListItem + PerTenantStat)
  *   - frontend/src/features/admin-tenants/_fixtures.ts (TABLE_SUBTITLE)
  *   - frontend/src/components/mockup-ui.tsx (Card, Button, Badge, Icon primitives)
- *   - frontend/src/components/ui/BackendGapBanner.tsx (AP-2 honesty banner)
  */
 
 /* eslint-disable no-restricted-syntax -- mockup verbatim inline styles ported byte-for-byte from page-admin.jsx L359, L385-401 (avatar cell + mono fontSize / textAlign / width) + Sprint 57.73 mockup-native state rows reuse the same token literals; STYLE.md §3 escape hatch + frontend-mockup-fidelity.md verbatim-CSS method */
 
 import { Badge, Button, Card, Icon } from "../../../components/mockup-ui";
-import { BackendGapBanner } from "../../../components/ui/BackendGapBanner";
 import { TABLE_SUBTITLE } from "../_fixtures";
 import { TenantPlan, TenantState, type TenantListItem } from "../types";
 
@@ -64,15 +68,29 @@ function formatCreated(createdAt: string): string {
   return createdAt.slice(0, 10);
 }
 
-// Subtle placeholder for the two columns with no backend surface (agents /
-// runs24). Rendered instead of fabricated fixture numbers per AP-2 honesty.
+// Subtle "—" rendered in the Agents / Runs·24h cells when a tenant is absent
+// from the stats map OR its count is 0 (the mockup's empty-cell convention) —
+// never a fabricated number (AP-2 honesty).
 const GAP_PLACEHOLDER = (
   <span style={{ color: "var(--fg-subtle)" }}>—</span>
 );
 
+// Render a per-tenant count: real (number-formatted, mockup convention) when
+// present and > 0; subtle "—" for a genuine 0 / absent tenant.
+function renderCount(count: number | undefined): JSX.Element | string {
+  if (count === undefined || count === 0) return GAP_PLACEHOLDER;
+  return count.toLocaleString();
+}
+
 export interface TenantsTableProps {
   /** Real tenant rows from GET /api/v1/admin/tenants (Sprint 57.73 A-6a). */
   tenants: TenantListItem[];
+  /**
+   * Per-tenant agents/runs24 counts keyed by tenant id, from
+   * GET /api/v1/admin/tenants/stats (Sprint 57.74). Absent tenants / 0 counts
+   * render the subtle "—" placeholder.
+   */
+  statsByTenant?: Record<string, { agents: number; runs24: number }>;
   /** TanStack query loading flag (shows skeleton rows). */
   isLoading?: boolean;
   /** TanStack query error flag (shows inline error row + retry). */
@@ -89,6 +107,7 @@ export interface TenantsTableProps {
 
 export function TenantsTable({
   tenants,
+  statsByTenant,
   isLoading = false,
   isError = false,
   onRetry,
@@ -212,10 +231,10 @@ export function TenantsTable({
                   {t.seats}
                 </td>
                 <td className="mono tnum" style={{ textAlign: "right" }}>
-                  {GAP_PLACEHOLDER}
+                  {renderCount(statsByTenant?.[t.id]?.agents)}
                 </td>
                 <td className="mono tnum" style={{ textAlign: "right" }}>
-                  {GAP_PLACEHOLDER}
+                  {renderCount(statsByTenant?.[t.id]?.runs24)}
                 </td>
                 <td>
                   <Badge tone={statusTone(t.state)} dot>
@@ -233,7 +252,6 @@ export function TenantsTable({
           )}
         </tbody>
       </table>
-      <BackendGapBanner reason="Agents / 24h-runs columns + the stats strip have no backend yet — tenant rows (name/id/plan/region/seats/status/created) are now real GET /api/v1/admin/tenants data; see AD-AdminTenants-Backend-Schema-Extension" />
     </Card>
   );
 }
