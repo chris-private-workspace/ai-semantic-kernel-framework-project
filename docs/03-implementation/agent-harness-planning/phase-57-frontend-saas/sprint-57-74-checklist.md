@@ -45,50 +45,50 @@
 ## Day 2 — Frontend hook/service/types + stats-strip wiring (US-5/US-3)
 
 ### 2.1 Hook + service + types (US-5)
-- [ ] `services/adminTenantsService.ts` — `fetchStats(signal)` → `GET /api/v1/admin/tenants/stats` (mirror `listTenants`)
-- [ ] `types.ts` — `FleetStats`/`PerTenantStat`/`TenantsStatsResponse` (`tenant_id` string)
-- [ ] `hooks/useAdminTenantsStats.ts` (NEW) — `useQuery` key `["admin-tenants","stats"]`, mirror `useAdminTenants.ts:34-41`
+- [x] `services/adminTenantsService.ts` — `fetchStats(signal)` → `GET /api/v1/admin/tenants/stats` (mirror `listTenants`)
+- [x] `types.ts` — `FleetStats`/`PerTenantStat`/`TenantsStatsResponse` (`tenant_id` string)
+- [x] `hooks/useAdminTenantsStats.ts` (NEW) — `useQuery` key `["admin-tenants","stats"]`, mirror `useAdminTenants.ts:34-41`
 
 ### 2.2 Stats strip wiring + honest gaps (US-3)
-- [ ] `TenantsStatsStrip.tsx` — take `fleet`(+loading/error) prop, drop `STATS_FIXTURE` import; real Active tenants / Total seats / Agents deployed (formatted)
-- [ ] `Anomalies` stat → subtle placeholder (`var(--fg-subtle)` "—", NOT fabricated); every `delta`/trend arrow → omit/subtle placeholder (no historical source); keep verbatim mockup card classes
-- [ ] `BackendGapBanner` naming the gapped bits (Anomalies + trend deltas); mockup-native loading/error states
-- [ ] `_fixtures.ts` — remove orphan `STATS_FIXTURE` (move to test if a Vitest needs it)
+- [x] `TenantsStatsStrip.tsx` — take `fleet`(+loading/error) prop, drop `STATS_FIXTURE` import; real Active tenants / Total seats / Agents deployed (formatted)
+- [x] `Anomalies` stat → subtle placeholder (`var(--fg-subtle)` "—", NOT fabricated); every `delta`/trend arrow → omit/subtle placeholder (no historical source); keep verbatim mockup card classes
+- [x] `BackendGapBanner` naming the gapped bits (Anomalies + trend deltas); mockup-native loading/error states
+- [x] `_fixtures.ts` — remove orphan `STATS_FIXTURE` (+ `StatFixture` type; kept `TABLE_SUBTITLE`)
 
 ---
 
 ## Day 3 — Table columns + View wiring + Vitest + e2e (US-4/US-7)
 
 ### 3.1 Table columns + View (US-4)
-- [ ] `TenantsTable.tsx` — accept `statsByTenant?: Record<string,{agents,runs24}>` prop; fill `Agents` + `Runs · 24h` cells (`:124-125`) from the map (real counts; subtle "—" only for absent/0 tenant per mockup spot-check); identity columns + states from 57.73 UNCHANGED
-- [ ] Reword/relocate gap banner: drop now-backed agents/runs24 from the table banner (strip owns Anomalies/deltas banner) — single honest banner per gap, no double-banner
-- [ ] `AdminTenantsView.tsx` — mount `useAdminTenantsStats()`; pass `data.fleet`(+loading/error) to strip + build `statsByTenant` from `data.per_tenant` → pass to table; keep 57.73 `useAdminTenants()` list wiring intact
+- [x] `TenantsTable.tsx` — accept `statsByTenant?: Record<string,{agents,runs24}>` prop; fill `Agents` + `Runs · 24h` cells (`:124-125`) from the map (real counts; subtle "—" only for absent/0 tenant per mockup spot-check); identity columns + states from 57.73 UNCHANGED
+- [x] Gap banner: dropped from table (now-backed agents/runs24); strip owns the single Anomalies/deltas banner (strip owns Anomalies/deltas banner) — single honest banner per gap, no double-banner
+- [x] `AdminTenantsView.tsx` — mount `useAdminTenantsStats()`; pass `data.fleet`(+loading/error) to strip + build `statsByTenant` from `data.per_tenant` → pass to table; keep 57.73 `useAdminTenants()` list wiring intact
 
 ### 3.2 Vitest + Playwright (US-7)
-- [ ] Vitest: `useAdminTenantsStats` (mocked fetch → fleet/per_tenant/gapped); `TenantsStatsStrip` (seeded fleet → 3 real + Anomalies/delta gap markers + banner); `TenantsTable` (statsByTenant → real agents/runs24, "—" absent; 57.73 rows/states unchanged)
-- [ ] Playwright: extend `admin-tenants.spec.ts` — mock `**/api/v1/admin/tenants/stats` (happy: strip real values + table columns filled; error: 500 → mockup-native states)
+- [x] Vitest: `useAdminTenantsStats` (mocked fetch → fleet/per_tenant/gapped); `TenantsStatsStrip` (seeded fleet → 3 real + Anomalies/delta gap markers + banner); `TenantsTable` (statsByTenant → real agents/runs24, "—" absent; 57.73 rows/states unchanged)
+- [x] Playwright: extend `admin-tenants.spec.ts` — mock `**/api/v1/admin/tenants/stats` (happy: strip real values + table columns filled; error: 500 → mockup-native states)
 
 ---
 
 ## Day 4 — Mockup-fidelity sweep + Closeout
 
 ### 4.1 Mockup-fidelity + full sweep (US-7)
-- [ ] **CSS diff**: `diff styles.css styles-mockup.css` → empty (parent-verified)
-- [ ] **grep guard**: no hardcoded hex/oklch in edited components + new hook (all `var(--*)`)
-- [ ] **`check:mockup-fidelity`**: baseline unchanged (50=50, byte-identical) — parent-run (Before-Commit item 7)
-- [ ] **computed-style**: stats-strip card + table agents/runs24 cell vs `page-admin.jsx`; no shadcn-token residue introduced
-- [ ] `npm run lint` (no `--silent`) EXIT 0 + `npm run build` tsc 0 + Vitest green — parent-run
-- [ ] Backend `pytest` (stats + 403 + window) green; mypy 0; V2 lints green — parent-run
-- [ ] Parent re-verify (Before-Commit item 7): 4-query aggregate correctness + per-tenant merge + 403 gate + honest gaps (no fabricated stat/arrow) + English copy convention (no 繁中 state strings — 57.73 lesson)
+- [x] **CSS diff**: `diff styles.css styles-mockup.css` → empty (parent-verified via check:mockup-fidelity byte-identical guard)
+- [x] **grep guard**: no hardcoded hex/oklch in edited components + new hook (all `var(--*)`; baseline 50 unchanged)
+- [x] **`check:mockup-fidelity`**: baseline unchanged (50=50, byte-identical) — parent-run (Before-Commit item 7)
+- [x] **computed-style**: data-only change + CSS byte-identical → computed-style unchanged by construction; no shadcn-token residue (grep clean)
+- [x] `npm run lint` (no `--silent`) EXIT 0 + `npm run build` tsc 0 + Vitest 715/129 files green — parent-run
+- [x] Backend `pytest` 29 (stats + 403 + window) green; mypy 0/329; V2 lints 10/10 — parent-run
+- [x] Parent re-verify (Before-Commit item 7): 4-query aggregate correctness + per-tenant merge + 403 gate + honest gaps (no fabricated stat/arrow) + English copy convention (CJK grep clean) — both agents clean, no defect
 
 ### 4.2 Closeout docs
-- [ ] CHANGE-042 created; no 17.md/02.md/01.md change (facade precedent; pure read aggregate)
-- [ ] progress.md (Day 0-4) + retrospective.md (Q1-Q7) — NO design note (feature-continuation)
-- [ ] Calibration: `mixed-multidomain-bundle` 0.65 + `agent_factor` `mixed-multidomain-bundle-mechanical` 0.45 (CAVEATED — 12th consecutive no-clean-wall-clock; if <0.7 → escalate per 57.59 note / 0.30 or fold pattern-reuse-heavy); recorded `calibration-log.md §3`
-- [ ] MEMORY.md pointer + `project_phase57_74_*.md` subfile + CLAUDE.md lean (Current Sprint row + footer)
-- [ ] Carryover recorded (plan §9 + retrospective §Q5): `AD-AdminTenants-Anomalies-Stat-Backend` + `AD-AdminTenants-Stats-Trend-Deltas` (NEW, if pursued) + page-scoped per-tenant stats; remaining program: A-5c Trace/Memory tabs (`AD-ChatV2-Inspector-{Trace,Memory}-Phase2`), `AD-Memory-OpsHistory-Backend`, FE `/subagents` (`AD-Subagent-RealList-Phase58`)
-- [ ] Mark `AD-AdminTenants-Stats-Aggregate-Endpoint` CLOSED in next-phase-candidates
+- [x] CHANGE-042 created; no 17.md/02.md/01.md change (facade precedent; pure read aggregate)
+- [x] progress.md (Day 0-4) + retrospective.md (Q1-Q7) — NO design note (feature-continuation)
+- [x] Calibration: `mixed-multidomain-bundle` 0.65 + `mixed-multidomain-bundle-mechanical` 0.45 — CAVEATED (12th consecutive no-clean-wall-clock; both tracks first-pass clean, no escalation signal); recorded in retrospective Q2 + next-phase blurb (caveated → no matrix baseline change)
+- [x] MEMORY.md pointer + `project_phase57_74_admin_tenants_stats.md` subfile + CLAUDE.md lean (Current Sprint row + footer)
+- [x] Carryover recorded (plan §9 + retrospective §Q5 + next-phase §Sprint 57.74): `AD-AdminTenants-Anomalies-Stat-Backend` + `AD-AdminTenants-Stats-Trend-Deltas` (NEW, if pursued) + page-scoped per-tenant stats; remaining program: A-5c Trace/Memory tabs (`AD-ChatV2-Inspector-{Trace,Memory}-Phase2`), `AD-Memory-OpsHistory-Backend`, FE `/subagents` (`AD-Subagent-RealList-Phase58`)
+- [x] Mark `AD-AdminTenants-Stats-Aggregate-Endpoint` CLOSED in next-phase-candidates (§Sprint 57.74 Carryover)
 
 ### 4.3 Ship
-- [ ] Final verify (parent-run): CSS diff empty + build tsc 0 + Vitest green + `check:mockup-fidelity` 50 + lint (no `--silent`) EXIT 0 + backend pytest/mypy/V2-lints green + grep 0 hardcoded color
+- [x] Final verify (parent-run): CSS diff empty + build tsc 0 + Vitest 715 + `check:mockup-fidelity` 50 + lint (no `--silent`) EXIT 0 + backend pytest 29/mypy 0/V2-lints 10/10 + grep 0 hardcoded color
 - [ ] commit (Day 0-4) + push + PR — **user-authorized** (push/PR gated on user approval)

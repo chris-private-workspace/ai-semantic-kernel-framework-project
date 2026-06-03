@@ -36,6 +36,25 @@
 
 ---
 
+## 🆕 Sprint 57.74 Carryover (2026-06-03 — admin-tenants stats aggregate; closes AD-AdminTenants-Stats-Aggregate-Endpoint)
+
+Sprint 57.74 (Area-A **#3** of the "process all carryover except A-4 Tier 2" program) ✅ **CLOSED** `AD-AdminTenants-Stats-Aggregate-Endpoint`: NEW `GET /admin/tenants/stats` fleet aggregate (active_tenants/total_seats/agents_deployed + per-tenant agents/runs24 map) + wired `TenantsStatsStrip` (3 real stats) + filled `TenantsTable` Agents/Runs·24h columns. Anomalies stat + trend deltas honest-gapped (no fabrication). Agent-delegated (Track A backend + Track B frontend + parent re-verify). Detail: `memory/project_phase57_74_admin_tenants_stats.md` + retrospective. CHANGE-042.
+
+**2 NEW carryovers** (honest-gapped this sprint):
+- `AD-AdminTenants-Anomalies-Stat-Backend` — define + back the Anomalies stat (e.g. per-tenant verification failures / guardrail blocks / SLA breaches + aggregate query).
+- `AD-AdminTenants-Stats-Trend-Deltas` — period-over-period delta source (snapshot table or time-windowed diff) for the stat trend arrows.
+- (minor) page-scoped per-tenant stats — perf optimization if the fleet grows beyond admin scale.
+
+**Remaining "process all carryover except A-4 Tier 2" program** (user-selected; sequenced next):
+- A-5c Inspector **Trace** tab — `AD-ChatV2-Inspector-Trace-Phase2` (needs SpanStarted/SpanEnded over SSE).
+- A-5c Inspector **Memory** tab — `AD-ChatV2-Inspector-Memory-Phase2` (needs `memory_accessed` event).
+- A-6b memory ops-history backend — `AD-Memory-OpsHistory-Backend` (memory write-path audit/version instrumentation).
+- FE `/subagents` wiring — `AD-Subagent-RealList-Phase58` (subagent invocations list backend).
+
+(A-4 Tier 2 real Jaeger export = explicitly EXCLUDED from the program → Area-C/DevOps.)
+
+---
+
 ## 🆕 C-11 Real-LLM Execution Findings (2026-06-03 — 本機 smoke 實跑；real-LLM 閉環 LIVE；cost-ledger row-count leg RESOLVED via restart，$ 值 gap 開放)
 
 C-11 本機 real-LLM smoke 已實跑（用既有 `.env` Azure 憑證、零 GitHub secret、零 code change；詳 `claudedocs/5-status/c11-real-llm-e2e-analysis-20260601.md §8`）。**real-LLM 閉環 = LIVE + 已驗證**（HTTP 200 / `loop_end` / 真實 gpt-4o 回覆 / `audit_log` Δ=1）。`cost_ledger` Δ=0；root-cause 深查**推翻**初判的 streaming code bug（loop 用非串流 `chat()`、adapter usage 實測正常 prompt=12/comp=9、`record_llm_call` 缺 pricing 仍寫 0 成本行、yaml 載入 OK、FIX-022 已 wire）。3 衍生 AD：

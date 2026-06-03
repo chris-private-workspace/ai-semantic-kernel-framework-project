@@ -34,3 +34,26 @@ All confirmed via Glob: `backend/src/api/v1/admin/tenants.py` + `cost_summary.py
 - No unfavourable scope drift; plan §0 D3 already noted region/seats present (from 57.46/47).
 
 ### go/no-go = **GO** (Day 1 backend). No scope change; D-DAY0-1 is an implementation-placement constraint, not a scope shift.
+
+---
+
+## Day 1 — Backend `/admin/tenants/stats` (Track A, agent-delegated) — `f322c6c0`
+
+- code-implementer agent (Track A, ~4.6 min wall-clock) implemented `GET /admin/tenants/stats` in `admin/tenants.py` (L321, after list `:278`, before `/{tenant_id}` — D-DAY0-1 honored) + `FleetStats`/`PerTenantStat`/`TenantsStatsResponse` + 4-query aggregate + per-tenant union merge + `gapped=["anomalies","deltas"]`. NEW `test_admin_tenants_stats.py` (6 tests, mirrors `test_admin_tenant_list._build_app` — Risk Class C db override covered).
+- **Parent re-verify (Before-Commit item 7)**: read endpoint + tests for correctness (tz-aware cutoff, union merge, 403 gate, no fabrication); re-ran mypy **0/329**, pytest **29 passed** (6 new + 23 list + 2 rbac), `run_all.py` **10/10**. No defect found (agent clean).
+
+## Day 2 — Frontend hook/service/types + strip wiring (Track B part 1) — `8b4897ca`
+
+- `adminTenantsService.fetchStats` + `types` (FleetStats/PerTenantStat/TenantsStatsResponse) + `useAdminTenantsStats` hook (key `["admin-tenants","stats"]`).
+- `TenantsStatsStrip` → `fleet` prop; 3 real stats (toLocaleString); Anomalies subtle "—"; deltas omitted; BackendGapBanner; mockup-native states; `STATS_FIXTURE` removed.
+
+## Day 3 — Table columns + View + Vitest + e2e (Track B part 2) — `8b4897ca`
+
+- `TenantsTable` `statsByTenant` map prop + `renderCount` (real >0 / "—" absent-or-0); table gap banner dropped (strip owns single banner). `AdminTenantsView` mounts stats hook + threads fleet + per_tenant→statsByTenant; list query intact.
+- Vitest: NEW `useAdminTenantsStats.test`; extended strip/table/view tests; e2e `/stats` mock + 2 scenarios.
+
+## Day 4 — Sweep + Closeout
+
+- **Parent re-verify (Before-Commit item 7)**: read all changed frontend code (3 real stats / no fabrication / English copy / mockup-native / single banner); CJK grep clean (only a pre-existing code comment); re-ran **check:mockup-fidelity byte-identical + baseline 50**, **build tsc 0**, **lint exit 0** (no `--silent`), **Vitest 715 passed** (129 files). No defect (agents clean).
+- Calibration: `mixed-multidomain-bundle` 0.65 + `mixed-multidomain-bundle-mechanical` 0.45 — CAVEATED (12th consecutive no-clean-wall-clock; no escalation signal; both tracks first-pass clean).
+- Closeout: CHANGE-042, retrospective.md (Q1-Q7), `AD-AdminTenants-Stats-Aggregate-Endpoint` → CLOSED + 2 NEW carryovers (`AD-AdminTenants-Anomalies-Stat-Backend` / `AD-AdminTenants-Stats-Trend-Deltas`). No design note (feature-continuation).
