@@ -18,6 +18,7 @@
  * Created: 2026-05-25 (Sprint 57.43 Day 2)
  *
  * Modification History (newest-first):
+ *   - 2026-06-03: Sprint 57.74 — add statsByTenant map coverage (real agents/runs24 for present tenant; "—" for absent/0) (A-6a)
  *   - 2026-06-03: Sprint 57.73 — rewrite for props API (real data + states); drop TENANTS_FIXTURE coupling (A-6a)
  *   - 2026-05-25: Initial creation (Sprint 57.43 Day 2) — admin-tenants mockup-fidelity rebuild Vitest coverage
  *
@@ -88,8 +89,37 @@ describe("TenantsTable (Sprint 57.73 real-data)", () => {
     expect(screen.getByText("2026-01-15")).toBeInTheDocument();
     expect(screen.getByText("2025-09-12")).toBeInTheDocument();
 
-    // agents + runs24 unbacked → literal "—" (2 rows × 2 cols = 4 dashes)
+    // no statsByTenant prop → agents + runs24 absent → "—" (2 rows × 2 cols = 4 dashes)
     expect(screen.getAllByText("—")).toHaveLength(4);
+  });
+
+  it("statsByTenant map → real agents/runs24 for present tenant; '—' for absent/0", () => {
+    // ACME present (agents 5, runs24 1234); GLOBEX absent from the map → both "—".
+    const statsByTenant = {
+      "00000000-0000-0000-0000-000000000001": { agents: 5, runs24: 1234 },
+    };
+    render(<TenantsTable tenants={SAMPLE_TENANTS} statsByTenant={statsByTenant} />);
+
+    // ACME real counts (runs24 number-formatted via toLocaleString → "1,234")
+    expect(screen.getByText("5")).toBeInTheDocument();
+    expect(screen.getByText("1,234")).toBeInTheDocument();
+
+    // GLOBEX absent from map → both its cells render "—" (2 dashes total).
+    expect(screen.getAllByText("—")).toHaveLength(2);
+  });
+
+  it("statsByTenant with a genuine 0 count → subtle '—' (not the digit 0)", () => {
+    const statsByTenant = {
+      "00000000-0000-0000-0000-000000000001": { agents: 0, runs24: 0 },
+      "00000000-0000-0000-0000-000000000002": { agents: 3, runs24: 0 },
+    };
+    render(<TenantsTable tenants={SAMPLE_TENANTS} statsByTenant={statsByTenant} />);
+
+    // ACME 0/0 → 2 dashes; GLOBEX 3/0 → real "3" + 1 dash = 3 dashes total.
+    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getAllByText("—")).toHaveLength(3);
+    // No literal "0" rendered (genuine zero shows the subtle dash per mockup convention).
+    expect(screen.queryByText("0")).not.toBeInTheDocument();
   });
 
   it("isLoading → mockup-native skeleton rows (no real rows)", () => {
@@ -113,7 +143,7 @@ describe("TenantsTable (Sprint 57.73 real-data)", () => {
     expect(screen.getByText(/No tenants found/)).toBeInTheDocument();
   });
 
-  it("renders Card title + toolbar + AP-2 BackendGapBanner naming the gap", () => {
+  it("renders Card title + toolbar; no gap banner (agents/runs24 now backed; strip owns the remaining gap)", () => {
     render(<TenantsTable tenants={SAMPLE_TENANTS} />);
     expect(screen.getByText("All tenants")).toBeInTheDocument();
     expect(screen.getByText(/Filter by name, id, region/i)).toBeInTheDocument();
@@ -122,8 +152,8 @@ describe("TenantsTable (Sprint 57.73 real-data)", () => {
       screen.getByRole("button", { name: /sort: runs \(24h\)/i }),
     ).toBeInTheDocument();
 
-    const banner = screen.getByTestId("backend-gap-banner");
-    expect(banner).toBeInTheDocument();
-    expect(banner).toHaveTextContent(/Agents \/ 24h-runs/);
+    // Sprint 57.74: agents/runs24 columns are now backed → the table no longer
+    // carries a gap banner (the stats strip owns the Anomalies/deltas gap).
+    expect(screen.queryByTestId("backend-gap-banner")).not.toBeInTheDocument();
   });
 });

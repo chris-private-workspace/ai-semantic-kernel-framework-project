@@ -16,6 +16,7 @@
  * Created: 2026-05-25 (Sprint 57.43 Day 2)
  *
  * Modification History (newest-first):
+ *   - 2026-06-03: Sprint 57.74 — mock useAdminTenantsStats (fleet + per_tenant) + assert single gap banner (strip owns it) (A-6a)
  *   - 2026-06-03: Sprint 57.73 — wrap in QueryClientProvider + mock useAdminTenants + assert real rows (A-6a)
  *   - 2026-05-26: Sprint 57.49 — add row click → drawer integration tests + mock useTenantMembers
  *   - 2026-05-25: Initial creation (Sprint 57.43 Day 2) — admin-tenants mockup-fidelity rebuild Vitest coverage
@@ -86,6 +87,27 @@ vi.mock("@/features/admin-tenants/hooks/useAdminTenants", () => ({
   ADMIN_TENANTS_QUERY_KEY_BASE: ["admin-tenants", "list"],
 }));
 
+// Sprint 57.74 — AdminTenantsView mounts useAdminTenantsStats; return controlled
+// fleet aggregate + per-tenant map (ACME present with real agents/runs24).
+vi.mock("@/features/admin-tenants/hooks/useAdminTenantsStats", () => ({
+  useAdminTenantsStats: () => ({
+    data: {
+      fleet: { active_tenants: 48, total_seats: 1284, agents_deployed: 612 },
+      per_tenant: [
+        {
+          tenant_id: "00000000-0000-0000-0000-000000000001",
+          agents: 5,
+          runs24: 1234,
+        },
+      ],
+      gapped: ["anomalies", "deltas"],
+    },
+    isLoading: false,
+    isError: false,
+  }),
+  ADMIN_TENANTS_STATS_QUERY_KEY: ["admin-tenants", "stats"],
+}));
+
 import { AdminTenantsView } from "@/features/admin-tenants/components/AdminTenantsView";
 
 function renderView() {
@@ -135,10 +157,24 @@ describe("AdminTenantsView (Sprint 57.43 / 57.73)", () => {
     expect(screen.getByText("GLOBEX")).toBeInTheDocument();
   });
 
-  it("renders 2 AP-2 BackendGapBanners (stats strip + table gaps)", () => {
+  it("renders 1 AP-2 BackendGapBanner (stats strip owns the Anomalies/deltas gap; table now backed)", () => {
     renderView();
     const banners = screen.getAllByTestId("backend-gap-banner");
-    expect(banners.length).toBe(2);
+    expect(banners.length).toBe(1);
+  });
+
+  it("Sprint 57.74: stats strip shows real fleet values (active_tenants/total_seats/agents_deployed)", () => {
+    renderView();
+    expect(screen.getByText("48")).toBeInTheDocument();
+    expect(screen.getByText("1,284")).toBeInTheDocument();
+    expect(screen.getByText("612")).toBeInTheDocument();
+  });
+
+  it("Sprint 57.74: table fills ACME's agents/runs24 from the per-tenant map", () => {
+    renderView();
+    // ACME present in the per_tenant map → real counts (runs24 formatted "1,234").
+    expect(screen.getByText("5")).toBeInTheDocument();
+    expect(screen.getByText("1,234")).toBeInTheDocument();
   });
 
   it("Sprint 57.49: drawer is closed by default (no dialog visible)", () => {
