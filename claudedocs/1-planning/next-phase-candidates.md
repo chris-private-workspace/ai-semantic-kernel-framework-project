@@ -36,6 +36,18 @@
 
 ---
 
+## 🆕 C-11 Real-LLM Execution Findings (2026-06-03 — 本機 smoke 實跑；real-LLM 閉環 LIVE，cost-ledger leg 開放)
+
+C-11 本機 real-LLM smoke 已實跑（用既有 `.env` Azure 憑證、零 GitHub secret、零 code change；詳 `claudedocs/5-status/c11-real-llm-e2e-analysis-20260601.md §8`）。**real-LLM 閉環 = LIVE + 已驗證**（HTTP 200 / `loop_end` / 真實 gpt-4o 回覆 / `audit_log` Δ=1）。`cost_ledger` Δ=0；root-cause 深查**推翻**初判的 streaming code bug（loop 用非串流 `chat()`、adapter usage 實測正常 prompt=12/comp=9、`record_llm_call` 缺 pricing 仍寫 0 成本行、yaml 載入 OK、FIX-022 已 wire）。3 衍生 AD：
+
+1. **`AD-RealLLM-CostLedger-ProcessState-Verify`**（待驗，非 code）— 「完全沒 cost 行」最可能是運行中 backend 進程（PID 28832，起 06-01 16:30）啟動時 pricing loader 沒裝成（cost_ledger=None → `router.py:435` gate 跳過）。確認法：重啟 backend（current code）+ 看啟動 log `main.py:149/151` 的 pricing-loader 行 + 重跑 smoke。若 Δ≥2 → 進程狀態非 bug；若 Δ=0 → 真 bug。~15 min。
+2. **`AD-Cost-Ledger-Model-Pricing-Key-Mismatch`**（確認真實缺口）— deployment=`gpt-5.2` / config `model_name`=`gpt-4o` / `config/llm_pricing.yml` 僅 `gpt-4o-mini` → `get_llm_pricing` None → cost 行 `total_cost_usd=0`（`cost_ledger.py:138-144`「observable anomaly」）。修法：對齊 `model_name`↔真實 deployment + 補 pricing yaml 真實模型條目（gpt-4o / gpt-5.2）。屬 billing 正確性束（B-7/B-8/C-15）。~1-2 hr。
+3. **`AD-Adapter-MaxTokens-NewModel-Param`**（確認真實缺口）— gpt-5.2-class deployment 拒 `max_tokens`（回 400「use `max_completion_tokens`」）；loop 主流量未傳故不撞，但 `e2e-real-llm-smoke.yml` 成本護欄（`MAX_TOKENS_PER_CALL`/`max_tokens` `:132`）+ adapter `chat()`/`_stream_impl:282` 需依 model/api-version 切換 param 名。~1-2 hr。
+
+> CI gate（`e2e-real-llm-smoke.yml`）維持手動/關閉（用戶 policy：secret 不進 GitHub）；本機路徑為實際驗收途徑。
+
+---
+
 ## 🆕 Sprint 57.62 Carryover (2026-05-29 — RateLimits Alerting; durable 80%-threshold alert log captured even when unwatched; Phase 58.x RateLimits arc + alert)
 
 Sprint 57.62 (sequential 2-agent — `rl-alerts-backend` 28th + `rl-alerts-frontend` 29th consecutive; durable 80%-threshold usage alerting closing `AD-RateLimits-Alerting-Phase58`) ✅ **CLOSED**: 2 ADs closed (`AD-RateLimits-Alerting-Phase58` + `AD-AgentDelegate-DevStack-Precheck` applied Day 0) + 8 carryovers (5 NEW + 3 continuing). No PROMOTION reaches codify threshold.
