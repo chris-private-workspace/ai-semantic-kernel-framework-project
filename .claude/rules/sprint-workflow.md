@@ -8,6 +8,7 @@
 **Status**: Active
 
 > **Modification History**
+> - 2026-06-03: chore(rules) — Area-A (57.66-73) lessons fold-in: Prong-1 test-infra verify (AD-Day0-Prong1-TestInfra-File-Verify) + Prong-2 +2 drift rows (codegen-shape AD-Day0-Codegen-Existing-Shape-Capture / no-live-producer) + Risk Class E (stale --reload masks wiring; C-11 cost_ledger) + Risk Class C reinforce (AD-Source-DB-Call-Test-Isolation) + Before-Commit item 7 (agent-delegation: all gates + pin language + parent re-verify)
 > - 2026-05-31: REFACTOR-005 — extract per-sprint calibration history (matrix per-cell narration + §Scope-class MHist list + agent_factor activation history 57.42→57.62 + top calibration-retro entries) to calibration-log.md; kept active multiplier table + agent_factor Formula/Rollback/Escalation/Tracking rules (always-loaded file ~90k→~25k tok)
 > - 2026-05-29: Sprint 57.62 follow-up chore — mark §Common Risk Classes Risk Class A **RETIRED Sprint 55.6** (paths filter removed → docs-only PRs run full CI; stale touch-backend-ci.yml workaround description corrected; residual webhook-miss edge case noted)
 > - 2026-05-26: Sprint 57.52 — Drift Class table +2 rows (closes AD-Day0-Prong2-Oklch-Delta-Grep + AD-Stale-Docstring-Karpathy-3)
@@ -265,6 +266,7 @@ Every file path mentioned in plan §File Change List or §Technical Spec → `Gl
 - Fixture paths: check `tests/**/conftest.py`
 - Imports / re-exports: confirm package-level `__init__.py` if plan asserts exposure
 - Public ABC methods: read the actual ABC file to confirm signature
+- Test-infra files (pytest markers, fixtures, e2e specs) cited in plan §Technical Spec / §Acceptance — Glob-verify they exist, NOT just product files. Sprint 57.66 D-DAY0: a phantom `test_chat_e2e_real_llm.py` + `real_llm` marker propagated across 3 plans before a Prong-1 sweep caught they never existed (`AD-Day0-Prong1-TestInfra-File-Verify`).
 
 ##### Prong 2 — Content Verify (AD-Plan-3 promoted Sprint 55.6)
 
@@ -284,6 +286,8 @@ Common drift classes and matching grep query patterns:
 | **Claimed-but-missing-storage-path** (Sprint 57.57 PROMOTION) | "tenant overrides stored at `Tenant.<col>`" / "<Resource>OverrideStore table exists" / "PUT writes to dedicated `tenant_<resource>` table" | `grep -rn "meta_data\[.<key>.\]\|<Resource>Service\|class .*<Resource>.*Store\|tenant_<resource>" backend/src/` — discover actual storage architecture (dedicated table vs JSONB-on-registry-table vs JSONB-on-tenants-meta_data) BEFORE plan §4.1 commits to a Pydantic write shape. ROI evidence (3-data-point): Sprint 57.55 D-DAY0-B 🔴 RED (plan assumed `tenants.meta_data["tenant_overrides"]` → reality `feature_flags.tenant_overrides[str(tid)]` JSONB ON registry table; pivot saved ~30-45 min); Sprint 57.56 D-DAY0-A 🔴 RED (plan assumed Quotas has override storage → reality PlanQuota per-Plan template immutable; Option B `tenants.meta_data["quota_overrides"]` JSONB direct write; pivot saved ~60 min vs plan v0 abort); Sprint 57.57 D-DAY0-A ✅ GREEN inverse-validation (storage path `tenant.meta_data["rate_limits"]` established Sprint 57.48 Track D → no plan pivot needed; rule produces actionable outcome in BOTH directions). Codified Sprint 57.57 closeout per `AD-Day0-Prong2-Phase58-WriteSide-Resource-Storage-Grep` PROMOTION. |
 | **Claimed-but-missing-canonical-service** (Sprint 57.57 PROMOTION) | "extend `<Resource>Service.set_override` method" / "add `<Resource>Store.put()` upsert" / "call canonical service for audit chain auto-emit" | `grep -rn "class .*<Resource>Service\|class .*<Resource>Store\|def set_\|def put_\|def update_" backend/src/<scope>/` — discover canonical service availability (exists → use canonical method for cleaner audit chain + cache invalidation; doesn't exist → direct ORM UPDATE + manual `append_audit` pattern Sprint 57.3 + 57.56 precedent). ROI evidence (2-data-point both directions actionable): Sprint 57.55 D-DAY0-T 🆕 NOTABLE positive direction (`FeatureFlagsService.set_tenant_override` Sprint 56.1 IS canonical setter auto-emitting audit chain → clean V2 service path; REMOVED `AD-FeatureFlags-PerFlag-AuditLog-Phase58` carryover positive side-effect); Sprint 57.56 D-DAY0-D 🆕 NOTABLE inverse direction (NO canonical service for Quotas → architectural simplification path = direct ORM UPDATE + manual `append_audit`; Sprint 57.3 PATCH precedent); Sprint 57.57 D-DAY0-B inverse continued (NO canonical service for RateLimits → same direct ORM path as Sprint 57.56). Both directions produce actionable plan pivots — codified Sprint 57.57 closeout per `AD-Day0-Prong2-CanonicalService-Grep` PROMOTION. |
 | **Claimed-but-nested-shape-mismatch** (Sprint 57.60 PROMOTION) | "stored as `{resource, window, limit}`" / "config items are typed objects" / "the JSONB holds `{key: value}` dicts" | when the plan asserts the NESTED shape of a stored blob (JSONB / dict / list-of-dicts), READ the actual Pydantic model / dataclass / TypedDict BODY — do NOT infer from the key name alone. `grep -rn "class .*<Model>\|<field>:" backend/src/` to locate, THEN Read the model body to confirm the real nested shape. ROI evidence (2-data-point): Sprint 57.58 D-DAY1-1 (stored `meta_data["rate_limits"]` shape is UI display strings `{label, value}` e.g. `{"label":"API requests","value":"100 / min"}` NOT the assumed `{resource, window, limit}` — the runtime gate had to normalize via `parse_rate_limit_item`; caught mid-Day-1); Sprint 57.59 reinforced (both the live normalizer + the inline `0019` migration parser keyed off the `{label, value}` shape, not the assumed typed object). Reading the model body at Day 0 surfaces the real shape before plan §4 commits to a parse/write contract. Codified Sprint 57.60 closeout per `AD-Day0-Prong2-Nested-Shape-Read` PROMOTION. |
+| **Claimed-but-flat-codegen-shape** (Sprint 57.67 — 4 data points, fold-in) | "codegen TS event/DTO types from existing Python types" / "interface mirrors the dataclass" | when GENERATING consumer types/schemas from existing producer types, capture the STRUCTURAL SHAPE (envelope nesting), NOT just field names — Read the producer/serializer body first. Sprint 57.67 stage-1 emitted flat `{type, ...fields}` but the wire is nested `{type, data:{...}}`; recurred 4× → `AD-Day0-Codegen-Existing-Shape-Capture`. Verify the wire envelope nesting before drafting the consumer type. |
+| **Claimed-but-no-live-producer** ("fill/wrap/instrument every X" scopes; Sprint 57.71 + 57.72) | "wrap every loop span" / "fill all N Inspector tabs" / "instrument every call site" | for "fill/wrap/instrument every X" scopes, grep that EACH X has a live producer / call-site BEFORE planning to surface it — else the slot is an AP-4 Potemkin. Sprint 57.71: 2 of 6 tracer spans had no loop-level call site (deferred, not faked); 57.72: only 1 of 3 Inspector tabs had a live event producer (Tree shipped; Trace/Memory → ComingSoon). |
 
 ##### Prong 2.5 — Child Component Tree Depth Audit (frontend page sprints only; AD-Plan-5 fold-in Sprint 57.40 — `chore/rules` ship via Item #2 of post-Sprint-57.39 4-AD micro-fix sequence)
 
@@ -716,6 +720,8 @@ When drafting plan §Risks, consider these recurring risk classes (V2 carryover 
 
 **Long-term fix**: Refactor singletons to be DI-injected per-request (no module-level cache); avoids root cause. Per-singleton scope; track as needed.
 
+**Related (Sprint 57.68 reinforcement, `AD-Source-DB-Call-Test-Isolation`)**: Adding a NEW DB call to a previously DB-free endpoint can surface a latent isolation leak — TestClient overrides auth but NOT `get_db_session`, so the endpoint hits a non-test session. Symptom: tests that passed pre-change fail only after the endpoint gains a query. Fix: ensure the suite's `get_db_session` dependency override (or autouse session fixture) covers the newly-DB-touching endpoint.
+
 ### Risk Class D: ORM File Path Reference Style (sprint planning)
 
 **Symptom**: Plan §8 Risks row references an ORM model with a speculation-based path like `backend/src/infrastructure/db/models/<table_name>.py` (e.g. `tenant.py`); Day 0.8 Prong 2 then wastes 3-5 min discovering the model lives elsewhere (e.g. `identity.py` per domain cohesion grouping).
@@ -725,6 +731,16 @@ When drafting plan §Risks, consider these recurring risk classes (V2 carryover 
 **Workaround**: Cite `09-db-schema-design.md §Group N <Domain Name>` in plan §Risks rows touching ORM models, not the speculation-based `.py` path. Example: "Risk: `Tenant.X` field doesn't exist — mitigation: Day 0.8 Prong 2 read `Tenant` ORM in `09-db-schema-design.md §Group 1 Identity & Tenancy` (note: file is `identity.py`, not `tenant.py`)."
 
 **Long-term fix**: Codify in Plan template stub (when Plan template doc is formalized as part of `.claude/rules/`).
+
+### Risk Class E: Stale long-running `--reload` backend masks a wiring/startup fix (local verification)
+
+**Symptom**: A fix that only takes effect at process startup (lifespan wiring, env load, DI singleton construction) appears NOT to work when verified against an already-running dev backend — because the running process started BEFORE the fix landed (or its `--reload` worker reloaded module code but did NOT re-run lifespan startup). Looks like a code bug; is actually process-state.
+
+**Source**: 2026-06-03 C-11 `cost_ledger Δ=0` (`AD-RealLLM-CostLedger-ProcessState-Verify`). FIX-022 pricing-loader wiring was on disk, but the running backend had `cost_ledger_service=None` from its own stale startup → router gate skipped every cost row. A clean restart → startup log `pricing loader wired` (`main.py:149`) → `cost_ledger Δ=2`. Compounded by 2 stale `--reload` reloaders sharing :8000 via SO_REUSEADDR (Errno 10048 on re-bind).
+
+**Workaround**: When verifying startup/wiring behavior locally, do a CLEAN restart first: kill ALL stale uvicorn reloader+worker processes on the port (not just the listener — a `--reload` worker is a `multiprocessing.spawn` child whose cmdline lacks `uvicorn`), confirm the port is free + your new process is the sole owner (no Errno 10048), then re-verify and capture the startup log line proving the wiring fired.
+
+**Long-term fix**: Prefer `python scripts/dev.py restart backend` (kills by port owner) over assuming the running process is current; for one-off wiring checks, a no-`--reload` single process with log redirect gives a deterministic startup log.
 
 ### How to use this section
 
@@ -890,6 +906,12 @@ Every commit must pass:
    - Backend agent_harness: no direct `import openai` / `import anthropic`
 
 6. **File Headers Updated** (file-header-convention.md)
+
+7. **Agent-delegated work — run ALL gates yourself; don't trust the agent's report** (Sprint 57.69 + 57.73)
+   - Delegated FE work MUST run the FULL gate set incl. `npm run check:mockup-fidelity` (not just lint/build/test). Sprint 57.69: a delegated agent ran lint/build/test but skipped `check:mockup-fidelity`; 2 `oklch(...)` tints would have silently failed `HEX_OKLCH_BASELINE` at PR — parent re-verify caught it pre-PR.
+   - Pin language / convention in the agent prompt: user-facing copy follows the codebase convention (English state strings, not 繁中). Sprint 57.73: a delegated agent wrote 繁中 state copy the parent had to rewrite.
+   - Parent independent re-verify: re-run every gate yourself; treat the agent's "all green" as unverified until reproduced (57.66 stringified-float / 57.67 flat-vs-nested / 57.68 wrong isolation culprit were all caught this way).
+   - Tooling: if Bash `grep` output looks corrupted (e.g. token substitution), re-read via a dedicated reader (Read/Grep tool) before acting on it (Sprint 57.70).
 
 ---
 

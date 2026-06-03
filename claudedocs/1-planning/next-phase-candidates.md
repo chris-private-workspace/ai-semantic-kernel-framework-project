@@ -48,6 +48,14 @@ C-11 本機 real-LLM smoke 已實跑（用既有 `.env` Azure 憑證、零 GitHu
 
 ---
 
+## 🆕 Process / Calibration carryover (2026-06-03 — Area-A 教訓固化副產物)
+
+固化 Area-A（57.66-73）教訓時，6 條可行教訓已 fold-in `.claude/rules/sprint-workflow.md`（Prong-1 test-infra verify / Prong-2 +2 drift rows: codegen-shape + no-live-producer / Risk Class E stale-`--reload`-masks-wiring / Risk Class C 補強 DB-call-test-isolation / Before-Commit item 7 agent-delegation 紀律）+ README-integration-gap-abc A 區同步至 57.73。1 條無法用「一行規則」解決，記此追蹤：
+
+- **`AD-Calibration-AgentDelegated-WallClock-Measure`**（方法論，未解）— 連續 11 個 agent-delegated sprint（57.63→57.73）都拿不到乾淨 wall-clock 量測 → 所有 calibration 點被 CAVEAT、baseline 不動。根因：現行「focused human hours」分母不適配「staged 委派 + parent re-verify」模式（agent wall-clock + parent Day-0/re-verify overhead 未被建模）。需設計新量測口徑（例：分段記 agent wall-clock + parent overhead），agent-delegated sprint 的 ratio 才能重新有信號。**屬獨立小設計，非一行規則** → 故不塞進已精簡的 calibration 規則段，留此待選。
+
+---
+
 ## 🆕 Sprint 57.62 Carryover (2026-05-29 — RateLimits Alerting; durable 80%-threshold alert log captured even when unwatched; Phase 58.x RateLimits arc + alert)
 
 Sprint 57.62 (sequential 2-agent — `rl-alerts-backend` 28th + `rl-alerts-frontend` 29th consecutive; durable 80%-threshold usage alerting closing `AD-RateLimits-Alerting-Phase58`) ✅ **CLOSED**: 2 ADs closed (`AD-RateLimits-Alerting-Phase58` + `AD-AgentDelegate-DevStack-Precheck` applied Day 0) + 8 carryovers (5 NEW + 3 continuing). No PROMOTION reaches codify threshold.

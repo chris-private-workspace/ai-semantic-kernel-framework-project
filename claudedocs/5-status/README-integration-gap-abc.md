@@ -1,12 +1,13 @@
 # A+B+C 整合缺口分析 — README Index
 
-**Purpose**: 索引 2026-05-31~06-01 完成的「整合缺口盤點」16 份核心分析（A 接線缺口 6 + B 優化 4 + C 研究 5 + 1 份 A+B+C 總 capstone），附每項當前狀態（截至 Sprint 57.70）。
+**Purpose**: 索引 2026-05-31~06-01 完成的「整合缺口盤點」16 份核心分析（A 接線缺口 6 + B 優化 4 + C 研究 5 + 1 份 A+B+C 總 capstone），附每項當前狀態（A 區更新至 Sprint 57.73；B/C 截至 57.70）。
 **Category / Scope**: Status / Integration-gap inventory (Area A/B/C)
 **Created**: 2026-06-02
-**Last Modified**: 2026-06-02
+**Last Modified**: 2026-06-03
 **Status**: Active
 
 > **Modification History**
+> - 2026-06-03: Area A status synced to Sprint 57.73 (A-4 / A-5 / A-6 rows + 剩餘 line + §當前對齊摘要 addendum) — A 區主 slice 全 ship，僅 4 個 Phase-2/deferred AD 餘留；C-11 real-LLM cost-ledger row-count leg now green (process-state resolved, PR #238)
 > - 2026-06-02: Initial creation — index 16 core + 2 supporting docs；status snapshot post-Sprint 57.70
 
 ---
@@ -31,11 +32,11 @@
 | A-1 | Cat 3 Memory loop 注入 | `cat3-memory-loop-injection-analysis-20260531.md` | ✅ T1/T2 shipped | 57.64 / 57.65 |
 | A-2 | Cat 5 PromptBuilder（拱心石） | `cat5-promptbuilder-loop-injection-analysis-20260531.md` | ✅ T1/T2 shipped | 57.64 / 57.65 |
 | A-3 | Cat 11 Subagent / HANDOFF | `cat11-handoff-loop-injection-analysis-20260531.md` | ✅ A-3a + A-3b shipped | 57.64 / 57.68-70 |
-| A-4 | Cat 12 Loop Tracer | `cat12-loop-tracer-analysis-20260531.md` | ❌ pending | — |
-| A-5 | Events → SSE | `cat-events-to-sse-analysis-20260531.md` | ✅ A-5a/b shipped · ❌ A-5c deferred | 57.66 / 57.67 |
-| A-6 | 前端真資料 wiring | `frontend-real-data-wiring-analysis-20260531.md` | ❌ A-6a/b pending | — |
+| A-4 | Cat 12 Loop Tracer | `cat12-loop-tracer-analysis-20260531.md` | ✅ Tier 0+1 shipped（Tier 2 Jaeger 匯出 → Area-C/DevOps）| 57.71 |
+| A-5 | Events → SSE | `cat-events-to-sse-analysis-20260531.md` | ✅ A-5a/b/c shipped（Inspector **Tree** tab；Trace/Memory tabs → Phase-2 AD）| 57.66 / 57.67 / 57.72 |
+| A-6 | 前端真資料 wiring | `frontend-real-data-wiring-analysis-20260531.md` | 🟡 A-6a/b shipped（partial；stats + memory ops-history deferred）| 57.73 |
 
-**A 區剩餘**：A-4（tracer）、A-5c（Inspector UI）、A-6a（admin-tenants 重掛，capstone 標「最便宜 ½ 天贏面」）、A-6b（memory hook）。
+**A 區剩餘**（截至 57.73；主 slice 已全 ship，以下皆 Phase-2/deferred AD）：A-5c 的 **Trace/Memory tab**（`AD-ChatV2-Inspector-Trace-Phase2` / `AD-ChatV2-Inspector-Memory-Phase2`，依賴 span / `memory_accessed` 走 SSE）、A-6a 的 **stats 聚合端點**（`AD-AdminTenants-Stats-Aggregate-Endpoint`）、A-6b 的 **memory ops-history backend**（`AD-Memory-OpsHistory-Backend`）；A-4 Tier 2 真 Jaeger 匯出歸 Area-C/DevOps。
 
 ---
 
@@ -102,3 +103,5 @@
 2. **鑰匙鏈 ② billing 正確性束（B-7+B-8+C-15）完全未動** — 含 per-request budget 失效 bug + cost_ledger 雙扣 / Outbox 缺失，風險高於剩餘的 A-4/A-6 便宜項。
 
 **次要偏離**：A-6a（最便宜 ½ 天贏面）與 A-4 被跳過，優先做了較貴的 A-3b（3 個 sprint）；非錯誤，但低成本項在積壓。
+
+**2026-06-03 更新（post-57.73）**：A 區主 slice 已全部 ship（A-4 tracer 57.71、A-5c Inspector Tree 57.72、A-6a/b 57.73），上述積壓的低成本項已清。**C-11 real-LLM 鑰匙鏈部分達成** —— 閉環 LIVE + 已驗證，`cost_ledger` row-count leg 經重啟驗證轉綠（process-state，非 code bug；PR #238），剩 $ 值=0（pricing-key）屬 billing 束。A 區剩餘僅 4 個 Phase-2/deferred AD（見上表「A 區剩餘」）。
