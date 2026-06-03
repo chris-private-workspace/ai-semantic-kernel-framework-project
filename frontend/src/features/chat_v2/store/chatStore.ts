@@ -34,6 +34,7 @@
  * Last Modified: 2026-06-02
  *
  * Modification History:
+ *   - 2026-06-03: Sprint 57.75 A-5 — +spans / memoryOps derived slices + span_started/span_ended/memory_accessed cases (Inspector Trace + Memory tabs)
  *   - 2026-06-02: Sprint 57.69 A-3b slice 2 — agent_handoff now pivots session (pivotSession + handoffBanner state)
  *   - 2026-06-02: Sprint 57.68 A-3b — +agent_handoff passthrough case (rawEvents-only, Cat 11)
  *   - 2026-06-02: Sprint 57.66 — +4 diagnostic event passthrough cases (rawEvents-only)
@@ -75,6 +76,35 @@ import type {
  */
 export type HandoffBanner = { targetAgent: string; reason: string };
 
+/**
+ * Sprint 57.75 A-5 Trace tab: one OTel span derived from the SpanStarted /
+ * SpanEnded SSE pair. `durationMs` is null while the span is still open (only
+ * SpanStarted seen); set + status flips to "done" on SpanEnded. The Inspector
+ * Trace tab folds these into a waterfall by `parentSpanId`.
+ */
+export type SpanNode = {
+  spanId: string;
+  parentSpanId: string;
+  spanType: string;
+  spanName: string;
+  durationMs: number | null;
+  status: "running" | "done";
+};
+
+/**
+ * Sprint 57.75 A-5 Memory tab: one memory access derived from a MemoryAccessed
+ * SSE event. `at` is the client receive time (the backend event carries no
+ * timestamp — honest client-side stamp, not a fabricated server time).
+ */
+export type MemoryOp = {
+  op: string;
+  scope: string;
+  timeScale: string;
+  key: string;
+  summary: string;
+  at: number;
+};
+
 type ChatStoreState = {
   // Session metadata (preserved)
   sessionId: string | null;
@@ -99,6 +129,10 @@ type ChatStoreState = {
   approvals: Record<string, ApprovalEntry>;
   verifications: VerificationEvent[];
   subagents: SubagentNode[];
+
+  // Sprint 57.75: Inspector Trace + Memory derived slices (from SSE span/memory events)
+  spans: SpanNode[];
+  memoryOps: MemoryOp[];
 
   // Actions
   setMode: (m: ChatMode) => void;
@@ -131,6 +165,8 @@ const _initial = (): Pick<
   | "approvals"
   | "verifications"
   | "subagents"
+  | "spans"
+  | "memoryOps"
 > => ({
   sessionId: null,
   status: "idle",
@@ -145,6 +181,8 @@ const _initial = (): Pick<
   approvals: {},
   verifications: [],
   subagents: [],
+  spans: [],
+  memoryOps: [],
 });
 
 let _turnCounter = 0;
@@ -216,6 +254,8 @@ const applyPivot = (
   approvals: {},
   verifications: [],
   subagents: [],
+  spans: [],
+  memoryOps: [],
 });
 
 export const useChatStore = create<ChatStoreState>((set) => ({
@@ -477,6 +517,65 @@ export const useChatStore = create<ChatStoreState>((set) => ({
             { targetAgent: ev.data.target_agent, reason: ev.data.reason },
             rawEvents,
           );
+        }
+
+        case "span_started": {
+          // Sprint 57.75 A-5 Trace: open a SpanNode (duration null until ended).
+          // Dedup by span_id (a re-emit keeps the first open record).
+          const sid = ev.data.span_id;
+          if (!sid || s.spans.some((sp) => sp.spanId === sid)) {
+            return { ...s, rawEvents };
+          }
+          const span: SpanNode = {
+            spanId: sid,
+            parentSpanId: ev.data.parent_span_id,
+            spanType: ev.data.span_type,
+            spanName: ev.data.span_name,
+            durationMs: null,
+            status: "running",
+          };
+          return { ...s, rawEvents, spans: [...s.spans, span] };
+        }
+
+        case "span_ended": {
+          // Sprint 57.75 A-5 Trace: close the matching open span (set duration +
+          // status=done). If SpanStarted was missed, defensively create a closed
+          // span so the waterfall still shows it (no parent linkage available).
+          const sid = ev.data.span_id;
+          if (!sid) return { ...s, rawEvents };
+          const idx = s.spans.findIndex((sp) => sp.spanId === sid);
+          if (idx === -1) {
+            const span: SpanNode = {
+              spanId: sid,
+              parentSpanId: "",
+              spanType: ev.data.span_type,
+              spanName: ev.data.span_name,
+              durationMs: ev.data.duration_ms,
+              status: "done",
+            };
+            return { ...s, rawEvents, spans: [...s.spans, span] };
+          }
+          const nextSpans = s.spans.slice();
+          nextSpans[idx] = {
+            ...nextSpans[idx],
+            durationMs: ev.data.duration_ms,
+            status: "done",
+          };
+          return { ...s, rawEvents, spans: nextSpans };
+        }
+
+        case "memory_accessed": {
+          // Sprint 57.75 A-5 Memory: append a MemoryOp (client receive time as
+          // `at` — the backend event carries no timestamp; honest client stamp).
+          const op: MemoryOp = {
+            op: ev.data.operation,
+            scope: ev.data.layer,
+            timeScale: ev.data.time_scale,
+            key: ev.data.key,
+            summary: ev.data.summary,
+            at: Date.now(),
+          };
+          return { ...s, rawEvents, memoryOps: [...s.memoryOps, op] };
         }
 
         case "verification_passed":

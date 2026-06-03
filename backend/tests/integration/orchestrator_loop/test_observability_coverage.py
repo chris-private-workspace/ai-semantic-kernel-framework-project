@@ -25,6 +25,7 @@ Created: 2026-04-30 (Sprint 50.1 Day 4.2)
 Last Modified: 2026-06-02
 
 Modification History:
+    - 2026-06-03: Sprint 57.75 A-5c — add SpanStarted/Ended SSE-emit tests (nesting + R3 edge cases)
     - 2026-06-02: Sprint 57.71 — RecordingTracer captures parent linkage
         (span_id / parent_span_id) + ERROR status; add LOOP→TURN→operation
         tree-reconstruction / nesting / ERROR-status / edge-case tests (A-4 Tier 1)
@@ -44,6 +45,8 @@ from agent_harness._contracts import (
     ChatResponse,
     MetricEvent,
     SpanCategory,
+    SpanEnded,
+    SpanStarted,
     StopReason,
     TokenUsage,
     ToolCall,
@@ -544,6 +547,145 @@ async def test_multi_tool_turn_has_sibling_tool_exec_spans_under_one_turn() -> N
     assert len(parent_ids) == 1
     turn_ids = {s["span_id"] for s in rec.spans if s["attributes"].get("span_type") == "TURN"}
     assert parent_ids.issubset(turn_ids)
+
+
+# ===========================================================================
+# Sprint 57.75 (A-5c Trace tab): SpanStarted/SpanEnded SSE LoopEvent emit.
+# The loop yields SpanStarted (on enter) + SpanEnded (on exit) at all 6 span
+# sites so the chat-v2 Inspector Trace tab can render the waterfall live. These
+# assert on the YIELDED EVENT STREAM (not the tracer) — the events carry
+# span_id + parent_span_id + span_type so the FE reconstructs the nesting.
+# ===========================================================================
+
+
+@pytest.mark.asyncio
+async def test_emits_span_started_ended_with_nesting() -> None:
+    """A 2-turn + 1-tool run yields SpanStarted/SpanEnded with the LOOP→TURN→
+    {LLM_CALL, TOOL_EXEC} nesting reconstructable from span_id/parent_span_id.
+    Every SpanStarted has a matching SpanEnded (same span_id)."""
+    rec = NoOpTracer()  # any tracer with real ids; loop yields the events
+    loop = _build_loop(
+        rec,
+        responses=[
+            ChatResponse(
+                model="m",
+                content="calling",
+                tool_calls=[ToolCall(id="c1", name="echo_tool", arguments={"text": "x"})],
+                stop_reason=StopReason.TOOL_USE,
+            ),
+            ChatResponse(model="m", content="done", stop_reason=StopReason.END_TURN),
+        ],
+    )
+    events = [ev async for ev in loop.run(session_id=uuid4(), user_input="echo x")]
+    started = [ev for ev in events if isinstance(ev, SpanStarted)]
+    ended = [ev for ev in events if isinstance(ev, SpanEnded)]
+
+    # Every started span has exactly one matching ended span (same span_id).
+    started_ids = sorted(s.span_id for s in started)
+    ended_ids = sorted(s.span_id for s in ended)
+    assert started_ids == ended_ids
+    assert started_ids  # non-empty
+
+    # Exactly one LOOP root; its parent_span_id is not among the loop's own spans.
+    loop_starts = [s for s in started if s.span_type == "LOOP"]
+    assert len(loop_starts) == 1
+    root = loop_starts[0]
+    own_ids = {s.span_id for s in started}
+    assert root.parent_span_id not in own_ids  # root's parent is the request ctx
+
+    # 2 TURN spans, both children of the LOOP root.
+    turn_starts = [s for s in started if s.span_type == "TURN"]
+    assert len(turn_starts) == 2
+    assert all(t.parent_span_id == root.span_id for t in turn_starts)
+    turn_ids = {t.span_id for t in turn_starts}
+
+    # 2 LLM_CALL spans, each a child of a TURN (never the root LOOP).
+    llm_starts = [s for s in started if s.span_type == "LLM_CALL"]
+    assert len(llm_starts) == 2
+    assert all(s.parent_span_id in turn_ids for s in llm_starts)
+
+    # 1 TOOL_EXEC span (turn 0 only), child of a TURN.
+    tool_starts = [s for s in started if s.span_type == "TOOL_EXEC"]
+    assert len(tool_starts) == 1
+    assert tool_starts[0].parent_span_id in turn_ids
+
+    # SpanEnded carries a non-negative duration + the matching span_type.
+    assert all(e.duration_ms >= 0.0 for e in ended)
+    assert {e.span_type for e in ended} >= {"LOOP", "TURN", "LLM_CALL", "TOOL_EXEC"}
+
+
+@pytest.mark.asyncio
+async def test_max_turns_exit_still_emits_loop_span_ended() -> None:
+    """R3: a max-turns termination (return INSIDE the LOOP span, before any TURN
+    opens) must still emit the LOOP SpanEnded via the try/finally."""
+    rec = NoOpTracer()
+    # max_turns=0 → the pre-LLM terminator returns on the first while iteration,
+    # before a TURN span opens. LOOP SpanStarted+Ended must still both fire.
+    loop = AgentLoopImpl(
+        chat_client=MockChatClient(
+            responses=[ChatResponse(model="m", content="x", stop_reason=StopReason.END_TURN)]
+        ),
+        output_parser=OutputParserImpl(tracer=rec),
+        tool_executor=ToolExecutorImpl(
+            registry=make_echo_executor()[0],
+            handlers={"echo_tool": _shared_echo_handler},
+            tracer=rec,
+            metric_registry=MetricRegistry(),
+        ),
+        tool_registry=make_echo_executor()[0],
+        tracer=rec,
+        max_turns=0,
+    )
+    events = [ev async for ev in loop.run(session_id=uuid4(), user_input="hi")]
+    loop_started = [ev for ev in events if isinstance(ev, SpanStarted) and ev.span_type == "LOOP"]
+    loop_ended = [ev for ev in events if isinstance(ev, SpanEnded) and ev.span_type == "LOOP"]
+    assert len(loop_started) == 1
+    assert len(loop_ended) == 1  # try/finally fired on the max-turns return path
+    # No TURN span opened (terminated before the per-turn marker).
+    assert not [ev for ev in events if isinstance(ev, SpanStarted) and ev.span_type == "TURN"]
+
+
+@pytest.mark.asyncio
+async def test_tool_error_turn_still_emits_tool_exec_span_ended() -> None:
+    """R3: a tool execution that fails (soft failure) still closes the TOOL_EXEC
+    span (SpanEnded fires via the try/finally even though the failure path runs
+    after the span body)."""
+    rec = NoOpTracer()
+
+    async def crash_handler(call: ToolCall) -> str:
+        raise RuntimeError("tool boom")
+
+    registry, _ = make_echo_executor()
+    executor = ToolExecutorImpl(
+        registry=registry,
+        handlers={"echo_tool": crash_handler},  # echo_tool now raises
+        tracer=rec,
+        metric_registry=MetricRegistry(),
+    )
+    loop = AgentLoopImpl(
+        chat_client=MockChatClient(
+            responses=[
+                ChatResponse(
+                    model="m",
+                    content="calling",
+                    tool_calls=[ToolCall(id="c1", name="echo_tool", arguments={"text": "x"})],
+                    stop_reason=StopReason.TOOL_USE,
+                ),
+                ChatResponse(model="m", content="done", stop_reason=StopReason.END_TURN),
+            ]
+        ),
+        output_parser=OutputParserImpl(tracer=rec),
+        tool_executor=executor,
+        tool_registry=registry,
+        tracer=rec,
+    )
+    events = [ev async for ev in loop.run(session_id=uuid4(), user_input="echo x")]
+    tool_started = [
+        ev for ev in events if isinstance(ev, SpanStarted) and ev.span_type == "TOOL_EXEC"
+    ]
+    tool_ended = [ev for ev in events if isinstance(ev, SpanEnded) and ev.span_type == "TOOL_EXEC"]
+    assert len(tool_started) == 1
+    assert len(tool_ended) == 1  # SpanEnded fired despite the tool failure
 
 
 @pytest.mark.asyncio

@@ -36,6 +36,26 @@
 
 ---
 
+## 🆕 Sprint 57.75 Carryover (2026-06-03 — chat-v2 Inspector Trace + Memory tabs full-chain; closes AD-ChatV2-Inspector-Trace-Phase2 + -Memory-Phase2)
+
+**Closed**: `AD-ChatV2-Inspector-Trace-Phase2` + `AD-ChatV2-Inspector-Memory-Phase2` (Area-A program #1+#2). All 4 chat-v2 Inspector tabs now real (Turn 57.21 / Tree 57.72 / Trace+Memory 57.75).
+
+### Area-A "process all carryover except A-4 Tier 2" program — remaining
+- ✅ #1+#2 Inspector Trace + Memory tabs (THIS sprint)
+- ⏳ `AD-Memory-OpsHistory-Backend` — persisted memory ops-history (distinct from this sprint's live-session SSE Memory tab; needs audit-emit or `memory_ops` table — Day-0 design decision)
+- ⏳ FE `/subagents` real list (`AD-Subagent-RealList-Phase58`)
+
+### NEW carryovers (this sprint)
+- **subagent-boundary spans** — cross-process `parent_span_id` so a subagent's spans nest under the parent loop's TURN in the Trace waterfall (this sprint is single-loop only)
+- **memory write/evict emit** — Memory tab shows read-on-build only; write/evict happen inside tools (under TOOL_EXEC span); emit if the tab needs the full op set
+
+### Process / Calibration
+- **Q4 lesson (cross-boundary re-verify gap)**: an agent track mutating files across the backend↔frontend boundary (codegen output / shared schema) requires parent re-verify of BOTH sides' gates. Track A (backend) regen'd frontend codegen → Track-A re-verify ran only backend gates → frontend `eventSchema.generated.test.ts` (19→22) was stale (Track B caught + fixed). Candidate Before-Commit item 7 fold-in if it recurs (rolling — 1 data point).
+- Calibration: `mixed-multidomain-bundle` 0.65 + `agent_factor` 0.45 — CAVEATED (13th consecutive agent-delegated no-clean-wall-clock).
+- **A-4 Tier 2** (Jaeger export / Area-C DevOps) still excluded per user program.
+
+---
+
 ## 🆕 Sprint 57.74 Carryover (2026-06-03 — admin-tenants stats aggregate; closes AD-AdminTenants-Stats-Aggregate-Endpoint)
 
 Sprint 57.74 (Area-A **#3** of the "process all carryover except A-4 Tier 2" program) ✅ **CLOSED** `AD-AdminTenants-Stats-Aggregate-Endpoint`: NEW `GET /admin/tenants/stats` fleet aggregate (active_tenants/total_seats/agents_deployed + per-tenant agents/runs24 map) + wired `TenantsStatsStrip` (3 real stats) + filled `TenantsTable` Agents/Runs·24h columns. Anomalies stat + trend deltas honest-gapped (no fabrication). Agent-delegated (Track A backend + Track B frontend + parent re-verify). Detail: `memory/project_phase57_74_admin_tenants_stats.md` + retrospective. CHANGE-042.

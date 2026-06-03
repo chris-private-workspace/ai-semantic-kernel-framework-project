@@ -69,9 +69,13 @@ async def test_execute_loop_with_sse_dispatches_each_event() -> None:
         user_input="echo zebra",
         sse_emit=emit,
     )
+    # Sprint 57.75 (A-5c): the loop now interleaves diagnostic SpanStarted/
+    # SpanEnded + MemoryAccessed events; assert the PUBLIC event contract.
+    _DIAGNOSTIC = {"SpanStarted", "SpanEnded", "MemoryAccessed"}
     type_names = [type(e).__name__ for e in collected]
-    assert "LoopStarted" == type_names[0]
-    assert "LoopCompleted" == type_names[-1]
+    public_names = [n for n in type_names if n not in _DIAGNOSTIC]
+    assert "LoopStarted" == public_names[0]
+    assert "LoopCompleted" == public_names[-1]
     assert "ToolCallExecuted" in type_names
     assert "LLMResponded" in type_names
 

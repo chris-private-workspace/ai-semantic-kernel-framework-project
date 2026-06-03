@@ -27,7 +27,11 @@ from agent_harness._contracts import (
     ChatResponse,
     ExecutionContext,
     LoopCompleted,
+    LoopEvent,
     LoopStarted,
+    MemoryAccessed,
+    SpanEnded,
+    SpanStarted,
     StopReason,
     TokenUsage,
     ToolCall,
@@ -39,6 +43,19 @@ from agent_harness._contracts import (
 from agent_harness.orchestrator_loop import AgentLoopImpl, TerminationReason
 from agent_harness.output_parser import OutputParserImpl
 from agent_harness.tools._abc import ToolExecutor, ToolRegistry
+
+# Sprint 57.75 (A-5c): the loop now also yields diagnostic SpanStarted/SpanEnded
+# + MemoryAccessed events interleaved with the public event stream. These
+# sequence assertions test the PUBLIC contract, so filter the diagnostic events
+# out first (their own emit order + nesting are covered in
+# test_observability_coverage.py + test_loop_with_prompt_builder.py).
+_DIAGNOSTIC_EVENTS = (SpanStarted, SpanEnded, MemoryAccessed)
+
+
+def _public(events: list[LoopEvent]) -> list[LoopEvent]:
+    """Drop Sprint 57.75 diagnostic span/memory events from a yielded stream."""
+    return [e for e in events if not isinstance(e, _DIAGNOSTIC_EVENTS)]
+
 
 # === Test fixtures ===========================================================
 
@@ -154,7 +171,7 @@ async def test_single_turn_final_end_turn() -> None:
         ],
     )
     events = await _collect(loop.run(session_id=uuid4(), user_input="hi"))
-    types = [type(e).__name__ for e in events]
+    types = [type(e).__name__ for e in _public(events)]
     # Sprint 50.2 Day 2.4: per-turn events expanded with TurnStarted /
     # LLMRequested / LLMResponded. Thinking event preserved for backward compat.
     assert types == [
@@ -165,7 +182,7 @@ async def test_single_turn_final_end_turn() -> None:
         "Thinking",
         "LoopCompleted",
     ]
-    completed = events[-1]
+    completed = _public(events)[-1]
     assert isinstance(completed, LoopCompleted)
     assert completed.stop_reason == TerminationReason.END_TURN.value
     assert completed.total_turns == 0
@@ -202,7 +219,7 @@ async def test_multi_turn_tool_use_feedback() -> None:
         system_prompt="you echo",
     )
     events = await _collect(loop.run(session_id=uuid4(), user_input="echo world"))
-    types = [type(e).__name__ for e in events]
+    types = [type(e).__name__ for e in _public(events)]
     # Sprint 50.2 Day 2.4: per-turn events expanded; ToolCallExecuted yielded
     # by Loop after tool_executor.execute() success (Cat 2-owned event).
     assert types == [
@@ -227,7 +244,7 @@ async def test_multi_turn_tool_use_feedback() -> None:
     assert len(tool_msgs) == 1
     assert tool_msgs[0].tool_call_id == "c1"
     assert tool_msgs[0].content == "world"
-    completed = events[-1]
+    completed = _public(events)[-1]
     assert isinstance(completed, LoopCompleted)
     assert completed.stop_reason == TerminationReason.END_TURN.value
     assert completed.total_turns == 1  # 1 tool turn before END_TURN
@@ -251,7 +268,7 @@ async def test_max_turns_terminates() -> None:
         max_turns=2,
     )
     events = await _collect(loop.run(session_id=uuid4(), user_input="loop"))
-    completed = events[-1]
+    completed = _public(events)[-1]
     assert isinstance(completed, LoopCompleted)
     assert completed.stop_reason == TerminationReason.MAX_TURNS.value
     assert completed.total_turns == 2
@@ -272,7 +289,7 @@ async def test_token_budget_terminates() -> None:
         token_budget=15,  # 1st turn uses 20 tokens → exceeds
     )
     events = await _collect(loop.run(session_id=uuid4(), user_input="x"))
-    completed = events[-1]
+    completed = _public(events)[-1]
     assert isinstance(completed, LoopCompleted)
     assert completed.stop_reason == TerminationReason.TOKEN_BUDGET.value
 
@@ -331,7 +348,7 @@ async def test_handoff_path_yields_handoff_stop_reason() -> None:
         ],
     )
     events = await _collect(loop.run(session_id=uuid4(), user_input="x"))
-    completed = events[-1]
+    completed = _public(events)[-1]
     assert isinstance(completed, LoopCompleted)
     assert completed.stop_reason == TerminationReason.HANDOFF.value
     assert completed.stop_reason == "handoff"

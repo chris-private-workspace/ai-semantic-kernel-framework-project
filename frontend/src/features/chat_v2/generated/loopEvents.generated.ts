@@ -198,6 +198,40 @@ export interface AgentHandoffEvent {
   };
 }
 
+export interface SpanStartedEvent {
+  type: "span_started";
+  data: {
+    trace_id?: string | null;
+    span_name: string;
+    span_id: string;
+    parent_span_id: string;
+    span_type: string;
+  };
+}
+
+export interface SpanEndedEvent {
+  type: "span_ended";
+  data: {
+    trace_id?: string | null;
+    span_name: string;
+    span_id: string;
+    span_type: string;
+    duration_ms: number;
+  };
+}
+
+export interface MemoryAccessedEvent {
+  type: "memory_accessed";
+  data: {
+    trace_id?: string | null;
+    layer: string;
+    operation: string;
+    key: string;
+    summary: string;
+    time_scale: string;
+  };
+}
+
 export type LoopEvent =
   | LoopStartEvent
   | TurnStartEvent
@@ -217,7 +251,10 @@ export type LoopEvent =
   | ContextCompactedEvent
   | PromptBuiltEvent
   | StateCheckpointedEvent
-  | AgentHandoffEvent;
+  | AgentHandoffEvent
+  | SpanStartedEvent
+  | SpanEndedEvent
+  | MemoryAccessedEvent;
 
 export const KNOWN_LOOP_EVENT_TYPES = new Set<string>([
   "loop_start",
@@ -239,4 +276,7 @@ export const KNOWN_LOOP_EVENT_TYPES = new Set<string>([
   "prompt_built",
   "state_checkpointed",
   "agent_handoff",
+  "span_started",
+  "span_ended",
+  "memory_accessed",
 ]);

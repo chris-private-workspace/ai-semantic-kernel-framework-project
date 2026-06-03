@@ -20,9 +20,10 @@ Owner: 01-eleven-categories-spec.md §範疇 1
 Single-source: 17.md §4.1
 
 Created: 2026-04-29 (Sprint 49.1)
-Last Modified: 2026-04-29
+Last Modified: 2026-06-03
 
 Modification History (newest-first):
+    - 2026-06-03: Sprint 57.75 A-5c — Span* +span_type/parent_span_id, MemoryAccessed +summary
     - 2026-06-02: Sprint 57.69 A-3b — add LoopCompleted.handoff_context (in-process carry)
     - 2026-06-02: Sprint 57.68 A-3b — add AgentHandoff event + LoopCompleted.handoff_target/reason
     - 2026-06-01: Sprint 57.65 A-2 — add cached_input_tokens + cache_hit_rate (prompt-cache obs)
@@ -201,6 +202,13 @@ class MemoryAccessed(LoopEvent):
     layer: str = ""  # system / tenant / role / user / session
     operation: str = ""  # read / write / evict
     key: str = ""
+    # Sprint 57.75 (A-5c Memory tab): per-hint detail surfaced to the chat-v2
+    # Inspector Memory tab. `summary` is the MemoryHint's capped token-cheap
+    # summary (NOT raw content — PII-safe by construction). `time_scale` is the
+    # 雙軸 second axis (short_term / long_term / semantic). Defaults preserve the
+    # existing 3-field constructor (additive, no existing test breaks).
+    summary: str = ""
+    time_scale: str = ""  # short_term / long_term / semantic
 
 
 # === Category 4: Context Mgmt ==============================================
@@ -379,6 +387,13 @@ class ApprovalReceived(LoopEvent):
 class SpanStarted(LoopEvent):
     span_name: str = ""
     span_id: str = ""
+    # Sprint 57.75 (A-5c Trace tab): `parent_span_id` lets the chat-v2 Inspector
+    # Trace waterfall reconstruct the LOOP→TURN→operation nesting (empty "" for a
+    # root span); `span_type` (LOOP / TURN / LLM_CALL / TOOL_EXEC / PROMPT_BUILD /
+    # COMPACTION) drives the per-row color band. Defaults preserve the existing
+    # 2-field constructor (additive).
+    parent_span_id: str = ""
+    span_type: str = ""
 
 
 @dataclass(frozen=True)
@@ -386,6 +401,9 @@ class SpanEnded(LoopEvent):
     span_name: str = ""
     span_id: str = ""
     duration_ms: float = 0.0
+    # Sprint 57.75 (A-5c Trace tab): carry `span_type` on close so the consumer
+    # can match start/end without a separate lookup table. Additive default.
+    span_type: str = ""
 
 
 @dataclass(frozen=True)

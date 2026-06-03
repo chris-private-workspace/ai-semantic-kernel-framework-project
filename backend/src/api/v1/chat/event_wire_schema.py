@@ -1,6 +1,6 @@
 """
 File: backend/src/api/v1/chat/event_wire_schema.py
-Purpose: Declarative single-source wire-schema for the 19 chat SSE event types.
+Purpose: Declarative single-source wire-schema for the 22 chat SSE event types.
 Category: api/v1/chat
 Scope: Phase 57 / Sprint 57.67 (A-5b — event schema codegen)
 
@@ -27,16 +27,17 @@ Description:
     `frontend/src/features/chat_v2/types.ts` (reproduced verbatim).
 
 Key Components:
-    - WIRE_SCHEMA: 19 ordered wire-type → ordered {field: ts_type} entries.
+    - WIRE_SCHEMA: 22 ordered wire-type → ordered {field: ts_type} entries.
     - BASE_FIELDS: universal fields the wrapper adds to every frame (trace_id).
     - TOOL_CALL_ELEMENT_TYPE_NAME / TOOL_CALL_ELEMENT_FIELDS: the named
       `tool_calls` element TS type (mirrors types.ts `LLMToolCall`).
     - validate_ts_type(spec): pragmatic TS-type-string sanity check.
 
 Created: 2026-06-02 (Sprint 57.67)
-Last Modified: 2026-06-02
+Last Modified: 2026-06-03
 
 Modification History (newest-first):
+    - 2026-06-03: Sprint 57.75 A-5c — add span_started/span_ended/memory_accessed wire-types 19→22
     - 2026-06-02: Sprint 57.68 A-3b — add agent_handoff wire-type (Cat 11 HANDOFF) 18→19
     - 2026-06-02: Initial creation (Sprint 57.67 A-5b) — declarative wire-schema registry
 
@@ -175,6 +176,28 @@ WIRE_SCHEMA: dict[str, dict[str, str]] = {
         "reason": "string",
         "parent_session_id": "string",
         "new_session_id": "string",
+    },
+    # Sprint 57.75 (A-5c): Cat 12 span lifecycle + Cat 3 memory access — feed the
+    # chat-v2 Inspector Trace + Memory tabs. parent_span_id is "" for a root span;
+    # span_type ∈ {LOOP,TURN,LLM_CALL,TOOL_EXEC,PROMPT_BUILD,COMPACTION}.
+    "span_started": {
+        "span_name": "string",
+        "span_id": "string",
+        "parent_span_id": "string",
+        "span_type": "string",
+    },
+    "span_ended": {
+        "span_name": "string",
+        "span_id": "string",
+        "span_type": "string",
+        "duration_ms": "number",
+    },
+    "memory_accessed": {
+        "layer": "string",
+        "operation": "string",
+        "key": "string",
+        "summary": "string",
+        "time_scale": "string",
     },
 }
 

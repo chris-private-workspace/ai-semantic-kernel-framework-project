@@ -183,8 +183,10 @@ async def test_agent_loop_calls_mock_patrol_via_real_subprocess(
     assert parsed[0]["server_id"] == "web-01"
     assert parsed[0]["health"] in ("ok", "warning", "critical")
 
-    # Loop terminates END_TURN
-    completed = events[-1]
+    # Loop terminates END_TURN. Sprint 57.75 (A-5c): the loop now trails the
+    # public LoopCompleted with a diagnostic SpanEnded(LOOP) (span closes in the
+    # finally after the body), so select LoopCompleted explicitly, not events[-1].
+    completed = next(e for e in events if isinstance(e, LoopCompleted))
     assert isinstance(completed, LoopCompleted)
     assert completed.stop_reason == TerminationReason.END_TURN.value
 

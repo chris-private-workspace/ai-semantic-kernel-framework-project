@@ -43,9 +43,10 @@ Key Components:
     - main(): no-arg write vs `--check` diff modes.
 
 Created: 2026-06-02 (Sprint 57.67)
-Last Modified: 2026-06-02
+Last Modified: 2026-06-03
 
 Modification History (newest-first):
+    - 2026-06-03: Sprint 57.75 A-5c — map span_started/span_ended/memory_accessed → *Event types
     - 2026-06-02: Sprint 57.68 A-3b — map agent_handoff → AgentHandoffEvent (Cat 11 HANDOFF)
     - 2026-06-02: Initial creation (Sprint 57.67 A-5b) — wire-schema → FE artifact codegen
 
@@ -102,6 +103,9 @@ WIRE_TYPE_TO_INTERFACE: dict[str, str] = {
     "prompt_built": "PromptBuiltEvent",
     "state_checkpointed": "StateCheckpointedEvent",
     "agent_handoff": "AgentHandoffEvent",
+    "span_started": "SpanStartedEvent",
+    "span_ended": "SpanEndedEvent",
+    "memory_accessed": "MemoryAccessedEvent",
 }
 
 

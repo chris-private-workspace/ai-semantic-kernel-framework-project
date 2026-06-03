@@ -15,6 +15,7 @@
  * Created: 2026-05-17 (Sprint 57.21 Day 1)
  *
  * Modification History:
+ *   - 2026-06-03: Sprint 57.75 — span_started/span_ended/memory_accessed → spans + memoryOps slice coverage
  *   - 2026-06-02: Sprint 57.69 — agent_handoff pivot + handoffBanner / pivotSession / dismiss coverage
  *   - 2026-05-17: Initial creation (Sprint 57.21 Day 1 / US-B3)
  */
@@ -118,6 +119,46 @@ const guardrailTriggered = (): LoopEvent => ({
 const loopStart = (sessionId: string): LoopEvent => ({
   type: "loop_start",
   data: { session_id: sessionId },
+});
+
+const spanStarted = (
+  spanId: string,
+  opts: { parent?: string; type?: string; name?: string } = {},
+): LoopEvent => ({
+  type: "span_started",
+  data: {
+    span_id: spanId,
+    parent_span_id: opts.parent ?? "",
+    span_type: opts.type ?? "LOOP",
+    span_name: opts.name ?? "agent_loop",
+  },
+});
+
+const spanEnded = (
+  spanId: string,
+  opts: { type?: string; name?: string; durationMs?: number } = {},
+): LoopEvent => ({
+  type: "span_ended",
+  data: {
+    span_id: spanId,
+    span_type: opts.type ?? "LOOP",
+    span_name: opts.name ?? "agent_loop",
+    duration_ms: opts.durationMs ?? 1420,
+  },
+});
+
+const memoryAccessed = (
+  key: string,
+  opts: { layer?: string; operation?: string; summary?: string; timeScale?: string } = {},
+): LoopEvent => ({
+  type: "memory_accessed",
+  data: {
+    layer: opts.layer ?? "user",
+    operation: opts.operation ?? "read",
+    key,
+    summary: opts.summary ?? "5-whys + timeline",
+    time_scale: opts.timeScale ?? "permanent",
+  },
 });
 
 const agentHandoff = (
@@ -383,6 +424,101 @@ describe("chatStore.mergeEvent Turn block sequence (Sprint 57.21 Day 1)", () => 
   });
 
   // --- guardrail + audit trail -------------------------------------------
+
+  // --- Sprint 57.75 A-5: spans slice (Trace) ----------------------------
+
+  test("span_started opens a SpanNode (status=running, durationMs=null)", () => {
+    useChatStore.getState().mergeEvent(spanStarted("sp-loop", { type: "LOOP", name: "agent_loop" }));
+    const { spans } = useChatStore.getState();
+    expect(spans).toHaveLength(1);
+    expect(spans[0].spanId).toBe("sp-loop");
+    expect(spans[0].spanType).toBe("LOOP");
+    expect(spans[0].status).toBe("running");
+    expect(spans[0].durationMs).toBeNull();
+  });
+
+  test("span_started dedups by span_id (re-emit keeps first open record)", () => {
+    useChatStore.getState().mergeEvent(spanStarted("sp-loop"));
+    useChatStore.getState().mergeEvent(spanStarted("sp-loop"));
+    expect(useChatStore.getState().spans).toHaveLength(1);
+  });
+
+  test("span_ended closes matching span (durationMs set + status=done)", () => {
+    useChatStore.getState().mergeEvent(spanStarted("sp-loop", { type: "LOOP" }));
+    useChatStore.getState().mergeEvent(spanEnded("sp-loop", { durationMs: 910 }));
+    const { spans } = useChatStore.getState();
+    expect(spans).toHaveLength(1);
+    expect(spans[0].status).toBe("done");
+    expect(spans[0].durationMs).toBe(910);
+  });
+
+  test("span_ended without prior span_started defensively creates a closed span", () => {
+    useChatStore.getState().mergeEvent(spanEnded("sp-orphan", { durationMs: 42 }));
+    const { spans } = useChatStore.getState();
+    expect(spans).toHaveLength(1);
+    expect(spans[0].status).toBe("done");
+    expect(spans[0].durationMs).toBe(42);
+    expect(spans[0].parentSpanId).toBe("");
+  });
+
+  test("nested spans preserve parent_span_id linkage (LOOP → TURN → LLM_CALL)", () => {
+    useChatStore.getState().mergeEvent(spanStarted("loop", { type: "LOOP" }));
+    useChatStore.getState().mergeEvent(spanStarted("turn", { parent: "loop", type: "TURN" }));
+    useChatStore
+      .getState()
+      .mergeEvent(spanStarted("llm", { parent: "turn", type: "LLM_CALL" }));
+    const byId = new Map(useChatStore.getState().spans.map((s) => [s.spanId, s]));
+    expect(byId.get("turn")?.parentSpanId).toBe("loop");
+    expect(byId.get("llm")?.parentSpanId).toBe("turn");
+  });
+
+  // --- Sprint 57.75 A-5: memoryOps slice (Memory) ------------------------
+
+  test("memory_accessed appends a MemoryOp with scope/timeScale/key/summary + client at", () => {
+    const before = Date.now();
+    useChatStore
+      .getState()
+      .mergeEvent(
+        memoryAccessed("preferences.rca_format", {
+          layer: "user",
+          operation: "read",
+          summary: "5-whys + timeline",
+          timeScale: "permanent",
+        }),
+      );
+    const { memoryOps } = useChatStore.getState();
+    expect(memoryOps).toHaveLength(1);
+    expect(memoryOps[0].op).toBe("read");
+    expect(memoryOps[0].scope).toBe("user");
+    expect(memoryOps[0].timeScale).toBe("permanent");
+    expect(memoryOps[0].key).toBe("preferences.rca_format");
+    expect(memoryOps[0].summary).toBe("5-whys + timeline");
+    expect(memoryOps[0].at).toBeGreaterThanOrEqual(before);
+  });
+
+  test("multiple memory_accessed accumulate in arrival order", () => {
+    useChatStore.getState().mergeEvent(memoryAccessed("k1", { layer: "user" }));
+    useChatStore.getState().mergeEvent(memoryAccessed("k2", { layer: "tenant" }));
+    const { memoryOps } = useChatStore.getState();
+    expect(memoryOps.map((m) => m.key)).toEqual(["k1", "k2"]);
+    expect(memoryOps.map((m) => m.scope)).toEqual(["user", "tenant"]);
+  });
+
+  test("span + memory events still record rawEvents (audit trail)", () => {
+    useChatStore.getState().mergeEvent(spanStarted("sp-1"));
+    useChatStore.getState().mergeEvent(memoryAccessed("k1"));
+    expect(useChatStore.getState().rawEvents).toHaveLength(2);
+  });
+
+  test("agent_handoff pivot resets spans + memoryOps to empty child", () => {
+    useChatStore.getState().mergeEvent(spanStarted("sp-1"));
+    useChatStore.getState().mergeEvent(memoryAccessed("k1"));
+    expect(useChatStore.getState().spans).toHaveLength(1);
+    useChatStore.getState().mergeEvent(agentHandoff());
+    const state = useChatStore.getState();
+    expect(state.spans).toEqual([]);
+    expect(state.memoryOps).toEqual([]);
+  });
 
   test("guardrail_triggered routes to rawEvents only (no turn changes)", () => {
     useChatStore.getState().mergeEvent(turnStart());

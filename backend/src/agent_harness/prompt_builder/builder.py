@@ -36,9 +36,10 @@ Description:
 Owner: 01-eleven-categories-spec.md §範疇 5
 
 Created: 2026-05-01 (Sprint 52.2 Day 1.6)
-Last Modified: 2026-06-01
+Last Modified: 2026-06-03
 
 Modification History (newest-first):
+    - 2026-06-03: Sprint 57.75 A-5c — add layer_metadata["memory_accesses"] per-hint detail
     - 2026-06-01: Sprint 57.65 — memory render enrich + token cap + verify_before_use (A-1)
 
 Related:
@@ -286,12 +287,33 @@ class DefaultPromptBuilder(PromptBuilder):
                 )
                 estimated_tokens = 0
 
+            # Sprint 57.75 (A-5c Memory tab): surface per-hint access detail so
+            # the Loop can emit one MemoryAccessed event per retrieved hint (the
+            # chat-v2 Inspector Memory tab). `memory_layers_used` (above) is only
+            # the layer-key list; this carries the 4 fields the Memory ops row
+            # renders: scope (layer) / time_scale (雙軸 2nd axis) / key / summary.
+            # `summary` is the MemoryHint's capped token-cheap summary (NOT raw
+            # content — PII-safe by construction per _contracts/memory.py); `key`
+            # is the hint's full_content_pointer (DB ref / vector_id). Reads the
+            # SAME `memory_layers` dict already retrieved + budget-trimmed above,
+            # so no extra MemoryRetrieval.search() call.
+            memory_accesses: list[dict[str, str]] = [
+                {
+                    "scope": layer,
+                    "time_scale": hint.time_scale,
+                    "key": hint.full_content_pointer,
+                    "summary": hint.summary,
+                }
+                for layer, hints in memory_layers.items()
+                for hint in hints
+            ]
             return PromptArtifact(
                 messages=messages,
                 cache_breakpoints=cache_breakpoints,
                 estimated_input_tokens=estimated_tokens,
                 layer_metadata={
                     "memory_layers_used": list(memory_layers.keys()),
+                    "memory_accesses": memory_accesses,
                     "position_strategy": strategy.__class__.__name__,
                     "cache_sections": [bp.section_id for bp in cache_breakpoints if bp.section_id],
                     "trace_id": child_ctx.trace_id,

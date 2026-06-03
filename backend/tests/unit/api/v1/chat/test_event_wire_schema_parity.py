@@ -8,16 +8,16 @@ Description:
     The declarative WIRE_SCHEMA (event_wire_schema.py) is the single source of
     truth that the frontend events.json + loopEvents.generated.ts are generated
     from. This test locks non-drift between WIRE_SCHEMA and the actual
-    `serialize_loop_event` output: for each of the 18 wired event classes it
+    `serialize_loop_event` output: for each of the 22 wired event classes it
     builds one representative instance, serializes it, and asserts the payload's
     `data` key set (minus the universal `trace_id`) equals the registry entry.
     Drift in EITHER direction (serializer adds/removes a field, or registry
-    drifts) fails this test. Also asserts the 6 unwired classes still raise
+    drifts) fails this test. Also asserts the 3 unwired classes still raise
     NotImplementedError, that Thinking still serializes to None, and that the
-    registry has exactly 19 entries.
+    registry has exactly 22 entries.
 
 Created: 2026-06-02 (Sprint 57.67)
-Last Modified: 2026-06-02 (Sprint 57.68 A-3b — add AgentHandoff wired instance; 18→19)
+Last Modified: 2026-06-03 (Sprint 57.75 A-5c — wire SpanStarted/Ended + MemoryAccessed; 19→22)
 """
 
 from __future__ import annotations
@@ -112,22 +112,29 @@ WIRED_EVENT_INSTANCES: list[LoopEvent] = [
         parent_session_id=uuid4(),
         new_session_id=uuid4(),
     ),
+    # Sprint 57.75 (A-5c): Cat 12 span lifecycle + Cat 3 memory access now wired.
+    SpanStarted(span_name="agent_loop.run", span_id="s1", parent_span_id="", span_type="LOOP"),
+    SpanEnded(span_name="agent_loop.run", span_id="s1", span_type="LOOP", duration_ms=3.0),
+    MemoryAccessed(
+        layer="session",
+        operation="read",
+        key="ptr-1",
+        summary="prior turn note",
+        time_scale="short_term",
+    ),
 ]
 
-# Cat 8/3/1/12 events with no serializer branch (must raise NotImplementedError).
+# Cat 8/1/12 events with no serializer branch (must raise NotImplementedError).
 UNWIRED_EVENT_INSTANCES: list[LoopEvent] = [
-    MemoryAccessed(layer="session", operation="read", key="k"),
     ErrorRetried(attempt=1, error_class="TimeoutError", backoff_ms=250.0),
     LoopTerminated(reason="budget_exceeded"),
-    SpanStarted(span_name="loop", span_id="s1"),
-    SpanEnded(span_name="loop", span_id="s1", duration_ms=3.0),
     MetricRecorded(metric_name="latency", value=1.0, labels={"k": "v"}),
 ]
 
 
 class TestWireSchemaParity:
-    def test_wire_schema_has_19_entries(self) -> None:
-        assert len(WIRE_SCHEMA) == 19
+    def test_wire_schema_has_22_entries(self) -> None:
+        assert len(WIRE_SCHEMA) == 22
 
     def test_base_fields_only_trace_id(self) -> None:
         # trace_id is the universal field injected by serialize_loop_event;
@@ -166,7 +173,7 @@ class TestWireSchemaParity:
         assert failed["type"] == "tool_call_result"
         assert set(executed["data"]) == set(failed["data"])
 
-    def test_all_wired_classes_cover_all_19_wire_types(self) -> None:
+    def test_all_wired_classes_cover_all_22_wire_types(self) -> None:
         # The representative instances must collectively hit every WIRE_SCHEMA
         # key (proves no registry entry lacks a serializer branch).
         produced = set()

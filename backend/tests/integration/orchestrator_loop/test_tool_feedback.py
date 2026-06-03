@@ -29,13 +29,25 @@ from adapters._testing.mock_clients import MockChatClient
 from agent_harness._contracts import (
     ChatResponse,
     LoopCompleted,
+    LoopEvent,
+    MemoryAccessed,
     Message,
+    SpanEnded,
+    SpanStarted,
     StopReason,
     ToolCall,
 )
 from agent_harness.orchestrator_loop import AgentLoopImpl, TerminationReason
 from agent_harness.output_parser import OutputParserImpl
 from agent_harness.tools import make_echo_executor
+
+# Sprint 57.75 (A-5c): filter the loop's new diagnostic SpanStarted/SpanEnded +
+# MemoryAccessed events; these tests assert the PUBLIC event sequence.
+_DIAGNOSTIC_EVENTS = (SpanStarted, SpanEnded, MemoryAccessed)
+
+
+def _public(events: list[LoopEvent]) -> list[LoopEvent]:
+    return [e for e in events if not isinstance(e, _DIAGNOSTIC_EVENTS)]
 
 
 @pytest.mark.asyncio
@@ -69,7 +81,7 @@ async def test_production_inmemory_executor_wires_into_loop() -> None:
     events = [ev async for ev in loop.run(session_id=uuid4(), user_input="echo world")]
 
     # Event sequence — Sprint 50.2 Day 2.4 expanded with per-turn events.
-    assert [type(e).__name__ for e in events] == [
+    assert [type(e).__name__ for e in _public(events)] == [
         "LoopStarted",
         "TurnStarted",
         "LLMRequested",
@@ -91,12 +103,14 @@ async def test_production_inmemory_executor_wires_into_loop() -> None:
     assert tool_msgs[0].tool_call_id == "c1"
     assert tool_msgs[0].content == "world"
 
-    # Final assistant turn references the echo result
+    # Final assistant turn references the echo result (last public event before
+    # LoopCompleted is the final-turn Thinking; diagnostic events filtered).
+    public = _public(events)
     assert "world" in (
-        events[-2].text if hasattr(events[-2], "text") else ""  # type: ignore[attr-defined]
+        public[-2].text if hasattr(public[-2], "text") else ""  # type: ignore[attr-defined]
     )
 
-    completed = events[-1]
+    completed = _public(events)[-1]
     assert isinstance(completed, LoopCompleted)
     assert completed.stop_reason == TerminationReason.END_TURN.value
     assert completed.total_turns == 1
@@ -120,7 +134,7 @@ async def test_loop_built_from_production_modules_only() -> None:
     )
     # Just exercise the wire-up; not asserting deep behavior here.
     events = [ev async for ev in loop.run(session_id=uuid4(), user_input="hi")]
-    assert isinstance(events[-1], LoopCompleted)
+    assert isinstance(_public(events)[-1], LoopCompleted)
     # Registered tools surface to LLM via ChatRequest.tools
     assert any(
         isinstance(m, Message) for m in [Message(role="user", content="hi")]

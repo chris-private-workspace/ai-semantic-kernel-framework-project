@@ -7,6 +7,7 @@
  * Created: 2026-05-17 (Sprint 57.21 Day 4 §4.1)
  *
  * Modification History:
+ *   - 2026-06-03: Sprint 57.75 — Trace+Memory tabs now wired (A-5); replace ComingSoon assertions with empty states
  *   - 2026-06-03: Sprint 57.72 — Tree tab now renders InspectorTree (A-5c); replace ComingSoon-Tree assertion with empty + populated tree
  *   - 2026-05-17: Initial creation (Sprint 57.21 Day 4 §4.1)
  */
@@ -118,21 +119,24 @@ describe("ChatInspector (Sprint 57.21 Day 4 §4.1)", () => {
     expect(screen.getByText("metrics.query · 210ms")).toBeInTheDocument();
   });
 
-  test("Switch to Trace tab → ComingSoon Trace placeholder", async () => {
+  test("Switch to Trace tab → InspectorTrace empty state when no spans (no ComingSoon placeholder)", async () => {
     const user = userEvent.setup();
     render(<ChatInspector />);
     await user.click(screen.getByRole("tab", { name: "Trace" }));
-    expect(screen.getByTestId("inspector-tab-coming-soon-trace")).toBeInTheDocument();
-    expect(screen.getByText(/AD-ChatV2-Inspector-Trace-Phase2/)).toBeInTheDocument();
-    expect(screen.getByText(/L434-466/)).toBeInTheDocument();
+    expect(screen.getByTestId("inspector-trace-empty")).toBeInTheDocument();
+    expect(screen.getByText("no spans yet")).toBeInTheDocument();
+    // Trace tab no longer renders the ComingSoon placeholder (Sprint 57.75 wire-in).
+    expect(screen.queryByTestId("inspector-tab-coming-soon-trace")).toBeNull();
   });
 
-  test("Switch to Memory tab → ComingSoon Memory placeholder", async () => {
+  test("Switch to Memory tab → InspectorMemory empty state when no memory ops (no ComingSoon placeholder)", async () => {
     const user = userEvent.setup();
     render(<ChatInspector />);
     await user.click(screen.getByRole("tab", { name: "Memory" }));
-    expect(screen.getByTestId("inspector-tab-coming-soon-memory")).toBeInTheDocument();
-    expect(screen.getByText(/AD-ChatV2-Inspector-Memory-Phase2/)).toBeInTheDocument();
+    expect(screen.getByTestId("inspector-memory-empty")).toBeInTheDocument();
+    expect(screen.getByText("no memory accesses this session")).toBeInTheDocument();
+    // Memory tab no longer renders the ComingSoon placeholder (Sprint 57.75 wire-in).
+    expect(screen.queryByTestId("inspector-tab-coming-soon-memory")).toBeNull();
   });
 
   test("Switch to Tree tab → InspectorTree empty state when no subagents (no ComingSoon placeholder)", async () => {

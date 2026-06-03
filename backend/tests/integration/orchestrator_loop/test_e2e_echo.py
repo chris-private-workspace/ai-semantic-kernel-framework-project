@@ -32,7 +32,11 @@ from adapters._testing.mock_clients import MockChatClient
 from agent_harness._contracts import (
     ChatResponse,
     LoopCompleted,
+    LoopEvent,
     LoopStarted,
+    MemoryAccessed,
+    SpanEnded,
+    SpanStarted,
     StopReason,
     Thinking,
     ToolCall,
@@ -41,6 +45,16 @@ from agent_harness._contracts import (
 from agent_harness.orchestrator_loop import AgentLoopImpl, TerminationReason
 from agent_harness.output_parser import OutputParserImpl
 from agent_harness.tools import make_echo_executor
+
+# Sprint 57.75 (A-5c): the loop now interleaves diagnostic SpanStarted/SpanEnded
+# + MemoryAccessed events into the stream. These acceptance tests assert the
+# PUBLIC event sequence, so filter the diagnostic events out first (their emit
+# order + nesting are covered in test_observability_coverage.py).
+_DIAGNOSTIC_EVENTS = (SpanStarted, SpanEnded, MemoryAccessed)
+
+
+def _public(events: list[LoopEvent]) -> list[LoopEvent]:
+    return [e for e in events if not isinstance(e, _DIAGNOSTIC_EVENTS)]
 
 
 @pytest.mark.asyncio
@@ -85,7 +99,7 @@ async def test_e2e_echo_acceptance() -> None:
     events = [ev async for ev in loop.run(session_id=sid, user_input="please echo hello")]
 
     # === Assertion (a): full event sequence ===================================
-    type_seq = [type(e).__name__ for e in events]
+    type_seq = [type(e).__name__ for e in _public(events)]
     # Sprint 50.2 Day 2.4: per-turn events expanded with TurnStarted /
     # LLMRequested / LLMResponded; ToolCallExecuted yielded after success.
     assert type_seq == [
@@ -106,7 +120,7 @@ async def test_e2e_echo_acceptance() -> None:
     ]
 
     # LoopStarted carries session_id
-    started = events[0]
+    started = _public(events)[0]
     assert isinstance(started, LoopStarted)
     assert started.session_id == sid
 
@@ -123,7 +137,7 @@ async def test_e2e_echo_acceptance() -> None:
     assert thinking_events[1].text == "Echo returned: hello"
 
     # LoopCompleted: END_TURN, total_turns = 1 (one TOOL_USE turn before END_TURN)
-    completed = events[-1]
+    completed = _public(events)[-1]
     assert isinstance(completed, LoopCompleted)
     assert completed.stop_reason == TerminationReason.END_TURN.value
     assert completed.total_turns == 1
@@ -176,7 +190,7 @@ async def test_e2e_zero_turn_immediate_final() -> None:
     )
     events = [ev async for ev in loop.run(session_id=uuid4(), user_input="hi")]
     # Sprint 50.2 Day 2.4: per-turn events expanded.
-    assert [type(e).__name__ for e in events] == [
+    assert [type(e).__name__ for e in _public(events)] == [
         "LoopStarted",
         "TurnStarted",
         "LLMRequested",
@@ -184,7 +198,7 @@ async def test_e2e_zero_turn_immediate_final() -> None:
         "Thinking",
         "LoopCompleted",
     ]
-    completed = events[-1]
+    completed = _public(events)[-1]
     assert isinstance(completed, LoopCompleted)
     assert completed.total_turns == 0
     assert completed.stop_reason == TerminationReason.END_TURN.value

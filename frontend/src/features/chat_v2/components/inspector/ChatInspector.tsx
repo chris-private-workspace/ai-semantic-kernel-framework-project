@@ -5,17 +5,17 @@
  * Scope: Phase 57.30 Day 4 §D3 (AD-Mockup-Direct-Port-Round-2 chatv2 shell repoint)
  *
  * Description:
- *   Mockup L371-390 — 4-tab Inspector frame:
- *     - Turn:    populated via <InspectorTurn> (last AgentTurn KV + Block
- *                sequence + 2 action buttons)
- *     - Trace:   <ComingSoonInspectorTab name="Trace" ad="AD-ChatV2-Inspector-Trace-Phase2">
- *     - Memory:  <ComingSoonInspectorTab name="Memory" ad="AD-ChatV2-Inspector-Memory-Phase2">
- *     - Tree:    <InspectorTree> (shipped Sprint 57.72 — A-5c; reads chatStore.subagents)
+ *   Mockup L371-390 — 4-tab Inspector frame (all 4 tabs now wired to real data):
+ *     - Turn:    <InspectorTurn> (last AgentTurn KV + Block sequence + 2 buttons)
+ *     - Trace:   <InspectorTrace> (Sprint 57.75 — A-5; span waterfall from
+ *                span_started/span_ended SSE; chatStore.spans)
+ *     - Memory:  <InspectorMemory> (Sprint 57.75 — A-5; memory ops list from
+ *                memory_accessed SSE; chatStore.memoryOps)
+ *     - Tree:    <InspectorTree> (Sprint 57.72 — A-5c; chatStore.subagents)
  *
- *   Tab state is local; resets per page mount (mockup behavior). The Tree tab is
- *   wired (Sprint 57.72); Trace / Memory stay ComingSoon pending their backend
- *   producers (SpanStarted/SpanEnded over SSE; memory_accessed) per their
- *   carryover ADs.
+ *   Tab state is local; resets per page mount (mockup behavior). Sprint 57.75
+ *   wired the last 2 ComingSoon tabs (Trace + Memory), closing
+ *   AD-ChatV2-Inspector-Trace-Phase2 + -Memory-Phase2.
  *
  *   Sprint 57.30 Day 4: re-pointed from shared shadcn-shaped Tabs primitive
  *   (frontend/src/components/ui/tabs.tsx — uses pre-57.18 tokens
@@ -29,6 +29,7 @@
  * Last Modified: 2026-05-23
  *
  * Modification History (newest-first):
+ *   - 2026-06-03: Sprint 57.75 — wire Trace + Memory tabs (A-5); all 4 tabs now real (closes -Trace/-Memory-Phase2)
  *   - 2026-06-03: Sprint 57.72 — wire Tree tab to InspectorTree (A-5c); Trace/Memory stay ComingSoon
  *   - 2026-05-23: Sprint 57.30 Day 4 §D3 — verbatim re-point shared Tabs primitive → mockup .chat-inspector + inline .tabs/.tab buttons (a11y role="tab"/aria-selected preserved)
  *   - 2026-05-17: Sprint 57.21 Day 4 §4.1 — Day 3 stub → 4-tab frame + Turn tab populated + 3 coming-soon tabs
@@ -39,8 +40,9 @@
  *   - reference/design-mockups/ui.jsx L123-133 (Tabs shape)
  *   - frontend/src/styles-mockup.css L705-710 (.chat-inspector) + L590-610 (.tabs/.tab)
  *   - ./InspectorTurn.tsx (Turn tab content)
+ *   - ./InspectorTrace.tsx (Trace tab content — Sprint 57.75)
+ *   - ./InspectorMemory.tsx (Memory tab content — Sprint 57.75)
  *   - ./InspectorTree.tsx (Tree tab content — Sprint 57.72)
- *   - ./ComingSoonInspectorTab.tsx (Trace / Memory placeholders)
  *   - ../ChatLayout.tsx (right rail consumer)
  */
 
@@ -50,7 +52,8 @@
 
 import { useState } from "react";
 
-import { ComingSoonInspectorTab } from "./ComingSoonInspectorTab";
+import { InspectorMemory } from "./InspectorMemory";
+import { InspectorTrace } from "./InspectorTrace";
 import { InspectorTree } from "./InspectorTree";
 import { InspectorTurn } from "./InspectorTurn";
 
@@ -95,22 +98,8 @@ export function ChatInspector(): JSX.Element {
       </div>
 
       {tab === "turn" && <InspectorTurn />}
-      {tab === "trace" && (
-        <ComingSoonInspectorTab
-          name="Trace"
-          mockupSection="L434-466"
-          carryoverAd="AD-ChatV2-Inspector-Trace-Phase2"
-          hint="Cat 12 OTel spans waterfall — loop iteration timing, tool durations, subagent spans, HITL pauses."
-        />
-      )}
-      {tab === "memory" && (
-        <ComingSoonInspectorTab
-          name="Memory"
-          mockupSection="L468-487"
-          carryoverAd="AD-ChatV2-Inspector-Memory-Phase2"
-          hint="Cat 3 memory ops — READ / WRITE per scope (user / tenant / session) with key, value, timestamp."
-        />
-      )}
+      {tab === "trace" && <InspectorTrace />}
+      {tab === "memory" && <InspectorMemory />}
       {tab === "tree" && <InspectorTree />}
     </aside>
   );

@@ -9,7 +9,10 @@
     "llm_response",
     "loop_end",
     "loop_start",
+    "memory_accessed",
     "prompt_built",
+    "span_ended",
+    "span_started",
     "state_checkpointed",
     "subagent_completed",
     "subagent_spawned",
@@ -117,6 +120,25 @@
       "reason": "string",
       "parent_session_id": "string",
       "new_session_id": "string"
+    },
+    "span_started": {
+      "span_name": "string",
+      "span_id": "string",
+      "parent_span_id": "string",
+      "span_type": "string"
+    },
+    "span_ended": {
+      "span_name": "string",
+      "span_id": "string",
+      "span_type": "string",
+      "duration_ms": "number"
+    },
+    "memory_accessed": {
+      "layer": "string",
+      "operation": "string",
+      "key": "string",
+      "summary": "string",
+      "time_scale": "string"
     }
   }
 }

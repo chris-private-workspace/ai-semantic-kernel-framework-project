@@ -34,9 +34,10 @@ Key Components:
     - format_sse_message(event_type, data) -> bytes
 
 Created: 2026-04-30 (Sprint 50.2 Day 1.3)
-Last Modified: 2026-06-01
+Last Modified: 2026-06-03
 
 Modification History (newest-first):
+    - 2026-06-03: Sprint 57.75 A-5c — serialize SpanStarted/Ended + MemoryAccessed (3 wire types)
     - 2026-06-02: Sprint 57.68 (A-3b) — serialize AgentHandoff → agent_handoff (Cat 11 HANDOFF)
     - 2026-06-02: FIX-025 — _jsonable: str-coerce UUID only, not float (cache_hit_rate wire type)
     - 2026-06-01: Sprint 57.66 (A-5a+) — serialize 4 diagnostic events + carry 57.65 cache fields
@@ -81,7 +82,10 @@ from agent_harness._contracts import (
     LoopCompleted,
     LoopEvent,
     LoopStarted,
+    MemoryAccessed,
     PromptBuilt,
+    SpanEnded,
+    SpanStarted,
     StateCheckpointed,
     SubagentCompleted,
     SubagentSpawned,
@@ -375,6 +379,50 @@ def _serialize_inner(event: LoopEvent) -> dict[str, Any] | None:
                     str(event.parent_session_id) if event.parent_session_id else None
                 ),
                 "new_session_id": (str(event.new_session_id) if event.new_session_id else None),
+            },
+        }
+
+    # Sprint 57.75 (A-5c): Cat 12 span lifecycle events. Emitted by the loop at
+    # all 6 span sites (LOOP / TURN / LLM_CALL / TOOL_EXEC / PROMPT_BUILD /
+    # COMPACTION). The chat-v2 Inspector Trace tab reconstructs the waterfall from
+    # span_id + parent_span_id (indent depth) + span_type (color band); SpanEnded
+    # carries the loop-measured duration_ms for the per-row bar. parent_span_id is
+    # "" for a root (LOOP) span.
+    if isinstance(event, SpanStarted):
+        return {
+            "type": "span_started",
+            "data": {
+                "span_name": event.span_name,
+                "span_id": event.span_id,
+                "parent_span_id": event.parent_span_id,
+                "span_type": event.span_type,
+            },
+        }
+
+    if isinstance(event, SpanEnded):
+        return {
+            "type": "span_ended",
+            "data": {
+                "span_name": event.span_name,
+                "span_id": event.span_id,
+                "span_type": event.span_type,
+                "duration_ms": event.duration_ms,
+            },
+        }
+
+    # Sprint 57.75 (A-5c): Cat 3 memory access. Emitted by the loop per retrieved
+    # hint after PromptBuilder.build() (real_llm path only — echo_demo has no
+    # prompt_builder so the Memory tab stays honestly empty). `summary` is the
+    # hint's capped token-cheap summary (PII-safe); `key` is the content pointer.
+    if isinstance(event, MemoryAccessed):
+        return {
+            "type": "memory_accessed",
+            "data": {
+                "layer": event.layer,
+                "operation": event.operation,
+                "key": event.key,
+                "summary": event.summary,
+                "time_scale": event.time_scale,
             },
         }
 

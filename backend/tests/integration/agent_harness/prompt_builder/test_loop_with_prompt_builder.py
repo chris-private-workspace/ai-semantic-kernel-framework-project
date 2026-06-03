@@ -22,6 +22,7 @@ import pytest
 from adapters._testing.mock_clients import MockChatClient
 from agent_harness._contracts import (
     ChatResponse,
+    MemoryAccessed,
     MemoryHint,
     PromptBuilt,
     StopReason,
@@ -221,3 +222,79 @@ async def test_memory_layers_grow_across_sessions() -> None:
     pb2 = cast(list[PromptBuilt], [ev for ev in events2 if isinstance(ev, PromptBuilt)])
     assert len(pb2) == 1
     assert set(pb2[0].memory_layers_used) >= {"user", "session"}
+
+
+# ===========================================================================
+# Sprint 57.75 (A-5c Memory tab): MemoryAccessed SSE LoopEvent emit.
+# The loop emits one MemoryAccessed per retrieved hint after build() — feeding
+# the chat-v2 Inspector Memory tab. On the no-prompt-builder path (echo_demo)
+# nothing is emitted → the Memory tab stays honestly empty (D-DAY0-5).
+# ===========================================================================
+
+
+@pytest.mark.asyncio
+async def test_loop_emits_memory_accessed_per_hint() -> None:
+    """real_llm-style path (prompt_builder injected) with 2 retrieved hints emits
+    2 MemoryAccessed events carrying scope / time_scale / key / summary."""
+
+    async def two_hits(*args: object, **kwargs: object) -> list[MemoryHint]:
+        return [
+            MemoryHint(
+                hint_id=uuid4(),
+                layer="user",
+                time_scale="long_term",
+                summary="user prefers concise answers",
+                confidence=0.9,
+                relevance_score=0.8,
+                full_content_pointer="db://user/42",
+                timestamp=datetime.now(timezone.utc),
+            ),
+            MemoryHint(
+                hint_id=uuid4(),
+                layer="session",
+                time_scale="short_term",
+                summary="earlier asked about pricing",
+                confidence=0.85,
+                relevance_score=0.75,
+                full_content_pointer="db://session/7",
+                timestamp=datetime.now(timezone.utc),
+            ),
+        ]
+
+    retrieval = MemoryRetrieval(layers={})
+    retrieval.search = two_hits  # type: ignore[method-assign]
+    loop = AgentLoopImpl(
+        chat_client=MockChatClient(responses=[_final_response()]),
+        output_parser=OutputParserImpl(),
+        tool_executor=_NoopExecutor(),
+        tool_registry=_StubRegistry(),
+        prompt_builder=_make_builder(retrieval),
+    )
+
+    events = [ev async for ev in loop.run(session_id=uuid4(), user_input="hi")]
+    mem = [ev for ev in events if isinstance(ev, MemoryAccessed)]
+
+    assert len(mem) == 2
+    assert all(ev.operation == "read" for ev in mem)
+    by_scope = {ev.layer: ev for ev in mem}
+    assert set(by_scope) == {"user", "session"}
+    assert by_scope["user"].time_scale == "long_term"
+    assert by_scope["user"].key == "db://user/42"
+    assert by_scope["user"].summary == "user prefers concise answers"
+    assert by_scope["session"].time_scale == "short_term"
+
+
+@pytest.mark.asyncio
+async def test_loop_without_prompt_builder_emits_no_memory_accessed() -> None:
+    """echo_demo-style path (no prompt_builder) emits zero MemoryAccessed events
+    → the Memory tab shows an honest empty state, not a fabricated row."""
+    loop = AgentLoopImpl(
+        chat_client=MockChatClient(responses=[_final_response()]),
+        output_parser=OutputParserImpl(),
+        tool_executor=_NoopExecutor(),
+        tool_registry=_StubRegistry(),
+        # NO prompt_builder → memory injection branch never runs.
+    )
+
+    events = [ev async for ev in loop.run(session_id=uuid4(), user_input="hi")]
+    assert not [ev for ev in events if isinstance(ev, MemoryAccessed)]

@@ -5,16 +5,17 @@
  * Scope: Phase 57 / Sprint 57.67 (A-5b — event schema codegen, US-4)
  *
  * Description:
- *   The 18 event types + KNOWN_LOOP_EVENT_TYPES are generated from the backend
+ *   The event types + KNOWN_LOOP_EVENT_TYPES are generated from the backend
  *   wire-schema registry (backend/src/api/v1/chat/event_wire_schema.py) and
  *   re-exported through ../types. This test imports from the SAME path every
  *   downstream consumer uses (@/features/chat_v2/types), proving the Stage-2
  *   re-export swap is transparent + the generated set has the expected
- *   19 wire-types including the 4 diagnostic events (Sprint 57.66) and the
- *   agent_handoff event (Sprint 57.68 A-3b, Cat 11 HANDOFF).
+ *   22 wire-types including the 4 diagnostic events (Sprint 57.66), the
+ *   agent_handoff event (Sprint 57.68 A-3b, Cat 11 HANDOFF) and the
+ *   span_started / span_ended / memory_accessed events (Sprint 57.75 A-5).
  *
  * Created: 2026-06-02 (Sprint 57.67)
- * Modified: 2026-06-02 (Sprint 57.68 A-3b — +agent_handoff; 18→19)
+ * Modified: 2026-06-03 (Sprint 57.75 A-5 — +span_started/span_ended/memory_accessed; 19→22)
  */
 
 import { describe, expect, test } from "vitest";
@@ -22,8 +23,14 @@ import { describe, expect, test } from "vitest";
 import { KNOWN_LOOP_EVENT_TYPES } from "@/features/chat_v2/types";
 
 describe("generated SSE event schema (re-exported via chat_v2/types)", () => {
-  test("KNOWN_LOOP_EVENT_TYPES has exactly 19 wire-types", () => {
-    expect(KNOWN_LOOP_EVENT_TYPES.size).toBe(19);
+  test("KNOWN_LOOP_EVENT_TYPES has exactly 22 wire-types", () => {
+    expect(KNOWN_LOOP_EVENT_TYPES.size).toBe(22);
+  });
+
+  test("recognizes the span + memory events (Sprint 57.75 A-5)", () => {
+    for (const t of ["span_started", "span_ended", "memory_accessed"]) {
+      expect(KNOWN_LOOP_EVENT_TYPES.has(t)).toBe(true);
+    }
   });
 
   test("recognizes the 4 newest diagnostic events (Sprint 57.66)", () => {
@@ -53,6 +60,6 @@ describe("generated SSE event schema (re-exported via chat_v2/types)", () => {
   });
 
   test("does not recognize an unknown / unwired wire-type", () => {
-    expect(KNOWN_LOOP_EVENT_TYPES.has("memory_accessed")).toBe(false);
+    expect(KNOWN_LOOP_EVENT_TYPES.has("nonexistent_event")).toBe(false);
   });
 });
