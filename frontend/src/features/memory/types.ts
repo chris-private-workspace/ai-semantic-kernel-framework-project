@@ -24,6 +24,7 @@
  * Created: 2026-05-10 (Sprint 57.12 Day 2 / US-3)
  *
  * Modification History (newest-first):
+ *   - 2026-06-03: Sprint 57.73 Track C — add MemoryMatrixCell / MemoryMatrixResponse (GET /matrix aggregate)
  *   - 2026-05-10: Initial creation (Sprint 57.12 Day 2 / US-3)
  *
  * Related:
@@ -68,4 +69,29 @@ export interface MemoryRecentFilter {
   layer: MemoryLayer;
   limit: number;
   offset: number;
+}
+
+/**
+ * Single (layer × time_scale) count cell of the 5×3 Memory matrix.
+ * Backend emits one cell per non-empty pair (zero-count cells omitted).
+ * Mirrors backend MemoryMatrixCell (api/v1/memory.py).
+ */
+export interface MemoryMatrixCell {
+  layer: MemoryLayer;
+  time_scale: MemoryTimeScale;
+  count: number;
+}
+
+/**
+ * Aggregate response for GET /api/v1/memory/matrix.
+ * - cells: non-empty (layer, time_scale) cells; absent pairs default to 0 in UI.
+ * - total: sum of emitted cell counts.
+ * - gapped_layers: layers with no backend query path (role + session) — rendered
+ *   as a gap indicator, NEVER a fabricated number.
+ * Mirrors backend MemoryMatrixResponse (api/v1/memory.py).
+ */
+export interface MemoryMatrixResponse {
+  cells: MemoryMatrixCell[];
+  total: number;
+  gapped_layers: MemoryLayer[];
 }

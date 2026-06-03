@@ -23,9 +23,10 @@
  *   - RecentMemoryOpsCard: stateless functional component, no props (pure fixture)
  *
  * Created: 2026-05-25 (Sprint 57.42 Day 1)
- * Last Modified: 2026-05-25
+ * Last Modified: 2026-06-03
  *
  * Modification History (newest-first):
+ *   - 2026-06-03: Sprint 57.73 Track C — reword AP-2 banner to deferred ops-history feature (no backend producer)
  *   - 2026-05-25: Initial creation (Sprint 57.42 Day 1) — memory matrix full mockup-fidelity rebuild
  *
  * Related:
@@ -96,7 +97,7 @@ export function RecentMemoryOpsCard(): JSX.Element {
           ))}
         </tbody>
       </table>
-      <BackendGapBanner reason="Recent memory ops timeline endpoint pending (Phase 58+) — GET /api/v1/memory/ops/recent?limit=100" />
+      <BackendGapBanner reason="Memory operation history (per-op audit / version log) is a deferred backend feature — see AD-Memory-OpsHistory-Backend. Memory writes currently emit zero audit rows; rows below are fixtures." />
     </Card>
   );
 }

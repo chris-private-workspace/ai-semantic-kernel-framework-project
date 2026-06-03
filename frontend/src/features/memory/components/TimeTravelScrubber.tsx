@@ -23,9 +23,10 @@
  *   - TimeTravelScrubber: stateless, controlled component
  *
  * Created: 2026-05-25 (Sprint 57.42 Day 1)
- * Last Modified: 2026-05-25
+ * Last Modified: 2026-06-03
  *
  * Modification History (newest-first):
+ *   - 2026-06-03: Sprint 57.73 Track C — add AP-2 banner for deferred memory op-timeline feature (fixture markers)
  *   - 2026-05-25: Initial creation (Sprint 57.42 Day 1) — memory matrix full mockup-fidelity rebuild
  *
  * Related:
@@ -33,9 +34,11 @@
  *   - ./MemoryView.tsx (parent — owns cursor + playing state + setInterval loop)
  *   - ../_fixtures.ts (MEMORY_OPS_TIMELINE + TIME_TRAVEL_MARKS)
  *   - ../../../components/mockup-ui.tsx (Card + Button primitives)
+ *   - ../../../components/ui/BackendGapBanner.tsx (AP-2 declaration)
  */
 
 import { Button, Card } from "../../../components/mockup-ui";
+import { BackendGapBanner } from "../../../components/ui/BackendGapBanner";
 import { MEMORY_OPS_TIMELINE, TIME_TRAVEL_MARKS } from "../_fixtures";
 
 export interface TimeTravelScrubberProps {
@@ -156,6 +159,7 @@ export function TimeTravelScrubber({
           </span>
         </div>
       </div>
+      <BackendGapBanner reason="Memory operation history (per-op audit / version log) is a deferred backend feature — see AD-Memory-OpsHistory-Backend. The op markers + scrubber timeline are fixtures." />
     </Card>
   );
 }

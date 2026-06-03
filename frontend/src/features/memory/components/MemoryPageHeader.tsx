@@ -15,36 +15,39 @@
  *   onClick resets cursor to 0 (returns to "now"). Export + New entry are
  *   visual-only AP-2 stubs.
  *
+ *   Entries count is REAL (Sprint 57.73 Track C): consumes useMemoryMatrix()
+ *   → matrix `total`. React Query dedups the shared key so this issues no extra
+ *   request beyond MemoryMatrix's. While loading the count is hidden (a subtle
+ *   "…" placeholder, never a fabricated number).
+ *
  * Key Components:
- *   - MemoryPageHeader: stateless functional, props { cursor, onResetCursor, entriesTotal? }
+ *   - MemoryPageHeader: query-consuming functional, props { cursor, onResetCursor }
  *
  * Created: 2026-05-25 (Sprint 57.42 Day 1)
- * Last Modified: 2026-05-25
+ * Last Modified: 2026-06-03
  *
  * Modification History (newest-first):
+ *   - 2026-06-03: Sprint 57.73 Track C — entries count from useMemoryMatrix total (drop TOTAL_ENTRIES fixture)
  *   - 2026-05-25: Initial creation (Sprint 57.42 Day 1) — memory matrix full mockup-fidelity rebuild
  *
  * Related:
  *   - reference/design-mockups/page-governance.jsx L480-495
  *   - ./MemoryView.tsx (parent — owns cursor state)
+ *   - ../hooks/useMemoryMatrix.ts (server cache; dedup-shared with MemoryMatrix)
  *   - ../../../components/mockup-ui.tsx (Button + Badge primitives)
- *   - ../_fixtures.ts (TOTAL_ENTRIES default)
  */
 
 import { Badge, Button } from "../../../components/mockup-ui";
-import { TOTAL_ENTRIES } from "../_fixtures";
+import { useMemoryMatrix } from "../hooks/useMemoryMatrix";
 
 export interface MemoryPageHeaderProps {
   cursor: number;
   onResetCursor: () => void;
-  entriesTotal?: number;
 }
 
-export function MemoryPageHeader({
-  cursor,
-  onResetCursor,
-  entriesTotal = TOTAL_ENTRIES,
-}: MemoryPageHeaderProps): JSX.Element {
+export function MemoryPageHeader({ cursor, onResetCursor }: MemoryPageHeaderProps): JSX.Element {
+  const { data } = useMemoryMatrix();
+  const entriesLabel = data ? `${data.total.toLocaleString()} entries` : "… entries";
   const onExport = () => {
     window.alert("Export: backend gap (Phase 58+) — memory export endpoint pending");
   };
@@ -58,7 +61,7 @@ export function MemoryPageHeader({
         <div className="page-sub">
           Dual-axis · 5 scope × 3 time scale
           <span className="route-pill">/memory</span>
-          <span className="mono subtle">· {entriesTotal.toLocaleString()} entries</span>
+          <span className="mono subtle">· {entriesLabel}</span>
           {cursor < 0 && (
             <Badge tone="info" dot>
               time-travel · {Math.abs(cursor)}m ago

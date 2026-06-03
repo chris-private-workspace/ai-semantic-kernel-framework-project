@@ -14,6 +14,7 @@
  * Created: 2026-05-25 (Sprint 57.42 Day 2)
  *
  * Modification History (newest-first):
+ *   - 2026-06-03: Sprint 57.73 Track C — update AP-2 banner assertion to reworded deferred-feature text
  *   - 2026-05-25: Initial creation (Sprint 57.42 Day 2)
  */
 
@@ -52,9 +53,10 @@ describe("RecentMemoryOpsCard (Sprint 57.42)", () => {
     expect(screen.getAllByText("READ").length).toBe(2);
     expect(screen.getAllByText("EXPIRE").length).toBe(1);
 
-    // AP-2 BackendGapBanner declared inside Card
+    // AP-2 BackendGapBanner declared inside Card (reworded Sprint 57.73 Track C
+    // to deferred ops-history feature — memory writes emit zero audit rows)
     const banner = screen.getByTestId("backend-gap-banner");
     expect(banner).toBeInTheDocument();
-    expect(banner).toHaveTextContent(/recent memory ops timeline endpoint/i);
+    expect(banner).toHaveTextContent(/deferred backend feature/i);
   });
 });

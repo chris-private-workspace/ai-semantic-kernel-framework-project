@@ -1,54 +1,40 @@
 /**
  * File: frontend/src/features/memory/_fixtures.ts
- * Purpose: Memory page fixtures — verbatim port of mockup MEMORY_ENTRIES / SCOPES / TIME_SCALES / TIME_TRAVEL_MARKS / MEMORY_OPS_TIMELINE + hand-ported RECENT_MEMORY_OPS.
+ * Purpose: Memory page op-timeline fixtures — TIME_TRAVEL_MARKS / MEMORY_OPS_TIMELINE + hand-ported RECENT_MEMORY_OPS.
  * Category: Frontend / memory / fixtures
  * Scope: Phase 57 / Sprint 57.42 Day 1 (mockup-fidelity rebuild)
  *
  * Description:
- *   Verbatim port of `reference/design-mockups/page-governance.jsx:410-460` +
- *   hand-ported `RECENT_MEMORY_OPS` from inline mockup table (L561-566).
+ *   Verbatim port of the op-timeline portion of
+ *   `reference/design-mockups/page-governance.jsx` + hand-ported
+ *   `RECENT_MEMORY_OPS` from inline mockup table (L561-566).
  *
- *   Mockup vocab kept as-is ("permanent"/"quarter"/"day"; NOT backend's
- *   "quarterly"/"daily") — matrix is fixture-only this sprint (no backend
- *   wiring) per Day 0 D-DAY0-1 finding. All 5 fixture consts feed the
- *   5 mockup-direct-port component tree (MemoryPageHeader / TimeTravelScrubber
- *   / MemoryMatrix / RecentMemoryOpsCard / GdprErasureCard).
+ *   Sprint 57.73 Track C: the matrix + header fixtures (SCOPES / TIME_SCALES /
+ *   MEMORY_ENTRIES / TOTAL_ENTRIES) were removed — MemoryMatrix + MemoryPageHeader
+ *   now consume the real GET /api/v1/memory/matrix aggregate. The op-timeline
+ *   fixtures below remain because memory writes emit zero audit rows (no backend
+ *   producer for the per-op history / version log — deferred, AD-Memory-OpsHistory-Backend).
+ *   They feed TimeTravelScrubber + RecentMemoryOpsCard, both of which carry an
+ *   AP-2 BackendGapBanner.
  *
  * Key Components:
- *   - MemoryScope: 5 scope entries (system/tenant/role/user/session)
- *   - TimeScaleMockup: 3 time scales (permanent/quarter/day) — mockup vocab
- *   - MemoryEntryMockup: 15 cells × ≤4 entries per cell (k/v pairs)
  *   - TimeTravelMark: 6 time markers along 24h scrubber
  *   - MemoryOpTimelinePoint: 12 op markers behind scrubber
  *   - RecentMemoryOp: 5-row hand-ported recent-ops table
  *
  * Created: 2026-05-25 (Sprint 57.42 Day 1)
- * Last Modified: 2026-05-25
+ * Last Modified: 2026-06-03
  *
  * Modification History (newest-first):
+ *   - 2026-06-03: Sprint 57.73 Track C — remove orphaned matrix/header fixtures (matrix wired to real /matrix)
  *   - 2026-05-25: Initial creation (Sprint 57.42 Day 1) — memory matrix full mockup-fidelity rebuild
  *
  * Related:
- *   - reference/design-mockups/page-governance.jsx L410-460 (verbatim 5 consts)
  *   - reference/design-mockups/page-governance.jsx L561-566 (RECENT_MEMORY_OPS hand-port)
- *   - ./components/MemoryMatrix.tsx ./components/TimeTravelScrubber.tsx
- *     ./components/MemoryPageHeader.tsx ./components/RecentMemoryOpsCard.tsx
+ *   - ./components/TimeTravelScrubber.tsx ./components/RecentMemoryOpsCard.tsx
  */
 
 export type MemoryScopeId = "system" | "tenant" | "role" | "user" | "session";
-export type TimeScaleMockup = "permanent" | "quarter" | "day";
-
-export interface MemoryScope {
-  id: MemoryScopeId;
-  name: string;
-  sub: string;
-  count: number;
-}
-
-export interface MemoryEntryMockup {
-  k: string;
-  v: string;
-}
 
 export interface TimeTravelMark {
   t: number; // minutes ago; 0 = now, negative = past
@@ -71,62 +57,6 @@ export interface RecentMemoryOp {
   by: string;
   at: string;
 }
-
-export const SCOPES: MemoryScope[] = [
-  { id: "system", name: "system", sub: "global · cross-tenant", count: 84 },
-  { id: "tenant", name: "tenant", sub: "tenant_01h9a2", count: 1280 },
-  { id: "role", name: "role", sub: "operator · auditor · admin", count: 312 },
-  { id: "user", name: "user", sub: "u_jamie · u_priya · …", count: 4820 },
-  { id: "session", name: "session", sub: "sess_4tk2p · live", count: 18 },
-];
-
-export const TIME_SCALES: TimeScaleMockup[] = ["permanent", "quarter", "day"];
-
-export const MEMORY_ENTRIES: Record<string, MemoryEntryMockup[]> = {
-  "system|permanent": [
-    { k: "compliance.frameworks", v: "[PCI-DSS, SOC2, ISO27001]" },
-    { k: "policy.tripwires", v: "12 rules" },
-  ],
-  "system|quarter": [{ k: "rate_limits.global", v: "10k req/min" }],
-  "system|day": [],
-  "tenant|permanent": [
-    { k: "tenant.plan", v: "Pro" },
-    { k: "tenant.region", v: "ap-east-1" },
-    { k: "hitl.risk_high", v: "always_ask" },
-    { k: "hitl.risk_medium", v: "ask_once" },
-  ],
-  "tenant|quarter": [
-    { k: "usage.tokens", v: "4.2M / 10M" },
-    { k: "incidents.opened", v: "27" },
-  ],
-  "tenant|day": [{ k: "anomaly.token_spike", v: "tenant_3kp9 +320%" }],
-  "role|permanent": [
-    { k: "operator.tools_allowed", v: "26 read · 8 write" },
-    { k: "auditor.tools_allowed", v: "12 read" },
-  ],
-  "role|quarter": [{ k: "operator.preferred_rca", v: "5-whys" }],
-  "role|day": [],
-  "user|permanent": [
-    { k: "u_jamie.tz", v: "Asia/Taipei" },
-    { k: "u_jamie.lang", v: "zh-TW" },
-    { k: "u_jamie.role", v: "operator" },
-  ],
-  "user|quarter": [
-    { k: "u_jamie.preferences.rca_format", v: "5-whys + timeline" },
-    { k: "u_jamie.shortcuts", v: "12 saved" },
-  ],
-  "user|day": [
-    { k: "u_jamie.last_session", v: "sess_4tk2p" },
-    { k: "u_jamie.notifications", v: "2 unread" },
-  ],
-  "session|permanent": [],
-  "session|quarter": [],
-  "session|day": [
-    { k: "sess_4tk2p.root_cause", v: "pgbouncer pool too small" },
-    { k: "sess_4tk2p.evidence", v: "[metrics, INC-4012]" },
-    { k: "sess_4tk2p.severity", v: "P1" },
-  ],
-};
 
 export const TIME_TRAVEL_MARKS: TimeTravelMark[] = [
   { t: 0, label: "now", at: "10:42:28" },
@@ -194,9 +124,3 @@ export const RECENT_MEMORY_OPS: RecentMemoryOp[] = [
     at: "10:31:00",
   },
 ];
-
-/**
- * Sum of mockup entry counts across 5 scopes (system 84 + tenant 1280 + role 312 +
- * user 4820 + session 18 = 6514). Used by MemoryPageHeader subtitle.
- */
-export const TOTAL_ENTRIES = SCOPES.reduce((acc, s) => acc + s.count, 0);

@@ -18,17 +18,23 @@
  *     <MemoryPageHeader ... />
  *     <TimeTravelScrubber ... />
  *     <div style={{ height: 14 }} />
- *     <MemoryMatrix cursor={cursor} />
+ *     <MemoryMatrix />
  *     <div style={{ height: 16 }} />
  *     <div className="grid-main"><RecentMemoryOpsCard /><GdprErasureCard /></div>
+ *
+ *   Sprint 57.73 Track C: MemoryMatrix is now wired to the real /matrix aggregate
+ *   and no longer consumes `cursor` (the cursor-aware entry filter was a
+ *   fixture-only behavior). The cursor + scrubber remain (fixture op-timeline)
+ *   but no longer filter the matrix.
  *
  * Key Components:
  *   - MemoryView: stateful container (cursor + playing)
  *
  * Created: 2026-05-25 (Sprint 57.42 Day 1)
- * Last Modified: 2026-05-25
+ * Last Modified: 2026-06-03
  *
  * Modification History (newest-first):
+ *   - 2026-06-03: Sprint 57.73 Track C — MemoryMatrix no longer takes cursor (wired to real /matrix)
  *   - 2026-05-25: Initial creation (Sprint 57.42 Day 1) — memory matrix full mockup-fidelity rebuild
  *
  * Related:
@@ -74,7 +80,7 @@ export function MemoryView(): JSX.Element {
         onPlay={() => setPlaying((p) => !p)}
       />
       <div style={{ height: 14 }} />
-      <MemoryMatrix cursor={cursor} />
+      <MemoryMatrix />
       <div style={{ height: 16 }} />
       <div className="grid-main">
         <RecentMemoryOpsCard />

@@ -1,141 +1,129 @@
 /**
  * File: frontend/tests/unit/admin-tenants/TenantsTable.test.tsx
- * Purpose: Vitest coverage for TenantsTable — Card + 9-col table + Badge tone dispatch + AP-2 banner.
+ * Purpose: Vitest coverage for prop-driven TenantsTable — real rows + field map + "—" gaps + loading/error/empty states.
  * Category: Frontend / Tests / admin-tenants / unit
- * Scope: Phase 57 / Sprint 57.43 Day 2 (mockup-fidelity rebuild Vitest coverage)
+ * Scope: Phase 57 / Sprint 57.43 Day 2 → Sprint 57.73 (real-data wiring)
  *
  * Description:
- *   - Card title "All tenants" + subtitle "48 active · 3 anomalies in last 24h"
- *   - 8 column header labels (Tenant / Plan / Region / Seats / Agents / Runs · 24h / Status / Created)
- *   - 8 tenant rows present (acme-prod / globex-eu / initech-jp / umbrella-us /
- *     wonka-apac / stark-prod / wayne-corp / tenant_3kp9)
- *   - Plan Badge tone dispatch (Enterprise=primary / Pro=info / Starter no tone)
- *   - Status Badge tone dispatch (active=success / anomaly=danger / quota-warn=warning)
- *   - Toolbar: cmdk visual stub + 2 ghost buttons (Plan: all / Sort: runs (24h))
- *   - AP-2 BackendGapBanner present
+ *   Sprint 57.73 rewrote TenantsTable to consume real TenantListItem[] via props.
+ *   Coverage:
+ *   - real rows render with mapped fields (display_name / code / plan / region /
+ *     seats / state / created date) + literal "—" for the unbacked agents/runs24
+ *   - isLoading → mockup-native skeleton rows
+ *   - isError → inline error row + retry button calls onRetry
+ *   - empty (items.length === 0) → empty-state row
+ *   - AP-2 BackendGapBanner naming the agents/runs24/stats gap
+ *   Sample tenant rows are defined inline (not in _fixtures.ts) per task brief.
  *
  * Created: 2026-05-25 (Sprint 57.43 Day 2)
  *
  * Modification History (newest-first):
+ *   - 2026-06-03: Sprint 57.73 — rewrite for props API (real data + states); drop TENANTS_FIXTURE coupling (A-6a)
  *   - 2026-05-25: Initial creation (Sprint 57.43 Day 2) — admin-tenants mockup-fidelity rebuild Vitest coverage
  *
  * Related:
  *   - frontend/src/features/admin-tenants/components/TenantsTable.tsx
- *   - frontend/src/features/admin-tenants/_fixtures.ts (TENANTS_FIXTURE, TABLE_SUBTITLE)
- *   - sprint-57-43-plan.md §AC3
+ *   - frontend/src/features/admin-tenants/types.ts (TenantListItem)
+ *   - sprint-57-73-plan.md
  */
 
 import "@testing-library/jest-dom/vitest";
 
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 import { TenantsTable } from "@/features/admin-tenants/components/TenantsTable";
 import {
-  TABLE_SUBTITLE,
-  TENANTS_FIXTURE,
-} from "@/features/admin-tenants/_fixtures";
+  TenantPlan,
+  TenantState,
+  type TenantListItem,
+} from "@/features/admin-tenants/types";
 
-describe("TenantsTable (Sprint 57.43)", () => {
-  it("renders Card title 'All tenants' + subtitle", () => {
-    render(<TenantsTable />);
+// Inline sample rows (task brief: no _fixtures.ts sample tenant rows).
+const SAMPLE_TENANTS: TenantListItem[] = [
+  {
+    id: "00000000-0000-0000-0000-000000000001",
+    code: "ACME",
+    display_name: "Acme Corp",
+    state: TenantState.ACTIVE,
+    plan: TenantPlan.ENTERPRISE,
+    created_at: "2026-01-15T08:30:00Z",
+    updated_at: "2026-05-07T00:00:00Z",
+  },
+  {
+    id: "00000000-0000-0000-0000-000000000002",
+    code: "GLOBEX",
+    display_name: "Globex EU",
+    state: TenantState.SUSPENDED,
+    plan: TenantPlan.STANDARD,
+    created_at: "2025-09-12T12:00:00Z",
+    updated_at: "2026-05-07T00:00:00Z",
+  },
+];
+
+describe("TenantsTable (Sprint 57.73 real-data)", () => {
+  it("renders real rows with mapped fields + '—' for unbacked agents/runs24", () => {
+    render(<TenantsTable tenants={SAMPLE_TENANTS} />);
+
+    // name ← display_name, id ← code
+    expect(screen.getByText("Acme Corp")).toBeInTheDocument();
+    expect(screen.getByText("ACME")).toBeInTheDocument();
+    expect(screen.getByText("Globex EU")).toBeInTheDocument();
+    expect(screen.getByText("GLOBEX")).toBeInTheDocument();
+
+    // plan badge (raw enum value rendered)
+    const enterpriseBadge = screen.getByText(TenantPlan.ENTERPRISE);
+    expect(enterpriseBadge.className).toMatch(/primary/);
+    const standardBadge = screen.getByText(TenantPlan.STANDARD);
+    expect(standardBadge.className).toMatch(/info/);
+
+    // status ← state with tone dispatch
+    const activeBadge = screen.getByText(TenantState.ACTIVE);
+    expect(activeBadge.className).toMatch(/success/);
+    expect(activeBadge.className).toMatch(/dot/);
+    const suspendedBadge = screen.getByText(TenantState.SUSPENDED);
+    expect(suspendedBadge.className).toMatch(/danger/);
+
+    // created ← created_at sliced to YYYY-MM-DD
+    expect(screen.getByText("2026-01-15")).toBeInTheDocument();
+    expect(screen.getByText("2025-09-12")).toBeInTheDocument();
+
+    // agents + runs24 unbacked → literal "—" (2 rows × 2 cols = 4 dashes)
+    expect(screen.getAllByText("—")).toHaveLength(4);
+  });
+
+  it("isLoading → mockup-native skeleton rows (no real rows)", () => {
+    render(<TenantsTable tenants={[]} isLoading />);
+    expect(screen.getAllByTestId("tenant-row-skeleton")).toHaveLength(3);
+    expect(screen.queryByText("Acme Corp")).not.toBeInTheDocument();
+  });
+
+  it("isError → inline error row + retry button calls onRetry", () => {
+    const onRetry = vi.fn();
+    render(<TenantsTable tenants={[]} isError onRetry={onRetry} />);
+    expect(screen.getByTestId("tenant-row-error")).toBeInTheDocument();
+    const retryBtn = screen.getByRole("button", { name: /Retry/ });
+    fireEvent.click(retryBtn);
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("empty (items.length === 0) → empty-state row", () => {
+    render(<TenantsTable tenants={[]} />);
+    expect(screen.getByTestId("tenant-row-empty")).toBeInTheDocument();
+    expect(screen.getByText(/No tenants found/)).toBeInTheDocument();
+  });
+
+  it("renders Card title + toolbar + AP-2 BackendGapBanner naming the gap", () => {
+    render(<TenantsTable tenants={SAMPLE_TENANTS} />);
     expect(screen.getByText("All tenants")).toBeInTheDocument();
-    expect(screen.getByText(TABLE_SUBTITLE)).toBeInTheDocument();
-    expect(TABLE_SUBTITLE).toBe("48 active · 3 anomalies in last 24h");
-  });
-
-  it("renders all 8 labeled column headers (9th col is dots placeholder)", () => {
-    render(<TenantsTable />);
-    expect(screen.getByText("Tenant")).toBeInTheDocument();
-    expect(screen.getByText("Plan")).toBeInTheDocument();
-    expect(screen.getByText("Region")).toBeInTheDocument();
-    expect(screen.getByText("Seats")).toBeInTheDocument();
-    expect(screen.getByText("Agents")).toBeInTheDocument();
-    expect(screen.getByText("Runs · 24h")).toBeInTheDocument();
-    expect(screen.getByText("Status")).toBeInTheDocument();
-    expect(screen.getByText("Created")).toBeInTheDocument();
-  });
-
-  it("renders all 8 tenant rows from TENANTS_FIXTURE", () => {
-    render(<TenantsTable />);
-    const names = [
-      "acme-prod",
-      "globex-eu",
-      "initech-jp",
-      "umbrella-us",
-      "wonka-apac",
-      "stark-prod",
-      "wayne-corp",
-      "tenant_3kp9",
-    ];
-    for (const name of names) {
-      const matches = screen.getAllByText(name);
-      expect(matches.length).toBeGreaterThanOrEqual(1);
-    }
-    expect(TENANTS_FIXTURE).toHaveLength(8);
-  });
-
-  it("Plan Badge tone dispatch: Enterprise → primary, Pro → info, Starter → (no tone)", () => {
-    render(<TenantsTable />);
-    // Enterprise count from fixture
-    const enterpriseEntries = TENANTS_FIXTURE.filter((t) => t.plan === "Enterprise");
-    const enterpriseBadges = screen.getAllByText("Enterprise");
-    expect(enterpriseBadges.length).toBe(enterpriseEntries.length);
-    expect(enterpriseBadges[0]!.className).toMatch(/primary/);
-
-    // Pro count from fixture
-    const proEntries = TENANTS_FIXTURE.filter((t) => t.plan === "Pro");
-    const proBadges = screen.getAllByText("Pro");
-    expect(proBadges.length).toBe(proEntries.length);
-    expect(proBadges[0]!.className).toMatch(/info/);
-
-    // Starter count from fixture (no tone applied)
-    const starterEntries = TENANTS_FIXTURE.filter((t) => t.plan === "Starter");
-    const starterBadges = screen.getAllByText("Starter");
-    expect(starterBadges.length).toBe(starterEntries.length);
-    // Starter has no tone — Badge class is "badge   " with empty tone
-    expect(starterBadges[0]!.className).not.toMatch(/(primary|info|success|warning|danger)/);
-  });
-
-  it("Status Badge tone dispatch: active → success, anomaly → danger, quota-warn → warning", () => {
-    render(<TenantsTable />);
-    // active (multiple rows)
-    const activeBadges = screen.getAllByText("active");
-    expect(activeBadges.length).toBeGreaterThanOrEqual(1);
-    expect(activeBadges[0]!.className).toMatch(/success/);
-    expect(activeBadges[0]!.className).toMatch(/dot/);
-
-    // anomaly (tenant_3kp9)
-    const anomalyBadges = screen.getAllByText("anomaly");
-    expect(anomalyBadges.length).toBe(1);
-    expect(anomalyBadges[0]!.className).toMatch(/danger/);
-
-    // quota-warn (wonka-apac)
-    const quotaBadges = screen.getAllByText("quota-warn");
-    expect(quotaBadges.length).toBe(1);
-    expect(quotaBadges[0]!.className).toMatch(/warning/);
-  });
-
-  it("renders Card-internal toolbar with cmdk stub + 2 ghost buttons", () => {
-    render(<TenantsTable />);
     expect(screen.getByText(/Filter by name, id, region/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /plan: all/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /sort: runs \(24h\)/i })).toBeInTheDocument();
-  });
+    expect(
+      screen.getByRole("button", { name: /sort: runs \(24h\)/i }),
+    ).toBeInTheDocument();
 
-  it("renders AP-2 BackendGapBanner declaring schema gap", () => {
-    render(<TenantsTable />);
     const banner = screen.getByTestId("backend-gap-banner");
     expect(banner).toBeInTheDocument();
-    expect(banner).toHaveTextContent(/Phase 58\+/);
-    expect(banner).toHaveTextContent(/TenantListItem/);
-  });
-
-  it("Runs · 24h column displays toLocaleString-formatted numbers", () => {
-    render(<TenantsTable />);
-    // acme-prod runs24 = 14820 → "14,820" with comma separator
-    expect(screen.getByText("14,820")).toBeInTheDocument();
-    // initech-jp runs24 = 18420 → "18,420"
-    expect(screen.getByText("18,420")).toBeInTheDocument();
+    expect(banner).toHaveTextContent(/Agents \/ 24h-runs/);
   });
 });

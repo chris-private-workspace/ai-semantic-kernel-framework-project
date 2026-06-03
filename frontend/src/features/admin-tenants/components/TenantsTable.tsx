@@ -2,51 +2,83 @@
  * File: frontend/src/features/admin-tenants/components/TenantsTable.tsx
  * Purpose: Verbatim port of admin tenants 9-col table card (cmdk filter + Plan/Sort + tenant rows).
  * Category: Frontend / admin-tenants / components
- * Scope: Phase 57 / Sprint 57.43 Day 1 (mockup-fidelity rebuild)
+ * Scope: Phase 57 / Sprint 57.43 Day 1 (mockup-fidelity rebuild) → Sprint 57.73 (real-data wiring)
  *
  * Description:
  *   Verbatim port of mockup `page-admin.jsx` L357-407 — Card wrapping a 9-col
  *   table (Tenant avatar+name+id / Plan badge / Region / Seats / Agents /
  *   Runs · 24h / Status badge+dot / Created / dots). Toolbar = cmdk filter
- *   visual stub + 2 ghost buttons (Plan: all + Sort: runs(24h)). AP-2
- *   BackendGapBanner declares backend wire deferred Phase 58+ per D-DAY0-6.
+ *   visual stub + 2 ghost buttons (Plan: all + Sort: runs(24h)).
+ *
+ *   Sprint 57.73 (A-6a) re-wires the rows to REAL GET /api/v1/admin/tenants
+ *   data via props (TenantListItem[]). The two unbacked columns Agents +
+ *   Runs · 24h render a literal "—" (no backend surface); the stats strip is
+ *   likewise placeholder. Loading / error / empty states are MOCKUP-NATIVE
+ *   table rows (the table's own markup + mockup classes + var(--*) tokens) —
+ *   NOT the shadcn-token shared TableSkeleton/ErrorRetry (those would inject
+ *   residue into this verbatim-mockup page).
  *
  * Key Components:
- *   - TenantsTable: stateless visual table component
+ *   - TenantsTable: prop-driven visual table component (real data + states)
  *
  * Created: 2026-05-25 (Sprint 57.43 Day 1)
- * Last Modified: 2026-05-25
+ * Last Modified: 2026-06-03
  *
  * Modification History (newest-first):
+ *   - 2026-06-03: Sprint 57.73 — accept real TenantListItem[] via props + loading/error/empty mockup-native rows + "—" for unbacked agents/runs24 (A-6a)
  *   - 2026-05-26: Sprint 57.49 — add optional onRowClick prop for Members drawer drill-down (Track B)
  *   - 2026-05-25: Initial creation (Sprint 57.43 Day 1) — admin-tenants full mockup-fidelity rebuild
  *
  * Related:
  *   - reference/design-mockups/page-admin.jsx L357-407
- *   - frontend/src/features/admin-tenants/_fixtures.ts (TENANTS_FIXTURE, TABLE_SUBTITLE)
+ *   - frontend/src/features/admin-tenants/types.ts (TenantListItem)
+ *   - frontend/src/features/admin-tenants/_fixtures.ts (TABLE_SUBTITLE)
  *   - frontend/src/components/mockup-ui.tsx (Card, Button, Badge, Icon primitives)
  *   - frontend/src/components/ui/BackendGapBanner.tsx (AP-2 honesty banner)
  */
 
-/* eslint-disable no-restricted-syntax -- mockup verbatim inline styles ported byte-for-byte from page-admin.jsx L359, L385-401 (avatar cell + mono fontSize / textAlign / width); STYLE.md §3 escape hatch + frontend-mockup-fidelity.md verbatim-CSS method */
+/* eslint-disable no-restricted-syntax -- mockup verbatim inline styles ported byte-for-byte from page-admin.jsx L359, L385-401 (avatar cell + mono fontSize / textAlign / width) + Sprint 57.73 mockup-native state rows reuse the same token literals; STYLE.md §3 escape hatch + frontend-mockup-fidelity.md verbatim-CSS method */
 
 import { Badge, Button, Card, Icon } from "../../../components/mockup-ui";
 import { BackendGapBanner } from "../../../components/ui/BackendGapBanner";
-import { TABLE_SUBTITLE, TENANTS_FIXTURE, type TenantFixture } from "../_fixtures";
+import { TABLE_SUBTITLE } from "../_fixtures";
+import { TenantPlan, TenantState, type TenantListItem } from "../types";
 
-function planTone(plan: TenantFixture["plan"]): string {
-  if (plan === "Enterprise") return "primary";
-  if (plan === "Pro") return "info";
-  return "";
+// Map backend TenantPlan enum → mockup Badge tone. Only standard|enterprise
+// exist server-side (the mockup's Pro/Starter labels were fixture-only).
+function planTone(plan: TenantPlan): string {
+  if (plan === TenantPlan.ENTERPRISE) return "primary";
+  return "info";
 }
 
-function statusTone(status: TenantFixture["status"]): string {
-  if (status === "active") return "success";
-  if (status === "anomaly") return "danger";
+// Map backend TenantState enum → mockup Badge tone (success = healthy active;
+// suspended/archived = danger; transitional requested/provisioning = warning).
+function statusTone(state: TenantState): string {
+  if (state === TenantState.ACTIVE) return "success";
+  if (state === TenantState.SUSPENDED || state === TenantState.ARCHIVED) return "danger";
   return "warning";
 }
 
+// ISO 8601 datetime → YYYY-MM-DD (mockup `created` column is date-only).
+function formatCreated(createdAt: string): string {
+  return createdAt.slice(0, 10);
+}
+
+// Subtle placeholder for the two columns with no backend surface (agents /
+// runs24). Rendered instead of fabricated fixture numbers per AP-2 honesty.
+const GAP_PLACEHOLDER = (
+  <span style={{ color: "var(--fg-subtle)" }}>—</span>
+);
+
 export interface TenantsTableProps {
+  /** Real tenant rows from GET /api/v1/admin/tenants (Sprint 57.73 A-6a). */
+  tenants: TenantListItem[];
+  /** TanStack query loading flag (shows skeleton rows). */
+  isLoading?: boolean;
+  /** TanStack query error flag (shows inline error row + retry). */
+  isError?: boolean;
+  /** Retry handler wired to query.refetch(). */
+  onRetry?: () => void;
   /**
    * Optional row click handler — when provided, table rows become clickable
    * and surface tenant_id for parent (Sprint 57.49 Track B uses this to open
@@ -55,7 +87,13 @@ export interface TenantsTableProps {
   onRowClick?: (tenantId: string) => void;
 }
 
-export function TenantsTable({ onRowClick }: TenantsTableProps = {}): JSX.Element {
+export function TenantsTable({
+  tenants,
+  isLoading = false,
+  isError = false,
+  onRetry,
+  onRowClick,
+}: TenantsTableProps): JSX.Element {
   return (
     <Card
       title="All tenants"
@@ -91,72 +129,111 @@ export function TenantsTable({ onRowClick }: TenantsTableProps = {}): JSX.Elemen
           </tr>
         </thead>
         <tbody>
-          {TENANTS_FIXTURE.map((t) => (
-            <tr
-              key={t.id}
-              onClick={onRowClick ? () => onRowClick(t.id) : undefined}
-              style={onRowClick ? { cursor: "pointer" } : undefined}
-              data-testid={`tenant-row-${t.id}`}
-            >
-              <td>
-                <div className="row" style={{ gap: 8 }}>
-                  <span
-                    style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: 5,
-                      background: "var(--primary-soft-2)",
-                      color: "var(--primary)",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 11,
-                      fontWeight: 600,
-                    }}
-                  >
-                    {t.name[0].toUpperCase()}
-                  </span>
-                  <div>
-                    <div className="mono" style={{ fontSize: 12.5, fontWeight: 500 }}>
-                      {t.name}
-                    </div>
-                    <div className="mono subtle" style={{ fontSize: 10.5 }}>
-                      {t.id}
-                    </div>
-                  </div>
+          {isLoading ? (
+            // Mockup-native skeleton: 3 placeholder rows of `.subtle` cells
+            // (no shadcn TableSkeleton — keeps this page residue-free).
+            <>
+              {[0, 1, 2].map((i) => (
+                <tr key={`skeleton-${i}`} data-testid="tenant-row-skeleton">
+                  {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((c) => (
+                    <td key={c} className="subtle" style={{ color: "var(--fg-subtle)" }}>
+                      ···
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </>
+          ) : isError ? (
+            <tr data-testid="tenant-row-error">
+              <td colSpan={9} style={{ textAlign: "center", padding: 24 }}>
+                <div className="subtle" style={{ marginBottom: 8, color: "var(--danger)" }}>
+                  Failed to load tenants.
                 </div>
-              </td>
-              <td>
-                <Badge tone={planTone(t.plan)}>{t.plan}</Badge>
-              </td>
-              <td className="mono subtle" style={{ fontSize: 11.5 }}>
-                {t.region}
-              </td>
-              <td className="mono tnum" style={{ textAlign: "right" }}>
-                {t.seats}
-              </td>
-              <td className="mono tnum" style={{ textAlign: "right" }}>
-                {t.agents}
-              </td>
-              <td className="mono tnum" style={{ textAlign: "right" }}>
-                {t.runs24.toLocaleString()}
-              </td>
-              <td>
-                <Badge tone={statusTone(t.status)} dot>
-                  {t.status}
-                </Badge>
-              </td>
-              <td className="subtle" style={{ fontSize: 11.5 }}>
-                {t.created}
-              </td>
-              <td>
-                <Icon name="dots" size={14} className="subtle" />
+                {onRetry && (
+                  <Button variant="outline" size="sm" icon="refresh" onClick={onRetry}>
+                    Retry
+                  </Button>
+                )}
               </td>
             </tr>
-          ))}
+          ) : tenants.length === 0 ? (
+            <tr data-testid="tenant-row-empty">
+              <td
+                colSpan={9}
+                className="subtle"
+                style={{ textAlign: "center", padding: 24, color: "var(--fg-subtle)" }}
+              >
+                No tenants found.
+              </td>
+            </tr>
+          ) : (
+            tenants.map((t) => (
+              <tr
+                key={t.id}
+                onClick={onRowClick ? () => onRowClick(t.id) : undefined}
+                style={onRowClick ? { cursor: "pointer" } : undefined}
+                data-testid={`tenant-row-${t.code}`}
+              >
+                <td>
+                  <div className="row" style={{ gap: 8 }}>
+                    <span
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 5,
+                        background: "var(--primary-soft-2)",
+                        color: "var(--primary)",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 11,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {t.display_name[0]?.toUpperCase() ?? "?"}
+                    </span>
+                    <div>
+                      <div className="mono" style={{ fontSize: 12.5, fontWeight: 500 }}>
+                        {t.display_name}
+                      </div>
+                      <div className="mono subtle" style={{ fontSize: 10.5 }}>
+                        {t.code}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <Badge tone={planTone(t.plan)}>{t.plan}</Badge>
+                </td>
+                <td className="mono subtle" style={{ fontSize: 11.5 }}>
+                  {t.region}
+                </td>
+                <td className="mono tnum" style={{ textAlign: "right" }}>
+                  {t.seats}
+                </td>
+                <td className="mono tnum" style={{ textAlign: "right" }}>
+                  {GAP_PLACEHOLDER}
+                </td>
+                <td className="mono tnum" style={{ textAlign: "right" }}>
+                  {GAP_PLACEHOLDER}
+                </td>
+                <td>
+                  <Badge tone={statusTone(t.state)} dot>
+                    {t.state}
+                  </Badge>
+                </td>
+                <td className="subtle" style={{ fontSize: 11.5 }}>
+                  {formatCreated(t.created_at)}
+                </td>
+                <td>
+                  <Icon name="dots" size={14} className="subtle" />
+                </td>
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
-      <BackendGapBanner reason="Admin tenants list backend wire deferred (Phase 58+) — TenantListItem schema lacks seats/region/agents/runs24/status (5 of 9 mockup columns); see AD-AdminTenants-Backend-Schema-Extension" />
+      <BackendGapBanner reason="Agents / 24h-runs columns + the stats strip have no backend yet — tenant rows (name/id/plan/region/seats/status/created) are now real GET /api/v1/admin/tenants data; see AD-AdminTenants-Backend-Schema-Extension" />
     </Card>
   );
 }

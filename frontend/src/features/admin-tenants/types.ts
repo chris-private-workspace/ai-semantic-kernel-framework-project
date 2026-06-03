@@ -6,11 +6,16 @@
  *
  * Description:
  *   Mirrors backend Pydantic schemas at backend/src/api/v1/admin/tenants.py
- *   (Sprint 57.4 US-1 list endpoint). TenantState + TenantPlan enums are
- *   re-exported from ../tenant-settings/types to avoid duplicate definitions
- *   (per 17.md single-source spirit + AP-11 命名一致).
+ *   (Sprint 57.4 US-1 list endpoint; extended Sprint 57.47 to 12 fields).
+ *   TenantState + TenantPlan enums are re-exported from ../tenant-settings/types
+ *   to avoid duplicate definitions (per 17.md single-source spirit + AP-11 命名一致).
  *
  * Created: 2026-05-07 (Sprint 57.4 Day 2)
+ * Last Modified: 2026-06-03
+ *
+ * Modification History (newest-first):
+ *   - 2026-06-03: Sprint 57.73 — sync TenantListItem with backend 57.47 LIST 7→12 (region/locale/retention_days/sso_enabled/seats) for real-data table wiring
+ *   - 2026-05-07: Initial creation (Sprint 57.4 Day 2)
  *
  * Related:
  *   - backend/src/api/v1/admin/tenants.py (TenantListItem + TenantListResponse)
@@ -26,6 +31,8 @@ export { TenantPlan, TenantState } from "../tenant-settings/types";
 /**
  * Lightweight subset of Tenant ORM returned by GET /admin/tenants list.
  * Excludes JSONB progress + meta_data (clients fetch via GET /{id}).
+ * SaaS settings fields (region/locale/retention_days/sso_enabled/seats) were
+ * added to the list response in Sprint 57.47 (LIST 7→12).
  */
 export interface TenantListItem {
   id: string;
@@ -33,6 +40,11 @@ export interface TenantListItem {
   display_name: string;
   state: TenantState;
   plan: TenantPlan;
+  region: string;
+  locale: string;
+  retention_days: number;
+  sso_enabled: boolean;
+  seats: number;
   created_at: string; // ISO 8601 datetime
   updated_at: string;
 }

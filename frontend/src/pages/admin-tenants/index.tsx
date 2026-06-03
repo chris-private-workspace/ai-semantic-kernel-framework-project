@@ -9,11 +9,12 @@
  *   Sprint 57.43 Day 1 rebuilds the body verbatim from mockup `page-admin.jsx`
  *   L334-409 — replaces the prior TenantListFilters/Table/Pagination triad
  *   (which used shadcn-utility tokens diverging from mockup fidelity) with
- *   the AdminTenantsView container (3 verbatim-port subcomponents driven by
- *   _fixtures.ts per D-DAY0-6 Option A). useAdminTenants hook unmounted in
- *   this rebuild; backend wire deferred Phase 58+ via AP-2 BackendGapBanner.
+ *   the AdminTenantsView container. Tenant rows wired Sprint 57.73 (A-6a) to
+ *   real GET /api/v1/admin/tenants; agents/runs24 columns + stats strip gapped
+ *   (no backend) via AP-2 BackendGapBanner.
  *
  * Modification History (newest-first):
+ *   - 2026-06-03: Sprint 57.73 — note real-data wiring (AdminTenantsView mounts useAdminTenants; agents/runs24 + stats strip still gapped)
  *   - 2026-05-25: Sprint 57.43 Day 1 — full mockup-fidelity rebuild (AdminTenantsView replaces filters/table/pagination triad)
  *   - 2026-05-10: Sprint 57.13 US-A2 — <RequireAuth> + platform-admin role gate (AdminTenantsContent split)
  *   - 2026-05-09: Sprint 57.9 US-6 Day 4 — error+refetch from useAdminTenants hook (drop store loadData)

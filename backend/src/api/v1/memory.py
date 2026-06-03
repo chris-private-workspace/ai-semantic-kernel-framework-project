@@ -25,6 +25,13 @@ Description:
         for `memory_user` (only layer with expires_at column per Day 1
         D1-008 ORM探勘); other layers return 400.
 
+    - GET /api/v1/memory/matrix
+        Aggregate (layer × time_scale) counts via GROUP BY / count() (no row
+        materialisation). system + tenant collapse to one PERMANENT bucket
+        (no expires_at); user buckets into PERMANENT / QUARTERLY / DAILY via
+        the same expires_at predicate as /by-time. role + session are reported
+        in `gapped_layers` (junction tables, no RLS path) but NOT queried.
+
     Per Day 1 D1-007 + D1-008 drift catalog:
     - MemoryStore ABC has no list_* methods → bypass ABC, read ORM directly
       (Option B per user 2026-05-10 decision).
@@ -41,6 +48,7 @@ Description:
 Created: 2026-05-10 (Sprint 57.12 Day 1 / US-2)
 
 Modification History (newest-first):
+    - 2026-06-03: Sprint 57.73 Track B — add GET /matrix layer×time_scale count aggregate
     - 2026-05-17: Sprint 57.19 US-B2 — extend /recent w/ optional scope_id + time_scale params
     - 2026-05-10: Initial creation (Sprint 57.12 Day 1 / US-2) — 3 endpoints
       ORM-direct read facade; tenant + user + system layers fully wired
@@ -62,7 +70,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlalchemy import desc, select
+from sqlalchemy import case, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from infrastructure.db.models.memory import (
@@ -119,6 +127,25 @@ class MemoryEntryPage(BaseModel):
     has_more: bool
     next_offset: int | None
     page_size: int
+
+
+class MemoryMatrixCell(BaseModel):
+    """Single (layer × time_scale) count cell of the Memory 5×3 matrix.
+
+    Sprint 57.73 Track B: aggregate read for the MemoryViewer matrix widget.
+    Only cells with count > 0 are emitted (FE default-0 for absent cells);
+    see GET /matrix docstring for the time-scale reality per layer.
+    """
+
+    layer: MemoryLayer
+    time_scale: MemoryTimeScale
+    count: int
+
+
+class MemoryMatrixResponse(BaseModel):
+    cells: list[MemoryMatrixCell]
+    total: int
+    gapped_layers: list[MemoryLayer]
 
 
 def _to_ms(dt: datetime | None) -> int | None:
@@ -386,3 +413,89 @@ async def list_by_time(
     total = len((await db.execute(base)).scalars().all())
     items = [_user_to_item(o) for o in items_orm]
     return _build_page(items, total, offset, limit)
+
+
+@router.get("/matrix", response_model=MemoryMatrixResponse)
+async def get_matrix(
+    current_tenant: UUID = Depends(get_current_tenant),
+    _audit: UUID = Depends(require_audit_role),
+    db: AsyncSession = Depends(get_db_session_with_tenant),
+) -> MemoryMatrixResponse:
+    """Aggregate (layer × time_scale) counts for the MemoryViewer matrix.
+
+    Returns one cell per non-empty (layer, time_scale) pair using GROUP BY /
+    count() aggregates (no row materialisation). Time-scale-per-layer reality
+    (per Day 1 D1-008 ORM探勘):
+
+    - system: global (NO tenant filter, NO expires_at) → 1 bucket (PERMANENT).
+    - tenant: tenant-scoped (RLS), NO expires_at → 1 bucket (PERMANENT).
+    - user:   tenant-scoped (RLS), HAS expires_at → up to 3 buckets
+              (PERMANENT = expires_at IS NULL; QUARTERLY = expires_at > now+30d;
+              DAILY = expires_at <= now+30d). Same predicate as /by-time.
+
+    Cells with count 0 are OMITTED (the frontend defaults absent cells to 0).
+
+    Layer gap (per AD-Memory-Role-Session-Phase58): role + session are junction
+    tables with no RLS path (501 elsewhere); they are REPORTED in
+    `gapped_layers` but NOT queried. `total` = sum of emitted cell counts.
+    """
+    cells: list[MemoryMatrixCell] = []
+
+    # system — global, no tenant filter, no expires_at → all PERMANENT.
+    system_count = (await db.execute(select(func.count()).select_from(MemorySystem))).scalar_one()
+    if system_count:
+        cells.append(
+            MemoryMatrixCell(
+                layer=MemoryLayer.SYSTEM,
+                time_scale=MemoryTimeScale.PERMANENT,
+                count=system_count,
+            )
+        )
+
+    # tenant — RLS-scoped to current tenant; no expires_at → all PERMANENT.
+    tenant_count = (
+        await db.execute(
+            select(func.count())
+            .select_from(MemoryTenant)
+            .where(MemoryTenant.tenant_id == current_tenant)
+        )
+    ).scalar_one()
+    if tenant_count:
+        cells.append(
+            MemoryMatrixCell(
+                layer=MemoryLayer.TENANT,
+                time_scale=MemoryTimeScale.PERMANENT,
+                count=tenant_count,
+            )
+        )
+
+    # user — RLS-scoped; bucket by expires_at via the SAME predicate as /by-time.
+    now = datetime.now(UTC)
+    cutoff = now + timedelta(days=30)
+    time_scale_bucket = case(
+        (MemoryUser.expires_at.is_(None), MemoryTimeScale.PERMANENT.value),
+        (MemoryUser.expires_at > cutoff, MemoryTimeScale.QUARTERLY.value),
+        else_=MemoryTimeScale.DAILY.value,
+    )
+    user_rows = (
+        await db.execute(
+            select(time_scale_bucket.label("bucket"), func.count().label("n"))
+            .where(MemoryUser.tenant_id == current_tenant)
+            .group_by(time_scale_bucket)
+        )
+    ).all()
+    for bucket, n in user_rows:
+        cells.append(
+            MemoryMatrixCell(
+                layer=MemoryLayer.USER,
+                time_scale=MemoryTimeScale(bucket),
+                count=n,
+            )
+        )
+
+    total = sum(cell.count for cell in cells)
+    return MemoryMatrixResponse(
+        cells=cells,
+        total=total,
+        gapped_layers=[MemoryLayer.ROLE, MemoryLayer.SESSION],
+    )

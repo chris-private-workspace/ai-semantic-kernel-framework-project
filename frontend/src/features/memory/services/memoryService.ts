@@ -27,11 +27,12 @@
  * Created: 2026-05-10 (Sprint 57.12 Day 2 / US-3)
  *
  * Modification History (newest-first):
+ *   - 2026-06-03: Sprint 57.73 Track C — add fetchMatrix (GET /matrix layer×time_scale count aggregate)
  *   - 2026-05-10: Initial creation (Sprint 57.12 Day 2 / US-3)
  *
  * Related:
  *   - backend/src/api/v1/memory.py (Pydantic DTOs)
- *   - ../types.ts (MemoryEntryPage / MemoryRecentFilter / MemoryLayer / MemoryTimeScale)
+ *   - ../types.ts (MemoryEntryPage / MemoryRecentFilter / MemoryLayer / MemoryTimeScale / MemoryMatrixResponse)
  *   - ../../auth/services/authService.ts (fetchWithAuth helper)
  *   - ../../verification/services/verificationService.ts (sibling pattern reference)
  */
@@ -40,6 +41,7 @@ import { fetchWithAuth } from "../../auth/services/authService";
 import type {
   MemoryEntryPage,
   MemoryLayer,
+  MemoryMatrixResponse,
   MemoryRecentFilter,
   MemoryTimeScale,
 } from "../types";
@@ -115,6 +117,17 @@ export const memoryService = {
       signal,
     });
     return _handleResponse<MemoryEntryPage>(response);
+  },
+
+  /** Aggregate (layer × time_scale) counts for the 5×3 matrix widget. */
+  async fetchMatrix(signal?: AbortSignal): Promise<MemoryMatrixResponse> {
+    const url = `${API_BASE}/matrix`;
+    const response = await fetchWithAuth(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      signal,
+    });
+    return _handleResponse<MemoryMatrixResponse>(response);
   },
 };
 
