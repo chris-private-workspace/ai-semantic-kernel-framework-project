@@ -23,7 +23,7 @@
 
 ### 0.2 Branch + decisions
 - [x] Branch `feature/sprint-57-74-admin-tenants-stats` from `main` (`12324e50`)
-- [ ] plan + checklist commit; Day-0 progress commit
+- [x] plan + checklist commit; Day-0 progress commit (`9e63696f`)
 - [x] Decisions (user-locked 2026-06-03): scope = strip + per-row columns; **Runs·24h = sessions started in last 24h** (`started_at`); un-backable Anomalies + trend deltas = **honest gap** (placeholder + BackendGapBanner, no fabrication); NEW `/stats` endpoint (not extend list); **Agent-delegated: yes** (Track A backend + Track B frontend sequential code-implementer + parent re-verify per Before-Commit item 7)
 
 ---
@@ -31,14 +31,14 @@
 ## Day 1 — Backend `/admin/tenants/stats` endpoint + tests (US-1/US-2/US-6)
 
 ### 1.1 Endpoint + models (US-1/US-2)
-- [ ] `admin/tenants.py` — new `GET /admin/tenants/stats`, deps `[require_admin_platform_role]` + `get_db_session` (plain, fleet-wide; NOT `get_db_session_with_tenant`); registered without `/{tenant_id}` shadowing
-- [ ] Pydantic (inline, mirror `/memory/matrix`): `FleetStats{active_tenants,total_seats,agents_deployed}` + `PerTenantStat{tenant_id,agents,runs24}` + `TenantsStatsResponse{fleet,per_tenant,gapped}`
-- [ ] Aggregate: `active_tenants`=count(Tenant state=ACTIVE); `total_seats`=coalesce(sum(seats),0); `agents_deployed`=count(AgentCatalog is_active); per-tenant agents=GROUP BY tenant_id WHERE is_active; per-tenant runs24=GROUP BY tenant_id WHERE `started_at >= now(utc)-24h` (tz-aware bound param, NOT DB string); merge maps (union; missing side→0); `gapped=["anomalies","deltas"]`
+- [x] `admin/tenants.py` — new `GET /admin/tenants/stats` (L321, after list `:278`, before `/{tenant_id}` — D-DAY0-1 honored), deps `[require_admin_platform_role]` + `get_db_session` (plain, fleet-wide; NOT `get_db_session_with_tenant`); registered without `/{tenant_id}` shadowing
+- [x] Pydantic (inline, mirror `/memory/matrix`): `FleetStats{active_tenants,total_seats,agents_deployed}` + `PerTenantStat{tenant_id,agents,runs24}` + `TenantsStatsResponse{fleet,per_tenant,gapped}`
+- [x] Aggregate: `active_tenants`=count(Tenant state=ACTIVE); `total_seats`=coalesce(sum(seats),0); `agents_deployed`=count(AgentCatalog is_active); per-tenant agents=GROUP BY tenant_id WHERE is_active; per-tenant runs24=GROUP BY tenant_id WHERE `started_at >= now(utc)-24h` (tz-aware bound param, NOT DB string); merge maps (union; missing side→0); `gapped=["anomalies","deltas"]`
 
 ### 1.2 Backend tests (US-6)
-- [ ] `test_admin_tenants_stats.py` — fleet counts correct (seed active/suspended tenants, seats, active+inactive agents); per_tenant map (agents from agent_catalog, runs24 from sessions in window, session outside 24h excluded); non-platform-admin → 403; empty fleet → zeros + empty per_tenant + gapped present
-- [ ] Risk Class C: ensure admin-tenants suite `get_db_session` override covers the new endpoint (just-codified `AD-Source-DB-Call-Test-Isolation`)
-- [ ] `mypy src/ --strict` 0; `python scripts/lint/run_all.py` (V2 lints incl `check_llm_sdk_leak`) green
+- [x] `test_admin_tenants_stats.py` (6 tests, parent-run green) — fleet counts correct (seed active/suspended tenants, seats, active+inactive agents); per_tenant map (agents from agent_catalog, runs24 from sessions in window, session outside 24h excluded); non-platform-admin → 403; empty fleet → zeros + empty per_tenant + gapped present
+- [x] Risk Class C: admin-tenants suite `get_db_session` override covers the new endpoint (mirrors `test_admin_tenant_list._build_app`) (just-codified `AD-Source-DB-Call-Test-Isolation`)
+- [x] `mypy src/` 0/329 (parent-run); `python scripts/lint/run_all.py` 10/10 green (parent-run, incl `check_llm_sdk_leak`)
 
 ---
 
