@@ -7,6 +7,7 @@
 **Status**: Active(analysis;對應 `AD-Cat4-7-8-10-RealLLM-E2E` deferred)
 
 **Modification History (newest-first)**:
+- 2026-06-03: §8.6 added — 重啟驗證 RESOLVED：cost_ledger Δ=0 確認為 process-state（非 code bug）；fresh restart 啟動 log `pricing loader wired`(main.py:149) → smoke cost_ledger Δ=2（input 1987 + output 11 tok，皆 $0）；refine §8.3 真實 model=gpt-5.2-2025-12-11。AD-RealLLM-CostLedger-ProcessState-Verify 結案。僅重啟，零 code change。
 - 2026-06-03: §8 added — 本機 real-LLM smoke 實跑（real-LLM 閉環 LIVE + 已驗證；cost_ledger Δ=0 待釐清）+ root-cause 深查推翻初判 streaming bug + 2 確認 billing 缺口（model/pricing-key 不匹配 $0 成本 + max_tokens 不相容 gpt-5.2）+ 3 衍生 AD。零 code、未重啟。
 - 2026-06-01: Initial creation — C-11 real-LLM e2e(Workflow 並行蒐證 + 主 session 親驗 e2e-real-llm-smoke.yml 全檔)
 
@@ -134,7 +135,7 @@ Workflow 兩個 agent 各漏一半,我親驗後拼出完整圖:
 | pricing yaml 壞掉觸發 fail-soft | ❌ 不成立 | `PricingLoader().load_from_yaml('config/llm_pricing.yml')` 實測**載入 OK** |
 | pricing loader 沒 wire | ❌ code 已修 | FIX-022 在 lifespan `main.py:167` 呼叫 `_wire_pricing_loader()`；進程起於 06-01（FIX-022 2026-05-31 已在 disk）|
 
-**結論**：real-LLM 關鍵 code 路徑**看來正確**。`cost_ledger Δ=0`（完全沒行）最可能是**正在跑的 backend 進程（PID 28832）在它自身啟動時 pricing loader 沒裝成**（cost_ledger_service 為 None → `router.py:435` gate `cost_ledger is not None` False → 整段跳過）。屬 **process-state，非 code bug**。**唯一確認法**：重啟 backend（current code）+ 看啟動 log「pricing loader wired/not wired」（`main.py:149/151`）+ 重跑 smoke。**本次依用戶指示未重啟、未改 code** → 列為待驗。
+**結論**：real-LLM 關鍵 code 路徑**看來正確**。`cost_ledger Δ=0`（完全沒行）最可能是**正在跑的 backend 進程（PID 28832）在它自身啟動時 pricing loader 沒裝成**（cost_ledger_service 為 None → `router.py:435` gate `cost_ledger is not None` False → 整段跳過）。屬 **process-state，非 code bug**。**唯一確認法**：重啟 backend（current code）+ 看啟動 log「pricing loader wired/not wired」（`main.py:149/151`）+ 重跑 smoke。**本次依用戶指示未重啟、未改 code** → 原列為待驗；**2026-06-03 已重啟驗證確認（見 §8.6）：process-state，非 code bug**。
 
 ### 8.3 但 C-11 揪出 2 個確認的真實 billing 缺口（與 8.2 無關，重啟也不消失）
 
@@ -149,13 +150,33 @@ Workflow 兩個 agent 各漏一半,我親驗後拼出完整圖:
 ### 8.4 C-11 狀態更新
 
 - **real-LLM 閉環 = LIVE + 已驗證**：HTTP 200 / loop_end / 真實回覆 / audit_log Δ=1。Azure 路徑真實可用（不再「全程 mock」）。
-- **cost-ledger leg 未綠**：受 8.2（待重啟驗）+ 8.3（確認缺口）影響。e2e gate 的 `cost_ledger Δ≥2` 在此環境不會過，直到 8.2 釐清 + 8.3 修正。
+- **cost-ledger leg row-count 現已綠**（§8.6 重啟後）：`cost_ledger Δ=2` 滿足 e2e gate `Δ≥2`。剩餘為 §8.3 的 **$ 值=0**（pricing-key 不匹配，與 row-count 無關），待補 `config/llm_pricing.yml` 真實 model 條目。
 - **CI gate（`e2e-real-llm-smoke.yml`）維持手動/關閉**（用戶 policy：secret 不進 GitHub）；本機路徑為實際驗收途徑。
 
 ### 8.5 衍生 AD（記入 `claudedocs/1-planning/next-phase-candidates.md`）
 
-- `AD-RealLLM-CostLedger-ProcessState-Verify`（待驗）— 重啟 backend + 捕捉啟動 pricing-loader log + 重跑 smoke，判定「沒 cost 行」是進程狀態 vs code bug。
+- `AD-RealLLM-CostLedger-ProcessState-Verify`（✅ RESOLVED 2026-06-03，見 §8.6）— 重啟確認 `pricing loader wired`(main.py:149) + cost_ledger Δ=2 → process-state（非 code bug）。
 - `AD-Cost-Ledger-Model-Pricing-Key-Mismatch`（確認）— model_name=gpt-4o / deployment=gpt-5.2 / pricing 僅 gpt-4o-mini → cost 行 $0。修法選項：對齊 `model_name` 至真實 deployment 模型 + 補 pricing yaml 真實模型條目（gpt-4o / gpt-5.2）；或讓 `model_name` 反映 deployment。屬 billing 正確性束（B-7/B-8/C-15）。
 - `AD-Adapter-MaxTokens-NewModel-Param`（確認）— gpt-5.2-class deployment 需 `max_completion_tokens`；adapter `chat()`/`_stream_impl` 與 e2e workflow 成本護欄需相容處理（依 model / api-version 切換 param 名）。
 
-> **Verified ratio**：8.1-8.3 每條 claim 對應 file:line 或本機實測指令輸出；8.2 為「推翻初判」的反證集；8.4 狀態為實測導出。本次純文件，無 code change、無重啟。
+### 8.6 重啟驗證結果（2026-06-03 — AD-RealLLM-CostLedger-ProcessState-Verify 結案）
+
+依 §8.2 結論執行受控重啟驗證。**方法**：殺掉所有 stale uvicorn reloader/worker（環境累積 2 個 `--reload` reloader 各帶 worker，SO_REUSEADDR 共佔 8000）→ 確認 port 釋放 → 起全新單進程 uvicorn（無 `--reload`，log 重導向）→ 確認為 8000 唯一 owner、**無 Errno 10048 bind 衝突**。驗畢以 `dev.py restart backend` 還原為 `--reload` 託管狀態。全程零 GitHub secret、零 code change。
+
+| 項目 | stale 進程（驗證前）| fresh 進程（重啟後）|
+|------|------|------|
+| 啟動 log | （未捕捉）| `api.main: pricing loader wired (config/llm_pricing.yml)`（`main.py:149` 觸發，**非** `:151` fail-soft）|
+| DEVLOGIN | — | 200 / v2_jwt ✅ |
+| CHAT | 200 / loop_end ✅ | 200 / loop_end ✅ |
+| audit_log Δ | 1 | 1（確認查對 DB `ipa_v2`）|
+| **cost_ledger Δ** | **0** ❌ | **2** ✅ |
+
+**cost row 實證**（重啟後 smoke 寫入的 2 筆，皆 `total_cost_usd=0`）：
+- `sub_type=azure_openai_gpt-5.2-2025-12-11_input`，`quantity=1987 tokens`
+- `sub_type=azure_openai_gpt-5.2-2025-12-11_output`，`quantity=11 tokens`
+
+**結論**：`cost_ledger Δ=0` **確認為 process-state，非 code bug**。先前 running 進程啟動時 pricing loader 未裝成（`cost_ledger_service=None` → `router.py` gate `cost_ledger is not None` False → 整段跳過）；current code 重啟後 loader 正常 wire，cost 行恢復寫入（Δ=2，input+output split），**e2e gate `cost_ledger Δ≥2` row-count leg 現已綠**。
+
+**對 §8.3 的 refine**：cost_ledger `sub_type` 顯示真實記錄 model = **`gpt-5.2-2025-12-11`**（deployment 回傳值，**非** §8.3 原推測 `gpt-4o`）。`config/llm_pricing.yml` 無此 key → `unit_cost_usd=0`/`total_cost_usd=0`（zero-cost 分支）。故 `AD-Cost-Ledger-Model-Pricing-Key-Mismatch` 待補 pricing 條目為 **`azure_openai/gpt-5.2-2025-12-11`**（或對齊 `model_name` 至真實 deployment 並補對應 pricing）；此 $0 gap 與 row-count leg 無關，維持 open。
+
+> **Verified ratio**：8.1-8.3 每條 claim 對應 file:line 或本機實測指令輸出；8.2 為「推翻初判」的反證集；8.6 為實機重啟驗證（啟動 log + smoke + DB row 實測）。§8.1-8.5 撰寫時純文件；§8.6 含一次 backend 重啟（無 code change）。
