@@ -1,6 +1,6 @@
 """
 File: backend/tests/integration/api/test_subagent_registry.py
-Purpose: Integration tests for GET /api/v1/subagents (Sprint 57.78 re-point → agent_catalog registry view).
+Purpose: Integration tests for GET /api/v1/subagents (Sprint 57.78 — agent_catalog registry).
 Category: Tests / Integration / API
 Scope: Phase 57 / Sprint 57.78 (re-point from 57.19 stub)
 
@@ -26,7 +26,7 @@ Created: 2026-05-17 (Sprint 57.19 Day 2 / US-B4)
 Last Modified: 2026-06-04
 
 Modification History (newest-first):
-    - 2026-06-04: Sprint 57.78 — rewrite for agent_catalog registry re-point (was 57.19 stub contract)
+    - 2026-06-04: Sprint 57.78 — rewrite for agent_catalog registry re-point (was stub)
     - 2026-05-17: Initial creation (Sprint 57.19 Day 2 / US-B4)
 
 Related:
