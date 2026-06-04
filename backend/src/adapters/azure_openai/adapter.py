@@ -22,6 +22,7 @@ Created: 2026-04-29 (Sprint 49.4)
 Last Modified: 2026-05-01
 
 Modification History (newest-first):
+    - 2026-06-04: Sprint 57.79 — gpt-5.x max_completion_tokens param branch (C-11 billing gap 2)
     - 2026-05-01: Compute deterministic prompt_cache_key from CacheBreakpoint
         section_ids (Sprint 52.2 Day 3.5) and forward via extra_body to Azure
         OpenAI for auto-prompt-caching. Stream path mirrors chat. Helper
@@ -101,6 +102,17 @@ def _compute_prompt_cache_key(
     if not section_ids:
         return None
     return hashlib.sha256(":".join(section_ids).encode("utf-8")).hexdigest()
+
+
+def _max_tokens_param_name(model_name: str) -> str:
+    """Return the token-cap kwarg name for an Azure model (C-11 billing gap 2).
+
+    gpt-5.x rejects ``max_tokens`` (HTTP 400: "use ``max_completion_tokens``");
+    gpt-4.x and earlier accept ``max_tokens``. Keyed off model_name (not
+    deployment_name — deployment ids carry no model-generation guarantee), so
+    model_name must reflect the real deployment generation.
+    """
+    return "max_completion_tokens" if model_name.startswith("gpt-5") else "max_tokens"
 
 
 class AzureOpenAIAdapter(ChatClient):
@@ -208,7 +220,7 @@ class AzureOpenAIAdapter(ChatClient):
                     kwargs["tools"] = azure_tools
                     kwargs["tool_choice"] = request.tool_choice
                 if request.max_tokens is not None:
-                    kwargs["max_tokens"] = request.max_tokens
+                    kwargs[_max_tokens_param_name(self.config.model_name)] = request.max_tokens
                 # Sprint 52.2 Day 3.5: forward Cat 5 cache_breakpoints as Azure
                 # OpenAI's deterministic prompt_cache_key (extra_body). Per plan §3.5:
                 # key = sha256(":".join(bp.section_id for bp with section_id present)).
@@ -280,7 +292,7 @@ class AzureOpenAIAdapter(ChatClient):
                 if azure_tools:
                     kwargs["tools"] = azure_tools
                 if request.max_tokens is not None:
-                    kwargs["max_tokens"] = request.max_tokens
+                    kwargs[_max_tokens_param_name(self.config.model_name)] = request.max_tokens
                 # Sprint 52.2 Day 3.5: stream path mirrors chat() prompt_cache_key.
                 cache_key = _compute_prompt_cache_key(cache_breakpoints)
                 if cache_key is not None:

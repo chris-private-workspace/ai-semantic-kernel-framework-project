@@ -17,7 +17,7 @@ _PRICING_YAML = Path(__file__).resolve().parents[4] / "config" / "llm_pricing.ym
 
 
 def test_pricing_loader_load_from_yaml_parses_3_providers() -> None:
-    """yaml has azure_openai (2 models) + anthropic (1 model)."""
+    """yaml has azure_openai (3 models) + anthropic (1 model)."""
     loader = PricingLoader()
     loader.load_from_yaml(_PRICING_YAML)
 
@@ -70,3 +70,43 @@ def test_pricing_loader_missing_file_raises() -> None:
     loader = PricingLoader()
     with pytest.raises(FileNotFoundError):
         loader.load_from_yaml(Path("/nonexistent/path/pricing.yml"))
+
+
+# --- Sprint 57.79: date-suffix normalize (C-11 billing gap 1) ---------------
+
+
+def test_pricing_loader_gpt52_exact_key() -> None:
+    """gpt-5.2 base key prices exactly (Sprint 57.79 — added to yaml)."""
+    loader = PricingLoader()
+    loader.load_from_yaml(_PRICING_YAML)
+    p = loader.get_llm_pricing("azure_openai", "gpt-5.2")
+    assert p is not None
+    assert p.input_per_million == 1.75
+    assert p.output_per_million == 14.00
+    assert p.cached_input_per_million == 0.175
+
+
+def test_pricing_loader_date_suffix_normalizes_to_base() -> None:
+    """A deployment model id with -YYYY-MM-DD suffix prices off the base key."""
+    loader = PricingLoader()
+    loader.load_from_yaml(_PRICING_YAML)
+    # gpt-5.2-2025-12-11 (Azure deployment id) → base gpt-5.2
+    p = loader.get_llm_pricing("azure_openai", "gpt-5.2-2025-12-11")
+    assert p is not None
+    assert p.input_per_million == 1.75
+    assert p.output_per_million == 14.00
+
+
+def test_pricing_loader_date_suffixed_unknown_base_returns_none() -> None:
+    """A date-suffixed model whose stripped base is unknown still → None."""
+    loader = PricingLoader()
+    loader.load_from_yaml(_PRICING_YAML)
+    assert loader.get_llm_pricing("azure_openai", "gpt-9.9-2025-12-11") is None
+
+
+def test_pricing_loader_non_date_suffix_no_false_normalize() -> None:
+    """A non-date suffix is NOT stripped (no false base match) → None."""
+    loader = PricingLoader()
+    loader.load_from_yaml(_PRICING_YAML)
+    # "gpt-5.2-preview" has no -YYYY-MM-DD; must NOT normalize to gpt-5.2
+    assert loader.get_llm_pricing("azure_openai", "gpt-5.2-preview") is None

@@ -21,7 +21,8 @@ Key Components:
 
 Created: 2026-05-06 (Sprint 56.3 Day 2)
 
-Modification History:
+Modification History (newest-first):
+    - 2026-06-04: Sprint 57.79 — get_llm_pricing date-suffix normalize (C-11 billing gap 1)
     - 2026-05-06: Initial creation (Sprint 56.3 Day 2 / US-3)
 
 Related:
@@ -34,6 +35,7 @@ Related:
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -54,6 +56,21 @@ class ToolPricing:
     """USD per tool call."""
 
     per_call: float
+
+
+# Azure deployment model ids carry a trailing version date (e.g.
+# "gpt-5.2-2025-12-11"); pricing yaml keys are the base model ("gpt-5.2").
+# Why: a deployment version bump must not silently fall back to $0 (C-11
+# billing gap 1). get_llm_pricing strips this suffix on an exact-key miss.
+_VERSION_SUFFIX_RE = re.compile(r"-\d{4}-\d{2}-\d{2}$")
+
+
+def _strip_version_suffix(model: str) -> str:
+    """Strip a trailing ``-YYYY-MM-DD`` Azure version suffix from a model id.
+
+    Returns the input unchanged if no such suffix is present.
+    """
+    return _VERSION_SUFFIX_RE.sub("", model)
 
 
 class PricingLoader:
@@ -117,8 +134,18 @@ class PricingLoader:
         self._loaded_path = p
 
     def get_llm_pricing(self, provider: str, model: str) -> LLMPricing | None:
-        """Return per-million pricing for (provider, model);None if unknown."""
-        return self._llm.get(provider, {}).get(model)
+        """Return per-million pricing for (provider, model); None if unknown.
+
+        On an exact-key miss, retry with the Azure version suffix
+        (``-YYYY-MM-DD``) stripped, so a deployment model id like
+        ``gpt-5.2-2025-12-11`` prices off the base ``gpt-5.2`` yaml key.
+        """
+        models = self._llm.get(provider, {})
+        hit = models.get(model)
+        if hit is not None:
+            return hit
+        base = _strip_version_suffix(model)
+        return models.get(base) if base != model else None
 
     def get_tool_pricing(self, tool_name: str) -> ToolPricing:
         """Return per-call pricing for tool;defaults to default_per_call."""
