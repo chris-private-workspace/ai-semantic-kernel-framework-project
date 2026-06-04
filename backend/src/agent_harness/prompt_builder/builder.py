@@ -39,6 +39,7 @@ Created: 2026-05-01 (Sprint 52.2 Day 1.6)
 Last Modified: 2026-06-04
 
 Modification History (newest-first):
+    - 2026-06-04: Sprint 57.80 — pending-tool-turn skips user re-anchor (tool-chat convergence)
     - 2026-06-04: Sprint 57.80 — tool-call adjacency invariant after arrange() (orphan-tool 400)
     - 2026-06-03: Sprint 57.75 A-5c — add layer_metadata["memory_accesses"] per-hint detail
     - 2026-06-01: Sprint 57.65 — memory render enrich + token cap + verify_before_use (A-1)
@@ -255,12 +256,30 @@ class DefaultPromptBuilder(PromptBuilder):
             # are not counted against it.
             memory_layers = self._apply_memory_budget(memory_layers, tools=tools_list)
 
+            # Sprint 57.80 (targeted C): on a PENDING tool turn — the conversation
+            # ends with a tool result awaiting the model's final answer — do NOT
+            # re-anchor the current user message at the tail. It is already in the
+            # conversation in chronological position; re-appending it after the tool
+            # result makes the model treat the request as fresh and re-call the tool
+            # (the real-LLM echo demo looped to max_turns). Keep the full conversation
+            # in order and pass user_message=None so the prompt ends with the tool
+            # result and the model produces its answer. A normal (non-tool / fresh)
+            # turn keeps the lost-in-middle echo + tail re-anchor unchanged.
+            transient_msgs = state.transient.messages
+            pending_tool_turn = bool(transient_msgs) and transient_msgs[-1].role == "tool"
+            if pending_tool_turn:
+                conversation = list(transient_msgs)
+                section_user_msg: Message | None = None
+            else:
+                conversation = self._extract_conversation(state, user_msg)
+                section_user_msg = user_msg
+
             sections = PromptSections(
                 system=self._build_system_section(memory_layers),
                 tools=tools_list,
                 memory_layers=memory_layers,
-                conversation=self._extract_conversation(state, user_msg),
-                user_message=user_msg,
+                conversation=conversation,
+                user_message=section_user_msg,
             )
 
             # --- Step 2: position strategy ---

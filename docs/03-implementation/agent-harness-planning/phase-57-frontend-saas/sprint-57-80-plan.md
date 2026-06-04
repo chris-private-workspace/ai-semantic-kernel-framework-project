@@ -162,3 +162,19 @@ Bottom-up est ~5.5 hr (fix ~1.5 + unit tests ~1.5 + integration test ~0.5 + real
 - **B-7 ErrorBudget Redis wiring** / **B-8 Verification default-enable** / **C-15 DevOps billing** — the billing/verification bundle; separate sprints.
 - **GitHub Secrets + scheduled e2e gate** (`AD-CI-6`) — real-LLM CI stays manual workflow_dispatch + local `.env`; production-launch concern.
 - **Conversation compaction interaction with tool turns** — Cat 4 compaction dropping an assistant while keeping its tool is a separate (currently non-occurring) concern; the adjacency invariant degrades safely if it ever happens, but compaction-aware tool grouping is not designed here.
+
+---
+
+## 10. In-Sprint Scope Extension — targeted C (added 2026-06-04, supersedes §9 "Approach C out of scope" for the pending-tool-turn slice)
+
+**Trigger**: Day-3 real-LLM run found that B alone (the adjacency invariant) removed the 400 but the chat then looped to `max_turns` (`stop_reason=max_turns total_turns=8`) — the model re-called echo_tool every turn and never converged. **Root cause (confirmed by code)**: every PositionStrategy appends `sections.user_message` at the tail (`lost_in_middle.py:79-80` etc.) and `_enforce_tool_adjacency` does not move it, so on a tool turn the assembled prompt ALWAYS ends with the user message (after the tool result). The model treats the re-anchored "echo hello" as a fresh request each turn → re-calls the tool. §9's framing of C as "valid, not a 400, cosmetic" was an under-assessment: the re-anchor is functionally required for tool-calling chat to CONVERGE.
+
+**User decision (AskUserQuestion, 2026-06-04)**: extend this sprint with a targeted C fix.
+
+**Targeted C fix** (`builder.py` `build()`, builder-level — same single-enforcement philosophy as B): detect a PENDING tool turn (`state.transient.messages[-1].role == "tool"`) → pass the full conversation in chronological order + `user_message=None` (no tail re-anchor, no top echo) so the prompt ends with the tool result and the model produces its final answer. A normal (non-tool / fresh) turn is unchanged (keeps the lost-in-middle echo + tail re-anchor). No strategy / loop / adapter change.
+
+**Verification**: re-ran real Azure (fresh tenant) → `loop_end stop_reason=end_turn` (was `max_turns`), final `llm_response content="hello" tool_calls=[]`, last `prompt_built messages_count=5` = `[new_system, old_system, user, assistant(tool_calls), tool]` (ends with tool). Tests +2 (pending-tool-turn ends with tool; fresh turn still ends with user).
+
+**File change delta vs §4**: still only `builder.py` (EDIT — the C conditional added alongside the B method) + `test_builder_tool_adjacency.py` (EDIT — +2 C tests). No new files beyond §4.
+
+**Remaining out of scope**: B-7 / B-8 / C-15 billing bundle; GitHub Secrets e2e gate; compaction×tool-turn interaction.

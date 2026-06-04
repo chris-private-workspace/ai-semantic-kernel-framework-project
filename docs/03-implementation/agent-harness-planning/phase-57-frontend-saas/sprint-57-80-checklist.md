@@ -59,16 +59,21 @@
 ## Day 3 — real-LLM Azure verification (US-4) — user `.env`
 
 ### 3.1 clean restart + startup log (Risk Class E)
-- [ ] **clean start backend** — kill stale `--reload` workers on :8000; confirm port sole-owner (no Errno 10048); started fresh
-- [ ] **confirm startup log** `pricing loader wired` (FIX-022 wiring fired)
+- [x] **clean start backend** — :8000 was free (no stale process); started fresh single no-reload uvicorn
+- [x] **confirm startup log** `pricing loader wired` (FIX-022 wiring fired)
 
 ### 3.2 real-LLM chat main-flow (local `.env`, NOT GitHub secrets)
-- [ ] **dev-login** → v2_jwt cookie (fresh tenant + clean session — the 57.79 repro condition)
-- [ ] **POST /chat real_llm** `{mode: real_llm, message: "echo hello"}` → **HTTP 200, no orphan-tool 400** + SSE contains `loop_end` + real Azure reply
-- [ ] **cost_ledger write** — newest rows written (row-count Δ≥2); evidence captured
+- [x] **dev-login** → v2_jwt cookie (fresh tenant + clean session — the 57.79 repro condition)
+- [x] **POST /chat real_llm** `{mode: real_llm, message: "echo hello"}` → **HTTP 200, no orphan-tool 400** (`"must follow tool_calls": False`) + SSE contains `loop_end` + real Azure gpt-5.2 reply
+- [x] **cost_ledger write** — newest rows written (delta>0; gpt-5.2 + echo_tool rows); evidence captured
 
 ### 3.3 evidence
-- [ ] **record** SSE outcome + cost row evidence + the exact `response.model` in progress.md Day 3
+- [x] **record** SSE outcome + cost row evidence + the exact `response.model` (gpt-5.2-2025-12-11) in progress.md Day 3
+
+### 3.4 targeted C extension (in-sprint, per Day-3 finding + user decision) — plan §10
+- [x] **targeted C fix** in `build()` — pending tool turn (`transient.messages[-1].role == "tool"`) → full conversation + `user_message=None` → prompt ends with tool result; fresh turn unchanged
+- [x] **+2 unit tests** — pending tool turn ends with `tool` (user still in history); fresh turn still ends with `user` (no regression). 71 passed.
+- [x] **re-verify real Azure CONVERGED** — `loop_end stop_reason=end_turn` (was `max_turns`); final `content="hello"`; last `prompt_built messages_count=5` ends with tool. mypy clean.
 
 ---
 

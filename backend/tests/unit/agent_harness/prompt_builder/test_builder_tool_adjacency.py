@@ -139,3 +139,54 @@ async def test_build_through_lost_in_middle_keeps_tool_after_assistant(
         "tool must immediately follow its assistant(tool_calls) after build(); "
         f"got assistant@{a_idx}, tool@{t_idx}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Targeted C (Sprint 57.80): pending-tool-turn must NOT re-anchor the user
+# message at the tail — the prompt must end with the tool result so the model
+# produces its final answer (the real_llm echo demo otherwise looped to
+# max_turns because the re-anchored user query re-triggered the tool every turn).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_build_pending_tool_turn_ends_with_tool_not_user(
+    builder: DefaultPromptBuilder,
+) -> None:
+    """conversation ends with a tool result → assembled prompt ends with the tool
+    (NOT a re-anchored user message), while the user query stays in the history."""
+    state = make_state(
+        messages=[
+            Message(role="system", content="sys"),
+            Message(role="user", content="echo hello"),
+            _assistant(["c1"]),
+            _tool("c1", "hello"),
+        ]
+    )
+
+    artifact = await builder.build(state=state, tenant_id=uuid4(), tools=[])
+
+    assert artifact.messages[-1].role == "tool", (
+        "pending tool turn must end with the tool result so the model answers; "
+        f"ended with role={artifact.messages[-1].role!r}"
+    )
+    # the user query is still present in the conversation (just not re-anchored).
+    assert any(m.role == "user" for m in artifact.messages)
+
+
+@pytest.mark.asyncio
+async def test_build_fresh_user_turn_still_ends_with_user(
+    builder: DefaultPromptBuilder,
+) -> None:
+    """A normal (non-tool) turn keeps the lost-in-middle tail re-anchor: the
+    prompt ends with the current user message (no regression to the fresh path)."""
+    state = make_state(
+        messages=[
+            Message(role="system", content="sys"),
+            Message(role="user", content="hello there"),
+        ]
+    )
+
+    artifact = await builder.build(state=state, tenant_id=uuid4(), tools=[])
+
+    assert artifact.messages[-1].role == "user"
