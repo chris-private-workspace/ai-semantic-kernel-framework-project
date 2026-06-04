@@ -36,6 +36,32 @@
 
 ---
 
+## 🆕 Sprint 57.78 Carryover (2026-06-04 — Subagents Registry real list; closes AD-Subagent-RealList-Phase58 → 🎉 Area-A program COMPLETE)
+
+**Closed**: `AD-Subagent-RealList-Phase58` — the LAST Area-A item. Re-pointed `GET /subagents` STUB (never-persisted invocations) → real per-tenant `agent_catalog` (57.70) registry view + wired the mockup-ported `/subagents` page. Catalog/Registry view (AskUserQuestion) over runtime invocations. Real role←key/model/modes←allowed_modes/status; KPI counts derived; detail spec/budget/tools real; usage metrics (calls24h/p95/stats) honest-gapped "—" (AP-4); removed 8-row fixture + carryover banner. Backend re-point + FE wire (sequential 2-agent); no migration; feature-continuation (no design note). Detail: `memory/project_phase57_78_subagents_registry_real_list.md` + retrospective. CHANGE-046.
+
+### 🎉 Area-A "process all carryover except A-4 Tier 2" program — COMPLETE
+- ✅ #1+#2 Inspector Trace + Memory tabs (57.75) · #3 admin-tenants stats (57.74) · A-5c Inspector Tree (57.72) · A-6 admin re-mount + memory matrix (57.73)
+- ✅ Memory ops-history backend (57.76) + frontend (57.77, PR #243) → `AD-Memory-OpsHistory-Backend` FULLY CLOSED
+- ✅ **FE /subagents real list (57.78) → `AD-Subagent-RealList-Phase58` CLOSED — LAST ITEM**
+- (A-4 Tier 2 real Jaeger export = EXCLUDED per user program → Area-C/DevOps)
+
+### NEW carryovers (this sprint)
+- **`AD-Subagent-Invocations-Persistence-Phase58`** — the runtime per-spawn timeline (the heavy path NOT chosen): NEW SubagentInvocation ORM + dispatcher persist hook + read-side projection. Re-log if a real invocations timeline is later wanted.
+- **agent_catalog tenant-facing write from /subagents** — Sync-from-repo / New-subagent buttons stay AP-2 stubs (admin CRUD at `/admin/tenants/{id}/agents`).
+- **budget/tools loop enforcement** — stored not enforced (57.70 §9).
+- **Usage-metrics backing** (calls24h/p95/success/avg-tokens/top-orchestrator) — needs runtime invocation telemetry; honest-gapped this sprint.
+
+### Process / Calibration
+- **D-DAY1-1 lesson (agent missed existing same-endpoint test)**: code-implementer added a NEW `test_subagents.py` without noticing the existing `test_subagent_registry.py` (57.19) → 2 superseded stub-contract failures. Parent rewrote the existing file into the catalog contract + deleted the new dup (Never Delete respected). Lesson: a re-point agent prompt should say "find + update the EXISTING endpoint tests" not "add a NEW test file" (researcher B flagged the file but it didn't reach the agent prompt).
+- **D-DAY1-2 lesson (i18n locale vs UI-state-string conflation — 57.73 D-DAY1-1 variant, 2nd occurrence)**: agent put 3 new keys in English in zh-TW citing "English convention"; but i18n LOCALE files ARE translated (existing subagents zh-TW all 繁中). Parent fixed → 繁中. **2 occurrences (57.73 opposite direction) → Before-Commit item 7 sub-bullet candidate**: distinguish "component inline string = English" from "i18n locale file = follow the file's language".
+- Calibration: `mixed-multidomain-bundle` 0.65 + `agent_factor` `mechanical-greenfield-design-decisions` 0.65 — CAVEATED (16th consecutive agent-delegated no-clean-wall-clock; `AD-Calibration-AgentDelegated-WallClock-Measure`).
+
+### NB (merge order)
+Sprint 57.77 (PR #243) + 57.78 both touch CLAUDE.md / MEMORY.md / this file's section anchor — 57.78 branched from main before #243 merged. Merge #243 first, then 57.78; on conflict take the 57.78 version (newer, references both).
+
+---
+
 ## 🆕 Sprint 57.76 Carryover (2026-06-04 — Memory ops-history backend; closes AD-Memory-OpsHistory-Backend backend half)
 
 **Closed (backend half)**: `AD-Memory-OpsHistory-Backend` — NEW append-only `memory_ops` table (Option B) + Alembic 0024 (RLS 2-policy + FORCE mirror 0023) + user/tenant write/evict emit (same-txn, Risk-C atomicity tested; evict SELECT-before-DELETE) + `GET /memory/ops` (cursor pagination). **Backend-only; frontend half = Sprint 57.77**.

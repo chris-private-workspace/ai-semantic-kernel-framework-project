@@ -34,3 +34,48 @@ No new table / migration / ORM (agent_catalog + repo from 57.70). check_rls_poli
 ### go/no-go = **GO** (Day 1 backend re-point). User-locked catalog view; backend reuse confirmed; real data sparse but honest; no >20% drift.
 
 ---
+
+## Day 1 — Backend re-point (Track A, agent-delegated code-implementer)
+
+Agent wall-clock ~9 min; parent Day-0 research + re-verify.
+
+### Implemented
+- **`subagents.py` re-point**: removed invocations stub (`SubagentMode` code/research/architect/review + `SubagentItem` + `SubagentsPage` + `not_implemented_reason`); NEW `SubagentSpecItem` (key/name/model/allowed_modes/status/system_prompt/budget/tools) + `SubagentsResponse` (items/gapped) + `USAGE_GAPPED` const; deps `get_current_tenant` + `get_db_session_with_tenant` (RLS, mirrors memory.py); `AgentCatalogRepository.list_by_tenant`; meta_data → budget (None if unset) + tools (isinstance-guarded []). Dropped mode/cursor/limit params. Docstring + MHist.
+
+### Drift findings (parent review, Before-Commit item 7)
+- **D-DAY1-1 (agent missed existing test file → 2 pre-existing failures)**: the code-implementer added a NEW `test_subagents.py` but did NOT notice the EXISTING `test_subagent_registry.py` (57.19 stub-era) testing the same endpoint. After the re-point, 2 of its 3 tests failed (assert removed `not_implemented_reason` / `mode` Literal 422 — superseded stub contract). **Parent resolution (respects Never Delete)**: rewrote the EXISTING `test_subagent_registry.py` into the catalog registry contract (behavioral-change → update test,正當; the "registry" filename fits the catalog registry view) + merged the agent's 7 catalog tests into it + deleted the agent's NEW `test_subagents.py` (本 sprint 未 merge 中間產物, not an existing test). Net: single test file, existing file preserved+updated, no existing test deleted, no dup.
+- **D-DAY1-3 (scope doc)**: backend `agent_catalog.allowed_modes` docstring says it can include role/handoff modes; only seed `["handoff"]`. Non-issue (FE `allowed_modes: SubagentMode[]`).
+
+### Backend gates (parent-run)
+- mypy `0/331`; `test_subagent_registry.py` 7 passed (migrated catalog tests); full pytest **2109 passed, 4 skipped, 0 failed** (baseline 2105 − 3 old stub + 7 new catalog = 2109); `run_all.py` (from project-root) **10/10 green** (check_rls_policies unchanged 21 tables — no schema change; check_llm_sdk_leak + check_ap4_frontend_placeholder green).
+
+---
+
+## Day 2 — Frontend wire (Track B, agent-delegated code-implementer) + parent i18n fix
+
+Agent wall-clock ~7.5 min; parent re-verify + i18n correction.
+
+### Implemented (agent)
+- **types.ts**: invocations `Subagent` → `SubagentSpec` + `SubagentsResponse` (mirror wire).
+- **subagentsService.ts**: `fetchSubagents(signal)` → `SubagentsResponse`; dropped mode/cursor/limit params.
+- **useSubagents.ts**: return `SubagentsResponse`; queryKey `["subagents","list"]`; staleTime 30s.
+- **SubagentsPage.tsx**: `useSubagents()` + `useMemo(data?.items ?? [])` (defensive guard preserved); list role←key / model←model(`—`) / modes←allowed_modes Badges / status / calls24h+p95→`—` (GAP CSS-var); KPI counts derived from allowed_modes; page-head count real; detail spec/budget(defensive `budgetValue`)/tools(empty-state)/stats(all `—` honest-gap); loading/empty mockup-native rows; removed SUBAGENT_LIST + MODE_KPI fixtures + carryover banner + fabricated 99.2%/2840/orchestrator-main.
+- **SubagentsPage.test.tsx** rewrite (14 tests); NEW **e2e subagents.spec.ts** (happy + 403); i18n en+zh-TW 3 keys.
+
+### Drift findings (parent review, Before-Commit item 7)
+- **D-DAY1-2 (i18n zh-TW locale inconsistency — 57.73 D-DAY1-1 variant)**: agent added the 3 NEW keys (`list.loading`/`list.empty`/`detail.toolsEmpty`) in ENGLISH in BOTH en AND zh-TW locales, claiming "English convention". But the EXISTING subagents zh-TW keys are all 繁中 (子代理列表/角色/成功率/最常呼叫之編排器) — the agent confused "UI state strings stay English" (a component-code convention) with i18n LOCALE files (which ARE translated). **Parent fixed** zh-TW 3 keys → 繁中 (`載入中…` / `尚未註冊任何子代理。` / `未附加工具`), matching existing zh-TW conventions (loading=`載入中…` line 129). en locale was correct.
+
+### Frontend gates (parent-run, after i18n fix)
+- build tsc 0; lint exit 0 (3 pre-existing jsx-ast-utils info); Vitest subagents **24 passed / 3 files** + full **744 passed / 131 files**; check:mockup-fidelity byte-identical + baseline 50; Playwright subagents **2 passed**.
+- Read ALL agent code + own i18n fix: re-point correct (registry shape, RLS tenant-scoped, meta_data safe defaults); FE honest-gap real (GAP CSS-var, no fabrication — Vitest asserts no 99.2%/2840); fixture+banner removed; mockup classes verbatim; defensive guard preserved; tests non-vacuous (e2e proves row-click select + 403 error).
+
+---
+
+## Day 4 — Closeout
+
+- CHANGE-046; retrospective.md Q1-Q7; checklist all `[x]` (push+PR user-gated); MEMORY subfile + pointer; CLAUDE.md lean; next-phase-candidates.md.
+- **`AD-Subagent-RealList-Phase58` CLOSED → Area-A "process all carryover except A-4 Tier 2" program COMPLETE.**
+- **No design note** (feature-continuation: re-point existing endpoint + wire mockup-ported page; no new contract / no 17.md change).
+- Calibration: `mixed-multidomain-bundle` 0.65 + `agent_factor` `mechanical-greenfield-design-decisions` 0.65 — CAVEATED (16th consecutive agent-delegated no-clean-wall-clock; sequential 2-agent + parent Day-0/test-resolution/i18n-fix/re-verify dominate wall-clock).
+
+---

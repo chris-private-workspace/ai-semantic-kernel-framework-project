@@ -25,13 +25,13 @@
 ## Day 1 — Backend re-point (US-1/US-2/US-3)
 
 ### 1.1 Pydantic registry shape
-- [ ] **NEW `SubagentSpecItem` + `SubagentsResponse`** in `subagents.py`
+- [x] **NEW `SubagentSpecItem` + `SubagentsResponse`** in `subagents.py`
   - SubagentSpecItem: key/name/model(null)/allowed_modes/status/system_prompt/budget(dict|null)/tools(list)
   - SubagentsResponse: items + gapped (usage metrics list)
   - **remove** invocations SubagentMode/SubagentItem/SubagentsPage(stub)
 
 ### 1.2 Re-point handler
-- [ ] **`GET /subagents` → agent_catalog** query
+- [x] **`GET /subagents` → agent_catalog** query
   - deps `get_current_tenant` + `get_db_session_with_tenant` (RLS); `AgentCatalogRepository(db).list_by_tenant(tenant_id=current_tenant)`
   - map row → SubagentSpecItem (budget=`meta_data.get("budget")`, tools=`meta_data.get("tools",[])`)
   - `gapped = ["calls_24h","p95_latency","success_rate","avg_tokens","top_orchestrator"]`
@@ -39,19 +39,19 @@
   - DoD: mypy clean; tenant-scoped
 
 ### 1.3 Backend test
-- [ ] **`test_subagents.py`** — GET returns seed 3 rows; budget/tools mapped; gapped present; cross-tenant empty; deps. Mirror test_memory_matrix.py RLS/fixture style.
+- [x] **`test_subagents.py`** — GET returns seed 3 rows; budget/tools mapped; gapped present; cross-tenant empty; deps. Mirror test_memory_matrix.py RLS/fixture style.
 
 ---
 
 ## Day 2 — FE data layer + page wire (US-1/US-2/US-4)
 
 ### 2.1 Types + service + hook
-- [ ] **types.ts** — remove invocations `Subagent`; NEW `SubagentSpec` + `SubagentsResponse`; keep `SubagentMode`
-- [ ] **subagentsService.ts** — `fetchSubagents(signal?)` → `SubagentsResponse` (drop mode/cursor)
-- [ ] **useSubagents.ts** — return `SubagentsResponse`; queryKey `["subagents","list"]`; staleTime 30_000
+- [x] **types.ts** — remove invocations `Subagent`; NEW `SubagentSpec` + `SubagentsResponse`; keep `SubagentMode`
+- [x] **subagentsService.ts** — `fetchSubagents(signal?)` → `SubagentsResponse` (drop mode/cursor)
+- [x] **useSubagents.ts** — return `SubagentsResponse`; queryKey `["subagents","list"]`; staleTime 30_000
 
 ### 2.2 SubagentsPage wire
-- [ ] **consume `useSubagents()`** + `items = data?.items ?? []` (preserve defensive `?.` guard — AD-Overview-PreExisting-Route-Crashes)
+- [x] **consume `useSubagents()`** + `items = data?.items ?? []` (preserve defensive `?.` guard — AD-Overview-PreExisting-Route-Crashes)
   - list 6-col: role←key/name, model←model(`—` null), modes←allowed_modes Badges, status, calls24h→`—`, p95→`—`
   - MODE_KPI 4 cards: counts derived `items.filter(i=>i.allowed_modes.includes(mode)).length`
   - page-head `{items.length} registered` real
@@ -64,32 +64,36 @@
 ## Day 3 — Tests (US-5)
 
 ### 3.1 Vitest rewrite
-- [ ] **`SubagentsPage.test.tsx`** — mock `useSubagents` real items; assert real rows + KPI derived counts + null model `—` + usage `—` + loading/error/empty + detail tab switch; remove 8-fixture-row assertions; preserve defensive guard test
+- [x] **`SubagentsPage.test.tsx`** — mock `useSubagents` real items; assert real rows + KPI derived counts + null model `—` + usage `—` + loading/error/empty + detail tab switch; remove 8-fixture-row assertions; preserve defensive guard test
 
 ### 3.2 e2e
-- [ ] **NEW `tests/e2e/subagents/subagents.spec.ts`** — mock GET /subagents catalog (2-3 rows); assert rows + row-click select + detail spec; mock 403 → error
+- [x] **NEW `tests/e2e/subagents/subagents.spec.ts`** — mock GET /subagents catalog (2-3 rows); assert rows + row-click select + detail spec; mock 403 → error
 
 ### 3.3 Parent re-verify (Before-Commit item 7)
-- [ ] **read all agent-changed code** + run ALL gates (incl. check:mockup-fidelity); don't trust agent report; pin English copy
+- [x] **read all agent-changed code** + run ALL gates (incl. check:mockup-fidelity); don't trust agent report; pin English copy
+
+### 3.4 Parent drift fixes (review findings)
+- [x] **D-DAY1-1**: agent missed existing `test_subagent_registry.py` (57.19 stub) → rewrote it into the catalog contract (7 tests) + merged agent's new `test_subagents.py` into it + deleted the new file (Never Delete respected: existing preserved+updated, only sprint's own new file removed)
+- [x] **D-DAY1-2**: i18n zh-TW locale consistency — agent put 3 new keys in English in zh-TW; fixed to 繁中 (載入中… / 尚未註冊任何子代理。 / 未附加工具) matching existing zh-TW subagents keys
 
 ---
 
 ## Day 4 — Sweep + Closeout
 
 ### 4.1 Full sweep (parent re-verify, Before-Commit item 7)
-- [ ] **Backend gates** — `mypy src/` 0 + `pytest` (new + regression) + `scripts/lint/run_all.py` (check_rls_policies unchanged — no schema change)
-- [ ] **Frontend gates** — `npm run lint` (NO `--silent`) 0 + `npm run build` (tsc 0) + `npm run test` (Vitest) + `npm run check:mockup-fidelity` (byte-identical + baseline unchanged) + `npx playwright test subagents`
-- [ ] **Read all agent-changed code** — re-point correct, registry shape, honest-gap (not fabricated), fixture+banner removed, mockup classes verbatim, English copy, RLS tenant-scoped
+- [x] **Backend gates** — `mypy src/` 0 + `pytest` (new + regression) + `scripts/lint/run_all.py` (check_rls_policies unchanged — no schema change)
+- [x] **Frontend gates** — `npm run lint` (NO `--silent`) 0 + `npm run build` (tsc 0) + `npm run test` (Vitest) + `npm run check:mockup-fidelity` (byte-identical + baseline unchanged) + `npx playwright test subagents`
+- [x] **Read all agent-changed code** — re-point correct, registry shape, honest-gap (not fabricated), fixture+banner removed, mockup classes verbatim, English copy, RLS tenant-scoped
 
 ### 4.2 Closeout docs
-- [ ] **CHANGE-046** in `claudedocs/4-changes/feature-changes/`
-- [ ] **progress.md** Day 0-4 + **retrospective.md** Q1-Q7
-- [ ] **Checklist** all `[x]` (no deletion of unchecked)
-- [ ] **Calibration** record (mixed-multidomain-bundle 0.65 + agent_factor 0.65; CAVEAT consecutive agent-delegated)
-- [ ] **AD status**: `AD-Subagent-RealList-Phase58` CLOSED → **Area-A program COMPLETE**; next-phase-candidates.md
-- [ ] **MEMORY subfile + pointer** + **CLAUDE.md lean**
-- [ ] **Design note?** — NO (feature-continuation: re-point existing endpoint + wire mockup-ported page; no new contract / no 17.md change)
+- [x] **CHANGE-046** in `claudedocs/4-changes/feature-changes/`
+- [x] **progress.md** Day 0-4 + **retrospective.md** Q1-Q7
+- [x] **Checklist** all `[x]` (no deletion of unchecked)
+- [x] **Calibration** record (mixed-multidomain-bundle 0.65 + agent_factor 0.65; CAVEAT consecutive agent-delegated)
+- [x] **AD status**: `AD-Subagent-RealList-Phase58` CLOSED → **Area-A program COMPLETE**; next-phase-candidates.md
+- [x] **MEMORY subfile + pointer** + **CLAUDE.md lean**
+- [x] **Design note?** — NO (feature-continuation: re-point existing endpoint + wire mockup-ported page; no new contract / no 17.md change)
 
 ### 4.3 Ship
-- [ ] **Commit mapping** Day-0 / backend re-point / FE wire / tests / closeout
+- [x] **Commit mapping** Day-0 / backend re-point / FE wire / tests / closeout
 - [ ] **Push + PR** (user-gated — explicit authorization required)
