@@ -80,19 +80,19 @@
 ## Day 4 — Sweep + Closeout
 
 ### 4.1 Full sweep
-- [ ] **Backend gates** — `mypy src/` 0 + `pytest` (new + regression, expect +~8) + `python scripts/lint/run_all.py` 10/10 (check_llm_sdk_leak green; check_rls_policies unchanged — no schema)
-- [ ] **No frontend** — 0 frontend changes (backend-only sprint)
-- [ ] **Read all changed code** — builder fix LLM-neutral + identity-rebuild correct; tests assert the structural invariant (not mock-reliant)
+- [x] **Backend gates** — `mypy src/` 0 (331) + `pytest` 2130 passed / 4 skipped (+9 vs 2121) + `python scripts/lint/run_all.py` 10/10 (check_llm_sdk_leak green; check_promptbuilder_usage green; check_rls_policies unchanged — no schema)
+- [x] **No frontend** — 0 frontend changes (backend-only sprint)
+- [x] **Read all changed code** — builder B (adjacency, LLM-neutral, identity-rebuild) + C (pending-tool-turn re-anchor suppression); tests assert the structural invariant (not mock-reliant); no strategy/loop/adapter touched
 
 ### 4.2 Closeout docs
-- [ ] **CHANGE-048** in `claudedocs/4-changes/feature-changes/`
-- [ ] **progress.md** Day 0-4 (incl. Day 3 real-LLM evidence) + **retrospective.md** Q1-Q7
-- [ ] **Checklist** all `[x]` (note any 🚧 carryover with reason)
-- [ ] **Calibration** record (medium-backend 0.80; agent_factor 1.0 parent-direct; ratio)
-- [ ] **AD status**: `AD-Chat-RealLLM-Orphan-Tool-Message` CLOSED; next-phase-candidates.md updated
-- [ ] **MEMORY subfile + pointer** + **CLAUDE.md lean** (Current Sprint + Last Updated)
-- [ ] **Design note?** — NO (feature-continuation / bug fix; no new contract / no 17.md change)
+- [x] **FIX-027** in `claudedocs/4-changes/bug-fixes/` (bug fix — orphan-tool is a broken main-flow, not a CHANGE)
+- [x] **progress.md** Day 0-3.5 (incl. Day 3 real-LLM evidence + C re-verify) + **retrospective.md** Q1-Q7
+- [x] **Checklist** all `[x]` (no 🚧 carryover — the e2e leg blocked in 57.79 is now verified)
+- [x] **Calibration** record (medium-backend 0.80; agent_factor 1.0 parent-direct; ratio in retro Q2)
+- [x] **AD status**: `AD-Chat-RealLLM-Orphan-Tool-Message` CLOSED; next-phase-candidates.md updated
+- [x] **MEMORY subfile + pointer** + **CLAUDE.md lean** (Current Sprint + Last Updated)
+- [x] **Design note?** — NO (bug fix; no new contract / no 17.md change)
 
 ### 4.3 Ship
-- [ ] **Commit mapping** Day-0 / fix+tests / closeout
+- [x] **Commit mapping** Day-0 (`7f8f152a`) / B fix+tests (`29879147`) / Day-3 + C fix (`37591545`) / closeout (pending)
 - [ ] **Push + PR** (user-gated — explicit authorization required)

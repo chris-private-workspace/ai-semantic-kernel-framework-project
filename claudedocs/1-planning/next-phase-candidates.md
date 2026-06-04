@@ -36,12 +36,22 @@
 
 ---
 
+## 🆕 Sprint 57.80 Carryover (2026-06-04 — chat real_llm orphan-tool-message fix; closes AD-Chat-RealLLM-Orphan-Tool-Message)
+
+**Closed**: `AD-Chat-RealLLM-Orphan-Tool-Message` (the 57.79 carryover) — real_llm `POST /chat` 400'd on every tool turn. Builder-level tool-call adjacency invariant (`_enforce_tool_adjacency` after `strategy.arrange()`, fix B, protects all strategies / LostInMiddle untouched) + pending-tool-turn user re-anchor suppression (fix C, in-sprint extension per the real-LLM finding — B-only gave 200 but `stop_reason=max_turns`; C → `end_turn`). Real Azure (gpt-5.2) verified converged + cost_ledger written. AP-10 (MockChatClient never validated adjacency → invisible until real Azure). backend-only Cat 5; no design note. Detail: `memory/project_phase57_80_orphan_tool_adjacency.md` + retrospective. FIX-027.
+
+### NEW carryovers (this sprint)
+- **Candidate rule fold-in (not yet codified)** — Cat 5 / message-assembly tests must assert the provider structural invariant (tool-call adjacency / ordering) directly, not rely on the mock to reject; and a real-LLM DoD for agent-loop prompt changes should check `stop_reason=end_turn` (convergence), not just no-400 / loop_end present. (Single-data-point; fold into `sprint-workflow.md` if a 2nd sprint hits the same gap.)
+- No blocking carryover. Unrelated bundle remains: **B-7** (ErrorBudget Redis wiring) / **B-8** (Verification default-enable) / **C-15** (DevOps/data-platform billing).
+
+---
+
 ## 🆕 Sprint 57.79 Carryover (2026-06-04 — C-11 billing-correctness; closes AD-Cost-Ledger-Model-Pricing-Key-Mismatch + AD-Adapter-MaxTokens-NewModel-Param)
 
 **Closed**: `AD-Cost-Ledger-Model-Pricing-Key-Mismatch` + `AD-Adapter-MaxTokens-NewModel-Param` — the 2 C-11 billing gaps. First post-Area-A sprint (user picked C-11 收尾 over carryover/B). Gap 1: `get_llm_pricing` strips `-YYYY-MM-DD` on exact-miss → base key (`gpt-5.2-2025-12-11` → `gpt-5.2`); yaml + `gpt-5.2` (1.75/14.00/0.175 user-provided); chose normalize over per-date yaml keys. Gap 2: adapter `_max_tokens_param_name` gpt-5→`max_completion_tokens` (config.model_name keyed). Real Azure verified: cost_ledger DB `unit_cost>0` (direct record path) + token-cap no 400. backend-only; no design note. Detail: `memory/project_phase57_79_c11_billing_correctness.md` + retrospective. CHANGE-047.
 
 ### NEW carryovers (this sprint)
-- **`AD-Chat-RealLLM-Orphan-Tool-Message`** — chat router real_llm e2e blocked by a pre-existing, UNRELATED message-structure 400 (`messages[3] role 'tool' must follow tool_calls`; orphan tool message). Reproduces on a fresh tenant (messages_count:4 fixed) → prompt-builder/chat-handler assembly issue in real_llm mode, NOT session history, NOT this sprint's fix. cost_ledger e2e verified via direct record path instead. Needs separate investigation into the real_llm prompt assembly.
+- **`AD-Chat-RealLLM-Orphan-Tool-Message`** — ✅ **CLOSED Sprint 57.80 (FIX-027)**. Root cause = `LostInMiddleStrategy.arrange()` moved recent assistant to the tail while the tool result stayed in mid_history → tool preceded its assistant. Fixed builder-level (`_enforce_tool_adjacency` after `strategy.arrange()`, fix B) + pending-tool-turn user re-anchor suppression (fix C, for convergence). Real Azure verified: 200 + `stop_reason=end_turn`. Detail: `memory/project_phase57_80_orphan_tool_adjacency.md`. ~~chat router real_llm e2e blocked by a pre-existing, UNRELATED message-structure 400; needs separate investigation into the real_llm prompt assembly.~~
 - **Deployment requirement: `AZURE_OPENAI_MODEL_NAME`** — prod/other envs using a gpt-5.x deployment MUST set this to the real generation (e.g. `gpt-5.2`). Config default is `gpt-4o` (stale); if unaligned, Gap 2 mis-branches to `max_tokens` → 400 on gpt-5.x. (Gap 1 unaffected — uses response.model.) Deployment/ops note, not a code item.
 
 ### Still-open billing bundle (Sprint 57.80+ candidates)

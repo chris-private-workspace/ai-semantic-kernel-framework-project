@@ -109,3 +109,16 @@
 ### Evidence
 - Before C: `stop_reason=max_turns total_turns=8`. After C: `stop_reason=end_turn`, final content `"hello"`, last prompt 5 messages ending with tool.
 - Backend left running (fresh PID, B+C code) pending Day-4 closeout cleanup.
+
+---
+
+## Day 4 — 2026-06-04 — Full sweep + closeout
+
+### Accomplishments
+- **Full sweep**: `mypy src/` 0 (331 files) + `pytest` 2130 passed / 4 skipped (+9 vs baseline 2121) + `run_all.py` 10/10 (check_promptbuilder_usage + check_llm_sdk_leak green; check_rls_policies unchanged — no schema). Backend-only (0 frontend changes).
+- **Cleanup**: stopped both backend processes; freed :8000; removed temp verify script + 2 temp logs. (Test tenants `sk5780`/`sk5780b` + their cost_ledger rows left in the dev `ipa_v2` DB — harmless dev test data.)
+- **Closeout**: FIX-027 (bug fix — orphan-tool is a broken main-flow, classified FIX not CHANGE) + retrospective.md (Q1-Q7) + MEMORY subfile/pointer + CLAUDE.md lean + next-phase-candidates.md (AD CLOSED).
+- No design note (bug fix in Cat 5; no new contract / no 17.md change).
+
+### Status
+`AD-Chat-RealLLM-Orphan-Tool-Message` CLOSED. B (orphan-tool 400) + C (tool-turn convergence) both real-Azure verified. Awaiting push + PR (user-gated).

@@ -133,7 +133,7 @@ Single backend fix in Cat 5 (`prompt_builder/builder.py`) + a real-LLM verificat
 - [ ] Unit tests: `_enforce_tool_adjacency` (a)-(e) + `build()`-through-LostInMiddle tool-turn case
 - [ ] Integration test: loop+builder 2-turn tool script asserting `last_request.messages` adjacency (AP-10 closure)
 - [ ] real-LLM Azure verification (clean restart + `pricing loader wired` + `POST /chat` real_llm no-400 + SSE loop_end + cost_ledger write) — evidence in progress.md Day 3
-- [ ] All gates green; closeout (CHANGE-048 + progress + retro + MEMORY + CLAUDE lean; AD CLOSED → chat real_llm main-flow unblocked)
+- [ ] All gates green; closeout (FIX-027 [bug fix, not CHANGE — orphan-tool is a broken main-flow] + progress + retro + MEMORY + CLAUDE lean; AD CLOSED → chat real_llm main-flow unblocked)
 
 ---
 
