@@ -343,7 +343,9 @@
     },
     "list": {
       "title": "子代理列表",
-      "subtitle": "點擊查看 / 編輯"
+      "subtitle": "點擊查看 / 編輯",
+      "loading": "載入中…",
+      "empty": "尚未註冊任何子代理。"
     },
     "col": {
       "role": "角色",
@@ -375,7 +377,8 @@
       "p95": "p95 時長",
       "successRate": "成功率",
       "avgTokens": "平均 tokens / 次",
-      "topOrchestrator": "最常呼叫之編排器"
+      "topOrchestrator": "最常呼叫之編排器",
+      "toolsEmpty": "未附加工具"
     }
   },
   "stateInspector": {

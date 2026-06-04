@@ -1,121 +1,135 @@
 """
 File: backend/src/api/v1/subagents.py
-Purpose: Cat 11 Subagent Registry REST facade (Sprint 57.19 US-B4 — stub w/ carryover).
+Purpose: Cat 11 Subagent Registry REST facade — agent_catalog AgentSpec registry view.
 Category: api/v1
-Scope: Phase 57 / Sprint 57.19 Day 2 / US-B4
+Scope: Phase 57 / Sprint 57.78 (re-point STUB → agent_catalog registry)
 
 Description:
-    GET endpoint, gated by `Depends(get_current_tenant)`:
+    GET endpoint, gated by `Depends(get_current_tenant)` + RLS session:
 
-    - GET /api/v1/subagents?mode=X&cursor=B64&limit=50
-        Lists subagent invocations for the current tenant.
+    - GET /api/v1/subagents
+        Lists the current tenant's AgentSpec catalog (registry view), backed by
+        the per-tenant `agent_catalog` table (Sprint 57.70). Each item exposes
+        the durable spec fields: key / name / model / allowed_modes (subset of
+        fork/as_tool/teammate/handoff) / status / system_prompt, plus
+        budget + tools parsed from the meta_data JSONB.
 
-    ⚠️ Sprint 57.19 implementation note (per Day 0 三-prong drift D-PRE-SCHEMA-3):
+    Sprint 57.78 re-point (per Day 0 三-prong + user AskUserQuestion decision):
 
-    There is NO persisted Subagent ORM table. Confirmed via:
-    1. `grep -rn "class Subagent\\|__tablename__.*subagent" backend/src/infrastructure/db/`
-       → 0 matches.
-    2. SubagentSpawned / SubagentCompleted are in-memory LoopEvent dataclasses
-       emitted by `agent_harness/subagent/dispatcher.py` to the SSE stream;
-       they are NOT inserted into `audit_log` (grep confirms 0 matches for
-       `audit.*subagent` / `action.*subagent` in backend/src).
+    This endpoint previously returned an EMPTY "runtime invocations" list with a
+    `not_implemented_reason` flag — SubagentSpawned/Completed are in-memory
+    LoopEvents only and were never persisted (AD-Subagent-RealList-Phase58).
+    The user chose the **Agent Catalog/Registry view** over runtime invocations:
+    the tenant's AgentSpec catalog already exists in `agent_catalog`
+    (tenant-scoped + RLS, Sprint 57.70), so this endpoint now serves that real
+    registry data.
 
-    Therefore this endpoint returns an EMPTY items array + a documented
-    `not_implemented_reason` field flagging the gap. The endpoint shape
-    exists so frontend Subagents Registry page (US-C3 Day 4) can wire
-    against a stable contract; backend will land real persistence in a
-    follow-up sprint per AD-Subagent-RealList-Phase58 carryover.
+    Usage metrics (calls_24h / p95_latency / success_rate / avg_tokens /
+    top_orchestrator) have NO runtime data source (no persisted invocation
+    telemetry), so they are reported in the `gapped` list — an honest gap, not
+    fabricated zeros (AP-4). The runtime-invocations persistence path is the
+    heavier route deferred to AD-Subagent-Invocations-Persistence-Phase58.
 
-    Acceptable alternatives considered (all out of Sprint 57.19 scope):
-    - (a) Wire dispatcher.spawn / .completed to write audit_log rows with
-      operation="subagent_spawned" / "subagent_completed" + read-side
-      projection here. Cost: backend Cat 11 + Cat 12 wiring + new audit
-      operation vocabulary. Defer to AD-Subagent-RealList-Phase58.
-    - (b) Add new ORM model `SubagentInvocation` + Alembic migration 0018
-      + dispatcher.spawn persist hook. Cost: schema change + migration
-      review + cross-category integration. Defer.
-    - (c) Live in-memory query via singleton SubagentRegistry. Cost:
-      breaks request-scoped pattern + multi-replica deployments
-      lose ephemeral state on instance reschedule. Rejected.
-
-    Multi-tenant: when real persistence lands, RLS via
-    `get_db_session_with_tenant` will enforce isolation per other Cat APIs.
+    Multi-tenant: tenant-scoped via the repo `tenant_id` filter (every WHERE
+    clause) PLUS RLS `SET LOCAL app.tenant_id` from `get_db_session_with_tenant`
+    (defence-in-depth, mirrors the memory.py /matrix + /ops facades). This is a
+    tenant-facing read (any tenant user sees their tenant's catalog) — NO
+    audit-role gate (it is not audit data).
 
 Created: 2026-05-17 (Sprint 57.19 Day 2 / US-B4)
+Last Modified: 2026-06-04
 
 Modification History (newest-first):
+    - 2026-06-04: Sprint 57.78 — re-point STUB → agent_catalog registry (AD-Subagent-RealList)
     - 2026-05-17: Initial creation (Sprint 57.19 Day 2 / US-B4) — empty-list stub
-      pending AD-Subagent-RealList-Phase58 carryover
 
 Related:
-    - agent_harness/subagent/dispatcher.py (live event source — emits Spawned/Completed)
-    - agent_harness/_contracts/subagent.py (event dataclass definitions)
-    - sprint-57-19-plan.md §US-B4
+    - infrastructure/db/models/agent_catalog.py (AgentCatalog ORM — registry source)
+    - infrastructure/db/repositories/agent_catalog_repository.py (list_by_tenant DAO)
+    - platform_layer/middleware/tenant_context.py (get_db_session_with_tenant — RLS)
+    - platform_layer/identity/auth.py (get_current_tenant)
+    - api/v1/admin/agents.py (AgentResponse — serialization reference)
+    - api/v1/memory.py (sibling deps-trio pattern for /matrix + /ops)
+    - sprint-57-78-plan.md §3.1
     - 17-cross-category-interfaces.md §11 Cat 11 (no NEW ABC method this sprint)
 """
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from infrastructure.db.repositories.agent_catalog_repository import (
+    AgentCatalogRepository,
+)
 from platform_layer.identity.auth import get_current_tenant
+from platform_layer.middleware.tenant_context import get_db_session_with_tenant
 
 router = APIRouter(prefix="/subagents", tags=["subagents"])
 
-_MAX_PAGE_SIZE = 200
-_DEFAULT_PAGE_SIZE = 50
+# Usage metrics with NO runtime data source (no persisted invocation telemetry).
+# Reported as honest gaps rather than fabricated zeros (AP-4).
+USAGE_GAPPED = [
+    "calls_24h",
+    "p95_latency",
+    "success_rate",
+    "avg_tokens",
+    "top_orchestrator",
+]
 
 
-SubagentMode = Literal["code", "research", "architect", "review"]
+class SubagentSpecItem(BaseModel):
+    """One AgentSpec registry row (durable spec fields from agent_catalog)."""
+
+    key: str
+    name: str
+    model: str | None
+    allowed_modes: list[str]  # subset of fork/as_tool/teammate/handoff
+    status: str  # live / staging
+    system_prompt: str
+    budget: dict[str, Any] | None  # meta_data.get("budget") — None if unset
+    tools: list[str]  # meta_data.get("tools", [])
 
 
-class SubagentItem(BaseModel):
-    """Subagent invocation row (response contract; populated when persistence lands)."""
-
-    invocation_id: UUID
-    mode: SubagentMode
-    parent_session_id: UUID
-    status: str
-    total_tokens: int
-    started_at_ms: int
-    ended_at_ms: int | None
+class SubagentsResponse(BaseModel):
+    items: list[SubagentSpecItem]
+    gapped: list[str]  # usage metrics with no runtime data source
 
 
-class SubagentsPage(BaseModel):
-    items: list[SubagentItem]
-    next_cursor: str | None
-    page_size: int
-    not_implemented_reason: str | None = None
-
-
-@router.get("", response_model=SubagentsPage)
+@router.get("", response_model=SubagentsResponse)
 async def list_subagents(
-    mode: SubagentMode | None = Query(
-        None, description="Filter by subagent mode (code/research/architect/review)"
-    ),
-    cursor: str | None = Query(
-        None, description="Opaque pagination cursor (unused until real listing)"
-    ),
-    limit: int = Query(_DEFAULT_PAGE_SIZE, ge=1, le=_MAX_PAGE_SIZE),
-    current_tenant: UUID = Depends(get_current_tenant),  # noqa: ARG001 — wired for future use
-) -> SubagentsPage:
-    """List subagent invocations for current tenant.
+    current_tenant: UUID = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db_session_with_tenant),
+) -> SubagentsResponse:
+    """List the current tenant's AgentSpec catalog (registry view).
 
-    Sprint 57.19 returns empty list + AD-Subagent-RealList-Phase58 carryover
-    note. Frontend can render "No subagent invocations yet" empty-state plus
-    the carryover banner when `not_implemented_reason` is non-null.
+    Tenant-scoped via the repo `tenant_id` filter + RLS session
+    (defence-in-depth). Usage metrics have no runtime source and are reported
+    in `gapped` (honest gap, not fabricated zeros).
     """
-    return SubagentsPage(
-        items=[],
-        next_cursor=None,
-        page_size=limit,
-        not_implemented_reason=(
-            "Subagent invocations are not yet persisted (per Sprint 57.19 D-PRE-SCHEMA-3). "
-            "SubagentSpawned/Completed are in-memory LoopEvents only. "
-            "Real listing pending AD-Subagent-RealList-Phase58 carryover."
-        ),
-    )
+    rows = await AgentCatalogRepository(db).list_by_tenant(tenant_id=current_tenant)
+
+    items: list[SubagentSpecItem] = []
+    for r in rows:
+        meta = r.meta_data or {}
+        tools = meta.get("tools", [])
+        if not isinstance(tools, list):
+            tools = []
+        items.append(
+            SubagentSpecItem(
+                key=r.key,
+                name=r.name,
+                model=r.model,
+                allowed_modes=r.allowed_modes,
+                status=r.status,
+                system_prompt=r.system_prompt,
+                budget=meta.get("budget"),
+                tools=tools,
+            )
+        )
+
+    return SubagentsResponse(items=items, gapped=USAGE_GAPPED)

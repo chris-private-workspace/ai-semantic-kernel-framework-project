@@ -343,7 +343,9 @@
     },
     "list": {
       "title": "Subagents",
-      "subtitle": "Click to inspect / edit"
+      "subtitle": "Click to inspect / edit",
+      "loading": "Loading…",
+      "empty": "No subagents registered."
     },
     "col": {
       "role": "Role",
@@ -375,7 +377,8 @@
       "p95": "p95 duration",
       "successRate": "Success rate",
       "avgTokens": "Avg tokens / call",
-      "topOrchestrator": "Most-used orchestrator"
+      "topOrchestrator": "Most-used orchestrator",
+      "toolsEmpty": "No tools attached"
     }
   },
   "stateInspector": {
