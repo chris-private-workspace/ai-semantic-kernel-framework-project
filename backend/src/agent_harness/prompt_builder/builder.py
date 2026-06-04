@@ -36,9 +36,10 @@ Description:
 Owner: 01-eleven-categories-spec.md §範疇 5
 
 Created: 2026-05-01 (Sprint 52.2 Day 1.6)
-Last Modified: 2026-06-03
+Last Modified: 2026-06-04
 
 Modification History (newest-first):
+    - 2026-06-04: Sprint 57.80 — tool-call adjacency invariant after arrange() (orphan-tool 400)
     - 2026-06-03: Sprint 57.75 A-5c — add layer_metadata["memory_accesses"] per-hint detail
     - 2026-06-01: Sprint 57.65 — memory render enrich + token cap + verify_before_use (A-1)
 
@@ -267,6 +268,14 @@ class DefaultPromptBuilder(PromptBuilder):
                 position_strategy if position_strategy is not None else self._default_strategy
             )
             messages = strategy.arrange(sections)
+            # Sprint 57.80: enforce the provider hard-constraint that every
+            # role='tool' message immediately follows its owning assistant
+            # tool_calls. A PositionStrategy (e.g. LostInMiddleStrategy) may
+            # reorder the conversation and split a tool result from its
+            # assistant; this single post-arrange pass re-anchors them so NO
+            # strategy can emit an orphan-tool sequence. Closes the real_llm
+            # chat 400 (AD-Chat-RealLLM-Orphan-Tool-Message).
+            messages = self._enforce_tool_adjacency(messages)
 
             # --- Step 3: cache breakpoints ---
             cache_breakpoints = await self._build_cache_breakpoints(
@@ -321,6 +330,70 @@ class DefaultPromptBuilder(PromptBuilder):
             )
         finally:
             span.end()
+
+    # ------------------------------------------------------------------
+    # Tool-call adjacency invariant (Sprint 57.80)
+    # ------------------------------------------------------------------
+    # Why: OpenAI / Azure / Anthropic all require a role='tool' message to
+    # immediately follow the assistant message bearing the matching tool_calls.
+    # A PositionStrategy is free to reorder the conversation — LostInMiddleStrategy
+    # in particular moves recent assistant messages to the tail while their tool
+    # results stay in mid-history, orphaning the tool (real_llm chat 400
+    # "messages[N] role 'tool' must follow tool_calls"). Rather than make every
+    # strategy tool-aware, the builder enforces the invariant ONCE after arrange()
+    # (AP-8 single enforcement point) so current + future strategies are all safe.
+    # Alternative considered:
+    #   - Fix LostInMiddleStrategy in isolation — rejected: leaves the hard
+    #     constraint unguaranteed; a new strategy could reintroduce the orphan.
+    #   - Stop re-anchoring the user message for tool turns — rejected: user-after-
+    #     tool is valid (not a 400); the re-anchor is the deliberate lost-in-middle
+    #     design. Out of scope for an orphan-tool fix.
+    # Reference: 04-anti-patterns.md §AP-8 / §AP-10 (mock vs real divergence — the
+    #   MockChatClient never validated adjacency, so this was invisible until real
+    #   Azure; Sprint 57.79 Day-3).
+    @staticmethod
+    def _enforce_tool_adjacency(messages: list[Message]) -> list[Message]:
+        """Re-anchor every role='tool' message right after its owning assistant.
+
+        Builds a tool_call_id → emitting-assistant map, then rebuilds the list so
+        each tool message directly follows the assistant whose tool_calls carries
+        the matching id, preserving all other relative order. A tool message whose
+        tool_call_id resolves to no assistant in the list (defensive — does not
+        occur on the loop path, where the assistant is always emitted before its
+        tool) is left in place rather than dropped (never silently lose a message).
+        No-op (returns the same list) when no assistant carries tool_calls or no
+        tool message resolves to an owner — zero overhead for plain chat turns.
+
+        Strategies rearrange the same Message object references (no copy), so the
+        owner lookup by object identity is stable.
+        """
+        owner_by_id: dict[str, Message] = {}
+        for m in messages:
+            if m.role == "assistant" and m.tool_calls:
+                for tc in m.tool_calls:
+                    owner_by_id[tc.id] = m
+        if not owner_by_id:
+            return messages
+
+        held_tools: dict[int, list[Message]] = {}
+        held_ids: set[int] = set()
+        for m in messages:
+            if m.role == "tool" and m.tool_call_id is not None:
+                owner = owner_by_id.get(m.tool_call_id)
+                if owner is not None:
+                    held_tools.setdefault(id(owner), []).append(m)
+                    held_ids.add(id(m))
+        if not held_ids:
+            return messages
+
+        result: list[Message] = []
+        for m in messages:
+            if id(m) in held_ids:
+                continue  # re-emitted right after its owning assistant below
+            result.append(m)
+            if m.role == "assistant" and id(m) in held_tools:
+                result.extend(held_tools[id(m)])
+        return result
 
     # ------------------------------------------------------------------
     # Section builders

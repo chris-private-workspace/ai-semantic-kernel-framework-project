@@ -24,35 +24,35 @@
 ## Day 1 — Tool-call adjacency invariant (US-1/US-2)
 
 ### 1.1 `_enforce_tool_adjacency` static method
-- [ ] **add `_enforce_tool_adjacency(messages) -> list[Message]`** in `builder.py` (DefaultPromptBuilder)
+- [x] **add `_enforce_tool_adjacency(messages) -> list[Message]`** in `builder.py` (DefaultPromptBuilder)
   - build `owner_by_id` (ToolCall.id → emitting assistant); no-op return when no assistant carries tool_calls
   - bucket `role='tool'` msgs (resolved owner) under `id(owner)`, preserve order, mark held; unresolved-owner tool left in place (no silent drop)
   - rebuild: skip held tools; after each assistant emit its held tools → tool always directly after owning assistant
   - DoD: mypy clean ✅; docstring states the provider hard-constraint + orphan-left-in-place rationale
 
 ### 1.2 call site in build()
-- [ ] **insert `messages = self._enforce_tool_adjacency(messages)`** immediately after `messages = strategy.arrange(sections)` (`builder.py:269`)
-  - DoD: mypy clean; no other build() logic changed; MHist 1-line entry added to builder.py header
+- [x] **insert `messages = self._enforce_tool_adjacency(messages)`** immediately after `messages = strategy.arrange(sections)` (`builder.py:269`)
+  - DoD: mypy clean ✅; no other build() logic changed; MHist 1-line entry added to builder.py header
 
 ### 1.3 read changed code
-- [ ] **re-read** builder.py change — confirm no strategy / loop / adapter touched; LLM-neutral (only neutral `Message` contract used); identity-rebuild correct
+- [x] **re-read** builder.py change — confirm no strategy / loop / adapter touched; LLM-neutral (only neutral `Message` contract used); identity-rebuild correct
 
 ---
 
 ## Day 2 — Tests (US-3)
 
 ### 2.1 unit: `_enforce_tool_adjacency` + build()-through-LostInMiddle
-- [ ] **NEW `test_builder_tool_adjacency.py`** in `tests/unit/agent_harness/prompt_builder/`
+- [x] **NEW `test_builder_tool_adjacency.py`** in `tests/unit/agent_harness/prompt_builder/`
   - (a) tool already after assistant → unchanged; (b) tool before assistant (bug shape) → re-anchored after; (c) 2 assistants × 1 tool scrambled → each tool after own assistant; (d) orphan tool (no owner) → left in place; (e) no tool msgs → unchanged
-  - `build()` through default `LostInMiddleStrategy`: state.transient.messages = `[system, user, assistant(tool_calls), tool]` → assert `artifact.messages` tool immediately after assistant (the case that 400s pre-fix)
+  - `build()` through default `LostInMiddleStrategy`: state.transient.messages = `[system, user, assistant(tool_calls), tool]` → assert `artifact.messages` tool immediately after assistant (the case that 400s pre-fix). 6 pass.
 
 ### 2.2 integration: loop+builder 2-turn tool script (AP-10 closure)
-- [ ] **extend `test_loop_with_prompt_builder.py`** — 2-turn MockChatClient (turn1 tool_calls → turn2 END_TURN) + tool executor returning a result + registry exposing the tool + prompt_builder injected
+- [x] **extend `test_loop_with_prompt_builder.py`** — 2-turn MockChatClient (turn1 tool_calls → turn2 END_TURN) + tool executor returning a result + registry exposing the tool + prompt_builder injected
   - after run, assert `chat_client.last_request.messages` (turn-2 assembly) has every `role='tool'` immediately after its owning `assistant(tool_calls)`
-  - DoD: test FAILS on pre-fix builder (regression guard confirmed) → PASSES with fix
+  - DoD: ✅ regression guard CONFIRMED — temporarily disabled the `_enforce_tool_adjacency` call → build() test FAILED `assistant@4, tool@3` (exactly the real Azure `messages[3]` 400 shape) → restored → PASSES
 
 ### 2.3 regression gate
-- [ ] **targeted pytest** — `pytest tests/unit/agent_harness/prompt_builder/ tests/integration/agent_harness/prompt_builder/` green; confirm pre-existing builder/strategy tests unchanged (LostInMiddle strategy untouched → its own tests still pass)
+- [x] **targeted pytest** — `pytest tests/unit/agent_harness/prompt_builder/ tests/integration/agent_harness/prompt_builder/` 69 passed; pre-existing builder/strategy tests unchanged (LostInMiddle strategy untouched → its own tests still pass)
 
 ---
 

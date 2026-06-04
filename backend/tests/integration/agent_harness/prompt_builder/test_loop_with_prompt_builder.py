@@ -298,3 +298,60 @@ async def test_loop_without_prompt_builder_emits_no_memory_accessed() -> None:
 
     events = [ev async for ev in loop.run(session_id=uuid4(), user_input="hi")]
     assert not [ev for ev in events if isinstance(ev, MemoryAccessed)]
+
+
+# ===========================================================================
+# Sprint 57.80 (AD-Chat-RealLLM-Orphan-Tool-Message): a 2-turn tool-calling
+# script through loop + DefaultPromptBuilder must assemble a valid sequence —
+# every role='tool' message immediately after its owning assistant(tool_calls).
+# This exercises the FULL Cat1→Cat5 chain on a tool turn (the case that 400s on
+# real Azure before the builder's tool-adjacency invariant). AP-10 closure: the
+# MockChatClient does NOT validate adjacency, so the assertion is structural —
+# on chat_client.last_request.messages (the turn-2 assembly), not the mock.
+# ===========================================================================
+
+
+def _tool_call_response(call_id: str = "c1") -> ChatResponse:
+    return ChatResponse(
+        model="mock",
+        content="",
+        stop_reason=StopReason.TOOL_USE,
+        tool_calls=[ToolCall(id=call_id, name="echo_tool", arguments={"text": "hi"})],
+        usage=TokenUsage(prompt_tokens=10, completion_tokens=2, total_tokens=12),
+    )
+
+
+@pytest.mark.asyncio
+async def test_loop_builder_tool_turn_keeps_tool_after_assistant() -> None:
+    """real_llm-style path (prompt_builder injected) with a tool turn: the turn-2
+    assembly sent to chat() has the tool message directly after its assistant —
+    the orphan-tool 400 regression guard (fails on the pre-57.80 builder)."""
+    chat_client = MockChatClient(responses=[_tool_call_response("c1"), _final_response()])
+
+    retrieval = MemoryRetrieval(layers={})
+    retrieval.search = AsyncMock(return_value=[])  # type: ignore[method-assign]
+
+    loop = AgentLoopImpl(
+        chat_client=chat_client,
+        output_parser=OutputParserImpl(),
+        tool_executor=_NoopExecutor(),
+        tool_registry=_StubRegistry(),
+        prompt_builder=_make_builder(retrieval),
+    )
+
+    _ = [ev async for ev in loop.run(session_id=uuid4(), user_input="echo hi")]
+
+    # last_request = the final (turn-2) chat() call — the previously-400'ing assembly.
+    sent = chat_client.last_request
+    assert sent is not None
+    messages = sent.messages
+    a_idx = next(
+        i for i, m in enumerate(messages) if m.role == "assistant" and m.tool_calls
+    )
+    t_idx = next(
+        i for i, m in enumerate(messages) if m.role == "tool" and m.tool_call_id == "c1"
+    )
+    assert t_idx == a_idx + 1, (
+        "tool must immediately follow its assistant(tool_calls) in the assembled "
+        f"request; got assistant@{a_idx}, tool@{t_idx} in {[m.role for m in messages]}"
+    )
