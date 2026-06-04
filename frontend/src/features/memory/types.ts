@@ -24,6 +24,7 @@
  * Created: 2026-05-10 (Sprint 57.12 Day 2 / US-3)
  *
  * Modification History (newest-first):
+ *   - 2026-06-04: Sprint 57.77 — add MemoryOpItem / MemoryOpsResponse (GET /ops ops-history)
  *   - 2026-06-03: Sprint 57.73 Track C — add MemoryMatrixCell / MemoryMatrixResponse (GET /matrix aggregate)
  *   - 2026-05-10: Initial creation (Sprint 57.12 Day 2 / US-3)
  *
@@ -94,4 +95,34 @@ export interface MemoryMatrixResponse {
   cells: MemoryMatrixCell[];
   total: number;
   gapped_layers: MemoryLayer[];
+}
+
+/**
+ * Single memory_ops row from GET /api/v1/memory/ops (Sprint 57.76 backend).
+ * Mirrors backend MemoryOpItem (api/v1/memory.py:153-166) verbatim.
+ * - op: "WRITE" | "EVICT" (the only emitted operations; READ/EXPIRE not recorded).
+ * - scope: "user" | "tenant" (role/session layers are not recorded — see plan §9).
+ * - key/time_scale/value_snapshot/actor: null when the layer/op left them unset.
+ * - created_at_ms: Unix epoch ms (also the pagination cursor unit).
+ */
+export interface MemoryOpItem {
+  op: string;
+  scope: string;
+  key: string | null;
+  time_scale: string | null;
+  value_snapshot: string | null;
+  actor: string | null;
+  created_at_ms: number;
+}
+
+/**
+ * Cursor-paginated response for GET /api/v1/memory/ops.
+ * - ops: rows ordered created_at DESC (newest first).
+ * - next_cursor: created_at_ms of the last row when the page is full; null when
+ *   no more rows. Pass it back as `before` to fetch the next (older) page.
+ * Mirrors backend MemoryOpsResponse (api/v1/memory.py:169-171).
+ */
+export interface MemoryOpsResponse {
+  ops: MemoryOpItem[];
+  next_cursor: number | null;
 }

@@ -27,6 +27,7 @@
  * Created: 2026-05-10 (Sprint 57.12 Day 2 / US-3)
  *
  * Modification History (newest-first):
+ *   - 2026-06-04: Sprint 57.77 — add fetchOps (GET /ops cursor-paginated ops-history)
  *   - 2026-06-03: Sprint 57.73 Track C — add fetchMatrix (GET /matrix layer×time_scale count aggregate)
  *   - 2026-05-10: Initial creation (Sprint 57.12 Day 2 / US-3)
  *
@@ -42,6 +43,7 @@ import type {
   MemoryEntryPage,
   MemoryLayer,
   MemoryMatrixResponse,
+  MemoryOpsResponse,
   MemoryRecentFilter,
   MemoryTimeScale,
 } from "../types";
@@ -128,6 +130,26 @@ export const memoryService = {
       signal,
     });
     return _handleResponse<MemoryMatrixResponse>(response);
+  },
+
+  /**
+   * Cursor-paginated memory_ops history (WRITE/EVICT, user/tenant scope).
+   * `before` is a created_at_ms cursor (strict-older); omit it for the latest
+   * page. Uses its own URLSearchParams (NOT the offset-based _buildPageParams).
+   */
+  async fetchOps(limit = 50, before?: number, signal?: AbortSignal): Promise<MemoryOpsResponse> {
+    const params = new URLSearchParams();
+    params.set("limit", String(limit));
+    if (before !== undefined) {
+      params.set("before", String(before));
+    }
+    const url = `${API_BASE}/ops?${params.toString()}`;
+    const response = await fetchWithAuth(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      signal,
+    });
+    return _handleResponse<MemoryOpsResponse>(response);
   },
 };
 

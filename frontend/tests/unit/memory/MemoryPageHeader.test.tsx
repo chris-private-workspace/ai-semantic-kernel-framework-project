@@ -10,12 +10,13 @@
  *   - Entries count is REAL: from useMemoryMatrix() total (seeded via mocked
  *     memoryService.fetchMatrix + QueryClientProvider)
  *   - Loading → subtle "… entries" placeholder (never a fabricated number)
- *   - cursor < 0 renders conditional time-travel Badge + "Return to now" button
- *   - cursor === 0 hides Badge + shows "Time travel" button label
+ *   - cursor != null renders conditional time-travel Badge (HH:MM:SS) + "Return to now" button
+ *   - cursor === null hides Badge + shows "Time travel" button label
  *
  * Created: 2026-05-25 (Sprint 57.42 Day 2)
  *
  * Modification History (newest-first):
+ *   - 2026-06-04: Sprint 57.77 — cursor ms|null semantics (null=now / past-ms=time-travel HH:MM:SS Badge)
  *   - 2026-06-03: Sprint 57.73 Track C — entries count from real /matrix total; QueryClientProvider; drop entriesTotal prop
  *   - 2026-05-25: Initial creation (Sprint 57.42 Day 2)
  */
@@ -43,9 +44,9 @@ const SAMPLE: MemoryMatrixResponse = {
 };
 
 describe("MemoryPageHeader (Sprint 57.73 Track C)", () => {
-  it("renders title, sub-text, /memory route pill, REAL entries total, and 3 action buttons (cursor=0)", async () => {
+  it("renders title, sub-text, /memory route pill, REAL entries total, and 3 action buttons (cursor=null)", async () => {
     vi.spyOn(memoryService, "fetchMatrix").mockResolvedValueOnce(SAMPLE);
-    renderWithClient(<MemoryPageHeader cursor={0} onResetCursor={vi.fn()} />);
+    renderWithClient(<MemoryPageHeader cursor={null} onResetCursor={vi.fn()} />);
 
     expect(screen.getByText("Memory Layers")).toBeInTheDocument();
     expect(screen.getByText(/Dual-axis · 5 scope × 3 time scale/)).toBeInTheDocument();
@@ -53,7 +54,7 @@ describe("MemoryPageHeader (Sprint 57.73 Track C)", () => {
     // real total from /matrix (after fetch resolves)
     expect(await screen.findByText(/7 entries/)).toBeInTheDocument();
 
-    // cursor=0 → "Time travel" button label (no "Return to now")
+    // cursor=null → "Time travel" button label (no "Return to now")
     expect(screen.getByRole("button", { name: /time travel/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /return to now/i })).not.toBeInTheDocument();
     // AP-2 visual-only stub buttons
@@ -63,16 +64,18 @@ describe("MemoryPageHeader (Sprint 57.73 Track C)", () => {
 
   it("shows '… entries' placeholder while the matrix total is loading (no fabricated number)", () => {
     vi.spyOn(memoryService, "fetchMatrix").mockImplementation(() => new Promise(() => {}));
-    renderWithClient(<MemoryPageHeader cursor={0} onResetCursor={vi.fn()} />);
+    renderWithClient(<MemoryPageHeader cursor={null} onResetCursor={vi.fn()} />);
     expect(screen.getByText(/… entries/)).toBeInTheDocument();
   });
 
-  it("cursor<0 swaps button to 'Return to now' and renders time-travel Badge with absolute minutes", async () => {
+  it("cursor=<past ms> swaps button to 'Return to now' and renders a time-travel Badge with the cursor time", async () => {
     vi.spyOn(memoryService, "fetchMatrix").mockResolvedValueOnce(SAMPLE);
-    renderWithClient(<MemoryPageHeader cursor={-42} onResetCursor={vi.fn()} />);
+    renderWithClient(<MemoryPageHeader cursor={1_700_000_000_000} onResetCursor={vi.fn()} />);
 
     expect(screen.getByRole("button", { name: /return to now/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^time travel$/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/time-travel · 42m ago/i)).toBeInTheDocument();
+    // Badge text is "time-travel · HH:MM:SS"; the exact time is client-local, so
+    // assert the stable prefix only (timezone-independent).
+    expect(screen.getByText(/time-travel ·/i)).toBeInTheDocument();
   });
 });

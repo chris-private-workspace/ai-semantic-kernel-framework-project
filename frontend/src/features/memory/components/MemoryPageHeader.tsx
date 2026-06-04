@@ -8,12 +8,14 @@
  *   Verbatim port of `reference/design-mockups/page-governance.jsx:480-495`
  *   (`.page-head` section of MemoryPage). Title "Memory Layers" + sub
  *   "Dual-axis · 5 scope × 3 time scale" + `/memory` route pill + entries count
- *   + conditional time-travel info Badge when cursor<0 + 3 action buttons
+ *   + conditional time-travel info Badge when cursor != null + 3 action buttons
  *   (Time travel / Return to now toggle + Export AP-2 + New entry AP-2).
  *
  *   The Time-travel button toggles variant outline ↔ warning based on cursor;
- *   onClick resets cursor to 0 (returns to "now"). Export + New entry are
- *   visual-only AP-2 stubs.
+ *   onClick resets cursor to null (returns to "now"). The cursor is a ms
+ *   timestamp (Sprint 57.77; was a fixture minute-offset); the Badge shows the
+ *   scrubbed op time HH:MM:SS, matching the TimeTravelScrubber cursor display.
+ *   Export + New entry are visual-only AP-2 stubs.
  *
  *   Entries count is REAL (Sprint 57.73 Track C): consumes useMemoryMatrix()
  *   → matrix `total`. React Query dedups the shared key so this issues no extra
@@ -24,9 +26,10 @@
  *   - MemoryPageHeader: query-consuming functional, props { cursor, onResetCursor }
  *
  * Created: 2026-05-25 (Sprint 57.42 Day 1)
- * Last Modified: 2026-06-03
+ * Last Modified: 2026-06-04
  *
  * Modification History (newest-first):
+ *   - 2026-06-04: Sprint 57.77 — cursor ms|null (was minute-offset); time-travel Badge shows HH:MM:SS
  *   - 2026-06-03: Sprint 57.73 Track C — entries count from useMemoryMatrix total (drop TOTAL_ENTRIES fixture)
  *   - 2026-05-25: Initial creation (Sprint 57.42 Day 1) — memory matrix full mockup-fidelity rebuild
  *
@@ -41,13 +44,22 @@ import { Badge, Button } from "../../../components/mockup-ui";
 import { useMemoryMatrix } from "../hooks/useMemoryMatrix";
 
 export interface MemoryPageHeaderProps {
-  cursor: number;
+  /** Time-travel cursor (ms). null = at latest/now; non-null = scrubbed to a past op time. */
+  cursor: number | null;
   onResetCursor: () => void;
+}
+
+/** created_at_ms → HH:MM:SS (client-local; matches the TimeTravelScrubber cursor display). */
+function formatMs(ms: number): string {
+  const d = new Date(ms);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
 export function MemoryPageHeader({ cursor, onResetCursor }: MemoryPageHeaderProps): JSX.Element {
   const { data } = useMemoryMatrix();
   const entriesLabel = data ? `${data.total.toLocaleString()} entries` : "… entries";
+  const isTimeTravel = cursor != null;
   const onExport = () => {
     window.alert("Export: backend gap (Phase 58+) — memory export endpoint pending");
   };
@@ -62,21 +74,21 @@ export function MemoryPageHeader({ cursor, onResetCursor }: MemoryPageHeaderProp
           Dual-axis · 5 scope × 3 time scale
           <span className="route-pill">/memory</span>
           <span className="mono subtle">· {entriesLabel}</span>
-          {cursor < 0 && (
+          {isTimeTravel && (
             <Badge tone="info" dot>
-              time-travel · {Math.abs(cursor)}m ago
+              time-travel · {formatMs(cursor)}
             </Badge>
           )}
         </div>
       </div>
       <div className="page-actions">
         <Button
-          variant={cursor < 0 ? "warning" : "outline"}
+          variant={isTimeTravel ? "warning" : "outline"}
           size="sm"
           icon="clock"
           onClick={onResetCursor}
         >
-          {cursor < 0 ? "Return to now" : "Time travel"}
+          {isTimeTravel ? "Return to now" : "Time travel"}
         </Button>
         <Button variant="outline" size="sm" icon="download" onClick={onExport}>
           Export
