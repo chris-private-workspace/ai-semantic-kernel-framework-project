@@ -32,3 +32,37 @@ All confirmed: `hooks/useMemoryMatrix.ts`, `services/memoryService.ts` (fetchMat
 ### go/no-go = **GO** (Day 1 data layer). All touch-points are net-new wiring; components already mockup-ported; no >20% scope drift.
 
 ---
+
+## Day 1-3 — Frontend wire (Track A, agent-delegated code-implementer) + parent header migration
+
+Single frontend track (backend live since 57.76). Agent wall-clock ~8.5 min; parent Day-0 2-researcher research + header migration + full re-verify.
+
+### Implemented (agent — Track A)
+- **API types** (`types.ts` +31): `MemoryOpItem` + `MemoryOpsResponse` mirror wire verbatim (op/scope/key/time_scale/value_snapshot/actor/created_at_ms; ops[]+next_cursor).
+- **fetchOps** (`memoryService.ts` +22): own `URLSearchParams` (`limit` always; `before` only when provided — NOT offset-based `_buildPageParams`); `GET /ops`; `_handleResponse<MemoryOpsResponse>`.
+- **useMemoryOps** (`hooks/useMemoryOps.ts` NEW): mirrors `useMemoryMatrix` verbatim (`MEMORY_OPS_QUERY_KEY=["memory","ops"]`, queryFn `fetchOps(50, undefined, signal)`, staleTime 30_000).
+- **RecentMemoryOpsCard** (+wire): `useMemoryOps()` + `cursor?` prop filters `created_at_ms ≤ cursor`; 6-col render (op→Badge / scope / key→`—` / value_snapshot→ellipsis 240 / actor→`—` / created_at_ms→`formatMs` HH:MM:SS); loading/error/empty mockup-native rows; drop `RECENT_MEMORY_OPS` + AP-2 banner.
+- **TimeTravelScrubber** (+wire): marks from real `created_at_ms` domain `[minMs,maxMs]`; `hasDomain` guard (ops≥2 && maxMs>minMs) → empty hint + disabled slider; scrub maps position→ms→`onCursor(ms)`; WRITE→`var(--memory)` / EVICT→`var(--warning)` marks; drop fixtures + banner.
+- **MemoryView** (+wire): `cursor: number|null` (ms); playback `setInterval` advances cursor over `[minMs,maxMs]` (pause+reset null at end; 0/1 op → no-op); pass cursor → RecentOps.
+- **_fixtures.ts DELETED**: all 3 ops fixtures + 3 orphan types + `MemoryScopeId` had 0 external importers → empty module removed (not left orphan; Karpathy §3).
+- **Tests**: NEW `useMemoryOps.test.tsx` + `memory-ops.spec.ts` (e2e); rewrote 4 existing `tests/unit/memory/*` (memoryService/RecentOps/TimeTravel/MemoryView) for real-data behavior + extended memoryService with fetchOps cases.
+
+### Drift findings (parent review, Before-Commit item 7)
+- **D-DAY1-1 (MemoryPageHeader cursor minute-offset — incomplete-wire)**: agent passed hardcoded `<MemoryPageHeader cursor={0}>` to avoid touching the out-of-scope 57.73 header, leaving its time-travel Badge/button permanently inert + a dead `cursor < 0` branch; scrub did not reflect in the header. **User-approved scope expansion (AskUserQuestion ×2nd)** → parent migrated `MemoryPageHeader` cursor `minute-offset → ms|null` (`isTimeTravel = cursor != null`; Badge shows `formatMs(cursor)` HH:MM:SS; eliminated dead branch) + `MemoryView` computes `headerCursor` (active only when scrubbed strictly before latest) + updated `MemoryPageHeader.test` (cursor=null/past-ms semantics, timezone-safe Badge prefix assert) + `MemoryView.test` comment.
+- **D-DAY1-2 (test location)**: plan §3.7/§4 assumed colocated `src/**/*.test.tsx` NEW; reality = Vitest `include` is `tests/unit/**` only, and 4 memory component tests already existed (57.73). Agent rewrote them in place (edit, not delete) + placed new ones under `tests/unit/memory/` + `tests/e2e/memory/`. No coverage lost.
+- **D-DAY1-3 (scope doc)**: backend `MemoryOpItem.scope` docstring says user/tenant/role; only user/tenant actually emit (57.76). FE types `scope: string` — non-issue.
+
+### Parent re-verify (Before-Commit item 7) — all gates green (parent-run)
+- `npm run build` tsc 0; `npm run lint` exit 0 (3 pre-existing jsx-ast-utils TSSatisfies info, not errors); `npm run test` **750 passed / 132 files** (the "kaboom" line is AuthShell error-boundary's intentional throw, not a failure); `npm run check:mockup-fidelity` **byte-identical + baseline 50 unchanged** (pure data-wiring, 0 color literals); `npx playwright test memory-ops` **3 passed** (happy / scrub-filter / 403-error; ECONNREFUSED = telemetry proxy to absent backend, harmless).
+- Read ALL agent-changed code + own header migration: cursor filter real (not Potemkin — e2e `slider.fill("0")` proves newer op hidden); `hasDomain` guards div-by-zero; banners + fixtures removed; mockup classes verbatim (CSS var, no hex/oklch/shadcn); English state copy; tests non-vacuous (TimeTravel asserts `onCursor((MIN+MAX)/2)` midpoint; memoryService asserts `before` only-when-provided).
+
+---
+
+## Day 4 — Closeout
+
+- CHANGE-045; retrospective.md Q1-Q7; checklist all `[x]` (push+PR left unchecked, user-gated); MEMORY subfile + pointer; CLAUDE.md lean; next-phase-candidates.md (AD-Memory-OpsHistory-Backend **fully closed** — backend 57.76 + frontend 57.77).
+- **No design note** (feature-continuation: data-wiring of the shipped GET /memory/ops into mockup-ported components; no new contract / no 17.md change).
+- Calibration: `medium-frontend` 0.65 + `agent_factor` `mechanical-greenfield-design-decisions` 0.65 — CAVEATED (15th consecutive agent-delegated no-clean-wall-clock; the parent header-migration + 2-researcher Day-0 + full re-verify dominate wall-clock).
+- AD status: `AD-Memory-OpsHistory-Backend` **fully closed**. Remaining Area-A: FE `/subagents` real list (`AD-Subagent-RealList-Phase58`) — the last item.
+
+---

@@ -101,21 +101,25 @@ export interface MemoryOpsResponse {
 
 ## 4. File Change List
 
-**NEW (4)**
+> **As-shipped** (reconciled at closeout; see §8 D-DAY1-2 test-location drift): tests live under `frontend/tests/unit/memory/` + `frontend/tests/e2e/memory/` (Vitest `include` = `tests/unit/**`), NOT colocated `src/`; the 4 memory component tests already existed (57.73) and were rewritten in place. MemoryPageHeader migration added per §8 D-DAY1-1 (user-approved).
+
+**NEW (3)**
 - `frontend/src/features/memory/hooks/useMemoryOps.ts`
-- `frontend/src/features/memory/hooks/useMemoryOps.test.tsx`
-- `frontend/src/features/memory/components/RecentMemoryOpsCard.test.tsx`
-- `frontend/src/features/memory/components/TimeTravelScrubber.test.tsx`
+- `frontend/tests/unit/memory/useMemoryOps.test.tsx`
 - `frontend/tests/e2e/memory/memory-ops.spec.ts`
 
-**EDIT (6)**
+**EDIT (10)**
 - `frontend/src/features/memory/services/memoryService.ts` (+fetchOps)
-- `frontend/src/features/memory/services/memoryService.test.ts` (+fetchOps tests)
 - `frontend/src/features/memory/types.ts` (+MemoryOpItem/MemoryOpsResponse)
 - `frontend/src/features/memory/components/RecentMemoryOpsCard.tsx` (wire + cursor filter, remove banner)
 - `frontend/src/features/memory/components/TimeTravelScrubber.tsx` (marks from ops, remove banner)
-- `frontend/src/features/memory/components/MemoryView.tsx` (cursor init + playback over real op times)
-- `frontend/src/features/memory/_fixtures.ts` (remove 3 ops fixtures + orphan types)
+- `frontend/src/features/memory/components/MemoryView.tsx` (cursor ms init + playback + headerCursor)
+- `frontend/src/features/memory/components/MemoryPageHeader.tsx` (cursor minute-offset → ms|null migration; §8 D-DAY1-1)
+- `frontend/tests/unit/memory/memoryService.test.ts` (+fetchOps cases)
+- `frontend/tests/unit/memory/{RecentMemoryOpsCard,TimeTravelScrubber,MemoryView,MemoryPageHeader}.test.tsx` (rewrite for real-data + header migration)
+
+**DELETE (1)**
+- `frontend/src/features/memory/_fixtures.ts` (3 ops fixtures + 3 orphan types + MemoryScopeId; grep-confirmed 0 importers)
 
 **NO backend / wire-schema / migration change.**
 
@@ -160,6 +164,10 @@ Bottom-up est ~12 hr → class-calibrated commit ~7.8 hr (mult 0.65) → agent-a
 - **Risk: `created_at_ms` formatting / timezone** — render `HH:MM:SS` from ms; client-local is acceptable for an activity timeline (matches mockup's relative "When"). Document in component.
 - **Risk Class C (test isolation)** — Vitest component tests mock the hook/fetch (no real PG); e2e mocks the route. No module-singleton concern.
 - **Dependency**: backend `GET /memory/ops` live (57.76); `require_audit_role` means non-auditor → 403 (e2e covers the error render).
+
+**Closeout drift findings (parent review, Before-Commit item 7)**:
+- **D-DAY1-1 (MemoryPageHeader cursor — incomplete-wire, user-approved scope expansion)**: agent passed hardcoded `cursor={0}` to the out-of-scope 57.73 header → its time-travel Badge/button inert + a dead `cursor < 0` branch. Per user AskUserQuestion (2nd), migrated header cursor minute-offset → ms|null (`isTimeTravel = cursor != null`; Badge HH:MM:SS; dead branch removed); MemoryView computes `headerCursor` (active only when scrubbed strictly before latest). Added to §4 EDIT.
+- **D-DAY1-2 (test-location)**: plan §3.7/§4 assumed colocated `src/**/*.test.tsx` NEW; Vitest `include` is `tests/unit/**` only + 4 memory component tests already existed (57.73). Rewritten in place (no coverage lost). §4 reconciled.
 
 ---
 
