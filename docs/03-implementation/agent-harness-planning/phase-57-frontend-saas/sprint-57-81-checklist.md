@@ -64,28 +64,28 @@
 ## Day 3 — Startup-log integration check (US-3) — local, no Azure
 
 ### 3.1 clean start + startup log (Risk Class E)
-- [ ] **clean start backend** — :8000 free; fresh no-reload uvicorn
-- [ ] **confirm startup log** `error budget store wired` (mirrors `pricing loader wired` / `rate-limit counter wired`) — proves wiring fires; no real LLM call needed
-- [ ] **record** startup-log evidence in progress.md Day 3 (note: no real-Azure leg — budget increments on errors only; fakeredis accumulation test is the proof)
+- [x] **clean start backend** — :8000 free; fresh no-reload uvicorn
+- [x] **confirm startup log** `api.main: error budget store wired` ✅ (alongside rate-limit + pricing wiring; no fail-open warning) — wiring fires; no real LLM call needed
+- [x] **record** startup-log evidence in progress.md Day 3 (no real-Azure leg — budget increments on errors only; fakeredis accumulation test is the proof)
 
 ---
 
 ## Day 4 — Sweep + Closeout
 
 ### 4.1 Full sweep
-- [ ] **Backend gates** — `mypy src/` 0 + `pytest` (new + regression) + `python scripts/lint/run_all.py` 10/10 (check_cross_category_import green for new platform→agent_harness import; check_llm_sdk_leak green; check_rls_policies unchanged — no schema)
-- [ ] **No frontend** — 0 frontend changes (backend-only sprint)
-- [ ] **Read all changed code** — wiring only; no loop.py/budget.py/store logic change; pure Redis (no over-wiring)
+- [x] **Backend gates** — black/isort/flake8 src/ tests/ 0 + `mypy src/` 0 (332) + `pytest` 2137 passed / 4 skipped (+7) + `python scripts/lint/run_all.py` 10/10 (check_cross_category_import + check_llm_sdk_leak green; check_rls_policies unchanged — no schema)
+- [x] **No frontend** — 0 frontend changes (backend-only sprint)
+- [x] **Read all changed code** — wiring only; no loop.py/budget.py/store logic change; pure Redis (no over-wiring)
 
 ### 4.2 Closeout docs
-- [ ] **CHANGE-048** in `claudedocs/4-changes/feature-changes/` (feature: wire RedisBudgetStore into main flow)
-- [ ] **progress.md** Day 0-4 (incl. Day 3 startup-log evidence) + **retrospective.md** Q1-Q7
-- [ ] **Checklist** all `[x]` (note any 🚧 carryover with reason)
-- [ ] **Calibration** record (medium-backend 0.80; agent_factor 1.0 parent-direct; ratio)
-- [ ] **AD status**: B-7 / `AD-ErrorBudget-Redis-Wiring` CLOSED; next-phase-candidates.md updated (B-8 / C-15 remain)
-- [ ] **MEMORY subfile + pointer** + **CLAUDE.md lean** (Current Sprint + Last Updated)
-- [ ] **Design note?** — NO (wiring of existing Cat 8 component; no new contract / no 17.md change)
+- [x] **CHANGE-048** in `claudedocs/4-changes/feature-changes/` (feature: wire RedisBudgetStore into main flow)
+- [x] **progress.md** Day 0-4 (incl. Day 3 startup-log evidence) + **retrospective.md** Q1-Q7
+- [x] **Checklist** all `[x]` (no 🚧 carryover)
+- [x] **Calibration** record (medium-backend 0.80; agent_factor 1.0 parent-direct; ratio ~0.88 in retro Q2)
+- [x] **AD status**: B-7 / `AD-ErrorBudget-Redis-Wiring` CLOSED; next-phase-candidates.md updated (B-8 / C-15 remain)
+- [x] **MEMORY subfile + pointer** + **CLAUDE.md lean** (Current Sprint + Last Updated)
+- [x] **Design note?** — NO (wiring of existing Cat 8 component; no new contract / no 17.md change)
 
 ### 4.3 Ship
-- [ ] **Commit mapping** Day-0 / provider+wiring+factory / tests / closeout
+- [x] **Commit mapping** Day-0 (`8d4c488f`) / provider+wiring+factory+tests (`c1bfb6b2`) / closeout (pending)
 - [ ] **Push + PR** (user-gated — explicit authorization required)

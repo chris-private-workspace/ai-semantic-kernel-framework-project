@@ -47,3 +47,47 @@
 
 ### Notes
 - Bottom-up est ~4.3 hr → calibrated ~3.4 hr (medium-backend 0.80, parent-direct).
+
+---
+
+## Day 1-2 — 2026-06-05 — Provider + wiring + factory + tests
+
+### Accomplishments
+- **Provider (US-2/US-3)**: NEW `platform_layer/governance/error_budget_provider.py` — `_budget_store` module-global + `get_/maybe_get_/set_/reset_budget_store` (mirror `rate_limit_counter.py`); `BudgetStore` via TYPE_CHECKING.
+- **Export (US-2)**: `error_handling/__init__.py` exports `RedisBudgetStore` (was private; redis import stays TYPE_CHECKING-lazy).
+- **Wiring (US-2/US-3)**: `api/main.py` `_wire_error_budget()` (fail-open, mirror `_wire_rate_limit_counter`) + call in `_lifespan`. Pure Redis (no session_factory / RLS).
+- **Factory swap (US-1)**: `_category_factories.py:257` → `TenantErrorBudget(maybe_get_budget_store() or InMemoryBudgetStore())` + import + deferred-comment update (AP-2 repaid). MHist on main.py + factory headers.
+- **Tests (US-4)**: NEW `test_error_budget_provider.py` (7) — 4 accessor + accumulation (2 factory calls over wired FakeRedis store → `store.get(_day_key)==2`) + binds-wired-store + InMemory fallback.
+
+### Verification
+- `pytest test_error_budget_provider.py` → 7 passed; regression (governance + error_handling + chat factory/wiring) → 184 passed.
+- black/isort/flake8 on 4 changed src files + test → clean; `mypy src/` → 0 (332, +1 new provider). (57.80 lesson applied: full format chain, not just mypy/pytest.)
+
+### Commit
+- `c1bfb6b2` feat(error_handling, sprint-57-81): wire RedisBudgetStore (B-7).
+
+---
+
+## Day 3 — 2026-06-05 — Startup-log integration check (local, no Azure)
+
+### Accomplishments
+- Clean start backend (:8000 free; fresh no-reload uvicorn). Startup log confirmed all 3 wiring lines + complete:
+  - `api.main: rate-limit counter wired`
+  - `api.main: pricing loader wired (...llm_pricing.yml)`
+  - **`api.main: error budget store wired`** ✅ (NEW — `_wire_error_budget()` fires, no fail-open warning)
+  - `api.main: startup complete`
+- ⇒ Risk Class E style verification: the wiring runs at startup. `Redis.from_url` is lazy (no connection needed for the log to confirm the store was installed).
+- **No real-Azure leg** (per plan §3.6): the budget increments on tool ERRORS only — a real happy-path chat wouldn't exercise it. The fakeredis accumulation test (Day 2) is the deterministic proof of the per-request-reset fix.
+- Cleanup: backend stopped; :8000 free; temp log removed.
+
+---
+
+## Day 4 — 2026-06-05 — Full sweep + closeout
+
+### Accomplishments
+- **Full sweep**: black/isort/flake8 src/ tests/ 0 + `mypy src/` 0 (332) + `pytest` 2137 passed / 4 skipped (+7 vs 2130) + `run_all.py` 10/10 (check_cross_category_import + check_llm_sdk_leak green; check_rls_policies unchanged — no schema). Backend-only (0 frontend).
+- **Closeout**: CHANGE-048 + retrospective.md (Q1-Q7) + MEMORY subfile/pointer + CLAUDE.md lean + next-phase-candidates.md (B-7 CLOSED; B-8/C-15 remain).
+- No design note (wiring of existing Cat 8 component).
+
+### Status
+B-7 / `AD-ErrorBudget-Redis-Wiring` CLOSED. Per-tenant error budget now accumulates (shared Redis store; fail-open to InMemory). Awaiting push + PR (user-gated).
