@@ -36,13 +36,24 @@
 
 ---
 
+## 🆕 Sprint 57.81 Carryover (2026-06-05 — B-7 ErrorBudget Redis wiring; closes B-7 / AD-ErrorBudget-Redis-Wiring)
+
+**Closed**: B-7 / `AD-ErrorBudget-Redis-Wiring` — wiring gap (not missing logic): `RedisBudgetStore` built + fakeredis-tested Sprint 53.2 but never wired (AP-2); `make_chat_error_deps()` hardcoded a fresh `InMemoryBudgetStore()` per request → counters reset every request → budget non-functional even single-instance. Fix Tier 1 (parent-direct, agent_harness DI-pure): NEW `platform_layer/governance/error_budget_provider.py` singleton (mirror rate_limit_counter) + `_wire_error_budget()` startup (fail-open) + export RedisBudgetStore + factory swap `maybe_get_budget_store() or InMemoryBudgetStore()`. Shared store fixes per-request reset AND cross-instance; pure Redis (no DB/RLS). Verified: fakeredis accumulation (2 factory calls → count=2) + startup-log `error budget store wired`; NO real-Azure (budget increments on errors only). backend-only Cat 8; no design note. Detail: `memory/project_phase57_81_errorbudget_redis_wiring.md` + retrospective. CHANGE-048.
+
+### NEW carryovers (this sprint)
+- **error_budgets.yaml per-tenant overrides** — `budget.py` docstring mentions YAML-tunable caps; the factory uses defaults (1000/day, 20000/month). Loading per-tenant overrides is a separate feature (not wiring). Candidate.
+- **Day-0 export check (rule candidate)** — when wiring an already-built component, add a one-line Day-0 check that it's EXPORTED on the public import path (D1 this sprint: RedisBudgetStore was not exported; 30-sec find vs a Day-1 import error). Fold into `sprint-workflow.md §Step 2.5` if it recurs.
+- No blocking carryover. Remaining bundle: **B-8** (Verification default-enable) / **C-15** (DevOps/data-platform billing).
+
+---
+
 ## 🆕 Sprint 57.80 Carryover (2026-06-04 — chat real_llm orphan-tool-message fix; closes AD-Chat-RealLLM-Orphan-Tool-Message)
 
 **Closed**: `AD-Chat-RealLLM-Orphan-Tool-Message` (the 57.79 carryover) — real_llm `POST /chat` 400'd on every tool turn. Builder-level tool-call adjacency invariant (`_enforce_tool_adjacency` after `strategy.arrange()`, fix B, protects all strategies / LostInMiddle untouched) + pending-tool-turn user re-anchor suppression (fix C, in-sprint extension per the real-LLM finding — B-only gave 200 but `stop_reason=max_turns`; C → `end_turn`). Real Azure (gpt-5.2) verified converged + cost_ledger written. AP-10 (MockChatClient never validated adjacency → invisible until real Azure). backend-only Cat 5; no design note. Detail: `memory/project_phase57_80_orphan_tool_adjacency.md` + retrospective. FIX-027.
 
 ### NEW carryovers (this sprint)
 - **Candidate rule fold-in (not yet codified)** — Cat 5 / message-assembly tests must assert the provider structural invariant (tool-call adjacency / ordering) directly, not rely on the mock to reject; and a real-LLM DoD for agent-loop prompt changes should check `stop_reason=end_turn` (convergence), not just no-400 / loop_end present. (Single-data-point; fold into `sprint-workflow.md` if a 2nd sprint hits the same gap.)
-- No blocking carryover. Unrelated bundle remains: **B-7** (ErrorBudget Redis wiring) / **B-8** (Verification default-enable) / **C-15** (DevOps/data-platform billing).
+- No blocking carryover. Unrelated bundle remains: ~~**B-7** (ErrorBudget Redis wiring)~~ ✅ CLOSED Sprint 57.81 / **B-8** (Verification default-enable) / **C-15** (DevOps/data-platform billing).
 
 ---
 
@@ -54,8 +65,8 @@
 - **`AD-Chat-RealLLM-Orphan-Tool-Message`** — ✅ **CLOSED Sprint 57.80 (FIX-027)**. Root cause = `LostInMiddleStrategy.arrange()` moved recent assistant to the tail while the tool result stayed in mid_history → tool preceded its assistant. Fixed builder-level (`_enforce_tool_adjacency` after `strategy.arrange()`, fix B) + pending-tool-turn user re-anchor suppression (fix C, for convergence). Real Azure verified: 200 + `stop_reason=end_turn`. Detail: `memory/project_phase57_80_orphan_tool_adjacency.md`. ~~chat router real_llm e2e blocked by a pre-existing, UNRELATED message-structure 400; needs separate investigation into the real_llm prompt assembly.~~
 - **Deployment requirement: `AZURE_OPENAI_MODEL_NAME`** — prod/other envs using a gpt-5.x deployment MUST set this to the real generation (e.g. `gpt-5.2`). Config default is `gpt-4o` (stale); if unaligned, Gap 2 mis-branches to `max_tokens` → 400 on gpt-5.x. (Gap 1 unaffected — uses response.model.) Deployment/ops note, not a code item.
 
-### Still-open billing bundle (Sprint 57.80+ candidates)
-- B-7 ErrorBudget Redis wiring / B-8 Verification default-enable / C-15 DevOps-data-platform billing — the billing-correctness bundle's remaining legs.
+### Still-open billing bundle (Sprint 57.82+ candidates)
+- ~~B-7 ErrorBudget Redis wiring~~ ✅ CLOSED Sprint 57.81 / B-8 Verification default-enable / C-15 DevOps-data-platform billing — the billing-correctness bundle's remaining legs.
 - Auto-sync pricing from provider API (`llm_pricing.yml:3` future idea) — stays manual yaml.
 
 ---

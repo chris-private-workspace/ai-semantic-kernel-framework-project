@@ -70,7 +70,7 @@ Build enterprise AI agent teams that work like **human professional teams** — 
 | Attribute | Value |
 |-----------|-------|
 | **Phase** | V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend ongoing (Phase 57+) |
-| **Current Sprint** | Sprint 57.80 (PR pending) — **chat real_llm orphan-tool-message fix** (closes `AD-Chat-RealLLM-Orphan-Tool-Message`, the 57.79 carryover): builder-level tool-call adjacency invariant (`_enforce_tool_adjacency` after `strategy.arrange()`, fix B) + pending-tool-turn user re-anchor suppression (in-sprint fix C). `LostInMiddleStrategy` orphaned tool results → real_llm 400; fix unblocks the real_llm main flow. Real Azure verified: 200 + `stop_reason=end_turn` (was max_turns) + cost_ledger written. backend mypy 0/331 + pytest 2130 + run_all 10/10; backend-only Cat 5, no design note. Detail: `memory/project_phase57_80_orphan_tool_adjacency.md`. Next: `claudedocs/1-planning/next-phase-candidates.md`. |
+| **Current Sprint** | Sprint 57.81 (PR pending) — **B-7 ErrorBudget Redis wiring** (closes B-7 / `AD-ErrorBudget-Redis-Wiring`): wire the already-built `RedisBudgetStore` (Sprint 53.2, never wired — AP-2) via NEW `platform_layer/governance/error_budget_provider` singleton + `_wire_error_budget()` startup (fail-open) + chat factory swap. Fixes the per-request `InMemoryBudgetStore` reset (budget was non-functional) + cross-instance correctness; pure Redis, agent_harness stays DI-pure. Verified: fakeredis accumulation + startup-log `error budget store wired` (no real-Azure — budget increments on errors only). backend mypy 0/332 + pytest 2137 + run_all 10/10; backend-only Cat 8, no design note. Detail: `memory/project_phase57_81_errorbudget_redis_wiring.md`. Next: `claudedocs/1-planning/next-phase-candidates.md`. |
 | **Sprint History** | See [`memory/MEMORY.md`](memory/MEMORY.md) §Recent Sprints + per-sprint subfile `memory/project_phase57_XX_*.md` + retrospective.md under `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-XX/` |
 | **Pending / Next Phase** | See [`claudedocs/1-planning/next-phase-candidates.md`](claudedocs/1-planning/next-phase-candidates.md) |
 | **Roadmap** | Phase 49-55 V2 ✅ / Phase 56-58 SaaS Stage 1 3/3 ✅ / Phase 57+ Frontend ongoing |
@@ -586,7 +586,7 @@ V1 完整 CLAUDE.md 已保留於 `CLAUDE.backup.md`。如需查閱 V1 架構（M
 
 ---
 
-**Last Updated**: 2026-06-04 (Sprint 57.80 — chat real_llm orphan-tool-message fix: builder-level tool-call adjacency invariant + pending-tool-turn user re-anchor suppression, closes AD-Chat-RealLLM-Orphan-Tool-Message; real Azure verified 200 + stop_reason=end_turn; backend-only Cat 5 mypy 0/331 + pytest 2130 + run_all 10/10; FIX-027; PR pending); see `memory/` for sprint history
+**Last Updated**: 2026-06-05 (Sprint 57.81 — B-7 ErrorBudget Redis wiring: wire the already-built RedisBudgetStore via platform_layer/governance singleton + _wire_error_budget() startup + chat factory swap, closes B-7/AD-ErrorBudget-Redis-Wiring; fixes per-request budget reset + cross-instance; verified fakeredis accumulation + startup-log; backend-only Cat 8 mypy 0/332 + pytest 2137 + run_all 10/10; CHANGE-048; PR pending); see `memory/` for sprint history
 **Project Start**: 2025-11-14
 **V2 Authority**: `docs/03-implementation/agent-harness-planning/` (21 docs — 20 規劃 + 1 review)
 **V1 Reference**: `CLAUDE.backup.md` + `docs/07-analysis/V9/00-index.md`

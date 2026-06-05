@@ -6,6 +6,7 @@ from agent_harness.error_handling._abc import (
     ErrorPolicy,
     ErrorTerminator,
 )
+from agent_harness.error_handling._redis_store import RedisBudgetStore
 from agent_harness.error_handling.budget import (
     BudgetStore,
     InMemoryBudgetStore,
@@ -42,6 +43,7 @@ __all__ = [
     "compute_backoff",
     "BudgetStore",
     "InMemoryBudgetStore",
+    "RedisBudgetStore",
     "TenantErrorBudget",
     "DefaultErrorTerminator",
     "TerminationDecision",

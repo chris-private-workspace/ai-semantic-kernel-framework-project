@@ -26,9 +26,10 @@ Key Components:
     - make_chat_state_deps(db, session_id, tenant_id) -> (Reducer|None, Checkpointer|None)  (Cat 7)
 
 Created: 2026-05-31 (Sprint 57.63 Day 1)
-Last Modified: 2026-06-01
+Last Modified: 2026-06-05
 
 Modification History (newest-first):
+    - 2026-06-05: Sprint 57.81 — error budget store via maybe_get_budget_store (B-7 wiring)
     - 2026-06-01: Sprint 57.65 — make_chat_prompt_builder accepts real MemoryRetrieval (A-1 Tier2)
     - 2026-06-01: Sprint 57.64 Day 2 — add Cat 3 memory deps + Cat 11 subagent dispatcher factories
     - 2026-06-01: Add make_chat_prompt_builder (Sprint 57.64 Day 1) — Cat 5 keystone factory
@@ -74,6 +75,7 @@ from agent_harness.subagent import DefaultSubagentDispatcher
 from agent_harness.verification import VerifierRegistry
 from agent_harness.verification.llm_judge import LLMJudgeVerifier
 from infrastructure.db.engine import get_session_factory
+from platform_layer.governance.error_budget_provider import maybe_get_budget_store
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -245,16 +247,20 @@ def make_chat_error_deps() -> tuple[
     `_handle_tool_error` (loop.py:265, called at 1157/1225) runs classify → record
     budget → check terminator when these are injected. Defaults match plan §3.3.
 
-    Budget store: InMemoryBudgetStore (per-process; chosen for this sprint).
-    RedisBudgetStore (cross-instance) is deferred — no shared error-budget Redis
-    client is wired yet. tenant_id is passed per-call inside the loop, NOT at
-    construction (see TenantErrorBudget.record/...). The terminator composes the
-    circuit breaker + error budget so all three share one set of counters.
+    Budget store: the process-wide store wired at startup (RedisBudgetStore from
+    settings.redis_url, _wire_error_budget) via maybe_get_budget_store(); falls
+    back to InMemoryBudgetStore when no shared store is wired (dev / test / Redis
+    down). Sprint 57.81 (B-7) closed the prior AP-2 gap where this hardcoded a
+    fresh InMemoryBudgetStore per request — counters reset every request. The
+    TenantErrorBudget wrapper is stateless, so a per-request wrapper over the
+    SHARED store accumulates correctly. tenant_id is passed per-call inside the
+    loop, NOT at construction. The terminator composes the circuit breaker + error
+    budget so all three share one set of counters.
     """
     error_policy: ErrorPolicy = DefaultErrorPolicy()
     retry_policy = RetryPolicyMatrix()
     circuit_breaker = DefaultCircuitBreaker()
-    error_budget = TenantErrorBudget(InMemoryBudgetStore())
+    error_budget = TenantErrorBudget(maybe_get_budget_store() or InMemoryBudgetStore())
     error_terminator = DefaultErrorTerminator(
         circuit_breaker=circuit_breaker,
         error_budget=error_budget,

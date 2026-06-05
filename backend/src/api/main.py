@@ -24,9 +24,10 @@ Description:
     - Static / CORS config (depends on frontend deploy decision; Phase 55)
 
 Created: 2026-04-29 (Sprint 49.4 Day 5)
-Last Modified: 2026-05-31
+Last Modified: 2026-06-05
 
 Modification History (newest-first):
+    - 2026-06-05: Sprint 57.81 — _wire_error_budget() at startup (B-7 RedisBudgetStore wiring)
     - 2026-06-02: Sprint 57.70 Stage-1b — mount admin_agents router (agent_catalog CRUD)
     - 2026-05-31: FIX-022 — _wire_pricing_loader() at startup (cost_ledger §5.1 H1)
     - 2026-05-10: Sprint 57.13 US-B4 — mount telemetry router (frontend beacons; anonymous)
@@ -154,6 +155,41 @@ def _wire_pricing_loader() -> None:
         )
 
 
+def _wire_error_budget() -> None:
+    """Install the RedisBudgetStore singleton at startup (fail-open).
+
+    Sprint 57.81 (B-7): the chat factory (make_chat_error_deps) builds the Cat 8
+    TenantErrorBudget per request; without a shared store it used a fresh
+    InMemoryBudgetStore each time → counters reset every request (budget
+    effectively non-functional) and never shared across instances. This wires a
+    process-wide RedisBudgetStore from settings.redis_url so the per-tenant
+    error-budget counters accumulate (and are cross-instance correct). The
+    TenantErrorBudget wrapper is stateless — all state lives in this store.
+
+    Fail-open: if Redis is unavailable / misconfigured the store stays None and
+    the factory falls back to InMemoryBudgetStore (budget degrades to per-request
+    rather than blocking startup). Pure Redis — no DB session / RLS needed (the
+    budget keys already carry tenant_id; cf. rate-limit counter's DB write-through
+    which this deliberately does NOT copy).
+    """
+    try:
+        from redis.asyncio import Redis
+
+        from agent_harness.error_handling import RedisBudgetStore
+        from core.config import get_settings
+        from platform_layer.governance.error_budget_provider import set_budget_store
+
+        settings = get_settings()
+        client = Redis.from_url(settings.redis_url)
+        set_budget_store(RedisBudgetStore(client))
+        logger.info("api.main: error budget store wired")
+    except Exception:  # noqa: BLE001 — fail-open: never block startup on error budget
+        logger.warning(
+            "api.main: error budget store not wired; budget per-request (fail-open)",
+            exc_info=True,
+        )
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Startup: load .env + structured logging + OTel SDK. Shutdown: flush + dispose engine."""
@@ -165,6 +201,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     setup_opentelemetry(app)
     _wire_rate_limit_counter()
     _wire_pricing_loader()
+    _wire_error_budget()
     logger.info("api.main: startup complete")
     try:
         yield
