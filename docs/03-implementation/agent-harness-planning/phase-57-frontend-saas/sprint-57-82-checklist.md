@@ -18,31 +18,31 @@
 ### 0.2 Branch + decisions
 - [x] **Branch created** `feature/sprint-57-82-verification-cost-ledger`
 - [x] **Decisions locked**: parent-direct (NOT agent-delegated — cross-category + 3 wrapper exit points + 17.md change); `agent_factor` 1.0; aggregate judge tokens into ONE `_verification` sub_type (per-verifier breakdown = out of scope); `dataclasses.replace` to fill frozen LoopCompleted; judge shares loop adapter → `event.provider` correct for judge.
-- [ ] **Day-0 commit** plan + checklist + progress.md Day 0
+- [x] **Day-0 commit** plan + checklist + progress.md Day 0 (`e9a015f4`)
 
 ---
 
 ## Day 1 — Capture + bubble (US-1/US-2)
 
 ### 1.1 VerificationResult token fields (US-1)
-- [ ] **`_contracts/verification.py`** — add `input_tokens: int = 0`, `output_tokens: int = 0`, `model: str | None = None` to VerificationResult
+- [x] **`_contracts/verification.py`** — add `input_tokens: int = 0`, `output_tokens: int = 0`, `model: str | None = None` to VerificationResult
   - DoD: mypy clean; rules_based / external verifiers untouched (defaults); MHist 1-line
 
 ### 1.2 llm_judge capture (US-1)
-- [ ] **`verification/llm_judge.py`** — capture `response.usage` (prompt→input, completion→output) + `response.model` into the returned VerificationResult (pass + parse-fail paths; thrown/fail-closed path keeps 0)
+- [x] **`verification/llm_judge.py`** — capture `response.usage` (prompt→input, completion→output) + `response.model` into the returned VerificationResult (pass + parse-fail paths; thrown/fail-closed path keeps 0)
   - DoD: no openai/anthropic import (neutral TokenUsage); mypy clean
 
 ### 1.3 LoopCompleted token fields (US-2)
-- [ ] **`_contracts/events.py`** — add `verification_input_tokens: int = 0`, `verification_output_tokens: int = 0`, `verification_model: str | None = None` to LoopCompleted
+- [x] **`_contracts/events.py`** — add `verification_input_tokens: int = 0`, `verification_output_tokens: int = 0`, `verification_model: str | None = None` to LoopCompleted
   - DoD: confirm LoopCompleted frozen=True; mypy clean
 
 ### 1.4 wrapper accumulate + fill (US-2)
-- [ ] **`verification/correction_loop.py`** — accumulate `result.input_tokens/output_tokens` across all verifiers + all correction attempts (running `vin/vout` + last model); fill via `dataclasses.replace` on the 3 judge-running yield points (all-pass :194 / exhausted :200 new LoopCompleted); non-end_turn :146 + passthrough → stay 0
+- [x] **`verification/correction_loop.py`** — accumulate `result.input_tokens/output_tokens` across all verifiers + all correction attempts (running `vin/vout` + last model); fill via `dataclasses.replace` on the 3 judge-running yield points (all-pass :194 / exhausted :200 new LoopCompleted); non-end_turn :146 + passthrough → stay 0
   - DoD: all 3 paths filled correctly; mypy clean
 
 ### 1.5 read changed code + format/type gate
-- [ ] **re-read** — category boundary intact (no platform_layer import in agent_harness); neutral types only
-- [ ] **black + isort + flake8 + mypy src/** on changed files — clean (57.80 lesson: full chain)
+- [x] **re-read** — category boundary intact (no platform_layer import in agent_harness); neutral types only
+- [x] **black + isort + flake8 + mypy src/** on changed files — clean (black 4 unchanged / isort clean / flake8 0 / mypy src/ 0 in 332 files) (57.80 lesson: full chain)
 
 ---
 

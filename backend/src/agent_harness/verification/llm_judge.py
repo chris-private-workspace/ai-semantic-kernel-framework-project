@@ -24,9 +24,10 @@ Owner: 01-eleven-categories-spec.md §範疇 10
 Single-source: 17.md §2.1 (Verifier ABC) / §1.1 (VerificationResult)
 
 Created: 2026-05-04 (Sprint 54.1 Day 2)
-Last Modified: 2026-05-04
+Last Modified: 2026-06-05
 
 Modification History:
+    - 2026-06-05: Sprint 57.82 — capture response.usage + model into result (B-8 cost-ledger)
     - 2026-05-04: AD-Cat10-Obs-1 — accept optional Tracer (Sprint 54.2 US-5)
     - 2026-05-04: Initial (Sprint 54.1 US-2) — closes AD-Cat9-1 (LLM-judge fallback for detectors)
 """
@@ -34,6 +35,7 @@ Modification History:
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from typing import Any
 
 from adapters._base.chat_client import ChatClient
@@ -86,7 +88,19 @@ class LLMJudgeVerifier(Verifier):
                 prompt = self._build_prompt(output)
                 request = ChatRequest(messages=[Message(role="user", content=prompt)])
                 response = await self._chat.chat(request, trace_context=trace_context)
-                return self._parse_response(response.content)
+                result = self._parse_response(response.content)
+                # Sprint 57.82 (B-8 leg-1): attach judge token usage + model so the
+                # correction-loop wrapper can bubble it to LoopCompleted for cost-ledger
+                # / quota accounting. Even a malformed-response result carries the tokens
+                # — the LLM call was made and is chargeable. The fail-closed except path
+                # below keeps 0 (the call raised / may not have completed).
+                usage = response.usage
+                return replace(
+                    result,
+                    input_tokens=usage.prompt_tokens if usage else 0,
+                    output_tokens=usage.completion_tokens if usage else 0,
+                    model=response.model or None,
+                )
             except Exception as e:  # noqa: BLE001 — fail-closed: ALL errors → passed=False
                 return VerificationResult(
                     passed=False,

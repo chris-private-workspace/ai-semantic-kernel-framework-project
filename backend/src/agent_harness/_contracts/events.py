@@ -164,6 +164,16 @@ class LoopCompleted(LoopEvent):
     # the prior conversation. NOT in the loop_end wire schema (sse.py maps 4 fields)
     # -> server-side only. Default None covers non-handoff terminations.
     handoff_context: list[Message] | None = None
+    # Sprint 57.82 (B-8 leg-1): verification judge LLM token usage, accumulated by
+    # the correction-loop wrapper across all verifiers + correction attempts. Kept
+    # SEPARATE from input/output_tokens because verification runs in the WRAPPER
+    # AFTER this event is built (the loop's own accumulator is frozen by then) and
+    # so loop token semantics stay clean. The chat router records a distinct
+    # `_verification` cost-ledger sub_type + adds these to the quota actual.
+    # Default 0/None covers disabled / passthrough / non-end_turn paths (no judge).
+    verification_input_tokens: int = 0
+    verification_output_tokens: int = 0
+    verification_model: str | None = None
 
 
 # === Category 6: Output Parser ==============================================

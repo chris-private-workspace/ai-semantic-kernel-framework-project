@@ -34,9 +34,10 @@ Description:
 Owner: 範疇 10 (verification/) — composed over Cat 1 AgentLoop ABC
 
 Created: 2026-05-04 (Sprint 54.1 Day 3)
-Last Modified: 2026-05-04
+Last Modified: 2026-06-05
 
 Modification History:
+    - 2026-06-05: Sprint 57.82 — accumulate judge tokens + stamp LoopCompleted (B-8 cost-ledger)
     - 2026-05-10: Sprint 57.11 US-2 — add best-effort verification_log write hook
     - 2026-05-04: Initial (Sprint 54.1 US-3) — wrapper pattern per D2 / D13
 
@@ -51,6 +52,7 @@ Related:
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from typing import AsyncIterator
 from uuid import UUID
 
@@ -118,6 +120,14 @@ async def run_with_verification(
 
     current_input = user_input
     attempt = 0  # 0 = first run; increment per correction
+    # Sprint 57.82 (B-8 leg-1): accumulate judge LLM token usage across ALL
+    # verifiers and ALL correction attempts. Verification runs here in the wrapper
+    # (the inner loop's token accumulator is already frozen by the time the
+    # captured LoopCompleted exists), so the wrapper owns judge-token accounting
+    # and stamps it onto every LoopCompleted it yields (via dataclasses.replace).
+    verif_in = 0
+    verif_out = 0
+    verif_model: str | None = None
     while True:
         # Run inner loop; capture final completion + LLM output
         captured_completion: LoopCompleted | None = None
@@ -143,7 +153,14 @@ async def run_with_verification(
         # If completion was a non-end_turn (max_turns / token_budget / tripwire / cancelled),
         # don't run verifiers — those exit reasons are independent of output quality.
         if captured_completion.stop_reason != "end_turn":
-            yield captured_completion
+            # non-end_turn: no judge ran THIS attempt, but a prior correction
+            # attempt may have → stamp accumulated judge tokens (0 on first attempt).
+            yield replace(
+                captured_completion,
+                verification_input_tokens=verif_in,
+                verification_output_tokens=verif_out,
+                verification_model=verif_model,
+            )
             return
 
         # Run verifiers on the latest LLM output
@@ -173,6 +190,14 @@ async def run_with_verification(
                 )
                 verifier_failures.append(result)
 
+            # Sprint 57.82 (B-8 leg-1): accumulate judge token usage (pass OR fail
+            # — the LLM call was made either way and is chargeable). rules_based /
+            # external verifiers contribute 0 (no LLM call).
+            verif_in += result.input_tokens
+            verif_out += result.output_tokens
+            if result.model:
+                verif_model = result.model
+
             # Sprint 57.11 US-2 — best-effort verification_log persistence.
             # Runs after each yield (verifier-by-verifier granularity) so that
             # a single verifier crash does not orphan its sibling rows.
@@ -190,8 +215,14 @@ async def run_with_verification(
             )
 
         if not verifier_failures:
-            # All verifiers passed → forward original LoopCompleted
-            yield captured_completion
+            # All verifiers passed → forward original LoopCompleted, stamped with
+            # the accumulated judge tokens (Sprint 57.82).
+            yield replace(
+                captured_completion,
+                verification_input_tokens=verif_in,
+                verification_output_tokens=verif_out,
+                verification_model=verif_model,
+            )
             return
 
         # At least one verifier failed
@@ -201,6 +232,9 @@ async def run_with_verification(
                 stop_reason=VERIFICATION_FAILED_STOP_REASON,
                 total_turns=captured_completion.total_turns,
                 trace_context=trace_context or TraceContext.create_root(),
+                verification_input_tokens=verif_in,
+                verification_output_tokens=verif_out,
+                verification_model=verif_model,
             )
             return
 
