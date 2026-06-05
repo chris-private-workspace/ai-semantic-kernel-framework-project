@@ -10,6 +10,7 @@ Description:
     substitutes with the LLM output being verified.
 
     Default templates:
+    - output_quality: general final-output quality — helpful/complete/accurate/on-topic (DEFAULT)
     - factual_consistency: source-vs-output consistency check
     - format_compliance: markdown / JSON / XML format check
     - safety_review: harmful / unsafe content check (Cat 9 fallback)
@@ -18,9 +19,10 @@ Description:
 Owner: 01-eleven-categories-spec.md §範疇 10
 
 Created: 2026-05-04 (Sprint 54.1 Day 2)
-Last Modified: 2026-05-04
+Last Modified: 2026-06-05
 
 Modification History:
+    - 2026-06-05: Sprint 57.83 — add output_quality general judge to default templates list (B-8)
     - 2026-05-04: Initial creation (Sprint 54.1 US-2) — closes AD-Cat9-1 fallback
 """
 

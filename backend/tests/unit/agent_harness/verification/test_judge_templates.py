@@ -8,8 +8,9 @@ Description:
     Covers:
     - load_template returns content for existing template
     - load_template raises FileNotFoundError for missing name
-    - all 4 default templates (factual_consistency / format_compliance /
-      safety_review / pii_leak_check) load + contain {output} placeholder
+    - all 5 default templates (output_quality / factual_consistency /
+      format_compliance / safety_review / pii_leak_check) load + contain {output}
+    - output_quality (general final-output judge, Sprint 57.83) judges 4 dimensions
 
 Created: 2026-05-04 (Sprint 54.1 Day 2)
 
@@ -40,9 +41,27 @@ def test_load_template_missing_raises_file_not_found() -> None:
 
 @pytest.mark.parametrize(
     "name",
-    ["factual_consistency", "format_compliance", "safety_review", "pii_leak_check"],
+    [
+        "output_quality",
+        "factual_consistency",
+        "format_compliance",
+        "safety_review",
+        "pii_leak_check",
+    ],
 )
 def test_all_default_templates_load_and_have_placeholder(name: str) -> None:
     content = load_template(name)
     assert "{output}" in content, f"Template '{name}' missing {{output}} placeholder"
     assert "JSON" in content, f"Template '{name}' should request JSON response"
+
+
+def test_output_quality_template_judges_four_dimensions() -> None:
+    """Sprint 57.83 (B-8 leg-2): the new general final-output quality judge judges
+    helpful/complete/accurate/on-topic + leans pass when uncertain (low-FP intent)."""
+    content = load_template("output_quality")
+    assert "{output}" in content
+    assert "JSON" in content
+    for dim in ("helpful", "complete", "accurate", "on-topic"):
+        assert dim in content, f"output_quality template missing dimension '{dim}'"
+    # fair-judging guard (lean pass when uncertain — keeps false-positive low)
+    assert "passed=true" in content

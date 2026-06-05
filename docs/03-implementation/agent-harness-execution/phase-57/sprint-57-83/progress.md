@@ -43,3 +43,24 @@
 ### Notes
 - Bottom-up est ~5.5 hr → calibrated ~4.4 hr (medium-backend 0.80, parent-direct). Real-LLM measurement (§3.3) is research-shaped → wall-clock variance noted (retro Q2).
 - Q1 chose the STRICTER "fail on any dimension" general judge → blocker C's FP measurement is the more important gate (a strict judge may have higher FP → data-gate decides).
+
+---
+
+## Day 1 — 2026-06-05 — Blocker B: general quality judge template (US-1/US-2)
+
+### Accomplishments
+- **NEW `output_quality.txt`** — general final-output quality judge: judges helpful/complete/accurate/on-topic, passes only if acceptable on ALL four. Balanced phrasing to keep FP low: "a normal, reasonable answer should PASS; fail only on a genuine shortfall, not style/length/preference; when uncertain lean passed=true." JSON shape identical to the other 4 templates.
+- **config default swap** — `chat_verification_judge_template` `"safety_review"` → `"output_quality"` + docstring. `chat_verification_mode` stays `disabled` (flip is Day 3, data-gated).
+- **templates/__init__.py** docstring — added output_quality to the default-templates list (load_template auto-reads `<name>.txt` by glob — no registration needed).
+- **Tests** — test_judge_templates.py: output_quality in the parametrize (5 templates) + dedicated 4-dimension/placeholder/lean-pass test. test_config_verification.py: new `TestChatVerificationJudgeTemplate` asserting default == output_quality (mode default test unchanged).
+
+### Verification
+- black 4 unchanged / isort clean / flake8 0 / `mypy src/` 0 (332) / pytest 12 passed (judge_templates 8 + config_verification 4).
+
+### Commit
+- (committed with Day-1 — see commit mapping.)
+
+### Remaining for Day 2+
+- Day 2: **real-LLM measurement (real Azure — confirm with user before running)** — FP rate / p95 latency / per-chat cost → artifact.
+- Day 3: data-gated flip decision.
+- Day 4: sweep + closeout.

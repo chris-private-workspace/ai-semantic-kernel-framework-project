@@ -18,24 +18,24 @@
 ### 0.2 Branch + decisions
 - [x] **Branch created** `feature/sprint-57-83-verification-enable`
 - [x] **Decisions locked**: NEW `output_quality.txt` general judge (single judge, NOT combine-with-safety, NOT factual-rework); default template swap → output_quality; real-LLM measurement = manual local-backend run with real Azure (user-authorized Q2); flip is conditional on measured data (FP ≤ ~15%, p95 < 5s); parent-direct.
-- [ ] **Day-0 commit** plan + checklist + progress.md Day 0
+- [x] **Day-0 commit** plan + checklist + progress.md Day 0 (`6d82af71`)
 
 ---
 
 ## Day 1 — Blocker B: general quality judge template (US-1/US-2)
 
 ### 1.1 output_quality template
-- [ ] **NEW `verification/templates/output_quality.txt`** — general quality judge (helpful/complete/accurate/on-topic, fail on any dimension); JSON shape `passed`/`score`/`reason`/`suggested_correction`; contains literal `{output}`
-  - DoD: loads via `load_template("output_quality")`; not a safety-lean phrasing
+- [x] **NEW `verification/templates/output_quality.txt`** — general quality judge (helpful/complete/accurate/on-topic, fail on any dimension); JSON shape `passed`/`score`/`reason`/`suggested_correction`; contains literal `{output}`; "normal answer should pass / lean pass when uncertain" (low-FP intent)
+  - DoD: loads via `load_template("output_quality")` (auto-read by glob, no registration); not a safety-lean phrasing ✅
 
 ### 1.2 default judge template swap
-- [ ] **`core/config/__init__.py`** — `chat_verification_judge_template` default `"safety_review"` → `"output_quality"` + update docstring example
-  - DoD: mypy clean; mode stays `disabled` (flip is Day 3)
+- [x] **`core/config/__init__.py`** — `chat_verification_judge_template` default `"safety_review"` → `"output_quality"` + update docstring example (+ templates/__init__.py docstring list)
+  - DoD: mypy clean; mode stays `disabled` (flip is Day 3) ✅
 
 ### 1.3 unit tests + gate
-- [ ] **`test_judge_templates.py`** (extend) — output_quality loads by name + contains `{output}` + mock judge returns parseable verdict
-- [ ] **`test_config_verification.py`** — default template assertion → output_quality
-- [ ] **black + isort + flake8 + mypy src/** — clean
+- [x] **`test_judge_templates.py`** (extend) — output_quality in parametrize (5 templates) + dedicated test (4 dimensions + `{output}` + lean-pass guard)
+- [x] **`test_config_verification.py`** — `TestChatVerificationJudgeTemplate` default == output_quality (mode default test unchanged — flip is Day 3)
+- [x] **black + isort + flake8 + mypy src/** — clean (4 files unchanged / flake8 0 / mypy 0 in 332 / pytest 12 passed)
 
 ---
 

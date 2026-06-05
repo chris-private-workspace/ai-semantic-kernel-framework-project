@@ -17,6 +17,7 @@ Created: 2026-05-31 (B-10)
 Last Modified: 2026-05-31
 
 Modification History (newest-first):
+    - 2026-06-05: Sprint 57.83 — add judge_template default test (output_quality; B-8 leg-2)
     - 2026-05-31: B-10 migrate test_invalid_mode_raises (AD-Cat10-VerifierFactory)
 """
 
@@ -51,3 +52,13 @@ class TestChatVerificationModeValidation:
         monkeypatch.setenv("CHAT_VERIFICATION_MODE", "shadow")
         with pytest.raises(ValidationError):
             Settings()
+
+
+class TestChatVerificationJudgeTemplate:
+    """Settings.chat_verification_judge_template default (Sprint 57.83 B-8 leg-2)."""
+
+    def test_default_is_output_quality(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Default judge template is the general 'output_quality' judge (was
+        'safety_review' — Cat 9-fitted, lean-unsafe; swapped Sprint 57.83 blocker B)."""
+        monkeypatch.delenv("CHAT_VERIFICATION_JUDGE_TEMPLATE", raising=False)
+        assert Settings().chat_verification_judge_template == "output_quality"
