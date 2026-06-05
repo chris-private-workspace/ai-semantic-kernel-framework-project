@@ -1,0 +1,98 @@
+# Sprint 57.80 — Checklist (chat real_llm orphan-tool-message fix: PromptBuilder tool-call adjacency invariant)
+
+**Plan**: `sprint-57-80-plan.md`
+**Branch**: `feature/sprint-57-80-orphan-tool-adjacency` (from `main` `88911c95`)
+**Closes**: `AD-Chat-RealLLM-Orphan-Tool-Message`
+
+---
+
+## Day 0 — Plan-vs-Repo Verify + Branch + Decisions
+
+### 0.1 Day-0 verify (parent grep + code read, main `88911c95`)
+- [x] **Prong 1 (path)** — confirm: `prompt_builder/builder.py`, `strategies/lost_in_middle.py` + `naive.py` + `tools_at_end.py` + `_abc.py`, `orchestrator_loop/loop.py`, `_contracts/chat.py`, `api/v1/chat/handler.py`, `adapters/_testing/mock_clients.py`, `tests/.../prompt_builder/test_loop_with_prompt_builder.py`, `tests/unit/agent_harness/prompt_builder/` dir.
+- [x] **Prong 2 (content)** — D-DAY0-1..7 in plan §0 (real_llm uses artifact.messages / LostInMiddle split root cause / naive+tools_at_end preserve order / Message tool_calls+tool_call_id linkage + identity-stable / AP-10+AP-4 why-invisible / last_request.messages capture point / config.model_name aligned 57.79).
+- [x] **Prong 3 (schema)** — N/A (no DB table / migration / ORM change).
+- [x] **go/no-go** — GO; user-locked (AskUserQuestion 2026-06-04): approach B (builder-level adjacency invariant) + real Azure e2e re-verify this sprint. No scope shift (≤20%).
+
+### 0.2 Branch + decisions
+- [x] **Branch created** `feature/sprint-57-80-orphan-tool-adjacency`
+- [x] **Decisions locked**: fix B (`_enforce_tool_adjacency` in builder after `strategy.arrange()`, protects all strategies — NOT a strategy rewrite); parent-direct (NOT agent-delegated — assembly correctness + real-LLM collab); real-LLM verify THIS sprint.
+- [x] **Day-0 commit** plan + checklist + progress.md Day 0
+
+---
+
+## Day 1 — Tool-call adjacency invariant (US-1/US-2)
+
+### 1.1 `_enforce_tool_adjacency` static method
+- [x] **add `_enforce_tool_adjacency(messages) -> list[Message]`** in `builder.py` (DefaultPromptBuilder)
+  - build `owner_by_id` (ToolCall.id → emitting assistant); no-op return when no assistant carries tool_calls
+  - bucket `role='tool'` msgs (resolved owner) under `id(owner)`, preserve order, mark held; unresolved-owner tool left in place (no silent drop)
+  - rebuild: skip held tools; after each assistant emit its held tools → tool always directly after owning assistant
+  - DoD: mypy clean ✅; docstring states the provider hard-constraint + orphan-left-in-place rationale
+
+### 1.2 call site in build()
+- [x] **insert `messages = self._enforce_tool_adjacency(messages)`** immediately after `messages = strategy.arrange(sections)` (`builder.py:269`)
+  - DoD: mypy clean ✅; no other build() logic changed; MHist 1-line entry added to builder.py header
+
+### 1.3 read changed code
+- [x] **re-read** builder.py change — confirm no strategy / loop / adapter touched; LLM-neutral (only neutral `Message` contract used); identity-rebuild correct
+
+---
+
+## Day 2 — Tests (US-3)
+
+### 2.1 unit: `_enforce_tool_adjacency` + build()-through-LostInMiddle
+- [x] **NEW `test_builder_tool_adjacency.py`** in `tests/unit/agent_harness/prompt_builder/`
+  - (a) tool already after assistant → unchanged; (b) tool before assistant (bug shape) → re-anchored after; (c) 2 assistants × 1 tool scrambled → each tool after own assistant; (d) orphan tool (no owner) → left in place; (e) no tool msgs → unchanged
+  - `build()` through default `LostInMiddleStrategy`: state.transient.messages = `[system, user, assistant(tool_calls), tool]` → assert `artifact.messages` tool immediately after assistant (the case that 400s pre-fix). 6 pass.
+
+### 2.2 integration: loop+builder 2-turn tool script (AP-10 closure)
+- [x] **extend `test_loop_with_prompt_builder.py`** — 2-turn MockChatClient (turn1 tool_calls → turn2 END_TURN) + tool executor returning a result + registry exposing the tool + prompt_builder injected
+  - after run, assert `chat_client.last_request.messages` (turn-2 assembly) has every `role='tool'` immediately after its owning `assistant(tool_calls)`
+  - DoD: ✅ regression guard CONFIRMED — temporarily disabled the `_enforce_tool_adjacency` call → build() test FAILED `assistant@4, tool@3` (exactly the real Azure `messages[3]` 400 shape) → restored → PASSES
+
+### 2.3 regression gate
+- [x] **targeted pytest** — `pytest tests/unit/agent_harness/prompt_builder/ tests/integration/agent_harness/prompt_builder/` 69 passed; pre-existing builder/strategy tests unchanged (LostInMiddle strategy untouched → its own tests still pass)
+
+---
+
+## Day 3 — real-LLM Azure verification (US-4) — user `.env`
+
+### 3.1 clean restart + startup log (Risk Class E)
+- [x] **clean start backend** — :8000 was free (no stale process); started fresh single no-reload uvicorn
+- [x] **confirm startup log** `pricing loader wired` (FIX-022 wiring fired)
+
+### 3.2 real-LLM chat main-flow (local `.env`, NOT GitHub secrets)
+- [x] **dev-login** → v2_jwt cookie (fresh tenant + clean session — the 57.79 repro condition)
+- [x] **POST /chat real_llm** `{mode: real_llm, message: "echo hello"}` → **HTTP 200, no orphan-tool 400** (`"must follow tool_calls": False`) + SSE contains `loop_end` + real Azure gpt-5.2 reply
+- [x] **cost_ledger write** — newest rows written (delta>0; gpt-5.2 + echo_tool rows); evidence captured
+
+### 3.3 evidence
+- [x] **record** SSE outcome + cost row evidence + the exact `response.model` (gpt-5.2-2025-12-11) in progress.md Day 3
+
+### 3.4 targeted C extension (in-sprint, per Day-3 finding + user decision) — plan §10
+- [x] **targeted C fix** in `build()` — pending tool turn (`transient.messages[-1].role == "tool"`) → full conversation + `user_message=None` → prompt ends with tool result; fresh turn unchanged
+- [x] **+2 unit tests** — pending tool turn ends with `tool` (user still in history); fresh turn still ends with `user` (no regression). 71 passed.
+- [x] **re-verify real Azure CONVERGED** — `loop_end stop_reason=end_turn` (was `max_turns`); final `content="hello"`; last `prompt_built messages_count=5` ends with tool. mypy clean.
+
+---
+
+## Day 4 — Sweep + Closeout
+
+### 4.1 Full sweep
+- [x] **Backend gates** — `mypy src/` 0 (331) + `pytest` 2130 passed / 4 skipped (+9 vs 2121) + `python scripts/lint/run_all.py` 10/10 (check_llm_sdk_leak green; check_promptbuilder_usage green; check_rls_policies unchanged — no schema)
+- [x] **No frontend** — 0 frontend changes (backend-only sprint)
+- [x] **Read all changed code** — builder B (adjacency, LLM-neutral, identity-rebuild) + C (pending-tool-turn re-anchor suppression); tests assert the structural invariant (not mock-reliant); no strategy/loop/adapter touched
+
+### 4.2 Closeout docs
+- [x] **FIX-027** in `claudedocs/4-changes/bug-fixes/` (bug fix — orphan-tool is a broken main-flow, not a CHANGE)
+- [x] **progress.md** Day 0-3.5 (incl. Day 3 real-LLM evidence + C re-verify) + **retrospective.md** Q1-Q7
+- [x] **Checklist** all `[x]` (no 🚧 carryover — the e2e leg blocked in 57.79 is now verified)
+- [x] **Calibration** record (medium-backend 0.80; agent_factor 1.0 parent-direct; ratio in retro Q2)
+- [x] **AD status**: `AD-Chat-RealLLM-Orphan-Tool-Message` CLOSED; next-phase-candidates.md updated
+- [x] **MEMORY subfile + pointer** + **CLAUDE.md lean** (Current Sprint + Last Updated)
+- [x] **Design note?** — NO (bug fix; no new contract / no 17.md change)
+
+### 4.3 Ship
+- [x] **Commit mapping** Day-0 (`7f8f152a`) / B fix+tests (`29879147`) / Day-3 + C fix (`37591545`) / closeout (pending)
+- [ ] **Push + PR** (user-gated — explicit authorization required)
