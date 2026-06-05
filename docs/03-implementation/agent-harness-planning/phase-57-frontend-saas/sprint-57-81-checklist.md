@@ -24,39 +24,40 @@
 ## Day 1 — Provider + wiring + export + factory swap (US-1/US-2/US-3)
 
 ### 1.1 budget store provider singleton
-- [ ] **NEW `platform_layer/governance/error_budget_provider.py`** — module-global `_budget_store` + `get_/maybe_get_/set_/reset_budget_store` (mirror `rate_limit_counter.py:526-558`); `BudgetStore` type via TYPE_CHECKING import
-  - DoD: mypy clean; `maybe_get` lenient (None when unset); `get` strict-raises; `reset` clears
+- [x] **NEW `platform_layer/governance/error_budget_provider.py`** — module-global `_budget_store` + `get_/maybe_get_/set_/reset_budget_store` (mirror `rate_limit_counter.py:526-558`); `BudgetStore` type via TYPE_CHECKING import
+  - DoD: mypy clean ✅; `maybe_get` lenient (None when unset); `get` strict-raises; `reset` clears
 
 ### 1.2 export RedisBudgetStore
-- [ ] **`error_handling/__init__.py`** — add `RedisBudgetStore` to imports + `__all__` (so main.py imports via public path)
-  - DoD: `from agent_harness.error_handling import RedisBudgetStore` works; mypy clean
+- [x] **`error_handling/__init__.py`** — add `RedisBudgetStore` to imports + `__all__` (so main.py imports via public path)
+  - DoD: `from agent_harness.error_handling import RedisBudgetStore` works ✅ (redis import stays TYPE_CHECKING-lazy); mypy clean
 
 ### 1.3 startup wiring
-- [ ] **`_wire_error_budget()` in `api/main.py`** — mirror `_wire_rate_limit_counter`: `Redis.from_url(settings.redis_url)` → `set_budget_store(RedisBudgetStore(client))`; whole body `except Exception` fail-open; `logger.info("api.main: error budget store wired")`
-- [ ] **call in `_lifespan`** after `_wire_rate_limit_counter()` / `_wire_pricing_loader()`
-  - DoD: NO session_factory / RLS / app.tenant_id (pure Redis); mypy clean
+- [x] **`_wire_error_budget()` in `api/main.py`** — mirror `_wire_rate_limit_counter`: `Redis.from_url(settings.redis_url)` → `set_budget_store(RedisBudgetStore(client))`; whole body `except Exception` fail-open; `logger.info("api.main: error budget store wired")`
+- [x] **call in `_lifespan`** after `_wire_rate_limit_counter()` / `_wire_pricing_loader()`
+  - DoD: NO session_factory / RLS / app.tenant_id (pure Redis) ✅; mypy clean
 
 ### 1.4 chat factory swap
-- [ ] **`_category_factories.py:257`** — `TenantErrorBudget(maybe_get_budget_store() or InMemoryBudgetStore())` + import `maybe_get_budget_store`; update deferred comment :248-252 (AP-2 repaid)
-  - DoD: mypy clean; MHist 1-line on factory file header
+- [x] **`_category_factories.py:257`** — `TenantErrorBudget(maybe_get_budget_store() or InMemoryBudgetStore())` + import `maybe_get_budget_store`; update deferred comment :248-252 (AP-2 repaid)
+  - DoD: mypy clean ✅; MHist 1-line on factory + main.py headers
 
-### 1.5 read changed code
-- [ ] **re-read** — no loop.py / budget.py / RedisBudgetStore change; LLM-neutral; platform_layer→agent_harness import is TYPE_CHECKING-only / allowed
+### 1.5 read changed code + format/lint/type gate
+- [x] **re-read** — no loop.py / budget.py / RedisBudgetStore change; LLM-neutral; platform_layer→agent_harness import is TYPE_CHECKING-only / allowed
+- [x] **black + isort + flake8 + mypy** on 4 changed files — all clean (mypy src/ 0/332, +1 new provider). (57.80 lesson: run full format chain, not just mypy/pytest.)
 
 ---
 
 ## Day 2 — Tests (US-4)
 
 ### 2.1 provider accessor unit tests
-- [ ] **NEW `test_error_budget_provider.py`** — `set`→`maybe_get` returns it; `reset` clears; `get` raises when unset; reset isolation (autouse or explicit)
+- [x] **NEW `test_error_budget_provider.py`** (`tests/unit/platform_layer/governance/`) — `set`→`maybe_get` returns it; `reset` clears; `get` raises when unset; autouse `reset_budget_store` isolation. 4 accessor tests.
 
 ### 2.2 accumulation + fallback integration tests (the correctness claim)
-- [ ] **accumulation** — wire `RedisBudgetStore(FakeRedis())` via `set_budget_store`; call `make_chat_error_deps()` TWICE; `record()` an error via each `TenantErrorBudget`; assert the 2nd reflects the ACCUMULATED count (per-request reset fixed) — contrast: InMemory baseline would NOT accumulate
-- [ ] **fallback** — no wired store → `make_chat_error_deps()` returns `TenantErrorBudget` backed by `InMemoryBudgetStore` (no crash)
-- [ ] reuse `FakeRedis(decode_responses=False)` fixture pattern from `test_redis_budget_store.py`
+- [x] **accumulation** — wired `RedisBudgetStore(FakeRedis())`; `make_chat_error_deps()` TWICE; `record()` via each `TenantErrorBudget`; assert `store.get(_day_key)==2` (per-request reset fixed) ✅ + `budget._store is store` (binds wired store)
+- [x] **fallback** — no wired store → `make_chat_error_deps()` returns `TenantErrorBudget` with `isinstance(_store, InMemoryBudgetStore)` (no crash)
+- [x] reuse `FakeRedis(decode_responses=False)` fixture pattern. 7 tests total, all pass.
 
 ### 2.3 regression gate
-- [ ] **targeted pytest** — provider + error_handling + chat factory tests green; confirm existing Cat 8 / factory tests unchanged
+- [x] **targeted pytest** — governance + error_handling + chat factory/wiring = 184 passed; no regression in existing Cat 8 / factory tests
 
 ---
 
