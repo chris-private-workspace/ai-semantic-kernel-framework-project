@@ -48,3 +48,28 @@
 ### Notes
 - Bottom-up est ~10.5 hr → calibrated ~8.4 hr (`medium-backend` 0.80, parent-direct, `agent_factor` 1.0). Large sprint (≈2× normal); Day structure carries the safety via the Day-2-end shadow cut-line.
 - LLM neutrality preserved: outbox payload carries neutral `record_llm_call` args; drainer calls the EXISTING `CostLedgerService` (pricing single-source, C-11/57.79 unchanged).
+
+---
+
+## Day 1 — 2026-06-05 — Schema: billing_outbox table + migration + ORM (US-1/US-2)
+
+### Accomplishments
+- **NEW `infrastructure/db/models/billing_outbox.py`** — `BillingOutboxEvent` (TenantScopedMixin): BigInteger PK (ordered drain), event_type/payload(JSONB `dict[str, object]`)/idempotency_key/status/retry_count/next_retry_at/last_error/session_id/created_at/processed_at; `UNIQUE(tenant_id, idempotency_key)` (idempotency) + status/event_type CHECK + `idx_billing_outbox_due` (partial WHERE status IN pending/failed) + `idx_billing_outbox_tenant`. Enums `OutboxStatus`/`OutboxEventType`.
+- **Registered** in `models/__init__.py` (import + `__all__`).
+- **NEW migration `0025_billing_outbox.py`** (down_revision `0024_memory_ops`) — table + 2 indexes + ENABLE+FORCE RLS + two policies mirroring 0024, **plus the drainer system-context escape** in the USING clause (all-zeros sentinel → cross-tenant visibility for the poller claim).
+
+### Key decision — D3 (RLS cross-tenant drain) resolved at Day-1, not Day-3
+- Read `scripts/lint/check_rls_policies.py`: the lint only requires `ENABLE ROW LEVEL SECURITY` + a `CREATE POLICY ... ON <table>` (regex), it does **NOT** constrain the USING expression. → I can write the full poller-escape RLS in the Day-1 migration without a second migration on Day-3. The escape: `tenant_id = current_setting('app.tenant_id', true)::uuid OR current_setting(...) = '00000000-...-0'::uuid`. A real request never runs under the all-zeros sentinel (missing JWT → 401), so per-request isolation is unaffected; the isolation test (US-4, Day-4) is the gate.
+
+### Verification
+- Migration applied **both directions** on Docker DB (ipa_v2, head was `0024_memory_ops`): upgrade → downgrade -1 (drops cleanly) → re-upgrade; `alembic current` = `0025_billing_outbox (head)`.
+- `run_all.py` **10/10 green** (`check_rls_policies` recognizes `billing_outbox`; `check_llm_sdk_leak` green — no SDK import).
+- `mypy src/` **0 issues / 334 files** (+2 vs 332: new model); black/isort applied; flake8 0.
+
+### Remaining for Day 2+
+- Day 2: `BillingOutboxService.enqueue` (idempotent) + `BillingOutboxDrainer.drain_once` (claim/materialize/mark idempotent) + idempotency-key builder + router **shadow dual-write** + unit tests. **Day-2-end = safe cut-line.**
+- Day 3: lifespan poller wiring + per-row tenant-context drain + router flip to enqueue-only.
+- Day 4: integration/isolation tests + real-Azure smoke + closeout.
+
+### Notes
+- Day-1 was lighter than the ~1.5+0.5 hr bottom-up (schema + model + migration ≈ 1 hr) — the lint-leniency discovery folded the D3 RLS design into Day-1 cleanly.

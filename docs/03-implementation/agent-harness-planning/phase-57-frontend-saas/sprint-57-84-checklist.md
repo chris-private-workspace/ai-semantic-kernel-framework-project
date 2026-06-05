@@ -19,23 +19,23 @@
 ### 0.2 Branch + decisions
 - [x] **Branch created** `feature/sprint-57-84-billing-outbox`
 - [x] **Decisions locked**: dedicated `billing_outbox`; atomic enqueue in request txn; lifespan async poller (`SKIP LOCKED` + backoff + dead-letter); idempotency via `UNIQUE(tenant_id, idempotency_key)` + idempotent drain; shadow dual-write Day-2 → enqueue-only flip Day-3; drainer materializes `cost_ledger` (Stripe future-leg); parent-direct (`agent_factor` 1.0).
-- [ ] **Day-0 commit** plan + checklist + progress.md Day 0
+- [x] **Day-0 commit** plan + checklist + progress.md Day 0 (`ef8c1f3e`)
 
 ---
 
 ## Day 1 — Schema: `billing_outbox` table + migration + ORM (US-1/US-2)
 
 ### 1.1 ORM model
-- [ ] **NEW `infrastructure/db/models/billing_outbox.py`** — `BillingOutboxEvent` (TenantScopedMixin): id/tenant_id/event_type/payload(JSONB)/idempotency_key/status/retry_count/next_retry_at/last_error/session_id/created_at/processed_at
-  - DoD: mypy clean; columns match plan §3.1; status/event_type as constrained strings
-- [ ] **Register** in `infrastructure/db/models/__init__.py` (after cost_ledger import)
-  - DoD: Base.metadata sees it; `check_rls_policies` discovers the new table
+- [x] **NEW `infrastructure/db/models/billing_outbox.py`** — `BillingOutboxEvent` (TenantScopedMixin): id(BigInteger PK)/tenant_id/event_type/payload(JSONB)/idempotency_key/status/retry_count/next_retry_at/last_error/session_id/created_at/processed_at + UNIQUE + 2 CHECK + 2 Index
+  - DoD: mypy clean ✅ (`dict[str, object]` for JSONB under strict); columns match plan §3.1
+- [x] **Register** in `infrastructure/db/models/__init__.py` (after audit, before cost_ledger import) + `__all__`
+  - DoD: `check_rls_policies` discovers `billing_outbox` (10/10 green) ✅
 
 ### 1.2 migration 0025
-- [ ] **Read `0024_memory_ops.py` header** → confirm exact `revision` id for `down_revision`
-- [ ] **NEW `migrations/versions/0025_billing_outbox.py`** — CREATE TABLE + `UNIQUE(tenant_id, idempotency_key)` + `idx_billing_outbox_due` (partial WHERE status IN pending/failed) + `idx_billing_outbox_tenant` + status/event_type CHECK + `ENABLE ROW LEVEL SECURITY` + `tenant_isolation_billing_outbox` policy (mirror 0009 style)
-  - DoD: `alembic upgrade head` applies on the 0024 head (verify against Docker DB); downgrade drops cleanly
-- [ ] **black + isort + flake8 + mypy src/** — clean
+- [x] **Read `0024_memory_ops.py` header** → `revision="0024_memory_ops"` → `down_revision="0024_memory_ops"`
+- [x] **NEW `migrations/versions/0025_billing_outbox.py`** — CREATE TABLE + `UNIQUE(tenant_id, idempotency_key)` + `idx_billing_outbox_due` (partial WHERE status IN pending/failed) + `idx_billing_outbox_tenant` + status/event_type CHECK + ENABLE+FORCE RLS + `tenant_isolation_billing_outbox` (USING + **system-sentinel escape** for drainer) + `tenant_insert_billing_outbox` (WITH CHECK) — mirror 0024 two-policy
+  - DoD: applied **both directions** on Docker DB (upgrade → downgrade -1 → re-upgrade; head=`0025_billing_outbox`) ✅. Lint leniency confirmed (`check_rls_policies` only needs ENABLE+CREATE POLICY, not USING content) → full escape RLS in Day-1 (D3 resolved early)
+- [x] **black + isort + flake8 + mypy src/** — clean (mypy 0/334; flake8 0; black/isort applied)
 
 ---
 

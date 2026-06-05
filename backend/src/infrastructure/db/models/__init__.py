@@ -38,6 +38,13 @@ from infrastructure.db.models.api_keys import (
 # Day 1.1 (Sprint 49.3) — Audit
 from infrastructure.db.models.audit import AuditLog
 
+# Sprint 57.84 — BillingOutboxEvent (transactional outbox; C-15 billing leg)
+from infrastructure.db.models.billing_outbox import (
+    BillingOutboxEvent,
+    OutboxEventType,
+    OutboxStatus,
+)
+
 # Sprint 55.1 — Business domain (incident production table)
 from infrastructure.db.models.business import (
     Incident,
@@ -169,6 +176,10 @@ __all__ = [
     # Cost Ledger (Sprint 56.3 Day 2 — US-3)
     "CostLedger",
     "CostType",
+    # Billing Outbox (Sprint 57.84 — transactional outbox, C-15 billing leg)
+    "BillingOutboxEvent",
+    "OutboxStatus",
+    "OutboxEventType",
     # Verification Log (Sprint 57.11 Day 1 — US-1)
     "VerificationLog",
     "VerifierType",
