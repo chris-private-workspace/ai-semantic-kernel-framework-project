@@ -53,3 +53,28 @@ GO. Scope ≈ 1× a small backend spike (smaller than 57.86: no migration, no mo
 
 ### Next (Day 3)
 Public `api/v1/tenants.py` (`POST /register`, EXEMPT) + `api/main.py` mount + `tenant_context.py` exempt + integration tests + frontend un-stub + i18n + frontend test.
+
+---
+
+## Day 3 — 2026-06-06 — Endpoint + exempt + mount + frontend un-stub
+
+### Accomplishments
+- **Backend**: NEW `api/v1/tenants.py` (`POST /tenants/register`, 201, EXEMPT, lenient `_service()`); `api/main.py` import + `include_router`; `tenant_context.py` EXEMPT `/api/v1/tenants/register` + MHist. NEW `test_tenant_register.py` (6): 201+shape / ACTIVE+meta_data / 409 dup-slug / 422 invalid-slug / 2-tenant isolation (app-layer) / exempt-path. Committed.
+- **Frontend**: un-stubbed `/auth/register` — removed AP-2 demo banner + 501-stub copy; wired 201→`/auth/callback` + 409→slug-taken + generic error; i18n `errorSlugTaken`+`error` (en+zh-TW); header docstring + MHist. `register.test.tsx` rewritten (banner-absent + 409 + 201; stepper tests kept) → 6 passed. Committed `d711c1fb`.
+
+### 🔴 Anomaly — concurrent-session branch collision (recovered)
+- Mid-Day-3 the working tree was switched to `chore/drive-through-acceptance-principle` by another Claude session sharing the repo dir. `registration.py` (committed on 57.87) was absent on that branch → a phantom mypy `import-untyped` on the registration import, first mis-chased as editable-install staleness (~30-45 min) before `git status` showed the wrong branch.
+- **Recovery (no data loss)**: `git stash -u` (preserve Day-3 edits + restore chore worktree clean) → checkout 57.87 → `git stash pop` (the 2 shared files byte-identical across branches → zero conflict) → fixed one real mypy error (`_UserOut.display_name` → `str | None`).
+- **Lesson** (retro Q4): wrong-branch/missing-file is far more likely than an editable-install quirk when a first-party import shows "installed missing py.typed" + the mypy source-file count doesn't increment → check `git branch` FIRST. User chose to continue with frequent defensive commits.
+
+---
+
+## Day 4 — 2026-06-06 — Full sweep + design note + closeout
+
+### Accomplishments
+- Full sweep: mypy `src/` **0/344** · flake8 0 · `run_all.py` **10/10** · pytest **2214 passed**/4 skipped (+12) · frontend lint(no `--silent`)+build · Vitest **763** · check:mockup-fidelity ✓ (oklch baseline 53 unchanged).
+- Design note `23-iam-registration-spike.md` (8-point gate ~95% verified; self-check in retrospective).
+- CHANGE-055 + retrospective Q1-Q7 + checklist all `[x]`.
+- 17.md = N/A (identity not a registered 11+1 surface).
+- Calibration: `iam-backend-spike` 0.65 1st validation; ratio ≈ 1.0 core (≈1.1-1.2 incl. branch-collision anomaly) → KEEP single data point.
+- AD `AD-Auth-Register-Backend-IAM-Block-B-Phase58` CLOSED; 3 NEW carryovers (RBAC-JWT-wiring / OIDC-user-linkage / plan-tiers).
