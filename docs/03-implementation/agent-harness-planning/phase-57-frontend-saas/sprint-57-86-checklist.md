@@ -118,5 +118,5 @@
 - [x] **Design note?** — YES (spike sprint — new IAM credentials domain; 8-point gate per §Step 5.5)
 
 ### 4.4 Ship
-- [x] **Commit mapping** Day-0 `e57baa9d` / Day-1 `8e840174` / Day-2 `e5e687d9` / Day-3 `de5f7eb3` / Day-4 closeout (pending)
-- [ ] **Push + PR** (user-gated — explicit authorization required)
+- [x] **Commit mapping** Day-0 `e57baa9d` / Day-1 `8e840174` / Day-2 `e5e687d9` / Day-3 `de5f7eb3` / Day-4 closeout `73e40f60`
+- [x] **Push + PR** (user-authorized 2026-06-06) — pushed `feature/sprint-57-86-credentials-password-login` → PR #252
