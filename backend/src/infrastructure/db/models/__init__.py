@@ -74,6 +74,12 @@ from infrastructure.db.models.identity import (
     UserRole,
 )
 
+# Sprint 57.85 — Invite (DB-backed single-use member invites; C-12 IAM Block B)
+from infrastructure.db.models.invites import (
+    Invite,
+    InviteStatus,
+)
+
 # Day 2.3 (Sprint 49.3) — Memory layers
 # Sprint 57.76 — MemoryOp (append-only memory_ops ops log)
 from infrastructure.db.models.memory import (
@@ -128,6 +134,9 @@ __all__ = [
     "Role",
     "UserRole",
     "RolePermission",
+    # Invites (Sprint 57.85 — DB-backed member invites, C-12 IAM Block B)
+    "Invite",
+    "InviteStatus",
     # Sessions
     "Session",
     "Message",

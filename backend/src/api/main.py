@@ -69,6 +69,7 @@ from api.v1.auth import router as auth_router
 from api.v1.chat import router as chat_router
 from api.v1.governance import router as governance_router
 from api.v1.health import router as health_router
+from api.v1.invites import router as invites_router
 from api.v1.loops import router as loops_router
 from api.v1.memory import router as memory_router
 from api.v1.sessions import router as sessions_router
@@ -346,6 +347,7 @@ def create_app() -> FastAPI:
     # Routers: api/v1.
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(auth_router, prefix="/api/v1")
+    app.include_router(invites_router, prefix="/api/v1")
     app.include_router(telemetry_router, prefix="/api/v1")
     app.include_router(chat_router, prefix="/api/v1")
     app.include_router(audit_router, prefix="/api/v1")

@@ -36,6 +36,29 @@
 
 ---
 
+## 🆕 Sprint 57.85 Carryover (2026-06-06 — C-12 IAM Block B invites vertical spike; closes AD-Auth-Invite-Backend-IAM-Block-B-Phase58)
+
+**Closed**: `AD-Auth-Invite-Backend-IAM-Block-B-Phase58` — the invites leg of C-12 Block B (the **first C-12 spike**, per the thin-spike discipline). DB-backed invite lifecycle: NEW `invites` table (migration 0026, RLS two-policy + system-sentinel guest-lookup escape) + `InvitesService` (opaque token sha256-stored-returned-once / create / get_metadata / single-use accept → User+UserRole+WORM-audit / revoke) + 3 endpoints (admin create `require_admin_platform_role` + guest GET/accept EXEMPT) + frontend invite page wired (fixture + AP-2 banner removed; 404/410 states). `password` accepted-not-stored (split → 57.86). Spike design note `21-iam-invites-spike.md` (8-pt gate). mypy 0/339 + pytest 2179 + run_all 10/10 + Vitest 757 + mockup-fidelity ✓. Detail: `memory/project_phase57_85_iam_invites.md` + retrospective. CHANGE-052.
+
+### C-12 epic — remaining legs (rolling, NOT pre-written)
+- **`AD-Auth-Credentials-PasswordLogin-Phase58`** (NEW, next obvious = 57.86) — local-password credentials table + bcrypt + a tenant-scoped password-login endpoint. The accept's `password` is accepted-not-stored until then; the created user authenticates via OIDC/dev-login. (Login-page UI wiring further gated by mockup-fidelity — mockup login has no password field.)
+- **`AD-Auth-Register-Backend-IAM-Block-B-Phase58`** — self-service tenant registration (POST /tenants/register: create tenant + first admin user).
+- **`AD-Auth-MFA-Backend-IAM-Block-C-Phase58`** — Block C MFA TOTP + WebAuthn (accept navigates to `/auth/mfa`, still stub 501).
+
+### NEW carryovers (this sprint)
+- **Invite email delivery** — no email facility exists; create returns the raw token in-response. Phase-58 follow-up (e.g. SMTP/SES adapter).
+- **Admin invites-list / resend UI** — `revoke` service method exists (US-4 revocable); a full management surface (list pending / resend / revoke UI) is a follow-up.
+- **Calibration**: `medium-backend` 0.80 greenfield-IAM data point ran ratio ~1.25 (over-band, as the plan flagged). Single outlier (ignored for the multiplier); if 57.86 (also greenfield IAM) confirms > 1.0 → propose a new `iam-backend-spike` class (~0.55-0.65). Track in `sprint-workflow.md §Scope-class matrix` if it recurs.
+- **Process** (single data point, fold into `sprint-workflow.md` only if recurs): a Day-0 check — "if the test DB role is superuser, RLS-block is untestable → plan an application-layer isolation assertion" (D5 cost one isolation-test rewrite).
+
+### Other in-repo C-area items still open (per `5-status/README-integration-gap-abc.md`)
+- **C-13** workflows page (全缺; greenfield front+back) / agents catalog already partially done (57.70).
+- **C-14** 企業合規軸 (SOC2/PDPA/CRA/AI Act) — 0% code, large, needs policy decisions.
+- **C-15** IaC pipeline / DR / Analytics — external-blocked (Azure provision + GitHub Secrets + infra decisions); billing-write-atomicity leg already CLOSED (57.84).
+- **B-9** 4 mockup re-point 二階債 (minor).
+
+---
+
 ## 🆕 Sprint 57.83 Carryover (2026-06-05 — B-8 leg-2: general judge + real-LLM e2e + flip default; closes B-8 / AD-Cat10-Wire-1-Production)
 
 **Closed**: B-8 fully (blocker B + C + flip) / `AD-Cat10-Wire-1-Production` — **完整 B-8 epic COMPLETE**. NEW lightweight `output_quality` judge + default template swap; a real-Azure measurement data-gated the flip; flipped `chat_verification_mode` default `disabled`→`enabled`. Final-output verification now ON by default for `real_llm` chat (env-overridable rollback). Detail: `memory/project_phase57_83_verification_default_enable.md` + retrospective + `claudedocs/5-status/cat10-verification-real-llm-measurement-20260605.md`. CHANGE-050.

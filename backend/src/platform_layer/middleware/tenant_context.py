@@ -122,6 +122,11 @@ class TenantContextMiddleware(BaseHTTPMiddleware):
         "/api/v1/auth/dev-login",
         "/api/v1/auth/logout",
         "/api/v1/telemetry",
+        # Guest invite view/accept (Sprint 57.85): the invitee has no JWT yet.
+        # Matches GET /api/v1/invites/{token} + POST /api/v1/invites/{token}/accept
+        # only — the admin create lives at /api/v1/admin/tenants/.../invites and
+        # stays NON-exempt (require_admin_platform_role).
+        "/api/v1/invites",
     )
 
     def __init__(

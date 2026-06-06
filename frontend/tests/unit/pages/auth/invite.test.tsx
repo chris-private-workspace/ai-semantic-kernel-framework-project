@@ -1,21 +1,24 @@
 /**
  * File: frontend/tests/unit/pages/auth/invite.test.tsx
- * Purpose: Unit test — InvitePage fixture metadata render + Accept POST + 501 stub error + navigate to /auth/mfa.
+ * Purpose: Unit test — InvitePage wired to the real invites backend (Sprint 57.85 US-5).
  * Category: Frontend / tests / unit / pages / auth
- * Scope: Phase 57 / Sprint 57.23 US-D1 (NEW /auth/invite/:token route)
+ * Scope: Phase 57 / Sprint 57.23 US-D1 (NEW route) → Sprint 57.85 US-5 (backend wire)
  *
  * Description:
- *   4 tests covering Sprint 57.23 US-D1 InvitePage:
- *   1. Initial render with fixture metadata (acme-prod · ap-east-1, dan@acme.com, operator, 6 days) + demo banner (AP-2)
- *   2. Accept button submits POST /api/v1/invites/:token/accept with form payload
- *   3. 501 backend stub surfaces errorStubbed message
- *   4. 200 success navigates to /auth/mfa
+ *   Rewritten for Sprint 57.85 US-5 (the invites backend now exists; fixture + AP-2
+ *   banner removed):
+ *   1. GET 200 → renders the real metadata (no fixture, no demo banner)
+ *   2. Accept POST 200 → navigate to /auth/mfa
+ *   3. Accept failure (410) → surfaces acceptError, no navigate
+ *   4. GET 404 → invalid state, no accept form
+ *   5. GET 410 → expired/used state, no accept form
  *
  * Created: 2026-05-18 (Sprint 57.23 US-D1)
+ * Last Modified: 2026-06-06
  *
  * Related:
  *   - frontend/src/pages/auth/invite/index.tsx (page under test)
- *   - reference/design-mockups/page-auth-extras.jsx:191-246 (AuthInvite mockup source)
+ *   - backend/src/api/v1/invites.py (GET /invites/{token} + POST /accept)
  */
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -33,6 +36,17 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
+const META = {
+  tenant: "Acme Corp",
+  invitedBy: "dan@acme.com",
+  role: "Operator",
+  expiresIn: "6 days",
+};
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), { status });
+}
+
 function renderInvite() {
   return render(
     <MemoryRouter initialEntries={["/auth/invite/test-token-abc"]}>
@@ -43,15 +57,11 @@ function renderInvite() {
   );
 }
 
-describe("InvitePage", () => {
+describe("InvitePage (wired)", () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     fetchSpy = vi.spyOn(global, "fetch");
-    // Initial GET /api/v1/invites/:token returns 501 (stub) — fallback fixture preserved
-    fetchSpy.mockResolvedValueOnce(
-      new Response(JSON.stringify({ detail: "Not Implemented" }), { status: 501 }),
-    );
     navigateSpy.mockClear();
   });
 
@@ -59,64 +69,45 @@ describe("InvitePage", () => {
     fetchSpy.mockRestore();
   });
 
-  it("renders fixture metadata + demo banner", async () => {
+  it("renders real invite metadata (no fixture, no demo banner)", async () => {
+    fetchSpy.mockResolvedValueOnce(jsonResponse(META));
     renderInvite();
-    // Title + subtitle from i18n
-    expect(await screen.findByText(/You're invited to acme-prod/i)).toBeInTheDocument();
-    // Demo banner (AP-2)
-    expect(
-      screen.getByText(/Backend wire pending Phase 58\+ IAM Block B/i),
-    ).toBeInTheDocument();
-    // Fixture metadata
-    expect(screen.getByText(/acme-prod · ap-east-1/i)).toBeInTheDocument();
+
+    expect(await screen.findByText("Acme Corp")).toBeInTheDocument();
     expect(screen.getByText("dan@acme.com")).toBeInTheDocument();
-    expect(screen.getByText("operator")).toBeInTheDocument();
-    expect(screen.getByText(/in 6 days/i)).toBeInTheDocument();
-    // Fields — Sprint 57.35 verbatim re-point uses mockup `.field` + `.field-label` (div, not
-    // <label htmlFor>); assert by visible label text + presence of input controls. Semantically
-    // equivalent to prior getByLabelText contract; visual layer changed, behavioral intent preserved.
-    expect(screen.getByText(/Full name/i)).toBeInTheDocument();
-    expect(screen.getByText(/Set password/i)).toBeInTheDocument();
-    expect(document.querySelector("#inv-name")).toBeInTheDocument();
-    expect(document.querySelector("#inv-password")).toBeInTheDocument();
-    // Accept button
+    expect(screen.getByText("Operator")).toBeInTheDocument();
+    expect(screen.getByText("6 days")).toBeInTheDocument();
+    // the AP-2 demo banner is gone
+    expect(screen.queryByText(/Backend wire pending/i)).not.toBeInTheDocument();
+    // accept form present
     expect(screen.getByRole("button", { name: /Accept invitation/i })).toBeInTheDocument();
   });
 
-  it("Accept submits POST /api/v1/invites/:token/accept and surfaces 501 stub error", async () => {
-    // Second fetch (the Accept POST) returns 501
-    fetchSpy.mockResolvedValueOnce(
-      new Response(JSON.stringify({ detail: "Not Implemented" }), { status: 501 }),
-    );
+  it("accept POST 200 navigates to /auth/mfa", async () => {
+    fetchSpy.mockResolvedValueOnce(jsonResponse(META)); // GET metadata
+    fetchSpy.mockResolvedValueOnce(jsonResponse({ ok: true, user_id: "u1" })); // accept
     renderInvite();
+    await screen.findByText("Acme Corp");
 
-    // Fill fields — find by id (mockup .field-label is div, not label-htmlFor)
     const nameInput = document.querySelector<HTMLInputElement>("#inv-name");
     const passwordInput = document.querySelector<HTMLInputElement>("#inv-password");
     if (!nameInput || !passwordInput) throw new Error("Invite form inputs not found");
     fireEvent.change(nameInput, { target: { value: "Jamie Liu" } });
     fireEvent.change(passwordInput, { target: { value: "verylongpassword123" } });
-
-    // Submit
     fireEvent.click(screen.getByRole("button", { name: /Accept invitation/i }));
 
-    // 501 error surface
-    await waitFor(() =>
-      expect(screen.getByText(/Backend invite endpoint is stubbed \(501\)/i)).toBeInTheDocument(),
-    );
-    // Request shape verify
+    await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith("/auth/mfa"));
     const acceptCall = fetchSpy.mock.calls.find((c) =>
       (c[0] as string).includes("/api/v1/invites/test-token-abc/accept"),
     );
     expect(acceptCall).toBeDefined();
-    // Did NOT navigate on error
-    expect(navigateSpy).not.toHaveBeenCalled();
   });
 
-  it("Accept on 200 success navigates to /auth/mfa", async () => {
-    // Second fetch returns 200
-    fetchSpy.mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+  it("accept failure (410) surfaces an error and does not navigate", async () => {
+    fetchSpy.mockResolvedValueOnce(jsonResponse(META)); // GET metadata
+    fetchSpy.mockResolvedValueOnce(jsonResponse({ detail: "gone" }, 410)); // accept fails
     renderInvite();
+    await screen.findByText("Acme Corp");
 
     const nameInput = document.querySelector<HTMLInputElement>("#inv-name");
     const passwordInput = document.querySelector<HTMLInputElement>("#inv-password");
@@ -125,13 +116,27 @@ describe("InvitePage", () => {
     fireEvent.change(passwordInput, { target: { value: "verylongpw1234" } });
     fireEvent.click(screen.getByRole("button", { name: /Accept invitation/i }));
 
-    await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith("/auth/mfa"));
+    await waitFor(() =>
+      expect(screen.getByText(/Could not accept the invitation/i)).toBeInTheDocument(),
+    );
+    expect(navigateSpy).not.toHaveBeenCalled();
   });
 
-  it("MFA hint row visible below Accept button", () => {
+  it("GET 404 shows the invalid state with no accept form", async () => {
+    fetchSpy.mockResolvedValueOnce(jsonResponse({ detail: "not found" }, 404));
     renderInvite();
+
+    expect(await screen.findByText(/This invite link is invalid/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Accept invitation/i })).not.toBeInTheDocument();
+  });
+
+  it("GET 410 shows the expired/used state with no accept form", async () => {
+    fetchSpy.mockResolvedValueOnce(jsonResponse({ detail: "gone" }, 410));
+    renderInvite();
+
     expect(
-      screen.getByText(/You'll be asked to enroll an authenticator app/i),
+      await screen.findByText(/This invite has expired or already been used/i),
     ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Accept invitation/i })).not.toBeInTheDocument();
   });
 });
