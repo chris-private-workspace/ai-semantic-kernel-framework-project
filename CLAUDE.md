@@ -194,6 +194,38 @@ V2 嚴格按以下範疇組織代碼，**禁止跨範疇雜湊**：
 
 ---
 
+## Drive-Through Acceptance Hard Constraint（必守）⭐⭐⭐
+
+> 本項目的開發**不能只看字面上的數據**。gate 全綠（mypy / pytest / Vitest / lint / mockup-fidelity）只證明「零件對」與「API 會回應」，**不證明「人能真的用」**。
+> 任何 user-facing feature 在標 done 前，必須有人**實際開著真 UI + 真後端 + 真 LLM 走完流程**，並比對「實際發生 vs 預期流程」。完整根因 + chat-v2 五個 Potemkin 證據：[`memory/feedback_drive_through_over_paper_metrics.md`](memory/feedback_drive_through_over_paper_metrics.md)。
+
+### 「驗證」有三層，gate 只覆蓋前兩層
+
+| 層級 | 證明的事 | 工具 |
+|------|---------|------|
+| **Gate 層** | 零件正確 | mypy / pytest / Vitest / lint / mockup byte-identical |
+| **Curl/probe 層** | API 會回應 | curl / httpx probe / e2e against API |
+| **Drive-Through 層** ⭐ | **整台車能開、體驗符合預期** | 真 UI（Playwright/browser MCP 或人）+ 真後端 + 真 LLM，截圖 + 行為對照 |
+
+「主流量驗證原則」（約束 2）要求的是第 3 層；「**能**驗證」**不等於**「**已**驅動驗證」。
+
+### 禁止項（紙上談兵來源）
+
+- ❌ gate 過了就標「verified / ~X% working」——drive-through 沒做一律寫「未驗證 (gate-only)」
+- ❌ 用 curl/probe 通過 API 當「功能能用」
+- ❌ 死控件（無 onClick）/ fixture 假資料 / 寫死或誤導標籤 / 結果不渲染——全是 AP-4 Potemkin
+- ❌ 後端沒接就用假資料但**不標示** demo（要嘛標 DEMO，要嘛留白，不可假裝真）
+
+### Drive-Through DoD（每個 user-facing feature task）
+
+1. 開真 UI（dev server）+ 真後端 + 真 LLM（非 echo/mock），走完該 feature 主路徑
+2. 逐控件確認：可點、有效果、標籤真實、結果真的渲染
+3. 截圖 +「實際發生 vs 預期流程」對照記入 progress.md / CHANGE 紀錄
+4. 發現 Potemkin（死控件 / 假資料 / 誤導標籤 / 不渲染）→ 修到能用才算 done
+5. 強制 gate：見 [`.claude/rules/sprint-workflow.md`](.claude/rules/sprint-workflow.md) §Before Commit Checklist item 8（AD-Drive-Through-Acceptance）
+
+---
+
 ## 「Check Existing Before Building」— V2 版
 
 建任何新 infra 前，**權威排序**：
