@@ -90,23 +90,23 @@
 
 ### 4.1 integration + isolation
 - [x] **Coverage achieved across existing files (no separate `test_chat_billing_outbox.py` — would duplicate)** — producer (chat → enqueue): `test_chat_cost_ledger.py` + `test_phase56_3_e2e.py` (Day 3); drainer parity + idempotent-twice + dead-letter + **2-tenant isolation (US-4)**: `test_billing_outbox_drain.py` (Day 2). The full chat→enqueue→drain→cost_ledger chain on real data = the real-Azure smoke below. A separate automated chain test would need the committed-data pattern (db_session rolls back) and mostly re-assert the drain test — skipped to avoid redundant infra.
-- [ ] **real-Azure smoke** (user-authorized; Risk Class E clean restart) — 1-2 chats mode=real_llm → confirm a `cost_ledger` row appears via the DRAINED path (not direct) before closeout
+- [x] **real-Azure smoke** ✅ (user-authorized; Risk Class E clean restart) — `real_llm` chat (session f5f60c3a, gpt-5.2) → 1 `llm_call` outbox row drained to `done` → 2 `cost_ledger` rows via the DRAINER (input qty=1997 + output qty=41, **unit_cost > 0** — C-11 normalize works through the drainer). Chain chat→enqueue→drain→cost_ledger verified live. Backend stopped + temps removed.
 
 ### 4.2 Full sweep
-- [ ] **Backend gates** — black/isort/flake8 0 + `mypy src/` 0 + `pytest` green + `run_all.py` 10/10 (`check_rls_policies` + `check_llm_sdk_leak` + `check_event_schema_sync`)
-- [ ] **No frontend** — backend + docs only
-- [ ] **Read all changed code** — final pass
+- [x] **Backend gates** — black/isort/flake8 0 + `mypy src/` 0/335 + `pytest` 2161 passed/4 skipped + `run_all.py` 10/10 (`check_rls_policies` + `check_llm_sdk_leak` + `check_event_schema_sync` green)
+- [x] **No frontend** — backend + docs only
+- [x] **Read all changed code** — final pass (router flip, drainer, migration, conftest fix)
 
 ### 4.3 Closeout docs
-- [ ] **CHANGE-051** in `claudedocs/4-changes/feature-changes/`
-- [ ] **17.md** — BillingOutbox enqueue/drain contract (single-source)
-- [ ] **progress.md** Day 0-4 + **retrospective.md** Q1-Q7 (atomicity design + flip decision + real-Azure smoke)
-- [ ] **Checklist** all `[x]` (mark 🚧 + reason if flip carried over per §Workload cut-line)
-- [ ] **Calibration** record (medium-backend 0.80; agent_factor 1.0 parent-direct; ratio; large-sprint note)
-- [ ] **AD status**: C-15 billing-write-atomicity leg CLOSED (or partial + `AD-Billing-Outbox-Flip` carryover); IaC/DR/Analytics deferred → next-phase-candidates.md
-- [ ] **MEMORY subfile + pointer** + **CLAUDE.md lean** (Current Sprint + Last Updated)
-- [ ] **Design note?** — likely YES (new transactional-outbox pattern + cross-cutting contract; spike-extract 8-point gate) — decide at closeout per §Step 5.5
+- [x] **CHANGE-051** in `claudedocs/4-changes/feature-changes/`
+- [→] **17.md** — **N/A** (assessed): 17.md is the 11+1 cross-CATEGORY registry (ChatClient / LoopEvent / HITL / tool registry); platform_layer.billing is not registered there (sibling `cost_ledger` is absent too). BillingOutbox is documented in CHANGE-051 + module docstrings + the plan — forcing it into 17.md would violate that file's scope.
+- [x] **progress.md** Day 0-4 + **retrospective.md** Q1-Q7 (atomicity design + flip + real-Azure smoke)
+- [x] **Checklist** all `[x]` (no flip carryover — flip shipped; smoke passed)
+- [x] **Calibration** record (medium-backend 0.80; agent_factor 1.0 parent-direct; ratio ~1.1-1.2 — over-run entirely the Day-3 singleton-leak debug; large-sprint note in retro Q2)
+- [x] **AD status**: C-15 billing-write-atomicity leg **CLOSED**; IaC/DR/Analytics deferred → next-phase-candidates.md (no flip carryover)
+- [x] **MEMORY subfile + pointer** + **CLAUDE.md lean** (Current Sprint + Last Updated)
+- [x] **Design note?** — **NO** (feature-continuation within the billing key-chain; new pattern but no new domain spike / no new cross-CATEGORY contract — lives in CHANGE-051 + module docstrings + plan; per §Step 5.5 spike-vs-continuation)
 
 ### 4.4 Ship
-- [ ] **Commit mapping** Day-0 / Day-1 schema / Day-2 service+shadow / Day-3 poller+flip / Day-4 tests+closeout
+- [x] **Commit mapping** Day-0 `ef8c1f3e` / Day-1 schema `cd84b437` / Day-2 service+tests `fe4beeed` / Day-3 flip+poller+fix `51524a35` / Day-4 closeout (pending)
 - [ ] **Push + PR** (user-gated — explicit authorization required)

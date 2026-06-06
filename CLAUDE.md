@@ -70,7 +70,7 @@ Build enterprise AI agent teams that work like **human professional teams** — 
 | Attribute | Value |
 |-----------|-------|
 | **Phase** | V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend ongoing (Phase 57+) |
-| **Current Sprint** | Sprint 57.83 (PR pending) — **B-8 leg-2: general judge + real-LLM e2e + flip default** (closes B-8 / `AD-Cat10-Wire-1-Production` — **完整 B-8 epic COMPLETE**): NEW lightweight `output_quality` judge (clearly-failed-only) + default template swap; a real-Azure measurement data-gated the flip (fail-on-any judge FP ~75% → DO-NOT-FLIP → re-tuned lightweight → FP 0% → FLIP) → flipped `chat_verification_mode` default `disabled`→`enabled`. Final-output verification now ON by default for `real_llm` chat (env-overridable rollback). backend+docs mypy 0/332 + pytest 2150 + run_all 10/10; CHANGE-050; measurement artifact in `claudedocs/5-status/`. Detail: `memory/project_phase57_83_verification_default_enable.md`. Next: `claudedocs/1-planning/next-phase-candidates.md`. |
+| **Current Sprint** | Sprint 57.84 (PR pending) — **C-15 transactional billing Outbox** (closes C-15 billing-write-atomicity leg / `AD-Cost-Ledger-Outbox-Atomicity` → billing key-chain ② C-11+B-7+B-8+C-15-billing closed): NEW `billing_outbox` table (migration 0025, RLS + system-sentinel drainer escape) + `BillingOutboxService.enqueue` (atomic, ON CONFLICT idempotent — no 漏扣) + `BillingOutboxDrainer.drain_once` (per-row txn, exactly-once via existing CostLedgerService — no 雙扣) + lifespan poller; **router flipped** chat cost-write → billing_outbox enqueue. real-Azure smoke ✅ (gpt-5.2 chain chat→enqueue→drain→cost_ledger). IaC/DR/Analytics deferred (external-blocked). mypy 0/335 + pytest 2161 + run_all 10/10; CHANGE-051. Detail: `memory/project_phase57_84_billing_outbox.md`. Next: `claudedocs/1-planning/next-phase-candidates.md`. |
 | **Sprint History** | See [`memory/MEMORY.md`](memory/MEMORY.md) §Recent Sprints + per-sprint subfile `memory/project_phase57_XX_*.md` + retrospective.md under `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-XX/` |
 | **Pending / Next Phase** | See [`claudedocs/1-planning/next-phase-candidates.md`](claudedocs/1-planning/next-phase-candidates.md) |
 | **Roadmap** | Phase 49-55 V2 ✅ / Phase 56-58 SaaS Stage 1 3/3 ✅ / Phase 57+ Frontend ongoing |
@@ -586,7 +586,7 @@ V1 完整 CLAUDE.md 已保留於 `CLAUDE.backup.md`。如需查閱 V1 架構（M
 
 ---
 
-**Last Updated**: 2026-06-05 (Sprint 57.83 — B-8 leg-2: general output_quality judge + real-LLM measurement + flip chat_verification_mode default→enabled, closes B-8/AD-Cat10-Wire-1-Production = 完整 B-8 epic COMPLETE; data-gated flip (fail-on-any FP ~75% → lightweight FP 0%); final-output verification ON by default for real_llm chat; backend+docs mypy 0/332 + pytest 2150 + run_all 10/10; CHANGE-050; PR pending); see `memory/` for sprint history
+**Last Updated**: 2026-06-06 (Sprint 57.84 — C-15 transactional billing Outbox: billing_outbox table + migration 0025 (RLS + sentinel drainer escape) + enqueue (atomic, idempotent — no 漏扣) + drainer (per-row txn, exactly-once — no 雙扣) + lifespan poller; router flipped chat cost-write → billing_outbox enqueue; real-Azure smoke ✅; closes C-15 billing-write-atomicity leg → billing key-chain ② closed; IaC/DR/Analytics deferred; mypy 0/335 + pytest 2161 + run_all 10/10; CHANGE-051; PR pending); see `memory/` for sprint history
 **Project Start**: 2025-11-14
 **V2 Authority**: `docs/03-implementation/agent-harness-planning/` (21 docs — 20 規劃 + 1 review)
 **V1 Reference**: `CLAUDE.backup.md` + `docs/07-analysis/V9/00-index.md`

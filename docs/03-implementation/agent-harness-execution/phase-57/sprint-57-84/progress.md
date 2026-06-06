@@ -133,3 +133,21 @@
 
 ### Notes
 - The flip turned a ~6-hr code sprint into a longer one: the singleton-leak pollution took the most time (the failure attribution was non-obvious — it surfaced on innocent tests). Lesson for retro: a new lifespan-wired singleton needs a conftest reset fixture from the start (the pricing/rate-limit/error-budget singletons leak too, but only billing_outbox's consumer binds the global engine).
+
+---
+
+## Day 4 — 2026-06-06 — real-Azure smoke + closeout
+
+### Accomplishments
+- **real-Azure smoke ✅ PASSED** (user-authorized). Clean backend restart (drainer enabled, verification disabled for a focused billing smoke; Risk Class E — :8000 confirmed free first, startup log showed "billing outbox drainer started" + "enqueue service wired" + "pricing loader wired"). `real_llm` chat (session f5f60c3a, gpt-5.2) → `stop_reason=end_turn` (converged). DB verification:
+  - `billing_outbox`: 1 `llm_call` row, status **done**, retry=0, no error (enqueue atomic + drainer materialized).
+  - `cost_ledger` (via DRAINER, not direct): `azure_openai_gpt-5.2-2025-12-11_input` qty=1997 unit=0.00000175 total=0.00349 + `_output` qty=41 unit=0.0000140 total=0.000574 — **unit_cost > 0** (C-11 date-suffix normalize works through the drainer's single-source pricing).
+  - VERDICT: outbox_all_done=True / cost_rows=2 / nonzero_cost=True. Chain chat→enqueue→drain→cost_ledger verified end-to-end on the live path.
+  - Backend stopped (python PID, not node) + temp scripts removed (workspace hygiene).
+- **Closeout docs**: CHANGE-051 (feature-changes); retrospective Q1-Q7 (+ smoke result); 17.md assessed N/A (11+1 registry scope; billing not there — sibling cost_ledger absent too); MEMORY subfile + pointer; CLAUDE.md lean; next-phase-candidates (defer IaC/DR/Analytics + Stripe carryover).
+
+### Verification (final sweep)
+- `mypy src/` 0/335 · `run_all.py` 10/10 · full `pytest` 2161 passed / 4 skipped · black/isort/flake8 0.
+
+### Outcome
+- C-15 billing-write-atomicity leg **COMPLETE**. IaC / DR / Analytics sub-items deferred (external-blocked) → next-phase-candidates. Billing key-chain ② (C-11 + B-7 + B-8 + C-15-billing-leg) now closed.

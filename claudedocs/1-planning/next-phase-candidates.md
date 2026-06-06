@@ -222,6 +222,21 @@ C-11 本機 real-LLM smoke 已實跑（用既有 `.env` Azure 憑證、零 GitHu
 
 ---
 
+## 🆕 Sprint 57.84 — C-15 billing-write-atomicity leg CLOSED + sub-items deferred (2026-06-06)
+
+**C-15 的 in-repo billing leg = DONE**（transactional billing Outbox；CHANGE-051；`memory/project_phase57_84_billing_outbox.md`）。`billing_outbox` 表 + enqueue（請求 txn 內原子、ON CONFLICT 冪等 → 無漏扣）+ drainer（per-row txn 精確一次、materialize via 既有 CostLedgerService → 無雙扣）+ lifespan poller；router 已 flip（chat cost-write → billing_outbox enqueue）。real-Azure smoke ✅（gpt-5.2 chain chat→enqueue→drain→cost_ledger，unit_cost>0）。**billing key-chain ②（C-11 57.79 + B-7 57.81 + B-8 57.82/83 + C-15-billing-leg 57.84）= 全部 closed。**
+
+**C-15 剩餘 sub-items — DEFERRED（external-blocked，非本 repo 可獨力完成）**：
+- **IaC deploy pipeline** — Bicep 5 模組齊全但 pipeline 停用；需 Azure provision + GitHub Secrets（用戶 policy：secret 不進 GitHub）。
+- **DR 自動化 / multi-region / WAL streaming** — 僅設計文件；需確認 Azure Postgres Flexible Server 內建 backup/geo-redundancy 是否滿足 RPO 1h/RTO 4h + 流量管理拓樸決策。
+- **Analytics / data warehouse / CDC / dbt / BI** — 0% 實作；全新外部基礎設施。
+- **Stripe（外部 billing）consumer** — outbox backbone 已就位（為此設計的解耦）；本 sprint drainer 只 materialize cost_ledger，Stripe drain target 是未來純 worker 變更。
+- **enqueue-itself failure** — 目前 logged best-effort（SSE 安全）；罕見、若 metrics 顯示再議。
+
+> 詳見 `claudedocs/5-status/c15-devops-data-platform-analysis-20260601.md`（4 sub-item 現況）。開工任一 sub-item 前需用戶提供對應外部輸入（Azure 資源 / Secrets / 基礎設施決策）。
+
+---
+
 ## 🆕 Process / Calibration carryover (2026-06-03 — Area-A 教訓固化副產物)
 
 固化 Area-A（57.66-73）教訓時，6 條可行教訓已 fold-in `.claude/rules/sprint-workflow.md`（Prong-1 test-infra verify / Prong-2 +2 drift rows: codegen-shape + no-live-producer / Risk Class E stale-`--reload`-masks-wiring / Risk Class C 補強 DB-call-test-isolation / Before-Commit item 7 agent-delegation 紀律）+ README-integration-gap-abc A 區同步至 57.73。1 條無法用「一行規則」解決，記此追蹤：
