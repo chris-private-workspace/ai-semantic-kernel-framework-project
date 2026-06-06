@@ -68,3 +68,23 @@ User selected C-12 (IAM Block B/C) as the next area to "process all" remaining A
 ### Remaining
 - Day 3 frontend: wire `invite/index.tsx` (remove fixture + AP-2 banner; real GET/accept; 404/410 states) + `invite.test.tsx`.
 - Day 4: design note (`21-iam-invites-spike.md`, 8-point gate) + CHANGE-052 + retrospective + closeout.
+
+---
+
+## Day 3 (frontend) — 2026-06-06
+
+- `invite/index.tsx` — removed FIXTURE_METADATA + AP-2 banner; consume real GET (200→form / 404→invalid / 410→gone) + real accept error; `loading`/`invalid`/`gone` states via `DangerNote` (reuses existing danger-alert inline style — no new oklch literals). i18n en+zh-TW: drop demoBanner/errorStubbed, add loading/invalid/gone/acceptError (zh-TW 繁中 per locale-is-translated rule).
+- `invite.test.tsx` — REWROTE existing file in-place (Sprint 57.78 lesson; did not add a dup): 5 tests (real metadata / accept→navigate / accept-fail / 404-invalid / 410-gone).
+- Gates: lint(no `--silent`)+build clean; Vitest **757 passed**; check:mockup-fidelity ✓ (CSS byte-identical + oklch baseline **50 unchanged**). Commit `6bb28d26`.
+
+## Day 4 — 2026-06-06 — Closeout
+
+- **Design note** `21-iam-invites-spike.md` (SPIKE — §Step 5.5; 8-point gate all ✓; ~97% verified ratio).
+- CHANGE-052 + retrospective.md (Q1-Q7 + 8-point self-check + calibration).
+- 17.md = N/A (assessed — identity not a registered 11+1 category surface; same call as 57.84).
+- Calibration: `medium-backend` 0.80 + `agent_factor` 1.0 (parent-direct); ratio ~1.25 — **greenfield-domain over-run** (as plan flagged); single data point, outlier-ignored for the multiplier; if 57.86 confirms → propose `iam-backend-spike` class.
+- Final gates: mypy 0/339 · pytest **2179** · run_all 10/10 · Vitest 757 · mockup-fidelity ✓.
+- AD: `AD-Auth-Invite-Backend-IAM-Block-B-Phase58` CLOSED; carryovers (credentials/register/MFA/email/admin-list) → next-phase-candidates.md.
+
+### Commit mapping
+- Day-0 `0d5d81d6` (plan+checklist+progress) / Day-1 schema `e8f20e95` / Day-2+3 backend `890cab46` / Day-3 frontend `6bb28d26` / Day-4 closeout (pending).

@@ -87,24 +87,24 @@
 ## Day 4 — Full sweep + design note + Closeout
 
 ### 4.1 Full sweep
-- [ ] **Backend gates** — black/isort/flake8 0 + `mypy src/` 0 + `pytest` green + `run_all.py` 10/10 (`check_rls_policies` for `invites`)
-- [ ] **Frontend gates** — `npm run lint` (**NO `--silent`**) + `npm run build` + `npm run test` + `npm run check:mockup-fidelity` green
-- [ ] **Read all changed code** — final pass (migration, service, endpoints, exempt path, frontend wire)
-- [ ] **real-Azure smoke?** — N/A (no LLM in invites path; e2e proven by integration tests). Manual local e2e (admin create → GET → accept) optional if backend running.
+- [x] **Backend gates** — black/isort/flake8 0 + `mypy src/` 0/339 + `pytest` **2179 passed** + `run_all.py` 10/10 (`check_rls_policies` for `invites`)
+- [x] **Frontend gates** — `npm run lint` (NO `--silent`) + `npm run build` + `npm run test` (**757**) + `npm run check:mockup-fidelity` ✓ (oklch baseline 50 unchanged)
+- [x] **Read all changed code** — final pass (migration, service, endpoints, exempt path, frontend wire)
+- [x] **real-Azure smoke?** — N/A (no LLM in invites path; e2e proven by 18 backend + 5 frontend tests)
 
 ### 4.2 design note (SPIKE — §Step 5.5 mandatory)
-- [ ] **NEW `docs/03-implementation/agent-harness-planning/21-iam-invites-spike.md`** — extract from real impl; 8-point quality gate (section→US, file:line per claim, decision matrix (token: DB-opaque vs JWT), verification command, test fixture ref, open-invariant boundary (verified: lifecycle/isolation; deferred: credentials/register/MFA/email), rollback path, 17.md cross-ref). Record verified-ratio + 8-point self-check in retrospective.
-- [ ] **17.md assess** — likely platform_layer-internal note (not 11+1 cross-category); same call as 57.84 — document in design note + CHANGE if not in 17.md
+- [x] **NEW `docs/03-implementation/agent-harness-planning/21-iam-invites-spike.md`** — extracted from shipped impl; 8-point gate all ✓ (~97% verified ratio; self-check in retrospective)
+- [x] **17.md assess** — **N/A** (identity not a registered 11+1 category surface; sibling auth.py/jwt.py absent too; same call as 57.84). Contract lives in design note + docstrings + CHANGE-052.
 
 ### 4.3 Closeout docs
-- [ ] **CHANGE-052** in `claudedocs/4-changes/feature-changes/`
-- [ ] **progress.md** Day 0-4 + **retrospective.md** Q1-Q7 (token design + guest RLS + password-deferral rationale + design-note 8-point gate)
-- [ ] **Checklist** all `[x]` (or `🚧`/`[→]` carryover with reason — never delete)
-- [ ] **Calibration** record (medium-backend 0.80; agent_factor 1.0 parent-direct; greenfield-domain data point — flag if ratio > 1.0 for possible `iam-backend-spike` class)
-- [ ] **AD status**: `AD-Auth-Invite-Backend-IAM-Block-B-Phase58` CLOSED; NEW `AD-Auth-Credentials-PasswordLogin-Phase58` (57.86) + register/MFA/email/admin-list carryovers → next-phase-candidates.md
-- [ ] **MEMORY subfile + pointer** + **CLAUDE.md lean** (Current Sprint + Last Updated)
-- [ ] **Design note?** — **YES** (spike sprint — new IAM domain; 8-point gate per §Step 5.5)
+- [x] **CHANGE-052** in `claudedocs/4-changes/feature-changes/`
+- [x] **progress.md** Day 0-4 + **retrospective.md** Q1-Q7 (token design + guest RLS + password-deferral + design-note 8-point gate)
+- [x] **Checklist** all `[x]`/`[→]` (3.4 N/A; no deletions)
+- [x] **Calibration** record (medium-backend 0.80; agent_factor 1.0 parent-direct; ratio ~1.25 greenfield-domain over-run — single outlier, ignored for multiplier; if 57.86 confirms → propose `iam-backend-spike`)
+- [x] **AD status**: `AD-Auth-Invite-Backend-IAM-Block-B-Phase58` CLOSED; NEW `AD-Auth-Credentials-PasswordLogin-Phase58` (57.86) + register/MFA/email/admin-list carryovers → next-phase-candidates.md
+- [x] **MEMORY subfile + pointer** + **CLAUDE.md lean** (Current Sprint + Last Updated)
+- [x] **Design note?** — **YES** (spike sprint — new IAM domain; 8-point gate per §Step 5.5)
 
 ### 4.4 Ship
-- [ ] **Commit mapping** Day-0 / Day-1 schema / Day-2 service+tests / Day-3 endpoints+frontend / Day-4 closeout
+- [x] **Commit mapping** Day-0 `0d5d81d6` / Day-1 `e8f20e95` / Day-2+3 backend `890cab46` / Day-3 frontend `6bb28d26` / Day-4 closeout (pending)
 - [ ] **Push + PR** (user-gated — explicit authorization required)
