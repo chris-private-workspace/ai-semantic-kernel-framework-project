@@ -1,39 +1,39 @@
 """
 File: backend/tests/integration/api/test_chat_cost_ledger.py
-Purpose: Integration — chat router LoopCompleted + ToolCallExecuted → CostLedger entries.
-Category: Tests / Integration / API (Phase 56 SaaS Stage 1)
-Scope: Sprint 56.3 / Day 3 / 1 integration US-4.
+Purpose: Integration — chat router LoopCompleted + ToolCallExecuted → billing_outbox enqueue.
+Category: Tests / Integration / API (Phase 56 SaaS Stage 1 / Sprint 57.84 C-15)
+Scope: Sprint 56.3 / Day 3 (US-4) → Sprint 57.84 (C-15 billing-Outbox flip).
 
 Description:
-    Drives _stream_loop_events with a stub loop yielding both
-    ToolCallExecuted (1) + LoopCompleted (1). Asserts both ledger
-    entries land in cost_ledger table with proper tenant_id + cost_type.
+    Drives _stream_loop_events with stub loops and asserts the chat observer
+    ENQUEUES durable billing events into billing_outbox (the Sprint 57.84 flip:
+    the observer no longer writes cost_ledger directly — a background drainer
+    materializes cost_ledger from the outbox; see test_billing_outbox_drain.py
+    for the drain → cost_ledger parity). The quota-reconcile test is unchanged
+    (the flip did not touch the quota path).
 
 Created: 2026-05-06 (Sprint 56.3 Day 3)
+Last Modified: 2026-06-05 (Sprint 57.84 — flip cost-write → billing_outbox enqueue)
 """
 
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agent_harness._contracts import LoopCompleted, TraceContext
 from agent_harness._contracts.events import ToolCallExecuted
 from api.v1.chat.router import _stream_loop_events
 from api.v1.chat.session_registry import SessionRegistry
-from infrastructure.db.models.cost_ledger import CostLedger
-from platform_layer.billing.cost_ledger import CostLedgerService
-from platform_layer.billing.pricing import PricingLoader
+from infrastructure.db.models.billing_outbox import BillingOutboxEvent
+from platform_layer.billing.billing_outbox import BillingOutboxService
 from tests.conftest import seed_tenant
 
 pytestmark = pytest.mark.asyncio
-
-_PRICING_YAML = Path(__file__).resolve().parents[3] / "config" / "llm_pricing.yml"
 
 
 class _StubLoop:
@@ -67,8 +67,6 @@ class _StubLoop:
             result_content="ok",
             trace_context=trace_context,
         )
-        # Sprint 57.2: LoopCompleted carries split + provider/model
-        # (closes AD-Cost-Ledger-Token-Split + Provider-Attribution).
         yield LoopCompleted(
             stop_reason="end_turn",
             total_turns=1,
@@ -86,24 +84,24 @@ async def _consume(stream: AsyncIterator[bytes]) -> None:
         pass
 
 
-async def test_chat_request_writes_cost_ledger_end_to_end(
+async def _set_tenant(db: AsyncSession, tid: UUID) -> None:
+    # billing_outbox has FORCE RLS — set the tenant context so the enqueue's
+    # INSERT WITH CHECK passes (harmless if the test role bypasses RLS).
+    await db.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tid)})
+
+
+async def test_chat_request_enqueues_billing_outbox_end_to_end(
     db_session: AsyncSession,
 ) -> None:
-    """US-4 — full chat run yields LLM + tool ledger entries in cost_ledger table."""
-    t = await seed_tenant(db_session, code="CL_E2E_1")
+    """Sprint 57.84 (US-1/US-5) — a full chat run enqueues an llm_call + a
+    tool_call billing event into billing_outbox (the producer side of the flip)."""
+    t = await seed_tenant(db_session, code="OBX_E2E_1")
+    await _set_tenant(db_session, t.id)
     session_id = uuid4()
     registry = SessionRegistry()
     await registry.register(t.id, session_id)
 
-    pricing = PricingLoader()
-    pricing.load_from_yaml(_PRICING_YAML)
-    cost_ledger = CostLedgerService(db=db_session, pricing_loader=pricing)
-
-    stub_loop = _StubLoop(
-        input_tokens=1_200,
-        output_tokens=800,
-        tool_name="salesforce_query",
-    )
+    stub_loop = _StubLoop(input_tokens=1_200, output_tokens=800, tool_name="salesforce_query")
     trace_ctx = TraceContext(tenant_id=t.id, session_id=session_id)
 
     await _consume(
@@ -114,45 +112,38 @@ async def test_chat_request_writes_cost_ledger_end_to_end(
             registry,
             user_input="hello",
             trace_context=trace_ctx,
-            cost_ledger=cost_ledger,
+            billing_outbox=BillingOutboxService(),
+            db=db_session,
         )
     )
 
     rows = (
         (
             await db_session.execute(
-                select(CostLedger)
-                .where(CostLedger.tenant_id == t.id)
-                .order_by(CostLedger.recorded_at)
+                select(BillingOutboxEvent).where(BillingOutboxEvent.tenant_id == t.id)
             )
         )
         .scalars()
         .all()
     )
+    event_types = {r.event_type for r in rows}
+    assert event_types == {"llm_call", "tool_call"}
+    assert len(rows) == 2
+    assert all(r.status == "pending" for r in rows)
+    assert all(r.session_id == session_id for r in rows)
 
-    cost_types = {r.cost_type for r in rows}
-    assert "llm" in cost_types
-    assert "tool" in cost_types
-    # Sprint 57.2: 2 LLM entries (input + output split) + 1 tool entry = 3 total.
-    assert len(rows) == 3
+    llm_row = next(r for r in rows if r.event_type == "llm_call")
+    assert llm_row.payload["input_tokens"] == 1_200
+    assert llm_row.payload["output_tokens"] == 800
+    assert llm_row.payload["model"] == "gpt-5.4"
+    assert llm_row.idempotency_key == f"{session_id}:llm:loop"
 
-    # Both LLM entries have provider/model attribution + session_id.
-    llm_rows = [r for r in rows if r.cost_type == "llm"]
-    assert len(llm_rows) == 2
-    sub_types = {r.sub_type for r in llm_rows}
-    assert sub_types == {
-        "azure_openai_gpt-5.4_input",
-        "azure_openai_gpt-5.4_output",
-    }
-    assert all(r.session_id == session_id for r in llm_rows)
-
-    # Tool entry sub_type = the tool name.
-    tool_row = next(r for r in rows if r.cost_type == "tool")
-    assert tool_row.sub_type == "salesforce_query"
-    assert tool_row.session_id == session_id
+    tool_row = next(r for r in rows if r.event_type == "tool_call")
+    assert tool_row.payload["tool_name"] == "salesforce_query"
+    assert tool_row.idempotency_key == f"{session_id}:tool:salesforce_query:0"
 
 
-# === Sprint 57.82 (B-8 leg-1): verification judge cost + quota ===
+# === Sprint 57.82 (B-8 leg-1) verification cost — flipped to outbox in 57.84 ===
 
 
 class _VerificationStubLoop:
@@ -215,19 +206,16 @@ class _SpyQuota:
         return actual_tokens
 
 
-async def test_chat_verification_judge_writes_distinct_cost_ledger_entry(
+async def test_chat_verification_judge_enqueues_distinct_billing_outbox_event(
     db_session: AsyncSession,
 ) -> None:
-    """Sprint 57.82: a LoopCompleted carrying judge tokens writes a DISTINCT
-    `_verification` cost-ledger entry, separate from the loop entry (4 rows total)."""
-    t = await seed_tenant(db_session, code="CL_VERIF_1")
+    """Sprint 57.84 (was 57.82): a LoopCompleted carrying judge tokens enqueues a
+    DISTINCT `_verification` llm_call billing event, separate from the loop event."""
+    t = await seed_tenant(db_session, code="OBX_VERIF_1")
+    await _set_tenant(db_session, t.id)
     session_id = uuid4()
     registry = SessionRegistry()
     await registry.register(t.id, session_id)
-
-    pricing = PricingLoader()
-    pricing.load_from_yaml(_PRICING_YAML)
-    cost_ledger = CostLedgerService(db=db_session, pricing_loader=pricing)
 
     stub_loop = _VerificationStubLoop(
         input_tokens=1_000,
@@ -245,33 +233,44 @@ async def test_chat_verification_judge_writes_distinct_cost_ledger_entry(
             registry,
             user_input="hi",
             trace_context=trace_ctx,
-            cost_ledger=cost_ledger,
+            billing_outbox=BillingOutboxService(),
+            db=db_session,
         )
     )
 
     rows = (
-        (await db_session.execute(select(CostLedger).where(CostLedger.tenant_id == t.id)))
+        (
+            await db_session.execute(
+                select(BillingOutboxEvent).where(BillingOutboxEvent.tenant_id == t.id)
+            )
+        )
         .scalars()
         .all()
     )
-    sub_types = {r.sub_type for r in rows}
-    # loop entries + DISTINCT judge `_verification` entries
-    assert "azure_openai_gpt-5.4_input" in sub_types
-    assert "azure_openai_gpt-5.4_output" in sub_types
-    assert "azure_openai_gpt-5.4_verification_input" in sub_types
-    assert "azure_openai_gpt-5.4_verification_output" in sub_types
-    assert len(rows) == 4  # loop in+out + judge in+out
+    # Two llm_call events: the loop event + the distinct verification event.
+    assert len(rows) == 2
+    assert all(r.event_type == "llm_call" for r in rows)
+    keys = {r.idempotency_key for r in rows}
+    assert keys == {f"{session_id}:llm:loop", f"{session_id}:llm:_verification"}
 
-    verif_rows = [r for r in rows if "_verification_" in r.sub_type]
-    assert {int(r.quantity) for r in verif_rows} == {120, 8}
-    assert all(r.session_id == session_id for r in verif_rows)
+    by_key = {r.idempotency_key: r for r in rows}
+    loop_row = by_key[f"{session_id}:llm:loop"]
+    verif_row = by_key[f"{session_id}:llm:_verification"]
+    assert loop_row.payload["input_tokens"] == 1_000
+    assert loop_row.payload["sub_type_suffix"] == ""
+    assert verif_row.payload["input_tokens"] == 120
+    assert verif_row.payload["output_tokens"] == 8
+    assert verif_row.payload["sub_type_suffix"] == "_verification"
 
 
 async def test_chat_verification_tokens_counted_against_quota(
     db_session: AsyncSession,
 ) -> None:
-    """Sprint 57.82: judge tokens are added to the quota reconcile actual_tokens."""
-    t = await seed_tenant(db_session, code="CL_VERIF_Q")
+    """Sprint 57.82: judge tokens are added to the quota reconcile actual_tokens.
+
+    (Unchanged by the 57.84 flip — the quota-reconcile path is independent of the
+    cost-write → billing_outbox flip.)"""
+    t = await seed_tenant(db_session, code="OBX_VERIF_Q")
     session_id = uuid4()
     registry = SessionRegistry()
     await registry.register(t.id, session_id)

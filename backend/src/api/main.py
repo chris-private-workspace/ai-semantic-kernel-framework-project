@@ -51,9 +51,11 @@ Related:
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
+from typing import TYPE_CHECKING, AsyncIterator
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -80,6 +82,9 @@ from platform_layer.observability import (
     setup_opentelemetry,
     shutdown_opentelemetry,
 )
+
+if TYPE_CHECKING:
+    from platform_layer.billing.billing_outbox import BillingOutboxDrainer
 
 logger = logging.getLogger(__name__)
 
@@ -190,6 +195,103 @@ def _wire_error_budget() -> None:
         )
 
 
+def _wire_billing_outbox() -> None:
+    """Install the BillingOutboxService enqueue singleton at startup (fail-soft).
+
+    Sprint 57.84 (C-15): the chat observer enqueues durable billing events via
+    maybe_get_billing_outbox() (atomic with the request txn — replaces the
+    best-effort direct cost_ledger write). The service is stateless (db passed
+    per call) so this just registers a process-wide instance. Fail-soft: if
+    registration fails, the chat observer's enqueue is skipped (degrade, like
+    the pricing loader).
+    """
+    try:
+        from platform_layer.billing.billing_outbox import (
+            BillingOutboxService,
+            set_billing_outbox,
+        )
+
+        set_billing_outbox(BillingOutboxService())
+        logger.info("api.main: billing outbox enqueue service wired")
+    except Exception:  # noqa: BLE001 — fail-soft: never block startup on the outbox
+        logger.warning(
+            "api.main: billing outbox enqueue service not wired (fail-soft)",
+            exc_info=True,
+        )
+
+
+async def _billing_outbox_poll_loop(
+    drainer: BillingOutboxDrainer,
+    interval_s: int,
+    stop_event: asyncio.Event,
+) -> None:
+    """Drain the billing outbox every interval_s until stop_event is set.
+
+    Fail-open: a drain-cycle exception is logged and the loop continues (a
+    transient DB flake must never kill the poller). Shutdown is prompt — the
+    interval sleep is interrupted by stop_event.
+    """
+    while not stop_event.is_set():
+        try:
+            stats = await drainer.drain_once()
+            if stats.materialized or stats.failed or stats.dead_lettered:
+                logger.info(
+                    "api.main: billing outbox drain — materialized=%d failed=%d dead=%d",
+                    stats.materialized,
+                    stats.failed,
+                    stats.dead_lettered,
+                )
+        except Exception:  # noqa: BLE001 — fail-open: a flake must not kill the poller
+            logger.exception("api.main: billing outbox drain cycle failed")
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=interval_s)
+        except (TimeoutError, asyncio.TimeoutError):
+            pass  # interval elapsed → next cycle
+
+
+async def _start_billing_outbox_drainer(app: FastAPI) -> None:
+    """Start the background billing-outbox drainer poll loop (fail-open).
+
+    Sprint 57.84 (C-15): drains billing_outbox → cost_ledger every
+    settings.billing_outbox_poll_interval_s. Disabled via env
+    BILLING_OUTBOX_DRAINER_ENABLED=false (tests + ops kill switch; read as a
+    plain env flag to dodge the get_settings() lru_cache timing trap). Needs the
+    pricing loader (wired above); if absent the drainer is not started. The task
+    + stop event are stored on app.state for shutdown cancellation.
+    """
+    if os.environ.get("BILLING_OUTBOX_DRAINER_ENABLED", "true").lower() != "true":
+        logger.info("api.main: billing outbox drainer disabled (env)")
+        return
+    try:
+        from core.config import get_settings
+        from infrastructure.db.engine import get_session_factory
+        from platform_layer.billing.billing_outbox import BillingOutboxDrainer
+        from platform_layer.billing.pricing import maybe_get_pricing_loader
+
+        pricing = maybe_get_pricing_loader()
+        if pricing is None:
+            logger.warning(
+                "api.main: billing outbox drainer not started; pricing loader unavailable"
+            )
+            return
+        settings = get_settings()
+        drainer = BillingOutboxDrainer(
+            get_session_factory(),
+            pricing,
+            batch=settings.billing_outbox_batch,
+            max_retry=settings.billing_outbox_max_retry,
+        )
+        stop_event = asyncio.Event()
+        task = asyncio.create_task(
+            _billing_outbox_poll_loop(drainer, settings.billing_outbox_poll_interval_s, stop_event)
+        )
+        app.state.billing_outbox_stop = stop_event
+        app.state.billing_outbox_task = task
+        logger.info("api.main: billing outbox drainer started")
+    except Exception:  # noqa: BLE001 — fail-open: never block startup on the drainer
+        logger.warning("api.main: billing outbox drainer not started (fail-open)", exc_info=True)
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Startup: load .env + structured logging + OTel SDK. Shutdown: flush + dispose engine."""
@@ -202,10 +304,23 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     _wire_rate_limit_counter()
     _wire_pricing_loader()
     _wire_error_budget()
+    _wire_billing_outbox()
+    await _start_billing_outbox_drainer(app)
     logger.info("api.main: startup complete")
     try:
         yield
     finally:
+        # Sprint 57.84 (C-15): stop the billing-outbox drainer BEFORE OTel +
+        # engine teardown (the poller uses the DB engine).
+        _stop_event = getattr(app.state, "billing_outbox_stop", None)
+        _drainer_task = getattr(app.state, "billing_outbox_task", None)
+        if _stop_event is not None:
+            _stop_event.set()
+        if _drainer_task is not None:
+            try:
+                await asyncio.wait_for(_drainer_task, timeout=10)
+            except (TimeoutError, asyncio.TimeoutError, asyncio.CancelledError):
+                _drainer_task.cancel()
         await shutdown_opentelemetry()
         await dispose_engine()
         logger.info("api.main: shutdown complete")

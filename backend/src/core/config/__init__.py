@@ -141,6 +141,16 @@ class Settings(BaseSettings):
     # Override via env: VERIFICATION_LOG_PERSIST_ENABLED=false (kill switch).
     verification_log_persist_enabled: bool = True
 
+    # ---- Sprint 57.84 C-15 billing Outbox drainer ------------------
+    # The background poller (api/main.py _start_billing_outbox_drainer)
+    # drains billing_outbox → cost_ledger. These tune the loop. The
+    # enabled flag is read from os.environ directly (BILLING_OUTBOX_DRAINER_
+    # ENABLED, default "true") so tests disable it without the get_settings()
+    # lru_cache timing trap (mirrors AUDIT_LOG_CHAT_OBSERVER).
+    billing_outbox_poll_interval_s: int = 5
+    billing_outbox_batch: int = 50
+    billing_outbox_max_retry: int = 8
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

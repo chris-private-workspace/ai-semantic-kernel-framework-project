@@ -68,23 +68,28 @@
 ## Day 3 — Poller wiring + router flip + RLS-correct drain (US-3/US-4/US-5)
 
 ### 3.1 lifespan poller
-- [ ] **`api/main.py` `_wire_billing_outbox_drainer()`** — construct drainer + `asyncio.create_task` polling loop (interval/batch/max_retry from config); store task+stop on app state; cancel+await on shutdown; fail-open restart; `BILLING_OUTBOX_DRAINER_ENABLED` flag (conftest false)
-- [ ] **`core/config/__init__.py`** — `billing_outbox_poll_interval_s` (5) / `_batch` (50) / `_max_retry` (8) / `_drainer_enabled` (true) settings + docstring
+- [x] **`api/main.py`** — `_wire_billing_outbox()` (enqueue singleton) + `_billing_outbox_poll_loop` (fail-open, stop-event-interruptible sleep) + `_start_billing_outbox_drainer(app)` (env `BILLING_OUTBOX_DRAINER_ENABLED` gate; pricing-loader dep; `asyncio.create_task`; task+stop on app.state) + lifespan startup calls + shutdown cancel (stop BEFORE OTel/engine teardown)
+- [x] **`core/config/__init__.py`** — `billing_outbox_poll_interval_s` (5) / `_batch` (50) / `_max_retry` (8) settings + docstring (enabled flag = os.environ, not Settings, to dodge the lru_cache trap)
 
 ### 3.2 RLS-correct cross-tenant drain
-- [ ] **Read `0009_rls_policies`** → confirm policy style + how app.tenant_id is set
-- [ ] **system-context escape** on `billing_outbox` policy for the poller claim read + per-row `SET LOCAL app.tenant_id = row.tenant_id` before `cost_ledger` materialize
-  - DoD: `check_rls_policies` green; isolation test (3.4) passes
+- [x] **RLS escape** — resolved at **Day-1** (0025 migration already carries the system-sentinel escape in the `tenant_isolation_billing_outbox` USING clause; `check_rls_policies` lenient → no separate migration). Drainer `set_config('app.tenant_id', sentinel)` for the claim + per-row `set_config(..., row.tenant_id)` before the `cost_ledger` materialize.
+  - DoD: `check_rls_policies` green ✅; **2-tenant isolation test** (drain test US-4) passes ✅
 
 ### 3.3 router flip to enqueue-only
-- [ ] **`router.py` flip** — remove direct `cost_ledger.record_*` from the 3 sites (loop / `_verification` / tool); observer ONLY enqueues; no dead code / `_v2` (AP-11); decide enqueue swallow-vs-propagate with a test (atomic-rollback is correct behaviour now)
+- [x] **`router.py` flip** — removed direct `cost_ledger.record_*` from the 3 sites; observer now ONLY `billing_outbox.enqueue(...)`; removed `cost_ledger`/`PricingLoader`/`maybe_get_pricing_loader` imports + `pricing_loader` endpoint dep + per-request `CostLedgerService`; `_FALLBACK_PRICING_MODEL` retained (drainer prices); tool_seq counter; no dead code (AP-11). Swallow-vs-propagate: kept **logged best-effort** (SSE safety, consistent w/ sessions/audit observers); atomicity from the shared request txn (enqueue = single INSERT committing with session/audit).
+- [x] **Updated existing callers of the flipped contract** — `test_chat_cost_ledger.py` (2 tests → assert outbox; quota test unchanged) + `test_phase56_3_e2e.py` (cost section → outbox; SLA + quota unchanged). Other `_stream_loop_events` callers don't pass `cost_ledger=` → unaffected.
+
+### 3.4 Day-3 regression fix — test-isolation (Risk Class C)
+- [x] **Root cause (bisected `unit/api`+incident, 2s repro)** — `_wire_billing_outbox()` in the lifespan sets the module singleton; shutdown doesn't unset it (correct for prod). `test_main_lifespan` (TestClient) leaks it → a downstream chat-path test consumes `maybe_get_billing_outbox()` → enqueues on the GLOBAL engine without dispose → a later `db_session` test (`incident/test_service`) hits `RuntimeError: Event loop is closed`. Verified pre-sprint main clean (2150) → I introduced it (not pre-existing).
+- [x] **Fix** — autouse `_reset_billing_outbox_singleton` in `tests/conftest.py` (`set_billing_outbox(None)` around each test; testing.md §Module-level Singleton Reset) + drain test dedicated NullPool engine (isolates direct-session churn) + `SET LOCAL`→`set_config(...)` (Day-2).
+  - DoD: full suite **2161 passed** (was 1 flaky fail); mypy 0/335; run_all 10/10
 
 ---
 
 ## Day 4 — Integration tests + real-Azure smoke + Closeout
 
 ### 4.1 integration + isolation
-- [ ] **NEW `test_chat_billing_outbox.py`** — request enqueues atomically (commit ⟺ outbox row); drain parity (same cost_ledger rows as old direct path); multi-tenant isolation (tenant-A cost rows scoped to A, no B leak); singleton reset fixture (Risk Class C)
+- [x] **Coverage achieved across existing files (no separate `test_chat_billing_outbox.py` — would duplicate)** — producer (chat → enqueue): `test_chat_cost_ledger.py` + `test_phase56_3_e2e.py` (Day 3); drainer parity + idempotent-twice + dead-letter + **2-tenant isolation (US-4)**: `test_billing_outbox_drain.py` (Day 2). The full chat→enqueue→drain→cost_ledger chain on real data = the real-Azure smoke below. A separate automated chain test would need the committed-data pattern (db_session rolls back) and mostly re-assert the drain test — skipped to avoid redundant infra.
 - [ ] **real-Azure smoke** (user-authorized; Risk Class E clean restart) — 1-2 chats mode=real_llm → confirm a `cost_ledger` row appears via the DRAINED path (not direct) before closeout
 
 ### 4.2 Full sweep

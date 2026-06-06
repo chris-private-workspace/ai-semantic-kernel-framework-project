@@ -7,7 +7,7 @@ Created: 2026-06-05 (Sprint 57.84 Day 2)
 Why integration (not unit): the drainer uses its OWN session factory (one
 independent transaction per row, with commits + FOR UPDATE SKIP LOCKED), so it
 can only see COMMITTED outbox rows. These tests therefore commit seed data via
-get_session_factory() and clean up by deleting the test tenant's rows in a
+_get_factory() and clean up by deleting the test tenant's rows in a
 finally / fixture teardown (db_session's rollback can't reach committed data).
 Proves the drainer end-to-end BEFORE Day-3 wires it into the lifespan.
 """
@@ -21,8 +21,15 @@ from uuid import UUID, uuid4
 import pytest
 import pytest_asyncio
 from sqlalchemy import delete, select, text
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+from sqlalchemy.pool import NullPool
 
-from infrastructure.db import dispose_engine, get_session_factory
+from core.config import get_settings
 from infrastructure.db.models import Tenant
 from infrastructure.db.models.billing_outbox import BillingOutboxEvent
 from infrastructure.db.models.cost_ledger import CostLedger
@@ -35,6 +42,29 @@ from platform_layer.billing.billing_outbox import (
 from platform_layer.billing.pricing import PricingLoader
 
 pytestmark = pytest.mark.asyncio
+
+# Sprint 57.84: a dedicated NullPool engine isolates this module's heavy direct-
+# session churn (the drainer opens a session per row + the helpers commit seed
+# data) from the global pooled engine. NullPool closes each connection on session
+# return → nothing lingers to be GC'd on a closed event loop, which would raise
+# asyncpg's "_cancel never awaited / Event loop is closed" unraisable and fail an
+# unrelated test. Disposed in the fixture / test finally.
+_engine: AsyncEngine | None = None
+
+
+def _get_factory() -> async_sessionmaker[AsyncSession]:
+    global _engine
+    if _engine is None:
+        _engine = create_async_engine(get_settings().database_url, poolclass=NullPool)
+    return async_sessionmaker(_engine, expire_on_commit=False)
+
+
+async def _dispose() -> None:
+    global _engine
+    if _engine is not None:
+        await _engine.dispose()
+        _engine = None
+
 
 _PRICING_YAML = Path(__file__).resolve().parents[3] / "config" / "llm_pricing.yml"
 
@@ -55,7 +85,7 @@ def _loader() -> PricingLoader:
 
 
 async def _commit_tenant(code: str) -> UUID:
-    factory = get_session_factory()
+    factory = _get_factory()
     async with factory() as s:
         t = Tenant(code=code, display_name=code)
         s.add(t)
@@ -70,7 +100,7 @@ async def _delete_tenant(tid: UUID) -> None:
 
     Sets the tenant context so the deletes pass RLS whether or not the test
     role bypasses it (first USING branch matches tenant_id)."""
-    factory = get_session_factory()
+    factory = _get_factory()
     async with factory() as s:
         await s.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tid)})
         await s.execute(delete(CostLedger).where(CostLedger.tenant_id == tid))
@@ -87,7 +117,7 @@ async def _enqueue_committed(
     idempotency_key: str,
     session_id: UUID,
 ) -> None:
-    factory = get_session_factory()
+    factory = _get_factory()
     async with factory() as s:
         await s.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tid)})
         await BillingOutboxService().enqueue(
@@ -102,7 +132,7 @@ async def _enqueue_committed(
 
 
 async def _cost_rows(tid: UUID) -> list[CostLedger]:
-    factory = get_session_factory()
+    factory = _get_factory()
     async with factory() as s:
         await s.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tid)})
         return list(
@@ -111,7 +141,7 @@ async def _cost_rows(tid: UUID) -> list[CostLedger]:
 
 
 async def _outbox_rows(tid: UUID) -> list[BillingOutboxEvent]:
-    factory = get_session_factory()
+    factory = _get_factory()
     async with factory() as s:
         # sentinel context: the drainer-escape lets us read the row cross-tenant
         # (also the first USING branch would match tid — either works).
@@ -133,7 +163,7 @@ async def committed_tenant() -> AsyncIterator[UUID]:
         yield tid
     finally:
         await _delete_tenant(tid)
-        await dispose_engine()
+        await _dispose()
 
 
 async def test_drain_materializes_cost_ledger_parity(committed_tenant: UUID) -> None:
@@ -149,7 +179,7 @@ async def test_drain_materializes_cost_ledger_parity(committed_tenant: UUID) -> 
         session_id=sid,
     )
 
-    stats = await BillingOutboxDrainer(get_session_factory(), _loader()).drain_once()
+    stats = await BillingOutboxDrainer(_get_factory(), _loader()).drain_once()
     assert stats.claimed == 1
     assert stats.materialized == 1
 
@@ -178,7 +208,7 @@ async def test_drain_is_idempotent_across_two_cycles(committed_tenant: UUID) -> 
         idempotency_key=llm_idempotency_key(sid, ""),
         session_id=sid,
     )
-    drainer = BillingOutboxDrainer(get_session_factory(), _loader())
+    drainer = BillingOutboxDrainer(_get_factory(), _loader())
 
     first = await drainer.drain_once()
     assert first.materialized == 1
@@ -209,7 +239,7 @@ async def test_drain_reschedules_then_dead_letters_on_bad_payload(
     )
 
     # max_retry=1 → the first failure immediately dead-letters.
-    stats = await BillingOutboxDrainer(get_session_factory(), _loader(), max_retry=1).drain_once()
+    stats = await BillingOutboxDrainer(_get_factory(), _loader(), max_retry=1).drain_once()
     assert stats.claimed == 1
     assert stats.dead_lettered == 1
     assert stats.materialized == 0
@@ -240,7 +270,7 @@ async def test_drain_reschedules_with_backoff_when_retries_remain(
         session_id=sid,
     )
 
-    stats = await BillingOutboxDrainer(get_session_factory(), _loader(), max_retry=8).drain_once()
+    stats = await BillingOutboxDrainer(_get_factory(), _loader(), max_retry=8).drain_once()
     assert stats.failed == 1
     assert stats.dead_lettered == 0
 
@@ -271,7 +301,7 @@ async def test_drain_two_tenants_scopes_cost_rows() -> None:
             session_id=sid_b,
         )
 
-        stats = await BillingOutboxDrainer(get_session_factory(), _loader()).drain_once()
+        stats = await BillingOutboxDrainer(_get_factory(), _loader()).drain_once()
         assert stats.materialized == 2
 
         cost_a = await _cost_rows(tid_a)
@@ -286,4 +316,4 @@ async def test_drain_two_tenants_scopes_cost_rows() -> None:
     finally:
         await _delete_tenant(tid_a)
         await _delete_tenant(tid_b)
-        await dispose_engine()
+        await _dispose()
