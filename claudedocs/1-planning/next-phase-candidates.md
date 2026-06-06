@@ -36,6 +36,24 @@
 
 ---
 
+## 🆕 Sprint 57.87 Carryover (2026-06-06 — C-12 IAM Block B self-service tenant registration; closes AD-Auth-Register-Backend-IAM-Block-B-Phase58)
+
+**Closed**: `AD-Auth-Register-Backend-IAM-Block-B-Phase58` — the self-service registration leg of C-12 (the **third C-12 spike**, after 57.85 invites + 57.86 credentials). NEW `RegistrationService.register` (slug-unique → 409 / `Tenant` state **ACTIVE** + plan ENTERPRISE + requested_plan/size in meta_data / `_set_tenant` RLS / seed real **admin `Role`** — codebase's first real Role-creation / founding `User` + `UserRole` / `tenant_registered` audit) + public EXEMPT `POST /api/v1/tenants/register` (`api/v1/tenants.py` + `api/main.py` mount) + un-stubbed `/auth/register` wizard (201→`/auth/callback`, 409→slug-taken; AP-2 banner removed; i18n en/zh-TW). **No migration / no mockup-CSS change.** Design note `23-iam-registration-spike.md` (8-pt gate ~95%). mypy 0/344 + pytest 2214 + run_all 10/10 + Vitest 763 + mockup-fidelity ✓ (oklch baseline 53 UNCHANGED). Detail: `memory/project_phase57_87_iam_registration.md` + retrospective. CHANGE-055.
+
+### NEW carryovers (this sprint)
+- **`AD-RBAC-DB-To-JWT-Wiring-Phase58`** (NEW) — the seeded admin `UserRole` is DB-real but NOT yet authz-effective: gating reads the JWT `roles` claim and the OIDC callback bakes `roles=["user"]` (`auth.py:302`). Make the DB role grant JWT admin (per-request RBACManager load or a register-issued elevated JWT). The system-wide `has_permission()`-is-stub gap (gap-assessment §6) lives here too.
+- **`AD-Register-OIDC-User-Linkage-Phase58`** (NEW) — register creates the user by `email` (no `external_id`); the OIDC callback upserts by `(tenant_id, external_id)` → a later login creates a SECOND user row. Fix: callback link-by-email OR register OIDC-initiated.
+- **`AD-Tenant-Plan-Tiers-Phase58`** (NEW) — `TenantPlan` only has ENTERPRISE; the wizard's trial/pro/enterprise choice is stored in `meta_data` only. Real BASIC/STANDARD/trial tiers + quota enforcement are Phase 56+ Stage 2.
+- **Process (single occurrence — fold into `sprint-workflow.md` only if recurs)**: a concurrent Claude session sharing the repo working directory switched the branch mid-sprint (to `chore/drive-through-acceptance-principle`), stranding uncommitted Day-3 edits + hiding `registration.py` → a phantom mypy `import-untyped` first mis-chased as editable-install staleness. Diagnostic lesson: when a first-party import reads "installed missing py.typed" + the mypy source-file count doesn't increment → check `git branch` FIRST. Root cause = two-sessions-one-worktree (recommend separate git worktrees/clones per session); not a workflow gap.
+
+### C-12 epic — remaining legs (rolling, NOT pre-written)
+- **`AD-Auth-MFA-Backend-IAM-Block-C-Phase58`** — Block C MFA TOTP + WebAuthn; `/auth/mfa` still stub 501.
+- **`AD-Auth-Recovery-Page-Phase58`** — password reset/recovery; needs an email adapter (none exists); `/auth/recovery` does not exist.
+- **`AD-Auth-PasswordLogin-Lockout-Phase58`** — brute-force throttle on `/auth/password-login` (+ register-spam throttle); reuse the Redis rate-limit infra.
+- **Calibration — `iam-backend-spike` 0.65 1st validation**: ratio ≈1.0 core (≈1.1-1.2 incl. the branch-collision anomaly) → KEEP single data point; flag the next IAM backend spike (MFA/recovery) for the 2nd validation per the 3-sprint window.
+
+---
+
 ## 🆕 Sprint 57.86 Carryover (2026-06-06 — C-12 IAM Block B/C local credentials + password-login spike; closes AD-Auth-Credentials-PasswordLogin-Phase58)
 
 **Closed**: `AD-Auth-Credentials-PasswordLogin-Phase58` — the local-password leg of C-12 (the **second C-12 spike**, completes 57.85's accepted-not-stored gap). `bcrypt` dep + `users.password_hash` (migration 0027, inherits users RLS) + `passwords.py` (hash/verify, anyio offload, 72-byte guard, DUMMY_HASH) + `CredentialsService` (set_password/authenticate; **every** miss → one generic 401 + constant-time DUMMY_HASH miss = anti-enumeration) + invite-accept now bcrypt-stores the password + `POST /auth/password-login` (JSON body, generic 401, JWT/cookie/AuthMeResponse mirror dev-login, EXEMPT) + NEW mockup-faithful `/auth/password-login` page (route + i18n en/zh-TW + mockup `AuthPasswordLogin` + `fetchWithAuth {redirectOn401:false}` UX fix). Design note `22-iam-credentials-spike.md` (8-pt gate ~96%). mypy 0/342 + pytest 2202 + run_all 10/10 + Vitest 761 + mockup-fidelity ✓ (HEX_OKLCH_BASELINE 50→53). Detail: `memory/project_phase57_86_iam_credentials.md` + retrospective. CHANGE-053.

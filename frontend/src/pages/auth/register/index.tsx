@@ -15,20 +15,22 @@
  *     - Step 3 Confirm uses .hitl-card[data-severity="risk-low"] + .hitl-card-bar + .hitl-head verbatim
  *     - Continue / Create buttons use mockup-ui iconRight="arrow_right" / icon="bolt"
  *
- *   Backend behavior preserved (Sprint 57.23 US-C2):
- *     - POST /api/v1/tenants/register expected 501 NotImplemented this sprint
- *     - AD-Auth-Register-Backend-IAM-Block-B-Phase58 carryover
- *     - Demo banner above stepper (AP-2 compliance) — re-cast as .hitl-card[risk-medium] visual style
+ *   Backend (Sprint 57.87 — now live):
+ *     - POST /api/v1/tenants/register → 201 {tenant, user} (creates tenant + first admin);
+ *       409 on a duplicate slug; on success the wizard redirects to /auth/callback (OIDC).
+ *     - AD-Auth-Register-Backend-IAM-Block-B-Phase58 CLOSED (57.87); the AP-2 demo banner
+ *       was removed now the endpoint is real.
  *
  * Created: 2026-05-18 (Sprint 57.23 US-C2)
- * Last Modified: 2026-05-24
+ * Last Modified: 2026-06-06
  *
  * Modification History:
+ *   - 2026-06-06: Sprint 57.87 — un-stub: wire real POST /tenants/register (201→/auth/callback, 409 slug-taken); remove AP-2 demo banner
  *   - 2026-05-24: Sprint 57.35 US-C2 — verbatim re-point per page-auth-extras.jsx:31-188 (closes Sprint 57.23 vintage HSL-translation drift)
  *   - 2026-05-18: Initial creation (Sprint 57.23 US-C2) — mockup-direct port of AuthRegister wizard
  *
  * Related:
- *   - backend/src/api/v1/auth.py (or NEW tenants.py) — POST /api/v1/tenants/register stub 501 (AD-IAM-Block-B-Phase58)
+ *   - backend/src/api/v1/tenants.py — POST /api/v1/tenants/register (Sprint 57.87; RegistrationService)
  *   - frontend/src/components/AuthShell.tsx (Sprint 57.35 verbatim re-point)
  *   - frontend/src/components/mockup-ui.tsx (Card/Button/Badge/Field/Icon)
  *   - frontend/src/i18n/locales/{en,zh-TW}/auth.json (auth.register.* namespace)
@@ -141,12 +143,12 @@ export default function RegisterPage(): JSX.Element {
         }),
       });
       if (!res.ok) {
-        setError(t("register.errorStubbed"));
+        setError(res.status === 409 ? t("register.errorSlugTaken") : t("register.error"));
         return;
       }
       window.location.href = "/auth/callback";
     } catch {
-      setError(t("register.errorStubbed"));
+      setError(t("register.error"));
     } finally {
       setBusy(false);
     }
@@ -174,17 +176,6 @@ export default function RegisterPage(): JSX.Element {
             </div>
             <div className="muted" style={{ fontSize: 12.5 }}>
               {t("register.subtitle")}
-            </div>
-          </div>
-
-          {/* AP-2 demo banner — verbatim per .hitl-card[data-severity="risk-medium"] pattern */}
-          <div className="hitl-card" data-severity="risk-medium" style={{ margin: 0 }} role="note">
-            <div className="hitl-card-bar" />
-            <div className="hitl-head">
-              <span className="icon-ring">
-                <Icon name="warn" size={13} />
-              </span>
-              {t("register.demoBanner")}
             </div>
           </div>
 

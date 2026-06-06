@@ -75,6 +75,7 @@ from api.v1.memory import router as memory_router
 from api.v1.sessions import router as sessions_router
 from api.v1.subagents import router as subagents_router
 from api.v1.telemetry import router as telemetry_router
+from api.v1.tenants import router as tenants_router
 from api.v1.verification import router as verification_router
 from infrastructure.db import dispose_engine
 from platform_layer.middleware import RateLimitMiddleware, TenantContextMiddleware
@@ -348,6 +349,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(invites_router, prefix="/api/v1")
+    app.include_router(tenants_router, prefix="/api/v1")
     app.include_router(telemetry_router, prefix="/api/v1")
     app.include_router(chat_router, prefix="/api/v1")
     app.include_router(audit_router, prefix="/api/v1")

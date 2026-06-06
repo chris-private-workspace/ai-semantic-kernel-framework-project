@@ -1,21 +1,29 @@
 /**
  * File: frontend/tests/unit/pages/auth/register.test.tsx
- * Purpose: Unit test — RegisterPage 4-step wizard stepper logic + AP-2 demo banner + 501 stub error.
+ * Purpose: Unit test — RegisterPage 4-step wizard stepper logic + real /tenants/register wiring.
  * Category: Frontend / tests / unit / pages / auth
- * Scope: Phase 57 / Sprint 57.23 US-C2 (NEW 4-step wizard)
+ * Scope: Phase 57 / Sprint 57.23 US-C2 (wizard) → Sprint 57.87 (backend un-stub)
  *
  * Description:
- *   5 tests covering Sprint 57.23 US-C2 RegisterPage:
- *   1. Initial render at step 0 (Identity) + demo banner (AP-2 compliance)
- *   2. Continue button advances step 0 → 1 (Organization)
- *   3. Back button retreats step 1 → 0
- *   4. Step 3 (Confirm) submit calls POST /api/v1/tenants/register
- *   5. 501 backend stub surfaces errorStubbed message
+ *   6 tests covering RegisterPage:
+ *   1. Initial render at step 0 (Identity) — NO demo banner (Sprint 57.87 backend is live)
+ *   2. Continue advances step 0 → 1 (Organization)
+ *   3. Back retreats step 1 → 0
+ *   4. Advances through all 4 steps to Confirm; Create workspace button on step 3
+ *   5. Create workspace submit 409 → slug-taken error, no redirect (Sprint 57.87)
+ *   6. Create workspace submit 201 → success, no error surfaced (Sprint 57.87)
  *
  * Created: 2026-05-18 (Sprint 57.23 US-C2)
+ * Last Modified: 2026-06-06
+ *
+ * Modification History:
+ *   - 2026-06-06: Sprint 57.87 — backend un-stub: drop demo-banner + 501-stub assertions;
+ *     add 409 slug-taken + 201 success tests (POST /api/v1/tenants/register is now real)
+ *   - 2026-05-18: Initial creation (Sprint 57.23 US-C2)
  *
  * Related:
  *   - frontend/src/pages/auth/register/index.tsx (page under test)
+ *   - backend/src/api/v1/tenants.py (POST /api/v1/tenants/register)
  *   - reference/design-mockups/page-auth-extras.jsx:31-188 (AuthRegister mockup source)
  */
 
@@ -33,6 +41,12 @@ function renderRegister() {
   );
 }
 
+function advanceToConfirm(): void {
+  fireEvent.click(screen.getByRole("button", { name: /Continue/i })); // 0 → 1
+  fireEvent.click(screen.getByRole("button", { name: /Continue/i })); // 1 → 2
+  fireEvent.click(screen.getByRole("button", { name: /Continue/i })); // 2 → 3
+}
+
 describe("RegisterPage", () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>;
 
@@ -44,20 +58,14 @@ describe("RegisterPage", () => {
     fetchSpy.mockRestore();
   });
 
-  it("renders at step 0 (Identity) with demo banner + stepper bar", () => {
+  it("renders at step 0 (Identity) without a demo banner (backend live)", () => {
     renderRegister();
-    // Header
     expect(screen.getByText("Create your workspace")).toBeInTheDocument();
-    // AP-2 demo banner
-    expect(
-      screen.getByText(/Backend wire pending Phase 58\+ IAM Block B/i),
-    ).toBeInTheDocument();
-    // Step 0 fields visible — Sprint 57.35 verbatim re-point uses mockup `.field` + `.field-label`
-    // (div, not <label htmlFor>); assert by visible label text. Semantically equivalent to
-    // prior getByLabelText contract; visual layer changed, behavioral intent preserved.
+    // Sprint 57.87 — the AP-2 demo / 501-stub banner is gone now the endpoint is real.
+    expect(screen.queryByText(/Backend wire pending/i)).not.toBeInTheDocument();
+    // Step 0 fields visible — mockup `.field-label` is a div; assert by visible label text.
     expect(screen.getByText(/Work email/i)).toBeInTheDocument();
     expect(screen.getByText(/Full name/i)).toBeInTheDocument();
-    // Continue (not Create) button on step 0
     expect(screen.getByRole("button", { name: /Continue/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Back/i })).not.toBeInTheDocument();
   });
@@ -65,12 +73,10 @@ describe("RegisterPage", () => {
   it("Continue advances step 0 → 1 (Organization)", () => {
     renderRegister();
     fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
-    // Step 1 fields visible — mockup .field-label is div; assert by visible label text.
     expect(screen.getByText(/Company name/i)).toBeInTheDocument();
     expect(screen.getByText(/Tenant slug/i)).toBeInTheDocument();
     expect(screen.getByText(/^Region$/i)).toBeInTheDocument();
     expect(screen.getByText(/Team size/i)).toBeInTheDocument();
-    // Back button now visible (step > 0)
     expect(screen.getByRole("button", { name: /Back/i })).toBeInTheDocument();
   });
 
@@ -78,37 +84,54 @@ describe("RegisterPage", () => {
     renderRegister();
     fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
     fireEvent.click(screen.getByRole("button", { name: /Back/i }));
-    // Back to step 0 — mockup .field-label is div; assert by visible label text.
     expect(screen.getByText(/Work email/i)).toBeInTheDocument();
     expect(screen.queryByText(/Company name/i)).not.toBeInTheDocument();
   });
 
   it("Advances through all 4 steps to Confirm; Create workspace button on step 3", () => {
     renderRegister();
-    fireEvent.click(screen.getByRole("button", { name: /Continue/i })); // 0 → 1
-    fireEvent.click(screen.getByRole("button", { name: /Continue/i })); // 1 → 2
-    fireEvent.click(screen.getByRole("button", { name: /Continue/i })); // 2 → 3
+    advanceToConfirm();
     expect(screen.getByText(/Almost done/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Create workspace/i })).toBeInTheDocument();
   });
 
-  it("Create workspace submits POST /api/v1/tenants/register and surfaces 501 stub error", async () => {
+  it("Create workspace submit 409 → slug-taken error, no redirect", async () => {
     fetchSpy.mockResolvedValueOnce(
-      new Response(JSON.stringify({ detail: "Not Implemented" }), { status: 501 }),
+      new Response(JSON.stringify({ detail: "that workspace URL is already taken" }), {
+        status: 409,
+      }),
     );
     renderRegister();
-    // Advance to step 3
-    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
-    // Submit
+    advanceToConfirm();
     fireEvent.click(screen.getByRole("button", { name: /Create workspace/i }));
 
     await waitFor(() =>
-      expect(screen.getByText(/Backend register endpoint is stubbed \(501\)/i)).toBeInTheDocument(),
+      expect(screen.getByText(/workspace URL is already taken/i)).toBeInTheDocument(),
     );
-    // Verify request shape
     const url = fetchSpy.mock.calls[0]?.[0] as string;
     expect(url).toBe("/api/v1/tenants/register");
+    const body = JSON.parse((fetchSpy.mock.calls[0]?.[1] as RequestInit).body as string);
+    expect(body).toHaveProperty("tenant_slug");
+    expect(body).toHaveProperty("company_name");
+  });
+
+  it("Create workspace submit 201 → success, no error surfaced", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          tenant: { id: "t1", code: "acme", display_name: "Acme", state: "active" },
+          user: { id: "u1", email: "f@acme.com", display_name: "Founder" },
+        }),
+        { status: 201 },
+      ),
+    );
+    renderRegister();
+    advanceToConfirm();
+    fireEvent.click(screen.getByRole("button", { name: /Create workspace/i }));
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    // success path: no slug-taken / generic error is surfaced
+    expect(screen.queryByText(/workspace URL is already taken/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Could not create your workspace/i)).not.toBeInTheDocument();
   });
 });
