@@ -98,5 +98,5 @@
 - [x] **Design note?** — YES (spike sprint — new registration + role-seed domain; 8-point gate per §Step 5.5)
 
 ### 4.4 Ship
-- [x] **Commit mapping** Day-0 `850ed16c` / Day-1-2 `cbd1ccae` / Day-3 backend `18c246b3` / Day-3 frontend `d711c1fb` / Day-4 closeout `a973d90d` (+ navigator commit pending)
-- [ ] **Push + PR** (user-gated — explicit authorization required)
+- [x] **Commit mapping** Day-0 `850ed16c` / Day-1-2 `cbd1ccae` / Day-3 backend `18c246b3` / Day-3 frontend `d711c1fb` / Day-4 closeout `a973d90d` + navigator `1165f5a2`
+- [x] **Push + PR** (user-authorized 2026-06-06; test+gate verification accepted) — pushed `feature/sprint-57-87-register-backend` → PR #256
