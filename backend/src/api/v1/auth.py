@@ -14,6 +14,9 @@ Description:
                                    if no valid JWT — used by SPA authStore.bootstrap)
     - POST /api/v1/auth/dev-login — dev-only fake login (404 in prod); upserts a
                                    dev tenant+user, issues a JWT cookie, returns {user,tenant,roles}
+    - POST /api/v1/auth/password-login — local-password sign-in (tenant_code +
+                                   email + password → JWT cookie + {user,tenant,roles});
+                                   single generic 401 on any failure (Sprint 57.86)
     - POST /api/v1/auth/logout   — vendor signout redirect + clear v2_jwt cookie
 
     State CSRF protection via httpOnly secure cookie set by /login + read by
@@ -31,9 +34,10 @@ Description:
     real tenants.id (no more placeholder UUIDs).
 
 Created: 2026-05-09 (Sprint 57.7 Day 1 PM)
-Last Modified: 2026-05-10
+Last Modified: 2026-06-06
 
 Modification History (newest-first):
+    - 2026-06-06: Sprint 57.86 — add POST /auth/password-login (local credentials; generic 401)
     - 2026-05-10: Sprint 57.13 US-A4 — add POST /auth/dev-login (dev-only fake login; 404 in prod)
     - 2026-05-10: Sprint 57.13 US-A1 — add GET /auth/me + /callback 302→SPA + Settings cookie attrs
     - 2026-05-10: Sprint 57.7 Day 3 — DB user upsert + real tenant resolution
@@ -57,13 +61,19 @@ from uuid import UUID as PyUUID
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_settings
+from infrastructure.db.audit_helper import append_audit
 from infrastructure.db.models.identity import Tenant, User
 from infrastructure.db.session import get_db_session
+from platform_layer.identity.credentials import (
+    CredentialsError,
+    CredentialsService,
+    maybe_get_credentials_service,
+)
 from platform_layer.identity.jwt import JWTManager
 from platform_layer.identity.oidc import (
     OIDCConfigError,
@@ -428,6 +438,80 @@ async def dev_login(
         roles=list(_DEV_LOGIN_ROLES),
     ).model_dump(mode="json")
     response = JSONResponse(content=body)
+    response.set_cookie(
+        key=_JWT_COOKIE,
+        value=v2_jwt,
+        **_cookie_kwargs(max_age=settings.jwt_expires_minutes * 60),
+    )
+    return response
+
+
+# ---- Password-login (local credentials; Sprint 57.86) --------------------
+# Why: invited users who set a local password (invite-accept) must be able to
+# sign back in without SSO. Mirrors dev-login's JWT/cookie/AuthMeResponse SUCCESS
+# shape, but is a real auth path: a JSON body (creds never in the query string),
+# a real (tenant_code, email) lookup + bcrypt verify (CredentialsService), a
+# SINGLE generic 401 for every failure (no enumeration), roles=["user"] baseline
+# (RBAC resolves real authz per-request, like the OIDC callback). NOT
+# production-gated (unlike dev-login). Rate-limit/lockout is a tracked carryover
+# (AD-Auth-PasswordLogin-Lockout-Phase58).
+_PASSWORD_LOGIN_ROLES: tuple[str, ...] = ("user",)
+
+
+class PasswordLoginRequest(BaseModel):
+    """Local password-login body (JSON — creds never travel in the query string)."""
+
+    tenant_code: str = Field(min_length=1, max_length=64)
+    email: str = Field(min_length=3, max_length=256)
+    password: str = Field(min_length=1, max_length=72)
+
+
+@router.post("/password-login")
+async def password_login(
+    body: PasswordLoginRequest,
+    db: AsyncSession = Depends(get_db_session),
+) -> JSONResponse:
+    """Authenticate (tenant_code, email, password) → V2 JWT cookie + {user,tenant,roles}.
+
+    Exempt path (the caller has no JWT yet). EVERY failure — unknown tenant /
+    email / SSO-only user / wrong password — returns a single generic 401 (no
+    enumeration; CredentialsService flattens timing). On success: a V2 HS256 JWT
+    cookie (same shape as dev-login) + AuthMeResponse JSON; the SPA sets authStore
+    from the payload and navigates itself.
+    """
+    service = maybe_get_credentials_service() or CredentialsService()
+    try:
+        user = await service.authenticate(
+            db, tenant_code=body.tenant_code, email=body.email, raw=body.password
+        )
+    except CredentialsError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+    tenant = (await db.execute(select(Tenant).where(Tenant.id == user.tenant_id))).scalar_one()
+    roles = list(_PASSWORD_LOGIN_ROLES)
+    settings = get_settings()
+    v2_jwt = JWTManager().encode(
+        sub=str(user.id),
+        tenant_id=user.tenant_id,
+        roles=roles,
+        extra={"email": user.email},
+    )
+    await append_audit(
+        db,
+        tenant_id=user.tenant_id,
+        operation="password_login",
+        resource_type="user",
+        resource_id=str(user.id),
+        operation_data={},
+        user_id=user.id,
+        operation_result="success",
+    )
+    body_out = AuthMeResponse(
+        user=AuthMeUser(id=user.id, email=user.email, display_name=user.display_name),
+        tenant=AuthMeTenant(id=tenant.id, name=tenant.display_name, code=tenant.code),
+        roles=roles,
+    ).model_dump(mode="json")
+    response = JSONResponse(content=body_out)
     response.set_cookie(
         key=_JWT_COOKIE,
         value=v2_jwt,

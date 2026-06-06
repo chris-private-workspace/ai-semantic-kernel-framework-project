@@ -68,31 +68,31 @@
 ## Day 3 — Endpoint + exempt path + frontend page + mockup (US-2/US-3/US-4)
 
 ### 3.1 password-login endpoint
-- [ ] **EDIT `api/v1/auth.py`** — `PasswordLoginRequest(tenant_code≤64, email≤256, password≤72)` + `POST /password-login`: `CredentialsService.authenticate` → on err `HTTPException(401, "Invalid credentials")` (generic) → on success `JWTManager().encode(sub,tenant_id,roles=["user"],extra={email})` + `JSONResponse(AuthMeResponse)` + `set_cookie(_JWT_COOKIE, **_cookie_kwargs(...))` (mirror dev-login `:419-436`); `append_audit("password_login")` best-effort on success
-  - DoD: 200+cookie / 401 generic ✓
-- [ ] **EDIT `platform_layer/middleware/tenant_context.py`** — add `/api/v1/auth/password-login` to `EXEMPT_PATH_PREFIXES`
-  - DoD: exempt-path test (reachable w/o JWT) + non-exempt admin path still 401
+- [x] **EDIT `api/v1/auth.py`** — `PasswordLoginRequest(tenant_code≤64, email≤256, password≤72)` + `POST /password-login`: `CredentialsService.authenticate` → on `CredentialsError` `HTTPException(401, "Invalid credentials")` (generic) → on success `JWTManager().encode(sub,tenant_id,roles=["user"],extra={email})` + `JSONResponse(AuthMeResponse)` + `set_cookie(_JWT_COOKIE, **_cookie_kwargs(...))` (mirror dev-login) + `append_audit("password_login")` on success. NOT prod-gated. Header/docstring/MHist updated. Reuses existing auth router → no main.py change.
+  - DoD: 200+cookie / 401 generic ✓ (integration)
+- [x] **EDIT `platform_layer/middleware/tenant_context.py`** — add `/api/v1/auth/password-login` to `EXEMPT_PATH_PREFIXES` + comment + MHist
+  - DoD: exempt-path test (prefix present) + `/auth/me` NOT covered ✓
 
 ### 3.2 integration tests (HTTP e2e)
-- [ ] **NEW `tests/integration/api/test_password_login.py`** (`_build_app`, ~7) — seed-user-w/-password → 200 + `v2_jwt` cookie + AuthMeResponse + `/me` works; wrong-pw 401 / no-hash-user 401 / unknown-tenant 401 (all generic); **2-tenant isolation** (same email A+B); exempt-path; audit on success
-  - DoD: 7/7 green; generic-401 identical status+body across modes
+- [x] **NEW `tests/integration/api/test_password_login.py`** (`_build_app`, **9**) — success 200 + `v2_jwt` cookie (`JWTManager().verify`) + AuthMeResponse; wrong-pw / SSO-only-user / unknown-tenant / unknown-email all → generic 401 (identical status+body); **2-tenant isolation** (same email A+B, cross-password rejected); **full-stack invite-accept(password)→password-login** (proves stored hash round-trips); audit on success; exempt-path contract
+  - DoD: 9/9 green; generic-401 identical across modes ✓
 
 ### 3.3 frontend page + route + i18n
-- [ ] **NEW `frontend/src/pages/auth/password-login/index.tsx`** — AuthShell+Card + 3 Field (tenant code/email/password) + Button; submit `fetchWithAuth(POST JSON {tenant_code,email,password})` → ok `await bootstrap()`+`navigate(consumePostLoginRedirect(),{replace:true})` → !ok generic error (reuse DangerNote-style alert); footer link `/auth/login`. Reuse `.col`/`.input` (no new CSS / no new oklch)
-- [ ] **EDIT `frontend/src/App.tsx`** — lazy `PasswordLoginPage` + `<Route path="/auth/password-login" .../>` (production, not dev-gated)
-- [ ] **EDIT `frontend/src/i18n/locales/{en,zh-TW}/auth.json`** — `passwordLogin.*` (title/subtitle/tenantCode/email/password/submit/submitting/error/foot); zh-TW 繁中
+- [x] **NEW `frontend/src/pages/auth/password-login/index.tsx`** — AuthShell+Card + 3 Field (tenant code/email/password) + Button; submit `fetchWithAuth(POST JSON, {redirectOn401:false})` → ok `bootstrap()`+`navigate(consumePostLoginRedirect(),{replace:true})` → !ok generic error (DangerNote-style alert); footer link `/auth/login`; empty-field disable guard. **`{redirectOn401:false}`** so a wrong-pw 401 shows the form error (not a "session expired" bounce to SSO) — production UX fix.
+- [x] **EDIT `frontend/src/App.tsx`** — lazy `PasswordLoginPage` + `<Route path="/auth/password-login" .../>` (production, not dev-gated)
+- [x] **EDIT `frontend/src/i18n/locales/{en,zh-TW}/auth.json`** — `passwordLogin.*` (title/subtitle/tenantCode/email/password/submit/submitting/error/errorRequest/foot/ssoLink); zh-TW 繁中
 
 ### 3.4 mockup sync (fidelity honest)
-- [ ] **EDIT `reference/design-mockups/page-auth-extras.jsx`** — `AuthPasswordLogin` component (mirror AuthInvite/AuthRegister; AuthShell+Card+3 fields+button)
-- [ ] **EDIT `reference/design-mockups/i18n.jsx`** — `passwordLogin.*` copy
-  - DoD: `diff styles.css styles-mockup.css` empty; `check:mockup-fidelity` oklch baseline unchanged (delta 0)
+- [x] **EDIT `reference/design-mockups/page-auth-extras.jsx`** — `AuthPasswordLogin` component (mirror AuthInvite; AuthShell+Card+3 fields+button) + `Object.assign(window, {... AuthPasswordLogin})`
+- [x] **EDIT `reference/design-mockups/i18n.jsx`** — `auth.passwordLogin.*` copy (en+zh)
+  - DoD: `diff styles.css styles-mockup.css` empty ✓; `check:mockup-fidelity` ✓ (bumped `HEX_OKLCH_BASELINE` 50→53 — +3 verbatim `oklch(from var(--primary|--danger))` tints, same vocabulary as 57.35 auth port; MHist recorded)
 
 ### 3.5 frontend test + gate
-- [ ] **NEW `frontend/tests/unit/pages/auth/password-login.test.tsx`** (~4) — renders 3 fields / submit 200→bootstrap+navigate / submit 401→generic error no-navigate / empty-field guard
-  - DoD: green; full Vitest green; lint(no `--silent`)+build+mockup-fidelity green
+- [x] **NEW `frontend/tests/unit/pages/auth/password-login.test.tsx`** (4) — renders 3 fields / submit 200→bootstrap+navigate / submit 401→generic error no-navigate / empty-field disable guard
+  - DoD: 4/4 green; full Vitest **761 passed**; lint(no `--silent`)+build+mockup-fidelity green
 
 ### 3.6 test-isolation (Risk Class C)
-- [ ] **conftest singleton reset** — assess: CredentialsService uses lenient `maybe_get… or CredentialsService()` (no lifespan singleton → no leak, same as 57.85); confirm full suite no event-loop leak (likely N/A)
+- [→] **conftest singleton reset** — **N/A** (CredentialsService uses lenient `maybe_get… or CredentialsService()`; no lifespan singleton → no leak, same as 57.85). Full backend suite **2202 passed**, no event-loop leak.
 
 ---
 

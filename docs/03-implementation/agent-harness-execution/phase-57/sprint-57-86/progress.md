@@ -70,3 +70,17 @@
 
 ### Remaining
 - Day 3: `POST /auth/password-login` endpoint (JWT/cookie/AuthMeResponse mirror dev-login, JSON body, generic 401) + exempt path + integration `test_password_login.py` (incl. invite-accept→login e2e + 2-tenant isolation) + NEW frontend `/auth/password-login` page + route + i18n + mockup `AuthPasswordLogin` + frontend test.
+
+---
+
+## Day 3 — 2026-06-06 — Endpoint + exempt path + frontend page + mockup
+
+- **Backend**: `POST /auth/password-login` in `api/v1/auth.py` (`PasswordLoginRequest` JSON body; `CredentialsService.authenticate` → generic 401 on any `CredentialsError`; JWT `v2_jwt` cookie + `AuthMeResponse` mirroring dev-login `:419-436`; `roles=["user"]`; `append_audit("password_login")` on success; NOT prod-gated). Reuses the existing auth router → no `main.py` change. `tenant_context.py` EXEMPT `/api/v1/auth/password-login` (pre-JWT) + MHist.
+- **Integration** `test_password_login.py` (9): success+cookie+AuthMeResponse; wrong-pw / SSO-only / unknown-tenant / unknown-email all generic 401 (identical status+body); 2-tenant isolation; **full-stack invite-accept(password)→password-login** (proves the stored hash round-trips through the whole stack); audit; exempt-path. 9/9 green.
+- **Frontend**: NEW `pages/auth/password-login/index.tsx` (AuthShell + 3 fields + DangerNote error + empty-field disable; `fetchWithAuth(..., {redirectOn401:false})` — **production UX fix**: a wrong-pw 401 shows the form error rather than letting fetchWithAuth treat it as an expired session + bounce to SSO). `App.tsx` lazy + production route. i18n `passwordLogin.*` en+zh-TW. Frontend test (4): renders / 200→bootstrap+navigate / 401→error no-navigate / empty-field guard.
+- **Mockup**: `page-auth-extras.jsx` `AuthPasswordLogin` component + `Object.assign` register; `i18n.jsx` `auth.passwordLogin.*` (en+zh). styles-mockup.css UNCHANGED (diff empty).
+- **Drift D6 (oklch baseline)**: the new page adds 3 verbatim `oklch(from var(--primary|--danger))` tints (avatar bg + error alert border+bg) — same token vocabulary as the sibling auth pages. Bumped `HEX_OKLCH_BASELINE` 50→53 (Day-0 Prong-2 silent-delta lesson — handled in-sprint, not a CI hotfix) + MHist.
+- Gates: mypy **0/342**; backend pytest **2202 passed** (+23); `run_all.py` **10/10**; frontend lint(no `--silent`)+build green; Vitest **761 passed** (+4); `check:mockup-fidelity` ✓ (53=baseline 53, CSS byte-identical).
+
+### Remaining
+- Day 4: full sweep + design note `22-iam-credentials-spike.md` (8-point gate) + 17.md assess + CHANGE-053 + retrospective + closeout (MEMORY + CLAUDE lean + next-phase-candidates).

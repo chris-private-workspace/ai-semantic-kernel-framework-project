@@ -38,9 +38,10 @@ Description:
     work without code changes.
 
 Created: 2026-04-29 (Sprint 49.3 Day 4.4)
-Last Modified: 2026-05-10
+Last Modified: 2026-06-06
 
 Modification History (newest-first):
+    - 2026-06-06: Sprint 57.86 — EXEMPT /api/v1/auth/password-login (pre-JWT local sign-in)
     - 2026-05-10: Sprint 57.13 US-A1 — v2_jwt cookie fallback + EXEMPT auth/* + telemetry (D-PRE-8)
     - 2026-05-01: Sprint 52.5 Day 6.1 (P0 #14) — replace X-Tenant-Id
         header path with Authorization Bearer JWT decode. user_id +
@@ -107,8 +108,8 @@ class TenantContextMiddleware(BaseHTTPMiddleware):
     # Paths exempt from JWT requirement. Adding a path here is a deliberate
     # decision: it MUST NOT touch tenant-scoped tables.
     #   - /api/v1/health           : k8s probes (Sprint 49.4 Day 5)
-    #   - /api/v1/auth/login|callback|dev-login|logout : the auth gateway
-    #     itself — these *establish* the session, so they can't require one
+    #   - /api/v1/auth/login|callback|dev-login|logout|password-login : the auth
+    #     gateway itself — these *establish* the session, so they can't require one
     #     (Sprint 57.13 D-PRE-8 fix: previously only /health was exempt, so
     #     the OIDC flow 401'd before it could ever set a cookie)
     #   - /api/v1/telemetry        : frontend Web-Vitals / error beacons —
@@ -120,6 +121,9 @@ class TenantContextMiddleware(BaseHTTPMiddleware):
         "/api/v1/auth/login",
         "/api/v1/auth/callback",
         "/api/v1/auth/dev-login",
+        # Local password sign-in (Sprint 57.86): the caller has no JWT yet; the
+        # endpoint establishes the session. Generic 401 on any failure.
+        "/api/v1/auth/password-login",
         "/api/v1/auth/logout",
         "/api/v1/telemetry",
         # Guest invite view/accept (Sprint 57.85): the invitee has no JWT yet.

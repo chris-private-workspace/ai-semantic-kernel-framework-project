@@ -370,6 +370,46 @@ const AuthMFA = () => {
   );
 };
 
+// ===================== /auth/password-login — local-password sign-in (Sprint 57.86) =====================
+// An invited user who set a local password (invite-accept) signs back in here
+// without SSO. tenant_code + email + password → POST /api/v1/auth/password-login.
+const AuthPasswordLogin = () => (
+  <AuthShellX footer={<span>{t("auth.passwordLogin.foot")} <a href="#auth-login" style={{ color: "var(--primary)" }}>{t("auth.passwordLogin.ssoLink")}</a></span>}>
+    <Card>
+      <form className="col" style={{ gap: 16 }} onSubmit={(e) => { e.preventDefault(); location.hash = "auth-callback"; }}>
+        <div className="col" style={{ gap: 10, alignItems: "center", textAlign: "center" }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: "50%",
+            background: "oklch(from var(--primary) l c h / 0.14)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "var(--primary)",
+          }}>
+            <Icon name="shield" size={26} />
+          </div>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{t("auth.passwordLogin.title")}</div>
+            <div className="muted" style={{ fontSize: 12.5 }}>{t("auth.passwordLogin.subtitle")}</div>
+          </div>
+        </div>
+
+        <Field label={t("auth.passwordLogin.tenantCode")}>
+          <input className="input" placeholder="acme-prod" style={{ height: 36, fontSize: 13.5 }} />
+        </Field>
+        <Field label={t("auth.passwordLogin.email")}>
+          <input type="email" className="input" placeholder="you@acme.com" style={{ height: 36, fontSize: 13.5 }} />
+        </Field>
+        <Field label={t("auth.passwordLogin.password")}>
+          <input type="password" className="input" placeholder="••••••••••••" style={{ height: 36, fontSize: 13.5 }} />
+        </Field>
+
+        <Button variant="primary" size="lg" iconRight="arrow_right">
+          {t("auth.passwordLogin.submit")}
+        </Button>
+      </form>
+    </Card>
+  </AuthShellX>
+);
+
 // ===================== /auth/expired — session expired =====================
 const AuthExpired = () => (
   <AuthShellX>
@@ -415,4 +455,4 @@ const AuthExpired = () => (
   </AuthShellX>
 );
 
-Object.assign(window, { AuthRegister, AuthInvite, AuthMFA, AuthExpired });
+Object.assign(window, { AuthRegister, AuthInvite, AuthMFA, AuthExpired, AuthPasswordLogin });

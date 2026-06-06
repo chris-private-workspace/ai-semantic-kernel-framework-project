@@ -39,6 +39,7 @@ const LoginPage = lazy(() => import("./pages/auth/login"));
 const CallbackPage = lazy(() => import("./pages/auth/callback"));
 const RegisterPage = lazy(() => import("./pages/auth/register"));
 const InvitePage = lazy(() => import("./pages/auth/invite"));
+const PasswordLoginPage = lazy(() => import("./pages/auth/password-login"));
 const MFAPage = lazy(() => import("./pages/auth/mfa"));
 const ExpiredPage = lazy(() => import("./pages/auth/expired"));
 // Sprint 57.23 US-B3: DEV-only — production build gates via import.meta.env.DEV (verify post-build: grep "auth/dev" dist/ = 0)
@@ -98,6 +99,7 @@ export default function App() {
           <Route path="/auth/callback" element={<CallbackPage />} />
           <Route path="/auth/register" element={<RegisterPage />} />
           <Route path="/auth/invite/:token" element={<InvitePage />} />
+          <Route path="/auth/password-login" element={<PasswordLoginPage />} />
           <Route path="/auth/mfa" element={<MFAPage />} />
           <Route path="/auth/expired" element={<ExpiredPage />} />
           {import.meta.env.DEV && <Route path="/auth/dev" element={<DevLoginPage />} />}

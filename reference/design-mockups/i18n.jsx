@@ -155,6 +155,15 @@ const LOCALES = {
   "auth.invite.accept":                { en: "Accept invitation",  zh: "接受邀請" },
   "auth.invite.mfaHint":               { en: "MFA is required by tenant policy — set it up next.",  zh: "依租戶政策需設定 MFA — 下一步即可完成。" },
   "auth.invite.foot":                  { en: "Need to forward this invite? Ask dan@acme.com to resend.",  zh: "需要轉發邀請?請聯絡 dan@acme.com 重發。" },
+  // Auth — Password login (Sprint 57.86)
+  "auth.passwordLogin.title":          { en: "Sign in with password",  zh: "使用密碼登入" },
+  "auth.passwordLogin.subtitle":       { en: "Enter your tenant code, work email, and password.",  zh: "請輸入您的租戶代碼、工作電郵與密碼。" },
+  "auth.passwordLogin.tenantCode":     { en: "Tenant code",  zh: "租戶代碼" },
+  "auth.passwordLogin.email":          { en: "Work email",  zh: "工作電郵" },
+  "auth.passwordLogin.password":       { en: "Password",  zh: "密碼" },
+  "auth.passwordLogin.submit":         { en: "Sign in",  zh: "登入" },
+  "auth.passwordLogin.foot":           { en: "Prefer SSO?",  zh: "想改用 SSO?" },
+  "auth.passwordLogin.ssoLink":        { en: "Sign in with SSO",  zh: "使用 SSO 登入" },
   // Auth — MFA
   "auth.mfa.title":                    { en: "Two-factor verification",  zh: "二階段驗證" },
   "auth.mfa.totpSub":                  { en: "Enter the 6-digit code from your authenticator app.",  zh: "輸入驗證器 App 的 6 位數字。" },
