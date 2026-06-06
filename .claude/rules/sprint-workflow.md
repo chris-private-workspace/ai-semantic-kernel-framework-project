@@ -913,6 +913,13 @@ Every commit must pass:
    - Parent independent re-verify: re-run every gate yourself; treat the agent's "all green" as unverified until reproduced (57.66 stringified-float / 57.67 flat-vs-nested / 57.68 wrong isolation culprit were all caught this way).
    - Tooling: if Bash `grep` output looks corrupted (e.g. token substitution), re-read via a dedicated reader (Read/Grep tool) before acting on it (Sprint 57.70).
 
+8. **Drive-Through Acceptance — user-facing features must be DRIVEN, not just gated** (2026-06-06; closes AD-Drive-Through-Acceptance; full rationale CLAUDE.md §Drive-Through Acceptance Hard Constraint + `memory/feedback_drive_through_over_paper_metrics.md`)
+   - Any feature a human reaches through the UI MUST be verified by actually driving the real UI (dev server) + real backend + real LLM (NOT echo/mock) through its primary path BEFORE it can be marked done. Gate-pass + curl prove the parts work / the API responds; NEITHER proves the car drives.
+   - Walk every control on the path: clickable? has an effect? label real (not hardcoded / fixture)? does the result actually render? (chat-v2 escape 2026-06-06: dead "New session" button + fixture session list + hardcoded `claude-haiku-4-5` badge + agent answer never rendered — all AP-4 Potemkin sitting on the 主流量, all green on every gate. PR #253 also wrote "~80-85% working" off curl-only verification with "UI 驅動未做" self-noted — exactly the trap.)
+   - Do NOT write "verified" / "~X% working" for anything whose drive-through layer wasn't actually run — write "未驗證 (gate-only)" instead. Backend-not-ready widgets: render per mockup with fixture data BUT label DEMO (or leave blank) — never let fixture masquerade as real.
+   - Evidence: screenshot + "observed vs intended flow" diff into progress.md / CHANGE record.
+   - Scope: applies to any task touching a user-facing surface (frontend page / SSE-driven flow / API a human drives via UI). Pure-backend / pure-infra tasks that no human drives through a UI are exempt — but their reports MUST say "gate-only verified", not imply usability.
+
 ---
 
 ## Prohibited Actions
@@ -925,6 +932,7 @@ Every commit must pass:
 - ❌ Code before plan + checklist exist
 - ❌ Commit secrets, large binaries, generated files
 - ❌ Scope creep without updating plan
+- ❌ Mark a user-facing feature done — or report it "verified / ~X% working" — without an actual drive-through (real UI + real backend + real LLM); gate-pass / curl is NOT drive-through (AD-Drive-Through-Acceptance; see Before Commit item 8)
 
 ---
 
