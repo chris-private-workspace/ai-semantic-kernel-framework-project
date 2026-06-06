@@ -41,6 +41,7 @@ Created: 2026-04-29 (Sprint 49.3 Day 4.4)
 Last Modified: 2026-06-06
 
 Modification History (newest-first):
+    - 2026-06-06: Sprint 57.87 — EXEMPT /api/v1/tenants/register (pre-JWT self-service registration)
     - 2026-06-06: Sprint 57.86 — EXEMPT /api/v1/auth/password-login (pre-JWT local sign-in)
     - 2026-05-10: Sprint 57.13 US-A1 — v2_jwt cookie fallback + EXEMPT auth/* + telemetry (D-PRE-8)
     - 2026-05-01: Sprint 52.5 Day 6.1 (P0 #14) — replace X-Tenant-Id
@@ -131,6 +132,11 @@ class TenantContextMiddleware(BaseHTTPMiddleware):
         # only — the admin create lives at /api/v1/admin/tenants/.../invites and
         # stays NON-exempt (require_admin_platform_role).
         "/api/v1/invites",
+        # Self-service tenant registration (Sprint 57.87): the registrant has no
+        # JWT yet; the endpoint creates the tenant + first admin. Matches POST
+        # /api/v1/tenants/register ONLY — admin tenant CRUD lives at
+        # /api/v1/admin/tenants/... and stays NON-exempt (require_admin_platform_role).
+        "/api/v1/tenants/register",
     )
 
     def __init__(
