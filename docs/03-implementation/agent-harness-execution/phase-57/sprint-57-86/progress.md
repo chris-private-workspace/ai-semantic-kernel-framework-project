@@ -57,3 +57,16 @@
 
 ### Remaining
 - Day 2 (SAFE CUT-LINE): `CredentialsService` (set_password + authenticate, generic-error + constant-time miss) + wire `InvitesService.accept(password=…)` storage + unit tests (passwords + credentials) + extend invite test (accept stores hash).
+
+---
+
+## Day 2 — 2026-06-06 — Service + wire invite-accept + tests (SAFE CUT-LINE reached)
+
+- `passwords.py` — added `DUMMY_HASH` (computed once at import) for the constant-time-miss path + `import secrets`.
+- NEW `platform_layer/identity/credentials.py` — `CredentialsService`: `set_password(*, user, raw)` (bcrypt-hash onto user; **dropped the planned unused `db` param** per Karpathy §2 — the caller's txn flushes the mutation) + `authenticate(db, *, tenant_code, email, raw)` (tenant-by-`code` = RLS-free root → user by `(tenant_id, email)` under `set_config` → bcrypt verify). **All 4 miss modes raise one `InvalidCredentialsError`** (generic 401); the user-absent / no-hash paths run a `verify_password(raw, DUMMY_HASH)` first to flatten timing (anti-enumeration). Lenient singleton (no lifespan wiring → no leak, same as 57.85).
+- Wire `InvitesService.accept(..., password: str | None = None)` → `CredentialsService().set_password(...)` when provided; `password=None` keeps the OIDC-only path. Updated module NOTE/MHist + Related. `api/v1/invites.py` passes `body.password`; `InviteAcceptRequest.password` capped `max_length=72`; stale "accepted-not-stored" docstrings (module + endpoint) corrected to "hashed + stored" + MHist.
+- Tests: NEW `test_passwords.py` (6) + NEW `test_credentials_service.py` (6, db_session) + extended `test_invites_service.py` (+2: accept stores hash / `password=None` regression). **25/25 green** (3 files); mypy **0/342**; flake8 0; black/isort clean.
+- **CUT-LINE checkpoint** ✅ — credentials provable at the service/DB layer; OIDC/dev-login path untouched; nothing HTTP/UI-wired yet. If Day-3 over-runs, ship here + carryover the endpoint+page+mockup.
+
+### Remaining
+- Day 3: `POST /auth/password-login` endpoint (JWT/cookie/AuthMeResponse mirror dev-login, JSON body, generic 401) + exempt path + integration `test_password_login.py` (incl. invite-accept→login e2e + 2-tenant isolation) + NEW frontend `/auth/password-login` page + route + i18n + mockup `AuthPasswordLogin` + frontend test.

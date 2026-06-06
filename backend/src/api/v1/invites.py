@@ -19,17 +19,19 @@ Description:
     require_admin_platform_role (platform admins, cross-tenant by design); the
     invite is scoped to the PATH tenant_id and RLS-isolated.
 
-    The accept request carries a `password` (the shipped frontend contract) but it
-    is intentionally NOT stored this sprint — local-credential storage is a
-    follow-up slice (57.86). See platform_layer/identity/invites.py docstring.
+    The accept request carries a `password` (the shipped frontend contract) which
+    is bcrypt-hashed + stored on the new user (Sprint 57.86) so they can sign in
+    via POST /auth/password-login. See platform_layer/identity/invites.py docstring.
 
 Key Components:
     - router: APIRouter (mounted at /api/v1)
     - InviteCreateRequest/Response, InviteMetadataResponse, InviteAcceptRequest/Response
 
 Created: 2026-06-06 (Sprint 57.85)
+Last Modified: 2026-06-06
 
 Modification History:
+    - 2026-06-06: Sprint 57.86 — accept stores password (pass body.password; max_length=72)
     - 2026-06-06: Initial creation (Sprint 57.85 / US-1..US-3)
 
 Related:
@@ -93,12 +95,17 @@ class InviteMetadataResponse(BaseModel):
 
 
 class InviteAcceptRequest(BaseModel):
-    """Guest accept body. `password` is accepted but NOT stored this sprint."""
+    """Guest accept body. `password` is bcrypt-hashed + stored (Sprint 57.86).
+
+    max_length=72: bcrypt only hashes the first 72 bytes; the cap makes truncation
+    explicit (rejects pathological input) rather than silent. Not a strength policy
+    (min-length / complexity are a 57.86 carryover).
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     full_name: str = Field(min_length=1, max_length=256)
-    password: str = Field(min_length=1)
+    password: str = Field(min_length=1, max_length=72)
 
 
 class InviteAcceptResponse(BaseModel):
@@ -184,9 +191,13 @@ async def accept_invite(
     body: InviteAcceptRequest,
     db: AsyncSession = Depends(get_db_session),
 ) -> InviteAcceptResponse:
-    """Accept an invite: create the user + grant the role (guest, exempt path)."""
+    """Accept an invite: create the user + grant the role (guest, exempt path).
+
+    The `password` is bcrypt-hashed onto the new user (Sprint 57.86) so they can
+    sign in via POST /auth/password-login.
+    """
     try:
-        user = await _service().accept(db, token, full_name=body.full_name)
+        user = await _service().accept(db, token, full_name=body.full_name, password=body.password)
     except InviteError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     return InviteAcceptResponse(ok=True, user_id=user.id)

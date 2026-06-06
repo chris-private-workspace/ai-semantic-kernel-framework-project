@@ -45,23 +45,23 @@
 > Day 2 = new credentials module + invite-accept wiring + service/unit tests, ZERO HTTP/frontend/mockup. The credential lifecycle is proven at the service/DB layer BEFORE Day-3 wires the endpoint + page.
 
 ### 2.1 CredentialsService
-- [ ] **NEW `platform_layer/identity/credentials.py`** — `CredentialsService`:
-  - `set_password(db, *, user, raw)` — `user.password_hash = await hash_password(raw)` (caller's txn)
-  - `authenticate(db, *, tenant_code, email, raw) -> User` — tenant-by-code (None→err); user by `(tenant_id, email)` under `set_config('app.tenant_id', tenant.id, true)` (None→err); `password_hash is None`→err; `verify_password` False→err; return user. **All failures = `InvalidCredentialsError`**; constant-time miss (dummy verify when absent).
-  - Typed errors `CredentialsError` base + `InvalidCredentialsError`; lenient singleton `set_/get_/maybe_get_credentials_service` (endpoint uses `maybe_get… or CredentialsService()` — no lifespan wiring → no leak)
-  - DoD: mypy clean; authenticate raises one error type for all miss modes
+- [x] **NEW `platform_layer/identity/credentials.py`** — `CredentialsService`:
+  - `set_password(*, user, raw)` — `user.password_hash = await hash_password(raw)` (dropped unused `db` param — Karpathy §2; caller's txn flushes)
+  - `authenticate(db, *, tenant_code, email, raw) -> User` — tenant-by-code (None→err); user by `(tenant_id, email)` under `set_config` (None/no-hash→err); `verify_password` False→err; return user. **All failures = `InvalidCredentialsError`**; constant-time miss runs `verify_password(raw, DUMMY_HASH)` when absent.
+  - Typed errors `CredentialsError` base + `InvalidCredentialsError` (401 generic); lenient singleton `set_/get_/maybe_get_credentials_service`
+  - DoD: mypy clean ✅; authenticate raises one error type for all 4 miss modes ✅ (unit)
 
 ### 2.2 wire invite-accept password storage
-- [ ] **EDIT `platform_layer/identity/invites.py`** — `accept(..., password: str | None = None)`; if provided → `await CredentialsService().set_password(db, user=user, raw=password)` (same txn); keep `password=None` working
-- [ ] **EDIT `api/v1/invites.py`** — pass `password=body.password` to `accept`; `InviteAcceptRequest.password` add `max_length=72`; docstring "accepted-not-stored" → "hashed + stored"
-  - DoD: existing `test_invites.py` stays green; accept with password persists a hash
+- [x] **EDIT `platform_layer/identity/invites.py`** — `accept(..., password: str | None = None)`; if provided → `await CredentialsService().set_password(user=user, raw=password)` (same txn); `password=None` keeps OIDC-only path; docstring/NOTE/MHist + import
+- [x] **EDIT `api/v1/invites.py`** — pass `password=body.password` to `accept`; `InviteAcceptRequest.password` `max_length=72`; module docstring + endpoint docstring "accepted-not-stored" → "hashed + stored" + MHist
+  - DoD: existing `test_invites.py` stays green (run Day-3 full); accept with password persists a hash ✅ (unit)
 
 ### 2.3 unit/service tests + gate (SAFE CUT-LINE)
-- [ ] **NEW `tests/unit/platform_layer/identity/test_passwords.py`** (~4) — hash≠raw / verify true / wrong false / bcrypt `$2b$12$` format + 72-char password verifies
-- [ ] **NEW `tests/unit/platform_layer/identity/test_credentials_service.py`** (db_session, ~6) — set_password persists; authenticate success / wrong-password / unknown-email / no-hash-user / unknown-tenant all → `InvalidCredentialsError`
-- [ ] **Extend `tests/integration/api/test_invites.py`** (in-place — 57.78 lesson) — accept stores `password_hash` (1-2)
-- [ ] **black + isort + flake8 + mypy src/ + pytest** — clean; new tests green; full suite green
-- [ ] **Cut-line checkpoint** — credentials provable at service/DB layer; OIDC path untouched; nothing HTTP/UI-wired yet
+- [x] **NEW `tests/unit/platform_layer/identity/test_passwords.py`** (6) — round-trip + `$2b$12$` format / wrong-password / distinct-salts / 72-char / malformed-hash→False / DUMMY_HASH format
+- [x] **NEW `tests/unit/platform_layer/identity/test_credentials_service.py`** (db_session, 6) — set_password persists verifiable hash; authenticate success / wrong-password / unknown-email / no-hash-user / unknown-tenant all → `InvalidCredentialsError`
+- [x] **Extend `tests/unit/.../test_invites_service.py`** (in-place — 57.78 lesson) — accept stores `password_hash` + `password=None` regression (2). (HTTP-level proof = Day-3 `test_password_login.py` invite-accept→login e2e.)
+- [x] **black + isort + flake8 + mypy src/ + pytest** — clean (mypy 0/342; flake8 0); **25/25 new+invite tests green**
+- [x] **Cut-line checkpoint** — credentials provable at service/DB layer; OIDC path untouched; nothing HTTP/UI-wired yet ✅
 
 ---
 

@@ -20,11 +20,10 @@ Description:
     create and never stored — only its sha256 hex (`token_hash`) is persisted; the
     lookup is a `token_hash =` equality only (no enumeration).
 
-    NOTE (Sprint 57.85 deferral): the accept endpoint accepts a `password` but this
-    service does NOT store it — there is no local-credential store yet (auth is
-    OIDC/dev-login). Local-password credentials + a password-login endpoint are a
-    follow-up slice (57.86 / AD-Auth-Credentials-PasswordLogin-Phase58). The created
-    user authenticates via OIDC/dev-login.
+    Local credentials (Sprint 57.86): accept() now bcrypt-hashes the optional
+    `password` onto the new user (via CredentialsService.set_password) so the user
+    can sign in via POST /auth/password-login. `password=None` keeps the OIDC-only
+    path (the user authenticates via OIDC/dev-login).
 
 Key Components:
     - InviteError + subclasses (carry an HTTP status hint for the router)
@@ -32,14 +31,17 @@ Key Components:
     - set_/get_/maybe_get_invites_service: singleton (+ reset hook per testing.md)
 
 Created: 2026-06-06 (Sprint 57.85)
+Last Modified: 2026-06-06
 
 Modification History:
+    - 2026-06-06: Sprint 57.86 — accept() stores optional password (CredentialsService.set_password)
     - 2026-06-06: Initial creation (Sprint 57.85 / US-1..US-4)
 
 Related:
     - infrastructure/db/models/invites.py:Invite — ORM (+ RLS sentinel escape)
     - migrations/versions/0026_invites.py — table + RLS
     - infrastructure/db/models/identity.py — User / Role / UserRole (reused)
+    - platform_layer/identity/credentials.py — CredentialsService (password store; 57.86)
     - infrastructure/db/audit_helper.py:append_audit — WORM audit chain
     - platform_layer/billing/billing_outbox.py — set_config tenant-context precedent
     - .claude/rules/multi-tenant-data.md 鐵律 (tenant context per write)
@@ -60,6 +62,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from infrastructure.db.audit_helper import append_audit
 from infrastructure.db.models.identity import Role, Tenant, User, UserRole
 from infrastructure.db.models.invites import Invite
+from platform_layer.identity.credentials import CredentialsService
 
 # The all-zeros tenant sentinel matches the invites RLS USING escape
 # (0026_invites.py): under this context the guest token lookup sees rows across
@@ -245,12 +248,20 @@ class InvitesService:
             expires_at=invite.expires_at,
         )
 
-    async def accept(self, db: AsyncSession, raw_token: str, *, full_name: str) -> User:
+    async def accept(
+        self,
+        db: AsyncSession,
+        raw_token: str,
+        *,
+        full_name: str,
+        password: str | None = None,
+    ) -> User:
         """Accept an invite: create the User + grant the role + consume the invite.
 
         Single-use (a rowcount-guarded UPDATE loses the race → 410). The created
-        user is scoped to the invite's tenant. `password` is intentionally NOT a
-        parameter here — credential storage is deferred (see module docstring).
+        user is scoped to the invite's tenant. If `password` is provided it is
+        bcrypt-hashed onto the new user (Sprint 57.86) so they can sign in via
+        POST /auth/password-login; `password=None` keeps the OIDC-only path.
         Raises typed errors (404 / 410 / 409).
         """
         await _set_tenant(db, SYSTEM_SENTINEL_TENANT)
@@ -281,6 +292,11 @@ class InvitesService:
         )
         db.add(user)
         await db.flush()  # obtain user.id without committing
+
+        if password is not None:
+            # bcrypt-hash the local password onto the new user (Sprint 57.86); the
+            # mutation flushes with the rest of this txn below.
+            await CredentialsService().set_password(user=user, raw=password)
 
         db.add(UserRole(user_id=user.id, role_id=role_id, granted_by=invited_by))
 

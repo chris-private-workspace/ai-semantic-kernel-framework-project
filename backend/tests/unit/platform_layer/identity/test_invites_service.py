@@ -262,6 +262,35 @@ async def test_accept_duplicate_email_raises(db_session: AsyncSession) -> None:
         await InvitesService().accept(db_session, raw, full_name="Dup")
 
 
+async def test_accept_stores_password_hash(db_session: AsyncSession) -> None:
+    """57.86 — accept(password=…) bcrypt-hashes the password onto the new user."""
+    from platform_layer.identity.passwords import verify_password
+
+    tid, role, inviter = await _setup(db_session, code="INV_PW")
+    _invite, raw = await InvitesService().create(
+        db_session, tenant_id=tid, inviter_user_id=inviter.id, email="pw@inv.test", role_id=role.id
+    )
+    user = await InvitesService().accept(
+        db_session, raw, full_name="Pw User", password="invitepw123"
+    )
+    assert user.password_hash is not None
+    assert await verify_password("invitepw123", user.password_hash) is True
+
+
+async def test_accept_without_password_leaves_hash_none(db_session: AsyncSession) -> None:
+    """57.86 regression — accept() without a password keeps the OIDC-only path."""
+    tid, role, inviter = await _setup(db_session, code="INV_NOPW")
+    _invite, raw = await InvitesService().create(
+        db_session,
+        tenant_id=tid,
+        inviter_user_id=inviter.id,
+        email="nopw@inv.test",
+        role_id=role.id,
+    )
+    user = await InvitesService().accept(db_session, raw, full_name="No Pw")
+    assert user.password_hash is None
+
+
 async def _tenant_obj(db: AsyncSession, tenant_id: object) -> object:
     from infrastructure.db.models.identity import Tenant
 

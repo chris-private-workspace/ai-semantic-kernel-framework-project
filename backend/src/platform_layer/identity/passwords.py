@@ -36,6 +36,8 @@ Related:
 
 from __future__ import annotations
 
+import secrets
+
 import anyio
 import bcrypt
 
@@ -75,3 +77,9 @@ async def hash_password(raw: str) -> str:
 async def verify_password(raw: str, hashed: str) -> bool:
     """Return True iff ``raw`` matches the bcrypt ``hashed``. Offloaded; never raises."""
     return await anyio.to_thread.run_sync(_verify_sync, raw, hashed)
+
+
+# A throwaway hash (computed once at import). Login can run a verify against it on
+# the user-absent / no-password path so the response latency of "no such user"
+# matches "wrong password" — i.e. timing can't be used to enumerate tenants/users.
+DUMMY_HASH: str = _hash_sync(secrets.token_urlsafe(16))
