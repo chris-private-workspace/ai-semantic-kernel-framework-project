@@ -1,56 +1,52 @@
 """
 File: backend/tests/integration/api/test_phase56_3_e2e.py
-Purpose: Cross-AD e2e — Phase 56.3 SLA Monitor + Cost Ledger combined chat flow.
-Category: Tests / Integration / API (Phase 56 SaaS Stage 1)
-Scope: Sprint 56.3 / Day 4 / US-5 closeout cross-AD e2e
+Purpose: Cross-AD e2e — Phase 56.3 SLA Monitor + billing enqueue + quota chat flow.
+Category: Tests / Integration / API (Phase 56 SaaS Stage 1 / Sprint 57.84 C-15)
+Scope: Sprint 56.3 / Day 4 / US-5 closeout cross-AD e2e (updated Sprint 57.84).
 
 Description:
     Single integrated chat flow that exercises:
-    - US-1 SLAMetricRecorder: record_loop_completion called via chat router
-      observer; classify_loop_complexity bucket recorded in Redis sliding
-      window; get_loop_p99 returns the recorded latency.
-    - US-3 + US-4 CostLedgerService: LoopCompleted observer writes 1 LLM
-      ledger entry; ToolCallExecuted observer writes 1 tool ledger entry;
-      aggregate(month) returns by_type breakdown with total_cost_usd > 0.
-    - US-2 + US-3 quota carryover from 56.2 (still in chat router):
-      pre-call estimate + post-call reconcile via record_usage.
-    - All 4 hooks coexist in single _stream_loop_events run without
-      breaking SSE event stream (best-effort failure pattern).
+    - US-1 SLAMetricRecorder: record_loop_completion via the chat router
+      observer; classify_loop_complexity bucket recorded in Redis; get_loop_p99
+      returns the recorded latency.
+    - US-3 + US-4 billing: Sprint 57.84 (C-15) flipped the chat observer from a
+      direct cost_ledger write to a durable billing_outbox ENQUEUE — so the
+      LoopCompleted + ToolCallExecuted observers now enqueue billing events
+      (a background drainer materializes cost_ledger; the drain → cost_ledger
+      parity is covered by tests/integration/billing/test_billing_outbox_drain.py).
+    - US-2 + US-3 quota carryover from 56.2: pre-call estimate + post-call
+      reconcile via record_usage (UNCHANGED by the flip).
+    - All hooks coexist in one _stream_loop_events run without breaking SSE.
 
-    Uses fakeredis + real db_session fixture (Postgres testcontainer per
-    conftest.py). Stub loop yields ToolCallExecuted + LoopCompleted with
-    known total_tokens to exercise both Cost Ledger code paths.
+    Uses fakeredis + real db_session fixture (Postgres per conftest.py).
 
 Created: 2026-05-06 (Sprint 56.3 Day 4 / US-5 closeout)
+Last Modified: 2026-06-05 (Sprint 57.84 — cost-write flipped to billing_outbox enqueue)
 """
 
 from __future__ import annotations
 
 import time
 from collections.abc import AsyncIterator
-from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
 from fakeredis import FakeAsyncRedis
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agent_harness._contracts import LoopCompleted, TraceContext
 from agent_harness._contracts.events import ToolCallExecuted
 from api.v1.chat.router import _stream_loop_events
 from api.v1.chat.session_registry import SessionRegistry
-from infrastructure.db.models.cost_ledger import CostLedger
-from platform_layer.billing.cost_ledger import CostLedgerService
-from platform_layer.billing.pricing import PricingLoader
+from infrastructure.db.models.billing_outbox import BillingOutboxEvent
+from platform_layer.billing.billing_outbox import BillingOutboxService
 from platform_layer.observability.sla_monitor import SLAMetricRecorder
 from platform_layer.tenant.plans import PlanLoader
 from platform_layer.tenant.quota import QuotaEnforcer
 from tests.conftest import seed_tenant
 
 pytestmark = pytest.mark.asyncio
-
-_PRICING_YAML = Path(__file__).resolve().parents[3] / "config" / "llm_pricing.yml"
 
 
 class _StubLoopWithToolAndCompletion:
@@ -85,8 +81,6 @@ class _StubLoopWithToolAndCompletion:
             result_content="ok",
             trace_context=trace_context,
         )
-        # Sprint 57.2: LoopCompleted carries split + provider/model
-        # (closes AD-Cost-Ledger-Token-Split + Provider-Attribution).
         yield LoopCompleted(
             stop_reason="end_turn",
             total_turns=1,
@@ -105,19 +99,19 @@ async def _consume(stream: AsyncIterator[bytes]) -> None:
 
 
 async def test_phase56_3_cross_ad_full_flow(db_session: AsyncSession) -> None:
-    """Single chat flow exercises US-1 (SLA) + US-3+4 (Cost Ledger) + 56.2 carryover (quota)."""
-    # Setup: real tenant + fakeredis SLA recorder + fakeredis QuotaEnforcer +
-    # PricingLoader-backed CostLedgerService.
+    """One chat flow exercises US-1 (SLA) + US-3+4 (billing enqueue) + 56.2 quota."""
     t = await seed_tenant(db_session, code="P563_E2E")
     tenant_id = t.id
+    # billing_outbox has FORCE RLS — set the tenant context so enqueue's INSERT
+    # WITH CHECK passes (harmless if the test role bypasses RLS).
+    await db_session.execute(
+        text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tenant_id)}
+    )
     session_id = uuid4()
 
     redis = FakeAsyncRedis()
     sla_recorder = SLAMetricRecorder(redis_client=redis)
     quota_enforcer = QuotaEnforcer(client=redis, plan_loader=PlanLoader())
-    pricing = PricingLoader()
-    pricing.load_from_yaml(_PRICING_YAML)
-    cost_ledger = CostLedgerService(db=db_session, pricing_loader=pricing)
 
     registry = SessionRegistry()
     await registry.register(tenant_id, session_id)
@@ -152,57 +146,43 @@ async def test_phase56_3_cross_ad_full_flow(db_session: AsyncSession) -> None:
             estimated_tokens=estimated_tokens,
             sla_recorder=sla_recorder,
             chat_start_time=chat_start_time,
-            cost_ledger=cost_ledger,
+            billing_outbox=BillingOutboxService(),
+            db=db_session,
         )
     )
 
     # === US-1 (SLA) assertion ===
-    # complexity = simple (turns=1, tokens=120 < 1500); recorded in 5-min window.
     p99 = await sla_recorder.get_loop_p99(tenant_id, complexity_category="simple")
     assert p99 is not None, "US-1: SLA loop_completion not recorded"
-    # Latency may be 0 ms in test (sub-millisecond stub-loop run); presence of
-    # a record is what US-1 closeout asserts (recorder wired into chat router).
     assert p99 >= 0, f"US-1: SLA latency must be >= 0, got {p99}"
 
-    # === US-3 + US-4 (Cost Ledger) assertions ===
+    # === US-3 + US-4 (billing enqueue) assertions — Sprint 57.84 flip ===
+    # The chat observer enqueues an llm_call + a tool_call billing event into
+    # billing_outbox (the drainer materializes cost_ledger separately).
     rows = (
         (
             await db_session.execute(
-                select(CostLedger)
-                .where(CostLedger.tenant_id == tenant_id)
-                .order_by(CostLedger.recorded_at)
+                select(BillingOutboxEvent).where(BillingOutboxEvent.tenant_id == tenant_id)
             )
         )
         .scalars()
         .all()
     )
-    cost_types = {r.cost_type for r in rows}
-    assert "llm" in cost_types, "US-4: LLM ledger entry missing"
-    assert "tool" in cost_types, "US-4: Tool ledger entry missing"
-    # Sprint 57.2: 2 LLM entries (input + output) + 1 tool entry = 3 total.
-    assert len(rows) == 3, f"US-4: expected 3 entries (2 LLM + 1 tool), got {len(rows)}"
+    event_types = {r.event_type for r in rows}
+    assert event_types == {"llm_call", "tool_call"}, "billing events missing"
+    assert len(rows) == 2, f"expected 2 outbox events (1 llm + 1 tool), got {len(rows)}"
+    assert all(r.session_id == session_id for r in rows)
 
-    llm_rows = [r for r in rows if r.cost_type == "llm"]
-    assert len(llm_rows) == 2
-    sub_types = {r.sub_type for r in llm_rows}
-    assert sub_types == {
-        "azure_openai_gpt-5.4_input",
-        "azure_openai_gpt-5.4_output",
-    }
-    assert all(r.session_id == session_id for r in llm_rows)
+    llm_row = next(r for r in rows if r.event_type == "llm_call")
+    assert llm_row.payload["input_tokens"] == 70
+    assert llm_row.payload["output_tokens"] == 50
+    assert llm_row.idempotency_key == f"{session_id}:llm:loop"
 
-    tool_row = next(r for r in rows if r.cost_type == "tool")
-    assert tool_row.sub_type == "salesforce_query"
-    assert tool_row.session_id == session_id
+    tool_row = next(r for r in rows if r.event_type == "tool_call")
+    assert tool_row.payload["tool_name"] == "salesforce_query"
+    assert tool_row.idempotency_key == f"{session_id}:tool:salesforce_query:0"
 
-    # US-3 aggregate API works end-to-end.
-    month = llm_rows[0].recorded_at.strftime("%Y-%m")
-    aggregate = await cost_ledger.aggregate(tenant_id=tenant_id, month=month)
-    assert aggregate.total_cost_usd > 0, "US-3: aggregate total_cost_usd must be > 0"
-    assert "llm" in aggregate.by_type
-    assert "tool" in aggregate.by_type
-
-    # === 56.2 carryover (quota US-3) assertion ===
+    # === 56.2 carryover (quota US-3) assertion — UNCHANGED by the flip ===
     # Reserved 200 → actual 120 → counter reconciled to 120.
     final_usage = await quota_enforcer.get_usage(tenant_id)
     assert final_usage == 120, f"56.2 reconciliation wrong: {final_usage}"

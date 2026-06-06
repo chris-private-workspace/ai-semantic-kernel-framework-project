@@ -28,13 +28,41 @@ Related:
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+import os
+from collections.abc import AsyncIterator, Iterator
 
+import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from infrastructure.db import dispose_engine, get_session_factory
 from infrastructure.db.models import Tenant, User
+
+# Sprint 57.84 (C-15): keep the background billing-outbox drainer OUT of test
+# event loops. It starts in api.main._lifespan, which TestClient triggers
+# (test_main_lifespan / test_health). Read as a plain env flag (not Settings)
+# to dodge the get_settings() lru_cache timing trap — mirrors
+# AUDIT_LOG_CHAT_OBSERVER (tests/integration/api/conftest.py).
+os.environ.setdefault("BILLING_OUTBOX_DRAINER_ENABLED", "false")
+
+
+@pytest.fixture(autouse=True)
+def _reset_billing_outbox_singleton() -> Iterator[None]:
+    """Reset the billing_outbox enqueue singleton around every test (Risk Class C).
+
+    api.main._lifespan (driven by TestClient in test_main_lifespan) calls
+    set_billing_outbox(); the lifespan shutdown does NOT unset it (correct for
+    production — the singleton lives for the app's life). Without this reset it
+    leaks into later tests, and a chat-path test that consumes
+    maybe_get_billing_outbox() then enqueues on the global engine (binding it to
+    that test's loop with no dispose) → a downstream db_session test hits
+    'Event loop is closed'. Mirrors testing.md §Module-level Singleton Reset.
+    """
+    from platform_layer.billing.billing_outbox import set_billing_outbox
+
+    set_billing_outbox(None)
+    yield
+    set_billing_outbox(None)
 
 
 @pytest_asyncio.fixture(scope="function")

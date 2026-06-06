@@ -38,6 +38,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.5)
 Last Modified: 2026-06-05
 
 Modification History (newest-first):
+    - 2026-06-05: Sprint 57.84 — C-15: chat cost-write → billing_outbox enqueue + drainer
     - 2026-06-05: Sprint 57.82 — record verification judge LLM cost + count vs quota (B-8 leg-1)
     - 2026-06-02: Sprint 57.71 — thread real tracer into build_handler (A-4 Tier 0)
     - 2026-06-02: Sprint 57.69 A-3b — pass parent_context to boot_handoff (carry parent convo)
@@ -89,10 +90,11 @@ from core.config import get_settings
 from infrastructure.db.audit_helper import append_audit
 from infrastructure.db.repositories import SessionRepository, ToolCallRepository
 from infrastructure.db.session import get_db_session
-from platform_layer.billing import (
-    CostLedgerService,
-    PricingLoader,
-    maybe_get_pricing_loader,
+from platform_layer.billing.billing_outbox import (
+    BillingOutboxService,
+    llm_idempotency_key,
+    maybe_get_billing_outbox,
+    tool_idempotency_key,
 )
 from platform_layer.governance.service_factory import (
     ServiceFactory,
@@ -142,7 +144,6 @@ async def chat(
     db: AsyncSession = Depends(get_db_session),
     quota_enforcer: QuotaEnforcer | None = Depends(maybe_get_quota_enforcer),
     sla_recorder: SLAMetricRecorder | None = Depends(maybe_get_sla_recorder),
-    pricing_loader: PricingLoader | None = Depends(maybe_get_pricing_loader),
     tracer: Tracer = Depends(get_tracer),
 ) -> StreamingResponse:
     """Run an agent loop and stream LoopEvents as SSE.
@@ -286,13 +287,14 @@ async def chat(
     # per-tenant Redis sliding window via SLAMetricRecorder.
     chat_start_time = time.monotonic()
 
-    # Sprint 56.3 Day 3 (US-4 — Cost Ledger auto-record):
-    # Construct CostLedgerService per-request when pricing_loader is wired.
-    # CostLedgerService writes use the same `db` session as BusinessServiceFactory
-    # (kept alive by FastAPI for the StreamingResponse iterator's lifetime).
-    cost_ledger_service: CostLedgerService | None = None
-    if pricing_loader is not None:
-        cost_ledger_service = CostLedgerService(db=db, pricing_loader=pricing_loader)
+    # Sprint 57.84 (C-15 billing-Outbox flip): the chat observer now ENQUEUES a
+    # durable billing event into billing_outbox (atomic with the request txn)
+    # instead of writing cost_ledger best-effort. A background drainer (wired in
+    # api/main.py) materializes cost_ledger from the outbox idempotently — pricing
+    # is resolved by the drainer (single-source), so the router no longer needs the
+    # PricingLoader. maybe_get_billing_outbox() is None only if startup wiring
+    # failed → enqueue is skipped (degrade, same best-effort spirit as before).
+    billing_outbox = maybe_get_billing_outbox()
 
     return StreamingResponse(
         _stream_loop_events(
@@ -306,7 +308,7 @@ async def chat(
             estimated_tokens=estimated_tokens,
             sla_recorder=sla_recorder,
             chat_start_time=chat_start_time,
-            cost_ledger=cost_ledger_service,
+            billing_outbox=billing_outbox,
             db=db,
             verifier_registry=verifier_registry,
         ),
@@ -333,7 +335,7 @@ async def _stream_loop_events(
     estimated_tokens: int = 0,
     sla_recorder: SLAMetricRecorder | None = None,
     chat_start_time: float | None = None,
-    cost_ledger: CostLedgerService | None = None,
+    billing_outbox: BillingOutboxService | None = None,
     db: AsyncSession | None = None,
     verifier_registry: VerifierRegistry | None = None,
 ) -> AsyncIterator[bytes]:
@@ -360,6 +362,9 @@ async def _stream_loop_events(
     # build_handler — built with the loop's OWN adapter (shared ChatClient) when
     # settings.chat_verification_mode == "enabled", else None.
     natural_completion = False
+    # Sprint 57.84 (C-15): per-request monotonic seq disambiguates repeated
+    # same-tool billing events in the idempotency key (a replay reuses the seq).
+    tool_seq = 0
     try:
         async for event in run_with_verification(
             agent_loop=loop,  # type: ignore[arg-type]
@@ -430,56 +435,81 @@ async def _stream_loop_events(
                             tenant_id,
                             session_id,
                         )
-                # Sprint 56.3 Day 3 (US-4) → Sprint 57.2 (closes
-                # AD-Cost-Ledger-Token-Split + AD-Cost-Ledger-Provider-Attribution):
-                # Record TWO ledger entries (input + output split) from
-                # LoopCompleted accumulator-sourced fields. Provider/model
-                # now truthful (sourced from event.provider + event.model
-                # populated by AgentLoop from adapter.model_info().provider +
-                # ChatResponse.model). Best-effort failure: ledger write must
-                # not break SSE stream. Fallback for early-termination paths
-                # (provider="" or empty token counts) skips the write per
-                # event.input_tokens > 0 OR event.output_tokens > 0 gate.
-                if cost_ledger is not None and (event.input_tokens > 0 or event.output_tokens > 0):
+                # Sprint 57.84 (C-15 billing-Outbox flip): ENQUEUE a durable
+                # llm_call billing event into billing_outbox (atomic with this
+                # request's txn) instead of writing cost_ledger directly. A
+                # background drainer materializes cost_ledger from the outbox
+                # idempotently (pricing single-source in the drainer). Provider/
+                # model sourced truthfully from the LoopCompleted accumulator;
+                # early-termination paths (empty tokens) skip the enqueue. The
+                # enqueue is a single INSERT in the request txn → the billing event
+                # commits atomically with session/audit (no more best-effort 漏扣).
+                # Logged best-effort isolation kept so a rare enqueue hiccup does
+                # not break the SSE stream (consistent w/ sessions/audit observers).
+                if (
+                    billing_outbox is not None
+                    and db is not None
+                    and (event.input_tokens > 0 or event.output_tokens > 0)
+                ):
                     try:
-                        await cost_ledger.record_llm_call(
+                        await billing_outbox.enqueue(
+                            db,
                             tenant_id=tenant_id,
-                            provider=event.provider or "azure_openai",
-                            model=event.model or _FALLBACK_PRICING_MODEL,
-                            input_tokens=event.input_tokens,
-                            output_tokens=event.output_tokens,
+                            event_type="llm_call",
+                            payload={
+                                "provider": event.provider or "azure_openai",
+                                "model": event.model or _FALLBACK_PRICING_MODEL,
+                                "input_tokens": event.input_tokens,
+                                "output_tokens": event.output_tokens,
+                                "cached_input_tokens": 0,
+                                "sub_type_suffix": "",
+                            },
+                            idempotency_key=llm_idempotency_key(session_id, ""),
                             session_id=session_id,
                         )
                     except Exception:  # noqa: BLE001
                         logger.exception(
-                            "chat session %s/%s: cost ledger LLM record failed",
+                            "chat session %s/%s: billing outbox LLM enqueue failed",
                             tenant_id,
                             session_id,
                         )
-                # Sprint 57.82 (B-8 leg-1): record the Cat 10 verification judge
-                # LLM call as a DISTINCT `_verification` sub_type so judge cost is
-                # separately auditable (not mixed into the loop entry). Judge shares
-                # the loop adapter → event.provider is correct; model is the judge's
-                # own (verification_model), falling back to the loop model. 0 tokens
+                # Sprint 57.84 (C-15): enqueue the Cat 10 verification judge LLM
+                # call as a DISTINCT `_verification` billing event (B-8 leg-1 cost
+                # attribution preserved — the drainer materializes the
+                # `_verification` sub_type). Judge shares the loop adapter →
+                # event.provider correct; model is the judge's own
+                # (verification_model) falling back to the loop model. 0 tokens
                 # (verification disabled / no judge ran) → skip.
-                if cost_ledger is not None and (
-                    event.verification_input_tokens > 0 or event.verification_output_tokens > 0
+                if (
+                    billing_outbox is not None
+                    and db is not None
+                    and (
+                        event.verification_input_tokens > 0 or event.verification_output_tokens > 0
+                    )
                 ):
                     try:
-                        await cost_ledger.record_llm_call(
+                        await billing_outbox.enqueue(
+                            db,
                             tenant_id=tenant_id,
-                            provider=event.provider or "azure_openai",
-                            model=(
-                                event.verification_model or event.model or _FALLBACK_PRICING_MODEL
-                            ),
-                            input_tokens=event.verification_input_tokens,
-                            output_tokens=event.verification_output_tokens,
+                            event_type="llm_call",
+                            payload={
+                                "provider": event.provider or "azure_openai",
+                                "model": (
+                                    event.verification_model
+                                    or event.model
+                                    or _FALLBACK_PRICING_MODEL
+                                ),
+                                "input_tokens": event.verification_input_tokens,
+                                "output_tokens": event.verification_output_tokens,
+                                "cached_input_tokens": 0,
+                                "sub_type_suffix": "_verification",
+                            },
+                            idempotency_key=llm_idempotency_key(session_id, "_verification"),
                             session_id=session_id,
-                            sub_type_suffix="_verification",
                         )
                     except Exception:  # noqa: BLE001
                         logger.exception(
-                            "chat session %s/%s: cost ledger verification record failed",
+                            "chat session %s/%s: billing outbox verification enqueue failed",
                             tenant_id,
                             session_id,
                         )
@@ -582,21 +612,29 @@ async def _stream_loop_events(
                             session_id,
                         )
                 break
-            # Sprint 56.3 Day 3 (US-4 — Cost Ledger tool hook):
-            # Record one cost ledger entry per ToolCallExecuted event (per
-            # Day 0 D4 — event already exists at events.py:131; no new
-            # event needed). Per-tenant pricing comes from
-            # config/llm_pricing.yml (default_per_call + named overrides).
-            if isinstance(event, ToolCallExecuted) and cost_ledger is not None:
+            # Sprint 57.84 (C-15): enqueue one tool_call billing event per
+            # ToolCallExecuted into billing_outbox (the drainer prices it from
+            # config/llm_pricing.yml + materializes cost_ledger). tool_seq makes
+            # repeated same-tool calls in one loop distinct while a replay reuses
+            # the same key (idempotent). Best-effort isolation kept (SSE safety).
+            if (
+                isinstance(event, ToolCallExecuted)
+                and billing_outbox is not None
+                and db is not None
+            ):
                 try:
-                    await cost_ledger.record_tool_call(
+                    await billing_outbox.enqueue(
+                        db,
                         tenant_id=tenant_id,
-                        tool_name=event.tool_name,
+                        event_type="tool_call",
+                        payload={"tool_name": event.tool_name},
+                        idempotency_key=tool_idempotency_key(session_id, event.tool_name, tool_seq),
                         session_id=session_id,
                     )
+                    tool_seq += 1
                 except Exception:  # noqa: BLE001
                     logger.exception(
-                        "chat session %s/%s: cost ledger tool record failed (tool=%s)",
+                        "chat session %s/%s: billing outbox tool enqueue failed (tool=%s)",
                         tenant_id,
                         session_id,
                         event.tool_name,
