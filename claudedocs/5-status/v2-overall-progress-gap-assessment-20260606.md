@@ -101,7 +101,7 @@ A-1 Memory / A-2 PromptBuilder / A-5 events→SSE 完整接通。刻意保留:A-
 
 ### Area C(5 研究)— 🟡 混合
 - **C-11** real-LLM e2e — pricing-correctness leg 57.79 closed;真 loop **LIVE 已驗**(Δ=2)。但 CI 排程 gate 仍 commented out(等 Azure secrets,Phase 58)。
-- **C-12** IAM Block B/C — invites 57.85 closed;password-login 57.86 **(注意:source 尚未進工作樹,疑為未 merge 分支)**;register/MFA 後端刻意 deferred(Phase 58)。
+- **C-12** IAM Block B/C — invites 57.85 closed;password-login 57.86 **已 merge(PR #252,merge commit `5b5cc5ff`;2026-06-06 更新,原評估寫於 HEAD f61df966 時誤判為未 merge)**;register/MFA 後端刻意 deferred(Phase 58)。
 - **C-13** agents/workflows 頁 — `agents` 已改名為 `/orchestrator`+`/subagents`;**`/workflows` 完全不存在**(無頁/路由/mockup/後端)。
 - **C-14** 合規軸 — **程式 0%**(SOC2/PDPA/CRA/AI-Act);地基齊(WORM audit + SHA-256 hash chain + RLS + PIIRedactor);GDPR erasure 僅 pseudocode。外部阻擋(法規查證)。
 - **C-15** DevOps/Data — billing Outbox 57.84 closed(修雙扣);Bicep IaC 已有但未驗證部署;DR/multi-region/WAL/analytics 0%(Azure provisioning 外部阻擋)。
@@ -135,7 +135,7 @@ A-1 Memory / A-2 PromptBuilder / A-5 events→SSE 完整接通。刻意保留:A-
 | Quota(每 plan 限額) | 🟡 partial | 只強制 tokens/day;cost_usd/day + 並發 session caps 未強制 |
 | Billing / cost-ledger + outbox | 🟡 partial | cost-ledger + transactional outbox ship;Stripe/invoice = Stage 2 |
 | SLA monitoring | ✅ done(backend) | recorder + 月報 + violation severity |
-| IAM(C-12) | 🟡 partial | JWT+OIDC(WorkOS)+DB-RBAC+invites ship;register/MFA 後端 deferred;**RBAC `has_permission()` 仍 stub 回 False**;57.86 source 疑未 merge |
+| IAM(C-12) | 🟡 partial | JWT+OIDC(WorkOS)+DB-RBAC+invites(57.85)+password-login(57.86,**已 merge** PR #252)ship;register/MFA 後端 deferred;**RBAC `has_permission()` 仍 stub 回 False** |
 | 合規(C-14) | ❌ missing(僅地基) | 程式 0%;WORM+hash chain+PIIRedactor 地基真;GDPR erasure pseudocode |
 | DevOps/DR(C-15) | 🟡 partial | Bicep IaC 在但未驗證部署;deploy pipeline disabled;DR/multi-region/WAL = 0 |
 
@@ -153,7 +153,7 @@ A-1 Memory / A-2 PromptBuilder / A-5 events→SSE 完整接通。刻意保留:A-
 ### 建議優先序(候選,非 sprint 承諾)
 1. ✅ **(2026-06-06 已完成)** **手動 UI smoke** —— 真 `.env` 啟動後端、開 `/chat-v2`、dev-login、mode toggle 到 `real_llm`、Send、觀察串流 agent 回應。已執行並通過(真 gpt-5.2,見 §2 頂部)。
 2. ✅ **(2026-06-06 已完成,commit `7cb633e9`)** **unmocked 的 chat-v2 e2e** —— `chat-v2-real-backend.spec.ts`,echo_demo 對 live 後端,opt-in `RUN_CONNECTIVITY`(CI 保持 hermetic),驗證通過。
-3. **修 cost_ledger $0**(model/pricing key 4-way 不一致;`AD-Cost-Ledger-Model-Pricing-Key-Mismatch` 仍開)—— loop 會動,但帳算 $0。
+3. ✅ **(已完成,57.79 CHANGE-047)** **修 cost_ledger $0** —— `AD-Cost-Ledger-Model-Pricing-Key-Mismatch` 已 closed(pricing-key date-suffix normalize);real-Azure `unit_cost>0` LIVE 驗(與 §4 C-11 一致;原 §7 寫「仍開」為與 §4 矛盾的筆誤,2026-06-06 校正)。
 4. 🟡 **(2026-06-06 部分完成)** **real-LLM 廣度驗證**:guardrail block ×2 + business tool + verification 已從 UI 實證;**殘留** HITL(需 wire tool guardrail / 改 code)、Cat 8 error/retry(需停 mock :8001,observability 弱)。
 5. **啟用 e2e-real-llm-smoke CI 排程**(提供 Azure secrets)—— 給已證實的路徑加回歸網。
 6. 後排(外部輸入):`/workflows` 頁、IAM register/MFA 後端、C-14 合規(先 GDPR erasure endpoint)、DR/部署。
