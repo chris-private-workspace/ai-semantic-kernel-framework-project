@@ -80,3 +80,10 @@ python-dotenv>=1.0,<2.0
 # Path 1 per Day 0 D2 verify: vendor SDK handles JWKS validation of
 # WorkOS-issued tokens; V2 internal JWT remains HS256 via JWTManager.
 workos>=4.0,<6.0
+
+# ---- Sprint 57.86 US-1: local-password credentials (C-12 IAM Block B/C) -----
+# bcrypt (used directly — no passlib middle layer, avoids passlib's bcrypt-4.x
+# compat noise) hashes local passwords set at invite-accept + verified by
+# POST /auth/password-login. Consumed only from platform_layer/identity/
+# passwords.py (sync hash/verify offloaded via anyio.to_thread.run_sync).
+bcrypt>=4.1,<5.0

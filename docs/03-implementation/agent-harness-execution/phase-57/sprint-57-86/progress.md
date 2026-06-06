@@ -44,3 +44,16 @@
 
 ### Remaining for next day
 - Day 1: `bcrypt` dep + `passwords.py` util + `User.password_hash` ORM + migration `0027` (read `0026` header for down_revision; both-direction apply).
+
+---
+
+## Day 1 — 2026-06-06 — Schema + hashing util
+
+- EDIT `requirements.txt` — `bcrypt>=4.1,<5.0` (installed bcrypt 4.3.0).
+- NEW `platform_layer/identity/passwords.py` — `hash_password`/`verify_password` (bcrypt cost=12; both offloaded via `anyio.to_thread.run_sync`; UTF-8 truncated to 72 bytes in BOTH so behaviour is deterministic + version-independent — bcrypt 4.x may raise on >72 bytes; `verify` swallows malformed-hash `ValueError` → False, never raises). Pure (no DB).
+- EDIT `infrastructure/db/models/identity.py` — `User.password_hash: Mapped[str | None] = mapped_column(String(255))` (nullable via Optional; no alias — `users` has no alias pattern) + MHist.
+- NEW migration `0027_user_password_hash` (down_revision `0026_invites`) — `add_column`/`drop_column`; NO new RLS policy (the column inherits the existing `users` row-level RLS). Applied **both directions** on Docker DB (`alembic current`=`0027_user_password_hash (head)`).
+- Gates: black/isort/flake8 0; mypy **0/341**; `run_all.py` **10/10** (`check_rls_policies` green — `users` already covered, no new policy). Commit (pending).
+
+### Remaining
+- Day 2 (SAFE CUT-LINE): `CredentialsService` (set_password + authenticate, generic-error + constant-time miss) + wire `InvitesService.accept(password=…)` storage + unit tests (passwords + credentials) + extend invite test (accept stores hash).

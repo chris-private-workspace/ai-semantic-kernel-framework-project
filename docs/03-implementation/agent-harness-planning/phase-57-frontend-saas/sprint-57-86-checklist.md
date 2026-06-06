@@ -19,24 +19,24 @@
 ### 0.2 Branch + decisions
 - [x] **Branch created** `feature/sprint-57-86-credentials-password-login` (from `main` `f61df966`)
 - [x] **Decisions locked**: bcrypt cost=12 + anyio offload; `users.password_hash` nullable; `(tenant_code, email)` lookup; generic-401 for all failures + constant-time miss; JSON body (not query); JWT/cookie/AuthMeResponse mirror dev-login; new page + mockup `AuthPasswordLogin`; parent-direct (`agent_factor` 1.0).
-- [ ] **Day-0 commit** plan + checklist + progress.md Day 0
+- [x] **Day-0 commit** plan + checklist + progress.md Day 0 (`e57baa9d`)
 
 ---
 
 ## Day 1 — Schema + hashing util: bcrypt dep + `passwords.py` + `users.password_hash` + migration (US-1)
 
 ### 1.1 dependency + hashing util
-- [ ] **EDIT `backend/requirements.txt`** — add `bcrypt` (pin a current major, e.g. `bcrypt>=4.1,<5`); install into the active env
-  - DoD: `python -c "import bcrypt"` OK
-- [ ] **NEW `platform_layer/identity/passwords.py`** — `async def hash_password(raw) -> str` (`bcrypt.gensalt(rounds=12)` + `bcrypt.hashpw`, UTF-8) + `async def verify_password(raw, hashed) -> bool` (`bcrypt.checkpw`), each via `await anyio.to_thread.run_sync(...)` (offload). File header per convention.
-  - DoD: mypy clean; pure (no DB import)
+- [x] **EDIT `backend/requirements.txt`** — added `bcrypt>=4.1,<5.0`; installed (bcrypt 4.3.0)
+  - DoD: `python -c "import bcrypt"` OK ✅
+- [x] **NEW `platform_layer/identity/passwords.py`** — `hash_password`/`verify_password` (bcrypt cost=12 + `anyio.to_thread.run_sync` offload; 72-byte truncate in both for deterministic version-independent behaviour; verify swallows malformed-hash `ValueError` → False). Pure (no DB).
+  - DoD: mypy clean ✅
 
 ### 1.2 ORM + migration 0027
-- [ ] **EDIT `infrastructure/db/models/identity.py`** — `User.password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)` (no alias)
-- [ ] **Read `0026_invites.py` header** → confirm `revision` id → `down_revision`
-- [ ] **NEW `migrations/versions/0027_user_password_hash.py`** — `upgrade` `op.add_column("users", sa.Column("password_hash", sa.String(255), nullable=True))`; `downgrade` `op.drop_column`. NO new RLS policy (inherits `users` RLS).
-  - DoD: applied **both directions** on Docker DB (`alembic upgrade head` → `downgrade -1` → re-upgrade; `alembic current`=`0027_user_password_hash (head)`); `check_rls_policies` green
-- [ ] **black + isort + flake8 + mypy src/** — clean
+- [x] **EDIT `infrastructure/db/models/identity.py`** — `User.password_hash: Mapped[str | None] = mapped_column(String(255))` (nullable via Optional, no alias) + MHist
+- [x] **Read `0026_invites.py` header** → `revision="0026_invites"` → `down_revision="0026_invites"`
+- [x] **NEW `migrations/versions/0027_user_password_hash.py`** — `add_column`/`drop_column`; NO new RLS policy (inherits `users` RLS)
+  - DoD: applied **both directions** on Docker DB (upgrade 0026→0027 → downgrade -1 → re-upgrade; `alembic current`=`0027_user_password_hash (head)`) ✅; `check_rls_policies` green ✅
+- [x] **black + isort + flake8 + mypy src/** — clean (mypy 0/341; flake8 0; run_all 10/10)
 
 ---
 

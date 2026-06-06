@@ -26,9 +26,10 @@ Key Components:
     - RolePermission: per-role action permissions (resource_type / pattern / action)
 
 Created: 2026-04-29 (Sprint 49.2 Day 1.5)
-Last Modified: 2026-05-05
+Last Modified: 2026-06-06
 
 Modification History:
+    - 2026-06-06: Sprint 57.86 — User +password_hash col (closes AD-Auth-Credentials-PasswordLogin)
     - 2026-05-26: Sprint 57.46 — Tenant +5 SaaS cols (closes AD-TenantSettings-Schema-Ext)
     - 2026-05-05: Sprint 56.1 Day 1 — Tenant ENHANCE: state/plan Enum + progress JSONB (D1)
     - 2026-04-29: Initial creation (Sprint 49.2 Day 1.5)
@@ -197,6 +198,10 @@ class User(Base, TenantScopedMixin):
     email: Mapped[str] = mapped_column(String(256), nullable=False)
     display_name: Mapped[str | None] = mapped_column(String(256))
     external_id: Mapped[str | None] = mapped_column(String(256))
+    # Local-password credential (Sprint 57.86). Nullable: OIDC/dev-login users
+    # have none; set at invite-accept, verified by POST /auth/password-login.
+    # bcrypt hash string ($2b$12$…); see platform_layer/identity/passwords.py.
+    password_hash: Mapped[str | None] = mapped_column(String(255))
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
     preferences: Mapped[dict[str, Any]] = mapped_column(
         JSONB,
