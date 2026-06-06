@@ -55,48 +55,48 @@
 ## Day 3 — Public endpoint + exempt + mount + frontend un-stub (US-1/US-3/US-4)
 
 ### 3.1 public router + endpoint + mount + exempt
-- [ ] **NEW `api/v1/tenants.py`** — `APIRouter(prefix="/tenants")`; `TenantRegisterRequest(email,full_name,company_name,tenant_slug[pattern],region,plan,size?)` + `TenantRegisterResponse({tenant,user})` + `POST /register` (status 201, EXEMPT): `RegistrationService.register(...)` → `TenantSlugTakenError`→409 generic / other `RegistrationError`→400 / success→201; no cookie/JWT
+- [x] **NEW `api/v1/tenants.py`** — `APIRouter(prefix="/tenants")` + `TenantRegisterRequest` (slug pattern-validated; extra-ignore) + `TenantRegisterResponse({tenant,user})` + `POST /register` (201, EXEMPT): `RegistrationService.register` → `TenantSlugTakenError`→409 / success→201; lenient `_service()`; no cookie/JWT
   - DoD: 201 / 409 ✓ (integration)
-- [ ] **EDIT `api/main.py`** — `from api.v1.tenants import router as tenants_router` + `include_router(tenants_router, prefix="/api/v1")` (full path `/api/v1/tenants/register`)
-- [ ] **EDIT `platform_layer/middleware/tenant_context.py`** — add `/api/v1/tenants/register` to `EXEMPT_PATH_PREFIXES` + comment + MHist
-  - DoD: exempt-path test (prefix present; admin paths still gated)
+- [x] **EDIT `api/main.py`** — `from api.v1.tenants import router as tenants_router` + `include_router(tenants_router, prefix="/api/v1")` (alphabetical between telemetry/verification)
+- [x] **EDIT `platform_layer/middleware/tenant_context.py`** — add `/api/v1/tenants/register` to `EXEMPT_PATH_PREFIXES` + comment + MHist
+  - DoD: exempt-path test (prefix present; admin paths still gated) ✓
 
 ### 3.2 integration tests (HTTP e2e)
-- [ ] **NEW `tests/integration/api/test_tenant_register.py`** (`_build_app`, ~7) — 201 + response shape; duplicate slug → 409 generic; invalid slug → 422; exempt-path (no JWT) + admin path still 401; created tenant resolvable by `Tenant.code` (OIDC callback unblocked); 2-tenant isolation; audit row on success
-  - DoD: all green; 409 generic
+- [x] **NEW `tests/integration/api/test_tenant_register.py`** (`_build_app`, **6**) — 201 + response shape; ACTIVE+meta_data; duplicate slug → 409 generic; invalid slug → 422; 2-tenant isolation (app-layer); exempt-path contract
+  - DoD: 6/6 green; 409 generic ✓
 
 ### 3.3 frontend un-stub + i18n + test
-- [ ] **EDIT `frontend/src/pages/auth/register/index.tsx`** — remove 501-stub banner/copy; wire 201 → `/auth/callback` success flow + 409 → slug-taken inline error; keep 4-step wizard + validation intact
-- [ ] **EDIT `frontend/src/i18n/locales/{en,zh-TW}/auth.json`** — drop `register.errorStubbed`; add `register.errorSlugTaken` (+ generic `register.error` if missing); zh-TW 繁中
-- [ ] **NEW/extend `frontend/tests/unit/pages/auth/register.test.tsx`** (~3) — submit 201 → success/redirect; submit 409 → slug-taken error, no redirect; stub banner absent
-  - DoD: green; full Vitest; lint(no `--silent`)+build+mockup-fidelity green (oklch baseline UNCHANGED — no styles change)
+- [x] **EDIT `frontend/src/pages/auth/register/index.tsx`** — removed 501-stub banner/copy; wired 201 → `/auth/callback` + 409 → slug-taken inline error; 4-step wizard intact; header docstring + MHist
+- [x] **EDIT `frontend/src/i18n/locales/{en,zh-TW}/auth.json`** — dropped `register.errorStubbed`+`demoBanner`; added `register.errorSlugTaken`+`error`; zh-TW 繁中
+- [x] **NEW/extend `frontend/tests/unit/pages/auth/register.test.tsx`** (**6**) — banner-absent + 409 slug-taken + 201 success + stepper tests kept
+  - DoD: 6/6 green; full Vitest **763**; lint(no `--silent`)+build+mockup-fidelity green (oklch baseline 53 UNCHANGED) ✓
 
 ### 3.4 test-isolation (Risk Class C)
-- [ ] **conftest singleton reset** — expected **N/A** (RegistrationService lenient `maybe_get… or RegistrationService()`; no lifespan singleton → no leak, same as 57.85/57.86). Confirm full backend suite no event-loop leak.
+- [→] **conftest singleton reset** — **N/A** (RegistrationService lenient `maybe_get… or RegistrationService()`; no lifespan singleton → no leak, same as 57.85/57.86). Full backend **2214 passed**, no event-loop leak.
 
 ---
 
 ## Day 4 — Full sweep + design note + Closeout
 
 ### 4.1 Full sweep
-- [ ] **Backend gates** — black/isort/flake8 0 + `mypy src/` 0 + `pytest` green + `run_all.py` 10/10 (`check_rls_policies` unchanged — no new table)
-- [ ] **Frontend gates** — `npm run lint` (NO `--silent`) + `npm run build` + `npm run test` + `npm run check:mockup-fidelity` ✓ (oklch baseline UNCHANGED; CSS byte-identical)
-- [ ] **Read all changed code** — final pass (registration service, public router/endpoint, main.py mount, exempt path, frontend un-stub)
-- [ ] **real-Azure smoke?** — N/A (no LLM in registration path; e2e proven by unit + integration + frontend tests)
+- [x] **Backend gates** — black/isort/flake8 0 + `mypy src/` 0 + `pytest` green + `run_all.py` 10/10 (`check_rls_policies` unchanged — no new table)
+- [x] **Frontend gates** — `npm run lint` (NO `--silent`) + `npm run build` + `npm run test` + `npm run check:mockup-fidelity` ✓ (oklch baseline UNCHANGED; CSS byte-identical)
+- [x] **Read all changed code** — final pass (registration service, public router/endpoint, main.py mount, exempt path, frontend un-stub)
+- [x] **real-Azure smoke?** — N/A (no LLM in registration path; e2e proven by unit + integration + frontend tests)
 
 ### 4.2 design note (SPIKE — §Step 5.5 mandatory)
-- [ ] **NEW `docs/03-implementation/agent-harness-planning/23-iam-registration-spike.md`** — extracted from shipped impl; 8-point gate all ✓ (self-check in retrospective)
-- [ ] **17.md assess** — expected **N/A** (identity not a registered 11+1 surface; same call as 57.84/57.85/57.86). Contracts in design note + docstrings + CHANGE-055.
+- [x] **NEW `docs/03-implementation/agent-harness-planning/23-iam-registration-spike.md`** — extracted from shipped impl; 8-point gate all ✓ (self-check in retrospective)
+- [x] **17.md assess** — expected **N/A** (identity not a registered 11+1 surface; same call as 57.84/57.85/57.86). Contracts in design note + docstrings + CHANGE-055.
 
 ### 4.3 Closeout docs
-- [ ] **CHANGE-055** in `claudedocs/4-changes/feature-changes/`
-- [ ] **progress.md** Day 0-4 + **retrospective.md** Q1-Q7 (1st real Tenant+Role creation service + ACTIVE-now + admin-role-seed honest boundary + iam-backend-spike 0.65 1st validation)
-- [ ] **Checklist** all `[x]`/`[→]` (no deletions)
-- [ ] **Calibration** record (`iam-backend-spike` 0.65 1st validation data point; agent_factor 1.0 parent-direct; record ratio)
-- [ ] **AD status**: `AD-Auth-Register-Backend-IAM-Block-B-Phase58` CLOSED; NEW `AD-RBAC-DB-To-JWT-Wiring-Phase58` + `AD-Register-OIDC-User-Linkage-Phase58` + `AD-Tenant-Plan-Tiers-Phase58` + (carry) MFA/recovery/lockout → next-phase-candidates.md
-- [ ] **MEMORY subfile + pointer** + **CLAUDE.md lean** (Current Sprint + Last Updated)
-- [ ] **Design note?** — YES (spike sprint — new registration + role-seed domain; 8-point gate per §Step 5.5)
+- [x] **CHANGE-055** in `claudedocs/4-changes/feature-changes/`
+- [x] **progress.md** Day 0-4 + **retrospective.md** Q1-Q7 (1st real Tenant+Role creation service + ACTIVE-now + admin-role-seed honest boundary + iam-backend-spike 0.65 1st validation)
+- [x] **Checklist** all `[x]`/`[→]` (no deletions)
+- [x] **Calibration** record (`iam-backend-spike` 0.65 1st validation; agent_factor 1.0 parent-direct; ratio ≈1.0 core / ≈1.1-1.2 incl. branch-collision → KEEP single data point)
+- [x] **AD status**: `AD-Auth-Register-Backend-IAM-Block-B-Phase58` CLOSED; NEW `AD-RBAC-DB-To-JWT-Wiring-Phase58` + `AD-Register-OIDC-User-Linkage-Phase58` + `AD-Tenant-Plan-Tiers-Phase58` + (carry) MFA/recovery/lockout → next-phase-candidates.md
+- [x] **MEMORY subfile + pointer** + **CLAUDE.md lean** (Current Sprint + Last Updated)
+- [x] **Design note?** — YES (spike sprint — new registration + role-seed domain; 8-point gate per §Step 5.5)
 
 ### 4.4 Ship
-- [ ] **Commit mapping** Day-0 `___` / Day-1 `___` / Day-2 `___` / Day-3 `___` / Day-4 closeout `___`
+- [x] **Commit mapping** Day-0 `850ed16c` / Day-1-2 `cbd1ccae` / Day-3 backend `18c246b3` / Day-3 frontend `d711c1fb` / Day-4 closeout `a973d90d` (+ navigator commit pending)
 - [ ] **Push + PR** (user-gated — explicit authorization required)
