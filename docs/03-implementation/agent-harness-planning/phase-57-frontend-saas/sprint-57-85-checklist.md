@@ -74,9 +74,10 @@
   - DoD: `test_create_requires_admin` (401) + `test_exempt_path_contract` (prefix present, admin path not covered) ✅
 
 ### 3.3 frontend wire
-- [ ] **`frontend/src/pages/auth/invite/index.tsx`** — remove FIXTURE_METADATA (`:48-53`) + AP-2 banner (`:154-162`); consume real GET+accept; add 404/410 error states (reuse existing error surface, no new widgets); accept body unchanged
-  - DoD: `check:mockup-fidelity` baseline unchanged (oklch delta 0); no layout change
-- [ ] **NEW `frontend/tests/unit/pages/auth/invite.test.tsx`** — real metadata render / 404+410 states / accept submit calls real endpoint — ~4-6 tests
+- [x] **`frontend/src/pages/auth/invite/index.tsx`** — removed FIXTURE_METADATA + AP-2 banner; consume real GET (200→form / 404→invalid / 410→gone) + real accept error; added `loading`/`invalid`/`gone` states via `DangerNote` (reuses existing danger-alert inline style — NO new mockup widgets, NO new oklch literals); accept body unchanged. + i18n: removed `demoBanner`/`errorStubbed`, added `loading`/`invalid`/`gone`/`acceptError` to en + zh-TW (繁中 per locale-file-is-translated rule).
+  - DoD: `check:mockup-fidelity` ✓ (CSS byte-identical + oklch baseline **50 unchanged**, delta 0); no happy-path layout change ✅
+- [x] **`frontend/tests/unit/pages/auth/invite.test.tsx`** — **REWROTE EXISTING file in-place** (per Sprint 57.78 D-DAY1-1 lesson — found the 57.23/57.35 fixture/banner test, did not add a dup): 5 tests — real metadata render (no fixture/banner) / accept 200→navigate /auth/mfa / accept 410→error+no-navigate / GET 404→invalid no-form / GET 410→gone no-form
+  - DoD: 5/5 green; full Vitest **757 passed** (132 files); lint(no `--silent`)+build+mockup-fidelity green
 
 ### 3.4 test-isolation (Risk Class C)
 - [→] **conftest singleton reset** — **N/A** (no lifespan-wired singleton; endpoint uses `maybe_get_invites_service() or InvitesService()` lenient fallback → nothing to leak; deliberately avoids the 57.84 Day-3 singleton-leak class). Full suite 2179 green, no event-loop leak.
