@@ -19,23 +19,23 @@
 ### 0.2 Branch + decisions
 - [x] **Branch created** `feature/sprint-57-85-iam-invites` (from `main` `259d6070`)
 - [x] **Decisions locked**: `invites` table (TenantScopedMixin); opaque token `secrets.token_urlsafe(32)` + `sha256` hash (raw shown once); status state machine pending→accepted(single-use)/revoked/expired; sentinel-scoped guest lookup + per-row `set_config` for writes; admin create (RBAC) + guest GET/accept (exempt path); password accepted-not-stored; parent-direct (`agent_factor` 1.0).
-- [ ] **Day-0 commit** plan + checklist + progress.md Day 0
+- [x] **Day-0 commit** plan + checklist + progress.md Day 0 (`0d5d81d6`)
 
 ---
 
 ## Day 1 — Schema: `invites` table + migration + ORM (US-1/US-4)
 
 ### 1.1 ORM model
-- [ ] **NEW `infrastructure/db/models/invites.py`** — `Invite` (TenantScopedMixin): id(UUID PK)/tenant_id/email/role_id(FK roles)/invited_by(FK users)/token_hash(64)/status/expires_at/accepted_at/accepted_user_id(FK users)/created_at + UNIQUE(token_hash) + status CHECK + idx_invites_tenant
-  - DoD: mypy clean under strict; columns match plan §3.1
-- [ ] **Register** in `infrastructure/db/models/__init__.py` (after `identity` import) + `__all__`
-  - DoD: `check_rls_policies` discovers `invites`
+- [x] **NEW `infrastructure/db/models/invites.py`** — `Invite` (TenantScopedMixin): id(UUID PK)/tenant_id/email/role_id(FK roles)/invited_by(FK users)/token_hash(64)/status/expires_at/accepted_at/accepted_user_id(FK users)/created_at + UNIQUE(token_hash) + status CHECK + idx_invites_tenant + partial-unique(tenant_id,email WHERE pending)
+  - DoD: mypy clean (337 files) ✅; columns match plan §3.1
+- [x] **Register** in `infrastructure/db/models/__init__.py` (after `identity` import) + `__all__`
+  - DoD: `check_rls_policies` discovers `invites` (10/10 green) ✅
 
 ### 1.2 migration 0026
-- [ ] **Read `0025_billing_outbox.py` header** → confirm `revision` id → set `down_revision`
-- [ ] **NEW `migrations/versions/0026_invites.py`** — CREATE TABLE + FK(roles/users) + UNIQUE(token_hash) + partial-unique(tenant_id,email WHERE pending) [or app-level — decide here] + idx_invites_tenant + status CHECK + ENABLE+FORCE RLS + `tenant_isolation_invites` (USING + **system-sentinel escape** for guest lookup) + `tenant_insert_invites` (WITH CHECK) — mirror `0025` two-policy
-  - DoD: applied **both directions** on Docker DB (upgrade → downgrade -1 → re-upgrade; head=`0026_invites`); `check_rls_policies` green
-- [ ] **black + isort + flake8 + mypy src/** — clean
+- [x] **Read `0025_billing_outbox.py` header** → `revision="0025_billing_outbox"` → `down_revision="0025_billing_outbox"`
+- [x] **NEW `migrations/versions/0026_invites.py`** — CREATE TABLE + FK(roles CASCADE/invited_by users CASCADE/accepted_user_id users SET NULL) + UNIQUE(token_hash) + partial-unique `uq_invites_pending_email` (tenant_id,email WHERE pending) + idx_invites_tenant + status CHECK + ENABLE+FORCE RLS + `tenant_isolation_invites` (USING + **system-sentinel escape** for guest lookup) + `tenant_insert_invites` (WITH CHECK) — mirror `0025` two-policy
+  - DoD: applied **both directions** on Docker DB (upgrade 0025→0026 → downgrade -1 → re-upgrade; `alembic current`=`0026_invites (head)`) ✅; `check_rls_policies` green ✅
+- [x] **black + isort + flake8 + mypy src/** — clean (mypy 0/337; flake8 0; black/isort applied)
 
 ---
 
