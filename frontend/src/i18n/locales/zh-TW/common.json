@@ -206,6 +206,7 @@
       "slaP95Unit": "所有迴圈",
       "slaP95Delta": "-0.12s 週環比"
     },
+    "kpiBackendGap": "頂部 KPI 卡（活躍會話 / HITL 待處理 / 本月成本 / SLA p95）顯示 fixture 示範資料 —— 後端聚合 API 待 Phase 58+ 實作（AD-Overview-TopKPI-Backend）。",
     "activeLoops": {
       "title": "活躍迴圈",
       "subtitle": "進行中 · 最近 60 秒",
@@ -275,6 +276,7 @@
     "subtitle": "範疇 1 · TAO/ReAct 迴圈 · 派遣 4 種子代理模式",
     "version": "v3.4.1",
     "live": "上線中",
+    "backendGap": "編排器設定 / 部署後端 API 待 Phase 58+ 實作（AD-Orchestrator-Config-Backend）；此頁顯示 fixture 示範資料 —— 設定不會持久化，且測試 / 於儲存庫檢視 / 部署等動作均無實際功能。",
     "actions": {
       "test": "在對話中測試",
       "viewRepo": "於儲存庫檢視",

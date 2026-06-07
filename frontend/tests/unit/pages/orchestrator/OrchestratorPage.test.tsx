@@ -7,6 +7,7 @@
  * Created: 2026-05-17 (Sprint 57.19 Day 3 / US-C2)
  *
  * Modification History (newest-first):
+ *   - 2026-06-07: FIX-029 — assert page-level BackendGapBanner renders (AP-4 honesty)
  *   - 2026-05-17: Initial creation (Sprint 57.19 Day 3 / US-C2)
  */
 
@@ -87,5 +88,15 @@ describe("OrchestratorPage", () => {
     expect(screen.getByText("orchestrator-main")).toBeInTheDocument();
     expect(screen.getByText("v3.4.1")).toBeInTheDocument();
     expect(screen.getByText("live")).toBeInTheDocument();
+  });
+
+  it("renders the AP-4 backend-gap honesty banner (whole surface is fixture)", () => {
+    // FIX-029: the lone full-impl Potemkin page now carries the same
+    // BackendGapBanner every other fixture-backed page uses, so operators
+    // aren't misled into thinking config / Deploy are wired.
+    render(wrap(<OrchestratorPage />));
+    const banner = screen.getByTestId("backend-gap-banner");
+    expect(banner).toBeInTheDocument();
+    expect(banner).toHaveTextContent(/non-functional/i);
   });
 });

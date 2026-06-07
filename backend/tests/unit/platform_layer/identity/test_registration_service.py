@@ -16,8 +16,11 @@ tests/integration/api/test_tenant_register.py.
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from infrastructure.db.models.audit import AuditLog
@@ -112,6 +115,36 @@ async def test_register_duplicate_slug_raises(db_session: AsyncSession) -> None:
     await _register(db_session, slug="reg-dup-1", email="first@reg.test")
     with pytest.raises(TenantSlugTakenError):
         await _register(db_session, slug="reg-dup-1", email="second@reg.test")
+
+
+async def test_register_concurrent_slug_race_maps_integrityerror_to_409() -> None:
+    """FIX-030 — the concurrent same-slug race surfaces as a clean 409, not a 500.
+
+    Two racing signups can both pass the step-1 pre-check (neither sees the other's
+    uncommitted row) and then collide on the unique `tenants.code` constraint at the
+    INSERT. The DB prevents the duplicate; the service must map that IntegrityError
+    to TenantSlugTakenError (409) rather than letting it bubble as a raw 500. Driven
+    with a mock session (the pre-check returns None → race window; the tenant flush
+    raises IntegrityError) so the mapping is covered deterministically without real
+    concurrency.
+    """
+    db = MagicMock(spec=AsyncSession)
+    precheck = MagicMock()
+    precheck.scalar_one_or_none.return_value = None  # step-1 sees no existing slug
+    db.execute = AsyncMock(return_value=precheck)
+    db.add = MagicMock()
+    db.flush = AsyncMock(side_effect=IntegrityError("INSERT tenants", {}, Exception("dup code")))
+
+    with pytest.raises(TenantSlugTakenError):
+        await RegistrationService().register(
+            db,
+            email="race@reg.test",
+            full_name="Race Founder",
+            company_name="Race Co",
+            tenant_slug="race-slug",
+            region="global",
+            requested_plan="pro",
+        )
 
 
 async def test_register_user_has_no_password(db_session: AsyncSession) -> None:

@@ -20,9 +20,10 @@
  * Mockup source: `reference/design-mockups/page-agents.jsx` L1-340 (L341+ is /subagents).
  *
  * Created: 2026-05-17 (Sprint 57.19 Day 3 / US-C2)
- * Last Modified: 2026-05-24
+ * Last Modified: 2026-06-07
  *
  * Modification History (newest-first):
+ *   - 2026-06-07: FIX-029 — add page-level BackendGapBanner (AP-4 honesty: whole surface is fixture, not backend-wired)
  *   - 2026-05-24: Sprint 57.34 Day 3 — verbatim re-point: Tools + Subagents + Budgets + Policies tabs data-testid hooks (folded into Day 1 visual re-point per scope-shape; tab bodies use .table/.chip/.grid-main/.kbar/.thin-rule verbatim CSS)
  *   - 2026-05-24: Sprint 57.34 Day 2 — verbatim re-point: Config + Prompt tabs data-testid hooks + textarea verbatim defaultValue (folded into Day 1 visual re-point per scope-shape; tab bodies use .field/.input/.select/.textarea/.kbar verbatim CSS)
  *   - 2026-05-24: Sprint 57.34 Day 1 — verbatim re-point: page-head + grid-stats + Tabs structure + import mockup-ui primitives (drop local Badge/Stat/RiskBadge/TONE_CLASS/Field/Switch/inputBase/TextInput/Select)
@@ -54,6 +55,7 @@ import {
   Tabs,
   type RiskLevel,
 } from "@/components/mockup-ui";
+import { BackendGapBanner } from "@/components/ui/BackendGapBanner";
 import { RequireAuth } from "@/features/auth/components/RequireAuth";
 
 // ───────────────── Config tab (placeholder for Day 2 verbatim re-point) ─────────────────
@@ -551,6 +553,12 @@ function OrchestratorPageInner(): JSX.Element {
           </Button>
         </div>
       </div>
+
+      {/* AP-4 honesty: the entire orchestrator surface (KPIs + all 6 config tabs +
+          header actions) is mockup-faithful fixture, not backend-wired. One
+          page-level BackendGapBanner above the tabs (always visible) marks it so
+          operators aren't misled — see FIX-029 / AD-Orchestrator-Page-Potemkin. */}
+      <BackendGapBanner reason={t("orchestrator.backendGap")} />
 
       <div className="grid-stats">
         <Stat label={t("orchestrator.kpi.sessions24h")} value="2,847" delta="+12%" deltaDir="up" />

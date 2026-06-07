@@ -206,6 +206,7 @@
       "slaP95Unit": "across loops",
       "slaP95Delta": "-0.12s wow"
     },
+    "kpiBackendGap": "Top KPI cards (active sessions / HITL pending / cost MTD / SLA p95) show fixture demo data — backend aggregation pending Phase 58+ (AD-Overview-TopKPI-Backend).",
     "activeLoops": {
       "title": "Active loops",
       "subtitle": "live · last 60s",
@@ -275,6 +276,7 @@
     "subtitle": "Range 1 · TAO/ReAct loop · dispatches 4 subagent modes",
     "version": "v3.4.1",
     "live": "live",
+    "backendGap": "Backend orchestrator config / deploy API pending Phase 58+ (AD-Orchestrator-Config-Backend); this surface shows fixture demo data — settings are not persisted and the Test / View-in-repo / Deploy actions are non-functional.",
     "actions": {
       "test": "Test in Chat",
       "viewRepo": "View in repo",
