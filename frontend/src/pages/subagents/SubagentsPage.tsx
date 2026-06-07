@@ -27,9 +27,10 @@
  *   backend payload with items field missing" must still pass).
  *
  * Created: 2026-05-17 (Sprint 57.19 Day 4 / US-C3)
- * Last Modified: 2026-06-04
+ * Last Modified: 2026-06-07
  *
  * Modification History (newest-first):
+ *   - 2026-06-07: FIX-031 — disclose dead action buttons via window.alert (Sync/New/Test/Attach; AP-4)
  *   - 2026-06-04: Sprint 57.78 — wire to real agent_catalog registry; remove fixture + carryover banner; honest-gap usage metrics (AD-Subagent-RealList)
  *   - 2026-05-24: Sprint 57.38 Day 1 — verbatim CSS re-point to mockup classes per page-agents.jsx:300-450 (5th -with-extras app)
  *   - 2026-05-24: Sprint 57.33 Day 1 US-B1 — defensive ?. on items.length (crash fix; AD-Overview-PreExisting-Route-Crashes)
@@ -112,7 +113,18 @@ const SubagentDetailCard: FC<{ sub: SubagentSpec }> = ({ sub }) => {
       subtitle={`AgentSpec · ${sub.allowed_modes.join(" + ")}`}
       bodyClass="flush"
       actions={
-        <Button variant="ghost" size="sm" icon="play">
+        <Button
+          variant="ghost"
+          size="sm"
+          icon="play"
+          onClick={() =>
+            // FIX-031: disclose the backend gap on click instead of silently
+            // doing nothing (AP-4). Gold pattern (memory/admin-tenants header).
+            window.alert(
+              "Test invoke: backend gap (Phase 58+) — subagent test-invoke endpoint pending",
+            )
+          }
+        >
           {t("subagents.detail.testInvoke")}
         </Button>
       }
@@ -261,7 +273,16 @@ const SubagentDetailCard: FC<{ sub: SubagentSpec }> = ({ sub }) => {
                 {t("subagents.detail.toolsEmpty")}
               </div>
             )}
-            <Button variant="outline" size="sm" icon="plus">
+            <Button
+              variant="outline"
+              size="sm"
+              icon="plus"
+              onClick={() =>
+                window.alert(
+                  "Attach tool: backend gap (Phase 58+) — subagent tool-attach endpoint pending",
+                )
+              }
+            >
               {t("subagents.detail.attachTool")}
             </Button>
           </div>
@@ -346,10 +367,28 @@ function SubagentsPageInner(): JSX.Element {
           </div>
         </div>
         <div className="page-actions">
-          <Button variant="outline" size="sm" icon="git">
+          <Button
+            variant="outline"
+            size="sm"
+            icon="git"
+            onClick={() =>
+              window.alert(
+                "Sync from repo: backend gap (Phase 58+) — subagent registry sync endpoint pending",
+              )
+            }
+          >
             {t("subagents.syncFromRepo")}
           </Button>
-          <Button variant="primary" size="sm" icon="plus">
+          <Button
+            variant="primary"
+            size="sm"
+            icon="plus"
+            onClick={() =>
+              window.alert(
+                "New subagent: backend gap (Phase 58+) — subagent create endpoint pending",
+              )
+            }
+          >
             {t("subagents.newSubagent")}
           </Button>
         </div>

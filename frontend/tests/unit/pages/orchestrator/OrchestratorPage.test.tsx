@@ -7,6 +7,7 @@
  * Created: 2026-05-17 (Sprint 57.19 Day 3 / US-C2)
  *
  * Modification History (newest-first):
+ *   - 2026-06-07: FIX-031 — assert dead action buttons disclose backend gap via alert
  *   - 2026-06-07: FIX-029 — assert page-level BackendGapBanner renders (AP-4 honesty)
  *   - 2026-05-17: Initial creation (Sprint 57.19 Day 3 / US-C2)
  */
@@ -98,5 +99,25 @@ describe("OrchestratorPage", () => {
     const banner = screen.getByTestId("backend-gap-banner");
     expect(banner).toBeInTheDocument();
     expect(banner).toHaveTextContent(/non-functional/i);
+  });
+
+  // FIX-031: the header action buttons have no backend yet. Rather than silently
+  // doing nothing (AP-4 dead control), each discloses the gap via window.alert.
+  it("dead action buttons (Deploy / View repo) disclose the backend gap via alert (FIX-031)", async () => {
+    const user = userEvent.setup();
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => undefined);
+    render(wrap(<OrchestratorPage />));
+
+    await user.click(screen.getByRole("button", { name: /^Deploy$/i }));
+    expect(alertSpy).toHaveBeenLastCalledWith(
+      expect.stringContaining("Deploy: backend gap (Phase 58+)"),
+    );
+
+    await user.click(screen.getByRole("button", { name: /View in repo/i }));
+    expect(alertSpy).toHaveBeenLastCalledWith(
+      expect.stringContaining("View repo: backend gap (Phase 58+)"),
+    );
+
+    alertSpy.mockRestore();
   });
 });

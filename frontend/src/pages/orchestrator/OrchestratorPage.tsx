@@ -23,6 +23,7 @@
  * Last Modified: 2026-06-07
  *
  * Modification History (newest-first):
+ *   - 2026-06-07: FIX-031 — disclose dead action buttons (Test/ViewRepo/Deploy/prompt) via window.alert (AP-4)
  *   - 2026-06-07: FIX-029 — add page-level BackendGapBanner (AP-4 honesty: whole surface is fixture, not backend-wired)
  *   - 2026-05-24: Sprint 57.34 Day 3 — verbatim re-point: Tools + Subagents + Budgets + Policies tabs data-testid hooks (folded into Day 1 visual re-point per scope-shape; tab bodies use .table/.chip/.grid-main/.kbar/.thin-rule verbatim CSS)
  *   - 2026-05-24: Sprint 57.34 Day 2 — verbatim re-point: Config + Prompt tabs data-testid hooks + textarea verbatim defaultValue (folded into Day 1 visual re-point per scope-shape; tab bodies use .field/.input/.select/.textarea/.kbar verbatim CSS)
@@ -57,6 +58,17 @@ import {
 } from "@/components/mockup-ui";
 import { BackendGapBanner } from "@/components/ui/BackendGapBanner";
 import { RequireAuth } from "@/features/auth/components/RequireAuth";
+
+// FIX-031: the orchestrator surface is mockup fixture (disclosed by the
+// page-level BackendGapBanner from FIX-029). Its action buttons additionally
+// disclose the gap on click instead of silently doing nothing (AP-4 dead
+// control). Backend config/deploy pipeline tracked Phase 58+
+// (AD-Orchestrator-Config-Backend / AD-Orchestrator-DeadControls-Disable-Or-Toast).
+function discloseOrchestratorGap(action: string): void {
+  window.alert(
+    `${action}: backend gap (Phase 58+) — orchestrator config/deploy endpoint pending`,
+  );
+}
 
 // ───────────────── Config tab (placeholder for Day 2 verbatim re-point) ─────────────────
 
@@ -181,10 +193,20 @@ const PromptTab: FC = () => {
         actions={
           <div className="row">
             <Badge tone="primary">{t("orchestrator.version")}</Badge>
-            <Button variant="ghost" size="sm" icon="git">
+            <Button
+              variant="ghost"
+              size="sm"
+              icon="git"
+              onClick={() => discloseOrchestratorGap("Prompt history")}
+            >
               {t("orchestrator.prompt.history")}
             </Button>
-            <Button variant="outline" size="sm" icon="play">
+            <Button
+              variant="outline"
+              size="sm"
+              icon="play"
+              onClick={() => discloseOrchestratorGap("Test prompt")}
+            >
               {t("orchestrator.prompt.test")}
             </Button>
           </div>
@@ -542,13 +564,28 @@ function OrchestratorPageInner(): JSX.Element {
           </div>
         </div>
         <div className="page-actions">
-          <Button variant="outline" size="sm" icon="play">
+          <Button
+            variant="outline"
+            size="sm"
+            icon="play"
+            onClick={() => discloseOrchestratorGap("Test")}
+          >
             {t("orchestrator.actions.test")}
           </Button>
-          <Button variant="outline" size="sm" icon="git">
+          <Button
+            variant="outline"
+            size="sm"
+            icon="git"
+            onClick={() => discloseOrchestratorGap("View repo")}
+          >
             {t("orchestrator.actions.viewRepo")}
           </Button>
-          <Button variant="primary" size="sm" icon="bolt">
+          <Button
+            variant="primary"
+            size="sm"
+            icon="bolt"
+            onClick={() => discloseOrchestratorGap("Deploy")}
+          >
             {t("orchestrator.actions.deploy")}
           </Button>
         </div>

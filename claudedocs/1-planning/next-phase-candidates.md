@@ -56,6 +56,18 @@
 - **`AD-RBAC-DB-To-JWT-Wiring-Phase58`** (57.87 carryover) — drive-through CONFIRMS live: dev-login selected `admin` but every page renders role=`user`, admin-only content (cost provider-mix) not gated. Cosmetic role, not enforced.
 - **`AD-ChatV2-SessionList-Backend`** — chat-v2 session list still DEMO-labelled (correct/honest); backend list endpoint still pending.
 
+### 🆕 Deep Drive-Through (2026-06-07 — 15 full-impl pages, per-control)
+
+**Source**: `claudedocs/5-status/drive-through-20260606/deep-audit-15-fullimpl.md` (+ `shots-deep/`). Second pass that actually *drives* every action control (the 2026-06-06 audit left most "untested this pass"). Verified all 3 fixes live (FIX-028 sla-report 200 / FIX-029 orchestrator banner / FIX-030 overview-KPI banner + admin-tenants "50 tenants") and re-drove the chat-v2 main flow first-hand (real gpt-5.2 "Tokyo" → verification passed → full TAO trace → **cost_ledger $0.034→$0.038**). Caught 3 dead-control findings the surface audit missed:
+
+- **`AD-Subagents-DeadControls-Disable-Or-Alert`** (✅ **RESOLVED 2026-06-07 — FIX-031**) — was: /subagents "Sync from repo" / "New subagent" / "Test invoke" (+ "Attach tool") clickable but no-op, no disclosure (AP-4). Fix: each now discloses via `window.alert("...: backend gap (Phase 58+) — ... pending")` (codebase gold pattern; visual unchanged). Drive-through verified. Backend wiring stays Phase 58+. Detail: `claudedocs/4-changes/bug-fixes/FIX-031-dead-action-controls-disclose-gap.md`.
+- **`AD-AdminTenants-Toolbar-Filter-Sort-Wire-Or-Disable`** (✅ **RESOLVED 2026-06-07 — FIX-031**) — was: toolbar "Filter by name…" static `<span>` faking a search input + "Plan: all" / "Sort: runs (24h)" no-op (AP-4). Fix: cmdk filter (now `role="button"` + `tabIndex` + `onKeyDown` a11y) + both buttons disclose via `window.alert`. Drive-through verified. Real client-side filter/sort wiring stays Phase 58+ (`AD-AdminTenants-Toolbar-Filter-Sort-Real-Wire` if pursued). FIX-031.
+- **`AD-Orchestrator-DeadControls-Disable-Or-Toast`** (✅ **RESOLVED 2026-06-07 — FIX-031**) — was: header Test / View repo / Deploy (+ PromptTab History / Test) silently no-op despite FIX-029's page banner. Fix: each discloses via `window.alert` (`discloseOrchestratorGap`). Drive-through verified (Deploy → alert). Real config/deploy pipeline stays Phase 58+ (`AD-Orchestrator-Config-Backend`). FIX-031.
+- **`AD-Observability-AbortError-Network-Noise-Filter`** (🟢 minor, NEW) — route-change cancels React-Query requests → `AbortError: signal is aborted without reason` logged as `kind: network` error via `observability.ts:42` on nearly every page nav (telemetry noise, not a real failure); `POST /api/v1/telemetry/frontend` also `ERR_ABORTED`. Filter AbortError from network-error telemetry.
+- Minor (fold into existing fixture-note coverage when touched): tenant-settings FF tab badge "14" vs body "No feature flags registered" (NEW-6); cost-dashboard + overview top-KPI deltas (+8.4% / +2.1M) likely fixture, unlabelled (NEW-7).
+
+**Positive (no action — record only)**: governance Audit Log tab is real (`/audit/log` 200, ~17 rows) — better than the surface audit's "peripheral demo". loop-debug scrubber confirmed interactive. memory write-controls + tenant-settings disabled-when-empty are the two GOLD honesty patterns the dead-control fixes above should copy. `AD-ChatV2-Inspector-Turn-Metadata-Wire` (ISSUE-5) + `AD-RBAC-DB-To-JWT-Wiring-Phase58` (ISSUE-6) confirmed still open, unchanged.
+
 ---
 
 ## 🆕 Sprint 57.87 Carryover (2026-06-06 — C-12 IAM Block B self-service tenant registration; closes AD-Auth-Register-Backend-IAM-Block-B-Phase58)

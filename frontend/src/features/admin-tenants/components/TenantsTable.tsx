@@ -30,6 +30,7 @@
  * Last Modified: 2026-06-07
  *
  * Modification History (newest-first):
+ *   - 2026-06-07: FIX-031 — disclose toolbar filter/Plan/Sort gap via window.alert (AP-4)
  *   - 2026-06-07: FIX-030 — subtitle from real tenants.length (drop fixture TABLE_SUBTITLE "48 active · 3 anomalies")
  *   - 2026-06-03: Sprint 57.74 — fill agents/runs24 columns from statsByTenant map + drop gap banner (strip owns Anomalies/deltas gap) (A-6a)
  *   - 2026-06-03: Sprint 57.73 — accept real TenantListItem[] via props + loading/error/empty mockup-native rows + "—" for unbacked agents/runs24 (A-6a)
@@ -112,6 +113,15 @@ export function TenantsTable({
   onRetry,
   onRowClick,
 }: TenantsTableProps): JSX.Element {
+  // FIX-031: the cmdk filter + Plan/Sort buttons are mockup visual stubs with no
+  // backend yet — disclose the gap on interaction (codebase gold pattern:
+  // window.alert) instead of silently doing nothing (AP-4). Client-side wiring
+  // tracked Phase 58+ (AD-AdminTenants-Toolbar-Filter-Sort-Wire-Or-Disable).
+  const discloseToolbarGap = (label: string): void => {
+    window.alert(
+      `${label}: backend gap (Phase 58+) — admin tenant filter/sort endpoint pending`,
+    );
+  };
   return (
     <Card
       title="All tenants"
@@ -119,14 +129,36 @@ export function TenantsTable({
       bodyClass="flush"
       actions={
         <div className="row">
-          <div className="cmdk" style={{ minWidth: 220 }}>
+          <div
+            className="cmdk"
+            style={{ minWidth: 220, cursor: "pointer" }}
+            role="button"
+            tabIndex={0}
+            onClick={() => discloseToolbarGap("Filter")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                discloseToolbarGap("Filter");
+              }
+            }}
+          >
             <Icon name="search" size={13} />
             <span className="grow">Filter by name, id, region…</span>
           </div>
-          <Button variant="ghost" size="sm" icon="filter">
+          <Button
+            variant="ghost"
+            size="sm"
+            icon="filter"
+            onClick={() => discloseToolbarGap("Plan filter")}
+          >
             Plan: all
           </Button>
-          <Button variant="ghost" size="sm" icon="sliders">
+          <Button
+            variant="ghost"
+            size="sm"
+            icon="sliders"
+            onClick={() => discloseToolbarGap("Sort")}
+          >
             Sort: runs (24h)
           </Button>
         </div>

@@ -7,6 +7,7 @@
  * Created: 2026-05-17 (Sprint 57.19 Day 4 / US-C3)
  *
  * Modification History (newest-first):
+ *   - 2026-06-07: FIX-031 — assert dead action controls disclose backend gap via alert
  *   - 2026-06-04: Sprint 57.78 — rewrite for real SubagentSpec items + honest-gap usage + loading/empty (AD-Subagent-RealList)
  *   - 2026-05-24: Sprint 57.33 Day 1 US-B2 — defensive spec: page survives backend payload with `items: undefined`
  *   - 2026-05-17: Initial creation (Sprint 57.19 Day 4 / US-C3)
@@ -212,5 +213,30 @@ describe("SubagentsPage", () => {
     await waitFor(() => {
       expect(screen.getByTestId("subagent-row-empty")).toBeInTheDocument();
     });
+  });
+
+  // FIX-031: the registry action controls have no backend yet. Rather than
+  // silently doing nothing (AP-4 dead control), each discloses the gap via
+  // window.alert on click. Assert the disclosure fires for all three.
+  it("dead action controls disclose the backend gap via alert (FIX-031)", async () => {
+    const user = userEvent.setup();
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => undefined);
+    await renderResolved({ items: ITEMS, gapped: GAPPED });
+
+    await user.click(screen.getByRole("button", { name: /Sync from repo/i }));
+    expect(alertSpy).toHaveBeenLastCalledWith(
+      expect.stringContaining("Sync from repo: backend gap (Phase 58+)"),
+    );
+
+    await user.click(screen.getByRole("button", { name: /New subagent/i }));
+    expect(alertSpy).toHaveBeenLastCalledWith(
+      expect.stringContaining("New subagent: backend gap (Phase 58+)"),
+    );
+
+    // researcher is the default detail selection → its "Test invoke" is present.
+    await user.click(screen.getByRole("button", { name: /Test invoke/i }));
+    expect(alertSpy).toHaveBeenLastCalledWith(
+      expect.stringContaining("Test invoke: backend gap (Phase 58+)"),
+    );
   });
 });

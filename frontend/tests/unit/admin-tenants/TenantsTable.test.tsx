@@ -18,6 +18,7 @@
  * Created: 2026-05-25 (Sprint 57.43 Day 2)
  *
  * Modification History (newest-first):
+ *   - 2026-06-07: FIX-031 — assert toolbar filter/Plan/Sort disclose backend gap via alert
  *   - 2026-06-03: Sprint 57.74 — add statsByTenant map coverage (real agents/runs24 for present tenant; "—" for absent/0) (A-6a)
  *   - 2026-06-03: Sprint 57.73 — rewrite for props API (real data + states); drop TENANTS_FIXTURE coupling (A-6a)
  *   - 2026-05-25: Initial creation (Sprint 57.43 Day 2) — admin-tenants mockup-fidelity rebuild Vitest coverage
@@ -159,5 +160,30 @@ describe("TenantsTable (Sprint 57.73 real-data)", () => {
     // Sprint 57.74: agents/runs24 columns are now backed → the table no longer
     // carries a gap banner (the stats strip owns the Anomalies/deltas gap).
     expect(screen.queryByTestId("backend-gap-banner")).not.toBeInTheDocument();
+  });
+
+  // FIX-031: the toolbar filter/Plan/Sort are mockup visual stubs with no backend
+  // yet. Rather than silently doing nothing (AP-4 dead control), each discloses
+  // the gap via window.alert on click.
+  it("toolbar filter / Plan / Sort disclose the backend gap via alert (FIX-031)", () => {
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => undefined);
+    render(<TenantsTable tenants={SAMPLE_TENANTS} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Filter by name, id, region/i }));
+    expect(alertSpy).toHaveBeenLastCalledWith(
+      expect.stringContaining("Filter: backend gap (Phase 58+)"),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /plan: all/i }));
+    expect(alertSpy).toHaveBeenLastCalledWith(
+      expect.stringContaining("Plan filter: backend gap (Phase 58+)"),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /sort: runs \(24h\)/i }));
+    expect(alertSpy).toHaveBeenLastCalledWith(
+      expect.stringContaining("Sort: backend gap (Phase 58+)"),
+    );
+
+    alertSpy.mockRestore();
   });
 });
