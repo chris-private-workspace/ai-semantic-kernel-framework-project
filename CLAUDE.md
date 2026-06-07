@@ -232,9 +232,10 @@ V2 嚴格按以下範疇組織代碼，**禁止跨範疇雜湊**：
 
 1. **`agent-harness-planning/` 21 份 V2 規劃**（20 規劃 + 1 review；最高權威）
 2. **Sprint 49.1+ plan/checklist** — 當前迭代決定
-3. **PoC worktrees 驗證模式** — poc-tools / intent-classifier / memory-system / subagent-control / KB enterprise
-4. **Phase 48 LLM-native orchestrator + 7 YAML configs**（已落地新基礎）
-5. **既有 V2 代碼**（archive 範圍外的部分）
+3. **Phase 48 LLM-native orchestrator + 7 YAML configs**（已落地新基礎）
+4. **既有 V2 代碼**（archive 範圍外的部分）
+
+> **註（2026-06-07）**：V1 末期的 PoC 驗證 worktrees（poc-tools / intent-classifier / memory-system / subagent-control / KB enterprise）已移除（皆為 pre-V2 / V1 相關）；其驗證的模式已落地 V2（Cat 2 Tool / Cat 3 Memory / Cat 11 Subagent），findings 仍保存於 `docs/07-analysis/poc-agent-team/` 與 `docs/07-analysis/claude-agent-study/`。
 
 ### ⛔ 禁止反模式
 
@@ -459,7 +460,7 @@ claudedocs/
 - **Never Delete Tests**: 不刪測試 / 不關測試 / 不跳測試
 - **Never Delete Docs**: 未授權不刪文件
 - **Never Delete Checklist Items**: 只能 `[ ]` → `[x]`，不能刪除未勾選項（Phase 42 Sprint 147 違規前車之鑑）
-- **Check Existing Before Building**: 建新 infra 前，先查 V2 21 份規劃 + Sprint plan + PoC worktrees（**不是查 MAF/AG-UI/SDK** — 它們已封存於 archived/）
+- **Check Existing Before Building**: 建新 infra 前，先查 V2 21 份規劃 + Sprint plan（**不是查 MAF/AG-UI/SDK** — 它們已封存於 archived/；V1 末期 PoC 驗證 worktrees 已於 2026-06-07 移除，模式已落地 V2）
 
 ---
 
