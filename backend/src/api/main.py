@@ -24,9 +24,10 @@ Description:
     - Static / CORS config (depends on frontend deploy decision; Phase 55)
 
 Created: 2026-04-29 (Sprint 49.4 Day 5)
-Last Modified: 2026-06-05
+Last Modified: 2026-06-07
 
 Modification History (newest-first):
+    - 2026-06-07: FIX-028 — _wire_sla_recorder() at startup (sla-report 500 fix; twin of FIX-022)
     - 2026-06-05: Sprint 57.81 — _wire_error_budget() at startup (B-7 RedisBudgetStore wiring)
     - 2026-06-02: Sprint 57.70 Stage-1b — mount admin_agents router (agent_catalog CRUD)
     - 2026-05-31: FIX-022 — _wire_pricing_loader() at startup (cost_ledger §5.1 H1)
@@ -197,6 +198,45 @@ def _wire_error_budget() -> None:
         )
 
 
+def _wire_sla_recorder() -> None:
+    """Install the SLAMetricRecorder singleton at startup (fail-open).
+
+    FIX-028: Sprint 56.3 built SLAMetricRecorder + SLAReportGenerator + the
+    set/get/reset hooks + tests, and the chat router consumes the LENIENT
+    maybe_get_sla_recorder() (silent no-op when unwired). But nothing in
+    backend/src ever called set_sla_recorder() — only the 2 test files did — so
+    the producer stayed unwired in production (AP-4: wired-but-never-activated,
+    the twin of FIX-022's pricing loader). Consequence: the report endpoint's
+    STRICT get_sla_recorder() (sla_reports.py — cache-miss generate path) raised
+    RuntimeError → GET /admin/tenants/{id}/sla-report 500'd in real use while
+    pytest stayed green (tests inject their own recorder).
+
+    Creates a lazy redis.asyncio client from settings.redis_url (not connected
+    here — the first ZADD/ZRANGE establishes the connection). Fail-open: on any
+    error the singleton stays None and the chat router's maybe_get_sla_recorder()
+    keeps no-op'ing rather than blocking startup; pure Redis, no DB / RLS needed
+    (every metric key already carries tenant_id — cf. _wire_error_budget).
+    """
+    try:
+        from redis.asyncio import Redis
+
+        from core.config import get_settings
+        from platform_layer.observability.sla_monitor import (
+            SLAMetricRecorder,
+            set_sla_recorder,
+        )
+
+        settings = get_settings()
+        client = Redis.from_url(settings.redis_url)
+        set_sla_recorder(SLAMetricRecorder(redis_client=client))
+        logger.info("api.main: SLA recorder wired")
+    except Exception:  # noqa: BLE001 — fail-open: never block startup on SLA recording
+        logger.warning(
+            "api.main: SLA recorder not wired; recording disabled (fail-open)",
+            exc_info=True,
+        )
+
+
 def _wire_billing_outbox() -> None:
     """Install the BillingOutboxService enqueue singleton at startup (fail-soft).
 
@@ -306,6 +346,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     _wire_rate_limit_counter()
     _wire_pricing_loader()
     _wire_error_budget()
+    _wire_sla_recorder()
     _wire_billing_outbox()
     await _start_billing_outbox_drainer(app)
     logger.info("api.main: startup complete")

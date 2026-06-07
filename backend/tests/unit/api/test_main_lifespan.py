@@ -17,6 +17,7 @@ Description:
 Created: 2026-05-08 (Sprint 57.6 Day 1)
 
 Modification History:
+    - 2026-06-07: FIX-028 — add test_lifespan_wires_sla_recorder (sla-report 500 regression)
     - 2026-05-31: FIX-022 — add test_lifespan_wires_pricing_loader_from_yaml (§5.1 H1)
     - 2026-05-08: Sprint 57.6 US-2 — initial creation (closes AD-Reality-2)
 
@@ -80,3 +81,32 @@ def test_lifespan_wires_pricing_loader_from_yaml() -> None:
             ), "PricingLoader installed but config/llm_pricing.yml not loaded"
     finally:
         reset_pricing_loader()
+
+
+def test_lifespan_wires_sla_recorder() -> None:
+    """`_lifespan` startup must install the SLAMetricRecorder (FIX-028).
+
+    Before FIX-028 nothing in backend/src called set_sla_recorder() (only the 2
+    test files did), so the singleton stayed None in production. The report
+    endpoint's STRICT get_sla_recorder() then raised RuntimeError on the
+    cache-miss generate path → GET /admin/tenants/{id}/sla-report 500'd, while
+    pytest stayed green because tests inject their own recorder (AP-10 mock/real
+    divergence; twin of FIX-022). This pins the startup wiring.
+    """
+    from api.main import create_app
+    from platform_layer.observability.sla_monitor import (
+        maybe_get_sla_recorder,
+        reset_sla_recorder,
+    )
+
+    # Clean slate so a prior test's recorder cannot mask a regression here.
+    reset_sla_recorder()
+    try:
+        app = create_app()
+        assert maybe_get_sla_recorder() is None  # not wired until startup runs
+        with TestClient(app):
+            assert (
+                maybe_get_sla_recorder() is not None
+            ), "lifespan startup did not install SLAMetricRecorder"
+    finally:
+        reset_sla_recorder()
