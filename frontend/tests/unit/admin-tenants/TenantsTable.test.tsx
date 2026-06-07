@@ -146,6 +146,10 @@ describe("TenantsTable (Sprint 57.73 real-data)", () => {
   it("renders Card title + toolbar; no gap banner (agents/runs24 now backed; strip owns the remaining gap)", () => {
     render(<TenantsTable tenants={SAMPLE_TENANTS} />);
     expect(screen.getByText("All tenants")).toBeInTheDocument();
+    // FIX-030: subtitle is the real loaded-row count, not the fixture
+    // "48 active · 3 anomalies in last 24h" string (AD-AdminTenants-ListHeader-Fixture-String).
+    expect(screen.getByText(/^\d+ tenants?$/)).toBeInTheDocument();
+    expect(screen.queryByText(/48 active/)).not.toBeInTheDocument();
     expect(screen.getByText(/Filter by name, id, region/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /plan: all/i })).toBeInTheDocument();
     expect(

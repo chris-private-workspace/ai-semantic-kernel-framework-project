@@ -206,6 +206,7 @@
       "slaP95Unit": "所有迴圈",
       "slaP95Delta": "-0.12s 週環比"
     },
+    "kpiBackendGap": "頂部 KPI 卡（活躍會話 / HITL 待處理 / 本月成本 / SLA p95）顯示 fixture 示範資料 —— 後端聚合 API 待 Phase 58+ 實作（AD-Overview-TopKPI-Backend）。",
     "activeLoops": {
       "title": "活躍迴圈",
       "subtitle": "進行中 · 最近 60 秒",

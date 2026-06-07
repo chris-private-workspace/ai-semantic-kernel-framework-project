@@ -29,9 +29,10 @@ Key Components:
     - set_/get_/maybe_get_registration_service: lenient singleton (no lifespan wiring)
 
 Created: 2026-06-06 (Sprint 57.87)
-Last Modified: 2026-06-06
+Last Modified: 2026-06-07
 
 Modification History:
+    - 2026-06-07: FIX-030 — IntegrityError(code) → TenantSlugTakenError 409 (slug race)
     - 2026-06-06: Initial creation (Sprint 57.87 / US-1..US-3) — self-service registration
 
 Related:
@@ -48,6 +49,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from infrastructure.db.audit_helper import append_audit
@@ -138,7 +140,16 @@ class RegistrationService:
             meta_data={"requested_plan": requested_plan, "company_size": company_size},
         )
         db.add(tenant)
-        await db.flush()  # obtain tenant.id without committing
+        try:
+            await db.flush()  # obtain tenant.id; unique(tenants.code) enforced here
+        except IntegrityError as exc:
+            # Concurrent same-slug signup: step 1's pre-check and this INSERT are
+            # NOT atomic, so two racing registrations can both pass step 1 and then
+            # collide on the unique `tenants.code` constraint here. The DB correctly
+            # prevents the duplicate (only one row is created); surface the same clean
+            # 409 the pre-check returns instead of a raw 500 (FIX-030 —
+            # AD-Register-Concurrent-Slug-Race from the 2026-06-06 drive-through audit).
+            raise TenantSlugTakenError() from exc
 
         # 3. Switch to the new tenant's RLS context for the user/role writes
         #    (users + roles are tenant-scoped; tenants is the RLS-free root).

@@ -27,9 +27,10 @@
  *   - TenantsTable: prop-driven visual table component (real data + states)
  *
  * Created: 2026-05-25 (Sprint 57.43 Day 1)
- * Last Modified: 2026-06-03
+ * Last Modified: 2026-06-07
  *
  * Modification History (newest-first):
+ *   - 2026-06-07: FIX-030 — subtitle from real tenants.length (drop fixture TABLE_SUBTITLE "48 active · 3 anomalies")
  *   - 2026-06-03: Sprint 57.74 — fill agents/runs24 columns from statsByTenant map + drop gap banner (strip owns Anomalies/deltas gap) (A-6a)
  *   - 2026-06-03: Sprint 57.73 — accept real TenantListItem[] via props + loading/error/empty mockup-native rows + "—" for unbacked agents/runs24 (A-6a)
  *   - 2026-05-26: Sprint 57.49 — add optional onRowClick prop for Members drawer drill-down (Track B)
@@ -38,14 +39,12 @@
  * Related:
  *   - reference/design-mockups/page-admin.jsx L357-407
  *   - frontend/src/features/admin-tenants/types.ts (TenantListItem + PerTenantStat)
- *   - frontend/src/features/admin-tenants/_fixtures.ts (TABLE_SUBTITLE)
  *   - frontend/src/components/mockup-ui.tsx (Card, Button, Badge, Icon primitives)
  */
 
 /* eslint-disable no-restricted-syntax -- mockup verbatim inline styles ported byte-for-byte from page-admin.jsx L359, L385-401 (avatar cell + mono fontSize / textAlign / width) + Sprint 57.73 mockup-native state rows reuse the same token literals; STYLE.md §3 escape hatch + frontend-mockup-fidelity.md verbatim-CSS method */
 
 import { Badge, Button, Card, Icon } from "../../../components/mockup-ui";
-import { TABLE_SUBTITLE } from "../_fixtures";
 import { TenantPlan, TenantState, type TenantListItem } from "../types";
 
 // Map backend TenantPlan enum → mockup Badge tone. Only standard|enterprise
@@ -116,7 +115,7 @@ export function TenantsTable({
   return (
     <Card
       title="All tenants"
-      subtitle={TABLE_SUBTITLE}
+      subtitle={`${tenants.length} ${tenants.length === 1 ? "tenant" : "tenants"}`}
       bodyClass="flush"
       actions={
         <div className="row">

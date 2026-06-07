@@ -18,9 +18,10 @@
  *   content, matching the mockup canonical layout.
  *
  * Created: 2026-05-17 (Sprint 57.19 Day 3 / US-C1)
- * Last Modified: 2026-05-22
+ * Last Modified: 2026-06-07
  *
  * Modification History (newest-first):
+ *   - 2026-06-07: FIX-030 — add BackendGapBanner under the KPI row (AP-4 honesty: 4 KPIs are fixture)
  *   - 2026-05-22: Sprint 57.29 US-C1 — verbatim re-point to mockup .page-head + overviewStyles (drop PageHead/StatCard/CardShell/Spark)
  *   - 2026-05-21: Sprint 57.27 Day 3 — final mockup-fidelity assembly (page-head + KPI + grid layout; AP-3 reversal complete)
  *   - 2026-05-21: Sprint 57.27 Day 2 — extract 5 inline widgets to features/overview/components
@@ -45,6 +46,7 @@ import { useNavigate } from "react-router-dom";
 
 import { AppShellV2 } from "@/components/AppShellV2";
 import { Button, Card, Spark, Stat } from "@/components/mockup-ui";
+import { BackendGapBanner } from "@/components/ui/BackendGapBanner";
 import { RequireAuth } from "@/features/auth/components/RequireAuth";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { ActiveLoopsCard } from "@/features/overview/components/ActiveLoopsCard";
@@ -171,6 +173,12 @@ function OverviewPageInner(): JSX.Element {
           spark={<Spark points={SLA_P95_SPARK} />}
         />
       </div>
+
+      {/* AP-4 honesty (FIX-030 / AD-Overview-TopKPI-Fixture-Label): the 4 KPI
+          cards above are still fixture (e.g. $2,847 MTD contradicts the real
+          cost_ledger). The 5 widgets below already carry their own BackendGapBanner;
+          this adds the missing one for the KPI row. */}
+      <BackendGapBanner reason={t("overview.kpiBackendGap")} />
 
       {/* ── row: active loops + HITL (mockup grid2 = 1.4fr 1fr) ── */}
       <div style={overviewStyles.grid2}>

@@ -206,6 +206,7 @@
       "slaP95Unit": "across loops",
       "slaP95Delta": "-0.12s wow"
     },
+    "kpiBackendGap": "Top KPI cards (active sessions / HITL pending / cost MTD / SLA p95) show fixture demo data — backend aggregation pending Phase 58+ (AD-Overview-TopKPI-Backend).",
     "activeLoops": {
       "title": "Active loops",
       "subtitle": "live · last 60s",
