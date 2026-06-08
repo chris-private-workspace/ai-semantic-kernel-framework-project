@@ -50,6 +50,34 @@
 
 ### Branch
 - Branch `feature/sprint-57-93-output-guardrail-pause` created from `main` `9b4bed54`.
-- Next: Day-0 commit (plan + checklist + progress), then Day 1 (re-confirm baseline pytest 2254 before editing → code).
+- Day-0 commit `a9ebed88` (plan + checklist + progress).
+
+---
+
+## Day 1-2 — 2026-06-08/09 — Code + tests
+
+### Baseline re-confirmed (before editing)
+- `test_loop_pause_resume.py` 17 pass · `mypy src --strict` 0/350 (= 57.92 merged baseline; only docs changed since).
+
+### Code (Cat 9 + Cat 1)
+- **`guardrails/output/escalation_keyword_detector.py`** (NEW) — `OutputKeywordEscalationGuardrail(Guardrail)`, `guardrail_type = OUTPUT`, ESCALATE on a case-insensitive phrase; `_extract_text` mirrors the input `KeywordEscalationGuardrail`. `output/__init__.py` exports it.
+- **`loop.py`**:
+  - `_cat9_output_escalate_pause` — runs the EXISTING `check_output`; on ESCALATE → `_cat9_output_hitl_pause`; else no-op (falls through to the unchanged `LLMResponded` + `_cat9_output_check`).
+  - `_cat9_output_hitl_pause` — verbatim mirror of `_cat9_between_turns_hitl_pause`; builds an output `ApprovalRequest` (`payload.kind="output"`, `summary="approve delivery"`) + `ApprovalRequested` + `_emit_deferred_pause(kind="output", response_snapshot)`. Fails closed (no-identity / persist-fail → BLOCK).
+  - **Pre-gate** inserted after `parse(...)` BEFORE `LLMResponded`: gated on `is_final_answer AND guardrail_engine AND hitl_manager AND hitl_deferred AND checkpointer AND reducer`; builds the `response_snapshot` (answer_text + token/provider/model/cache_hit_rate + total_tokens) and runs `_cat9_output_escalate_pause`; on `LoopCompleted` → `return` (the held answer's `LLMResponded` is never reached). Purely additive — when the wiring is absent the gate is never entered.
+  - `resume()` — NEW TERMINAL `elif kind == "output":` (APPROVED → `_replay_approved_output` + `return`; REJECTED → `GuardrailTriggered(output, block)` + `GUARDRAIL_BLOCKED` + `return`; does NOT fall through to the shared `_run_turns` drive). input/between-turns/tool branches byte-identical.
+  - `_replay_approved_output` — re-emits the held `LLMResponded(answer_text)` + `Thinking` + `LoopCompleted(END_TURN)` from the snapshot (no LLM re-call, no LOOP span). Snapshot values coerced to type-correct defaults (`str/int/float`) so the strict event fields hold (mypy fix — `dict.get(k)` is `Any | None`; `.get(k, default)` is `Any`).
+- **`handler.py`** — `CHAT_HITL_ESCALATE_OUTPUT_PHRASES = {"confidential"}`; `engine.register(OutputKeywordEscalationGuardrail(...), priority=5)` under `if hitl_manager is not None:` (D-DAY0-1: before Toxicity p10 / SensitiveInfo p20); DEMO_SYSTEM_PROMPT extended ("share something confidential → final answer MUST contain 'confidential'"). MHist + import.
+
+### Tests (+12 net)
+- `test_loop_pause_resume.py` +5: `test_output_escalate_pauses_before_delivery` (pause + NO `LLMResponded` + checkpoint `kind:"output"` + snapshot.answer_text) / `test_resume_output_approved_replays_answer` (re-emit, no LOOP span, no LLM call) / `test_resume_output_rejected_blocks` (block, no `LLMResponded`) / `test_output_pre_gate_skips_non_final` (TOOL_USE not pre-gated) / `test_output_pre_gate_inert_without_hitl` (no-wiring → answer delivered + 1893 escalate-continue). New fakes/helpers: `OutputEscalateGuardrail` (always-escalate OUTPUT) / `_build_output_loop` (param guardrail) / `_paused_output_state`.
+- `test_output_escalation_keyword_detector.py` (NEW) +7: type / match / case-insensitive / no-match / empty / blank-drop / Message-extract.
+
+### Gate sweep
+- pytest **2266 passed / 4 skipped** (baseline 2254 + 12; 2 pre-existing `__import__` warnings unrelated).
+- `mypy src --strict` **0/351** · `run_all` **10/10** (AP-1 / AP-8 / LLM SDK leak 0 / event-schema sync) · `black`/`isort` clean · `flake8 src tests` clean (4 E501 in docstrings/MHist caught on the CI-equivalent `src tests` scope + fixed — the 57.92 lesson applied).
+- Existing input/between-turns/tool pause-resume tests pass UNCHANGED (pre-gate inert without HITL wiring; resume branches byte-identical).
+
+### Next (Day 3): drive-through (real UI + backend + Azure — withhold-then-deliver + reject) + CHANGE-060 + design-note updates.
 
 ---
