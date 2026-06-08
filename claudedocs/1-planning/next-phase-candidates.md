@@ -6,11 +6,23 @@
 
 ---
 
-## 🆕 Sprint 57.91 Carryover — Slice 3 leg 1 SHIPPED (generalized pause primitive + input-ESCALATE); legs 2/3 + subagent next
+## 🆕 Sprint 57.92 Carryover — Slice 3 leg 2 SHIPPED (between-turns guardrail ESCALATE); leg 3 + output-guardrail + subagent next
+
+**Source**: Sprint 57.92 closed 2026-06-08 — Slice 3 leg 2: the SECOND generalized pause point on `_emit_deferred_pause` — between-turns guardrail ESCALATE. NEW `GuardrailType.BETWEEN_TURNS` + `check_between_turns` (distinct chain → no double-fire with the per-response OUTPUT check); a gate at the `_run_turns` loop TOP (after ≥1 completed turn, before the next LLM call) → ESCALATE pauses BETWEEN turns (`pending_approval.kind="between_turns"`, no tool_call); `resume()` continues with `skip_between_turns_once`. **The loop-top seam (not the dormant mid-turn `_cat9_output_check` ESCALATE branch) was the key correctness choice** — a mid-output-check pause would re-call the LLM on resume → re-generate + re-escalate. Real trigger = `BetweenTurnsKeywordGuardrail` + a non-escalate `note_tool` (echo_tool can't reach a between-turns boundary). Drive-through PASS (no frontend change). Detail: `memory/project_phase57_92_between_turns_pause.md` + CHANGE-059 + `19-pause-resume-design.md §5`.
+
+- **Slice 3 leg 3 — mid-thinking pause** (🟡 hardest) — interrupt an in-flight streaming LLM call + checkpoint mid-stream. Separate sprint; the durable tail (`_emit_deferred_pause`) exists, the new work is interrupting/checkpointing a streaming call.
+- **Output-guardrail ESCALATE pause** (🟢 small, but has a gotcha) — the per-response `_cat9_output_check` ESCALATE (currently "continue") → pause. **Distinct from the between-turns gate** (per-response, mid-turn) — would need the same re-generation question answered that the between-turns gate sidestepped by using the loop-top seam. The primitive supports it.
+- **Subagent child-loop (Cat 11)** (🟡 downstream) — consumes the shared re-enterable `_run_turns` + the now-generalized pause machinery. Distinct larger sprint; the 地基 A lifecycle 骨架 feeds it.
+- **`loop-pause-point-feature` calibration class** (🟢 process) — propose ~0.40 in the next pause-point sprint's plan: 2 consecutive feature-add-on-pause-primitive sprints (57.91 + 57.92) both landed < 0.7 at `backend-core-loop-refactor` 0.55; the leg-1 keystone makes each subsequent pause point a thin mirror. A 3rd same-shape point confirms.
+- 57.88 carryover ADs unchanged: `AD-Resume-Checkpoint-Bloat` (the between-turns pause adds another `resume_messages` writer) / `AD-Resume-Tenant-Capability-Policy` (now also per-tenant between-turns phrases) / `AD-Resume-Reject-Path` (a between-turns reject leaves a dangling checkpoint the same way).
+
+---
+
+## Sprint 57.91 Carryover — Slice 3 leg 1 SHIPPED (generalized pause primitive + input-ESCALATE); leg 2 ✅ DONE (Sprint 57.92)
 
 **Source**: Sprint 57.91 closed 2026-06-08 — Slice 3 leg 1: extracted the generalized `_emit_deferred_pause` primitive (durable-pause tail decoupled from a tool; `pending_approval.kind` discriminator) + the FIRST new pause point = input-guardrail ESCALATE (pauses before any LLM call, no tool; resume continues to the first LLM turn). New `KeywordEscalationGuardrail` (Cat 9 input). Drive-through PASS (no frontend change). Detail: `memory/project_phase57_91_generalized_pause_input_escalate.md` + CHANGE-058 + `19-pause-resume-design.md §5`.
 
-- **Slice 3 leg 2 — between-turns pause** (🔴 the natural next leg) — a policy gate inside `_run_turns` (budget / turn-count / periodic check-in → pause via the shipped `_emit_deferred_pause` primitive). Needs a trigger-policy design. ~1 sprint.
+- **Slice 3 leg 2 — between-turns pause** — ✅ **DONE (Sprint 57.92)**: shipped as a between-turns guardrail ESCALATE (loop-top gate; not the budget/turn-count framing — the trigger-policy design landed on a content-driven guardrail per AskUserQuestion). See the Sprint 57.92 Carryover section above.
 - **Slice 3 leg 3 — mid-thinking pause** (🟡 hardest) — interrupt an in-flight streaming LLM call. Separate.
 - **Output-guardrail ESCALATE pause** (🟢 small) — the primitive supports it (an output ESCALATE → pause before the answer is committed). Possible smaller future leg.
 - **Subagent child-loop (Cat 11)** (🟡 downstream) — consumes the shared re-enterable `_run_turns` + the now-generalized pause machinery. Distinct larger sprint; the 地基 A lifecycle 骨架 feeds it.

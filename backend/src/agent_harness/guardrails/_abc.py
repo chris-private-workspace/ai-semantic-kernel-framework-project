@@ -16,6 +16,10 @@ Owner: 01-eleven-categories-spec.md §範疇 9
 Single-source: 17.md §2.1, §6
 
 Created: 2026-04-29 (Sprint 49.1)
+
+Modification History (newest-first):
+    - 2026-06-08: Sprint 57.92 — add GuardrailType.BETWEEN_TURNS (between-turns ESCALATE pause)
+    - 2026-04-29: Initial creation (Sprint 49.1) — 3-type Guardrail + Tripwire ABCs
 """
 
 from __future__ import annotations
@@ -32,6 +36,12 @@ class GuardrailType(Enum):
     INPUT = "input"
     OUTPUT = "output"
     TOOL = "tool"
+    # Sprint 57.92 (地基 A Slice 3 leg 2): a between-turns gate runs this chain at
+    # the loop top (after ≥1 completed turn, before the next LLM call) on the
+    # just-completed turn's output → ESCALATE durably pauses BETWEEN turns. Kept
+    # distinct from OUTPUT so it does NOT double-fire with the per-LLM-response
+    # output check (which runs the OUTPUT chain).
+    BETWEEN_TURNS = "between_turns"
 
 
 class GuardrailAction(Enum):

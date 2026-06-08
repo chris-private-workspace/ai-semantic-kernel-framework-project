@@ -45,6 +45,7 @@ Created: 2026-04-30 (Sprint 50.1 Day 2.2)
 Last Modified: 2026-06-08
 
 Modification History (newest-first):
+    - 2026-06-08: Sprint 57.92 — between-turns guardrail ESCALATE pause point (Slice 3 leg 2)
     - 2026-06-08: Sprint 57.91 — _emit_deferred_pause primitive + input-ESCALATE pause point
     - 2026-06-08: Sprint 57.90 Slice 2 — resume() drives shared _run_turns; delete the reduced copy
     - 2026-06-08: Sprint 57.89 Slice 1 — extract per-turn body into re-enterable _run_turns()
@@ -1158,6 +1159,204 @@ class AgentLoopImpl(AgentLoop):
                 )
                 return
 
+    @staticmethod
+    def _latest_output_text(messages: list[Message]) -> str:
+        """Return the just-completed turn's output text for the between-turns check.
+
+        The content of the last assistant/tool message with truthy content (a
+        completed TOOL_USE turn ends with a tool result; an assistant turn may
+        carry text). Empty string when none — the between-turns guardrail then
+        sees no trigger and PASSes. (Sprint 57.92, 地基 A Slice 3 leg 2.)
+        """
+        for msg in reversed(messages):
+            if msg.role in ("assistant", "tool") and msg.content:
+                return str(msg.content)
+        return ""
+
+    async def _cat9_between_turns_check(
+        self,
+        *,
+        messages: list[Message],
+        ctx: TraceContext,
+        turn_count: int,
+        session_id: UUID,
+    ) -> AsyncIterator[LoopEvent]:
+        """Cat 9 between-turns gating (Sprint 57.92, 地基 A Slice 3 leg 2).
+
+        Runs at the _run_turns loop top after ≥1 completed turn (turn_count > 0),
+        BEFORE the next LLM call, on the just-completed turn's output (the last
+        assistant/tool message text). An ESCALATE with the deferred-HITL wiring
+        PAUSES the loop durably for human approval of CONTINUING — the second
+        generalized pause point on the _emit_deferred_pause primitive; resume()
+        continues to the next turn's LLM call (which has NOT run, so no
+        re-generation). Any other non-PASS (BLOCK, or ESCALATE WITHOUT the HITL
+        wiring) fails closed to GUARDRAIL_BLOCKED — an ESCALATE that cannot pause
+        must NOT silently proceed. PASS → nothing (the loop runs the next turn).
+        """
+        if self._guardrail_engine is None:
+            return
+        content = self._latest_output_text(messages)
+        g_result = await self._guardrail_engine.check_between_turns(content, trace_context=ctx)
+        if g_result.action == GuardrailAction.PASS:
+            return
+        if (
+            g_result.action == GuardrailAction.ESCALATE
+            and self._hitl_manager is not None
+            and self._hitl_deferred
+            and self._checkpointer is not None
+            and self._reducer is not None
+        ):
+            async for ev in self._cat9_between_turns_hitl_pause(
+                output_excerpt=content,
+                reason=g_result.reason or "escalated",
+                ctx=ctx,
+                session_id=session_id,
+                messages=messages,
+                turn_count=turn_count,
+            ):
+                yield ev
+            return
+        await self._audit_log_safe(
+            event_type=f"guardrail.between_turns.{g_result.action.value}",
+            content={
+                "action": g_result.action.value,
+                "reason": g_result.reason or "",
+                "risk_level": g_result.risk_level,
+            },
+            ctx=ctx,
+        )
+        yield GuardrailTriggered(
+            guardrail_type="between_turns",
+            action=g_result.action.value,
+            reason=g_result.reason or "",
+            trace_context=ctx,
+        )
+        yield LoopCompleted(
+            stop_reason=TerminationReason.GUARDRAIL_BLOCKED.value,
+            total_turns=turn_count,
+            trace_context=ctx,
+        )
+
+    async def _cat9_between_turns_hitl_pause(
+        self,
+        *,
+        output_excerpt: str,
+        reason: str,
+        ctx: TraceContext,
+        session_id: UUID,
+        messages: list[Message],
+        turn_count: int,
+    ) -> AsyncIterator[LoopEvent]:
+        """Cat 9 between-turns ESCALATE → durable HITL pause (Sprint 57.92).
+
+        The between-turns analogue of _cat9_input_hitl_pause: build a between-turns
+        ApprovalRequest, emit ApprovalRequested, and pause via the generalized
+        _emit_deferred_pause primitive with a BETWEEN_TURNS-kind pending_approval
+        (no tool_call). resume() of a between-turns pause runs no tool — the
+        approved continuation proceeds to the next turn's LLM call with the gate
+        skipped once (so the same boundary does not re-escalate). The caller
+        (_cat9_between_turns_check) gates on hitl_manager + hitl_deferred +
+        checkpointer + reducer; this method fails closed on the remaining
+        no-identity / persist-failure cases (GuardrailTriggered(between_turns,
+        block) + GUARDRAIL_BLOCKED). risk_level defaults to HIGH (escalation
+        implies human review), mirroring _cat9_input_hitl_pause.
+        """
+        if self._hitl_manager is None:  # defensive; caller already checked
+            return
+
+        tenant_id = self._tenant_id or ctx.tenant_id
+        session_id_eff = ctx.session_id or session_id
+        if tenant_id is None or session_id_eff is None:
+            await self._audit_log_safe(
+                event_type="guardrail.between_turns.escalate.no_identity",
+                content={"reason": reason},
+                ctx=ctx,
+            )
+            yield GuardrailTriggered(
+                guardrail_type="between_turns",
+                action="block",
+                reason=f"escalation requires identity context: {reason}",
+                trace_context=ctx,
+            )
+            yield LoopCompleted(
+                stop_reason=TerminationReason.GUARDRAIL_BLOCKED.value,
+                total_turns=turn_count,
+                trace_context=ctx,
+            )
+            return
+
+        request_id = uuid4()
+        risk_level = RiskLevel.HIGH  # ESCALATE default; mirror _cat9_input_hitl_pause
+        sla_deadline = datetime.now(timezone.utc) + timedelta(seconds=self._hitl_timeout_s)
+        approval_req = ApprovalRequest(
+            request_id=request_id,
+            tenant_id=tenant_id,
+            session_id=session_id_eff,
+            requester="guardrails",
+            risk_level=risk_level,
+            payload={
+                "kind": "between_turns",
+                "output_excerpt": output_excerpt[:200],
+                "reason": reason,
+                "summary": "approve continuation",
+            },
+            sla_deadline=sla_deadline,
+            context_snapshot={"trace_id": ctx.trace_id},
+        )
+
+        try:
+            await self._hitl_manager.request_approval(approval_req, trace_context=ctx)
+        except Exception as exc:  # noqa: BLE001 — fail closed on persistence error
+            await self._audit_log_safe(
+                event_type="guardrail.between_turns.escalate.persist_failed",
+                content={"error": str(exc)},
+                ctx=ctx,
+            )
+            yield GuardrailTriggered(
+                guardrail_type="between_turns",
+                action="block",
+                reason=f"approval persistence failed: {exc}",
+                trace_context=ctx,
+            )
+            yield LoopCompleted(
+                stop_reason=TerminationReason.GUARDRAIL_BLOCKED.value,
+                total_turns=turn_count,
+                trace_context=ctx,
+            )
+            return
+
+        await self._audit_log_safe(
+            event_type="guardrail.between_turns.escalate.requested",
+            content={
+                "request_id": str(request_id),
+                "risk_level": risk_level.value,
+                "reason": reason,
+            },
+            ctx=ctx,
+        )
+        yield ApprovalRequested(
+            approval_request_id=request_id,
+            risk_level=risk_level.value,
+            trace_context=ctx,
+        )
+
+        pending_approval = {
+            "kind": "between_turns",
+            "approval_request_id": str(request_id),
+            "turn": turn_count,
+        }
+        async for ev in self._emit_deferred_pause(
+            request_id=request_id,
+            pending_approval=pending_approval,
+            messages=messages,
+            turn_count=turn_count,
+            session_id=session_id_eff,
+            audit_event_type="guardrail.between_turns.escalate.deferred",
+            audit_content={"request_id": str(request_id), "turn": turn_count},
+            ctx=ctx,
+        ):
+            yield ev
+
     async def run(
         self,
         *,
@@ -1268,6 +1467,7 @@ class AgentLoopImpl(AgentLoop):
         metrics_acc: LoopMetricsAccumulator,
         ctx: TraceContext,
         root_ctx: TraceContext,
+        skip_between_turns_once: bool = False,
     ) -> AsyncIterator[LoopEvent]:
         """Re-enterable per-turn loop (Sprint 57.89 Slice 1).
 
@@ -1305,6 +1505,31 @@ class AgentLoopImpl(AgentLoop):
                     trace_context=ctx,
                 )
                 return
+
+            # === Cat 9 between-turns gate (Sprint 57.92, Slice 3 leg 2) =
+            # After ≥1 completed turn (turn_count > 0), BEFORE the next LLM call,
+            # a between-turns guardrail may ESCALATE → durably pause the loop for
+            # human approval of CONTINUING (the 2nd generalized pause point on the
+            # _emit_deferred_pause primitive). The seam is the loop TOP (not the
+            # mid-turn _cat9_output_check) so a resume continues by making the next
+            # turn's LLM call — which has NOT run — with no re-generation.
+            # `skip_between_turns_once` (set by a between-turns resume) skips the
+            # just-approved boundary for the FIRST re-entered iteration, then is
+            # consumed below so subsequent boundaries still gate.
+            if turn_count > 0 and not skip_between_turns_once:
+                between_turns_terminated = False
+                async for ev in self._cat9_between_turns_check(
+                    messages=messages,
+                    ctx=ctx,
+                    turn_count=turn_count,
+                    session_id=session_id,
+                ):
+                    yield ev
+                    if isinstance(ev, LoopCompleted):
+                        between_turns_terminated = True
+                if between_turns_terminated:
+                    return
+            skip_between_turns_once = False
 
             # === Compaction check (Sprint 52.1 Day 2.7) =================
             # Cat 4 Compactor: Pre-LLM context compaction. Optional injection
@@ -2145,6 +2370,9 @@ class AgentLoopImpl(AgentLoop):
         # locked analysis-note §6.1 option (b)). Both kinds then drive the SHARED
         # _run_turns. Default "tool" preserves any in-flight 57.88-era checkpoints.
         kind = str(pending.get("kind", "tool"))
+        # Sprint 57.92 (Slice 3 leg 2): a between-turns resume continues to the
+        # next turn with the gate skipped once (set in the between_turns branch).
+        skip_between_turns_once = False
         if kind == "input":
             if decision.decision != DecisionType.APPROVED:
                 await self._audit_log_safe(
@@ -2173,6 +2401,37 @@ class AgentLoopImpl(AgentLoop):
                 content={"request_id": str(request_id)},
                 ctx=ctx,
             )
+        elif kind == "between_turns":
+            # Sprint 57.92 (Slice 3 leg 2): a between-turns pause (no tool_call) was
+            # a between-turns-guardrail ESCALATE at the loop top. APPROVED resumes by
+            # continuing to the next turn's LLM call (NO tool exec), with the gate
+            # skipped once so the just-approved boundary does not re-escalate.
+            if decision.decision != DecisionType.APPROVED:
+                await self._audit_log_safe(
+                    event_type=f"resume.between_turns.{decision.decision.value.lower()}",
+                    content={"request_id": str(request_id)},
+                    ctx=ctx,
+                )
+                yield GuardrailTriggered(
+                    guardrail_type="between_turns",
+                    action="block",
+                    reason=f"approval {decision.decision.value.lower()}: "
+                    f"{decision.reason or 'no reason'}",
+                    trace_context=ctx,
+                )
+                yield LoopCompleted(
+                    stop_reason=TerminationReason.GUARDRAIL_BLOCKED.value,
+                    total_turns=turn_count,
+                    total_tokens=tokens_used,
+                    trace_context=ctx,
+                )
+                return
+            await self._audit_log_safe(
+                event_type="resume.between_turns.approved",
+                content={"request_id": str(request_id)},
+                ctx=ctx,
+            )
+            skip_between_turns_once = True
         else:
             tc_data = pending.get("tool_call", {})
             pending_tc = ToolCall(
@@ -2280,6 +2539,7 @@ class AgentLoopImpl(AgentLoop):
                     metrics_acc=metrics_acc,
                     ctx=ctx,
                     root_ctx=root_ctx,
+                    skip_between_turns_once=skip_between_turns_once,
                 ):
                     yield ev
             finally:

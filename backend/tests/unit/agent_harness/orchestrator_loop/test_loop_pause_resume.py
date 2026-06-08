@@ -2,7 +2,7 @@
 File: backend/tests/unit/agent_harness/orchestrator_loop/test_loop_pause_resume.py
 Purpose: Unit tests for 57.88 durable HITL pause-resume (deferred branch + resume()).
 Category: Tests / 範疇 1 + 範疇 7 + 範疇 9 + §HITL Centralization
-Scope: Phase 57 / Sprint 57.88 (US-1 / US-3) + 57.90 Slice 2 (multi-pause) + 57.91 (input-ESCALATE)
+Scope: Phase 57 / Sprint 57.88 + 57.90 + 57.91 (input-ESCALATE) + 57.92 (between-turns)
 
 Description:
     Validates the Stage-1 backend core of the durable HITL pause-resume spike:
@@ -21,9 +21,14 @@ Description:
       an input-guardrail ESCALATE pauses BEFORE any LLM call (input-kind
       pending_approval, no tool_call); ESCALATE without HITL fails closed to BLOCK;
       resume() of an input-kind pause drives _run_turns with NO tool exec.
+    - Sprint 57.92 (Slice 3 leg 2): the between-turns ESCALATE pause point — a
+      guardrail at the loop top (after ≥1 completed turn, before the next LLM call)
+      ESCALATEs → pause (between-turns-kind pending_approval, no tool_call); ESCALATE
+      without HITL fails closed to BLOCK; resume() drives _run_turns with
+      skip_between_turns_once so the just-approved boundary does not re-pause.
 
 Created: 2026-06-08 (Sprint 57.88)
-Last Modified: 2026-06-08 (Sprint 57.91 — input-ESCALATE pause + input-resume tests)
+Last Modified: 2026-06-08 (Sprint 57.92 — between-turns ESCALATE pause + between-turns-resume tests)
 """
 
 from __future__ import annotations
@@ -887,6 +892,268 @@ async def test_resume_input_rejected_blocks() -> None:
 
     blocks = [e for e in events if isinstance(e, GuardrailTriggered)]
     assert blocks and blocks[0].guardrail_type == "input" and blocks[0].action == "block"
+    assert not executor.executed
+    completes = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completes[-1].stop_reason == TerminationReason.GUARDRAIL_BLOCKED.value
+
+
+# === Tests: between-turns ESCALATE pause point (57.92 Slice 3 leg 2) ========
+
+
+class BetweenTurnsEscalateGuardrail(Guardrail):
+    """Always escalates on the BETWEEN_TURNS chain — deterministic gate trigger.
+
+    Content-independent (always ESCALATE) so the loop-integration tests prove the
+    gate / pause / resume / skip machinery without coupling to the tool result
+    text. The REAL phrase-based BetweenTurnsKeywordGuardrail is tested in
+    test_between_turns_keyword_detector.py.
+    """
+
+    guardrail_type = GuardrailType.BETWEEN_TURNS
+
+    async def check(
+        self,
+        *,
+        content: Any,
+        trace_context: TraceContext | None = None,
+    ) -> GuardrailResult:
+        return GuardrailResult(
+            action=GuardrailAction.ESCALATE,
+            reason="between-turns escalation",
+            risk_level="HIGH",
+        )
+
+
+def _build_between_turns_loop(
+    *,
+    chat_client: ChatClient,
+    hitl_manager: HITLManager,
+    hitl_deferred: bool,
+    checkpointer: InMemoryCheckpointer | None = None,
+    reducer: InMemoryReducer | None = None,
+) -> tuple[AgentLoopImpl, SpyExecutor]:
+    """A loop whose BETWEEN_TURNS chain ESCALATEs at the loop top (Sprint 57.92).
+
+    NO tool guardrail is wired, so `sensitive_tool` executes normally in turn 0
+    (the between-turns boundary only exists after ≥1 completed turn). At the top of
+    turn 1 the BetweenTurnsEscalateGuardrail ESCALATEs → `_cat9_between_turns_check`
+    → `_cat9_between_turns_hitl_pause` → the generalized `_emit_deferred_pause`.
+    """
+    registry = _registry_with_tool()
+    executor = _executor(registry)
+    engine = GuardrailEngine()
+    engine.register(BetweenTurnsEscalateGuardrail())
+    loop = AgentLoopImpl(
+        chat_client=chat_client,
+        output_parser=OutputParserImpl(),
+        tool_executor=executor,
+        tool_registry=registry,
+        guardrail_engine=engine,
+        tenant_id=_TENANT_ID,
+        hitl_manager=hitl_manager,
+        hitl_deferred=hitl_deferred,
+        checkpointer=checkpointer,  # type: ignore[arg-type]
+        reducer=reducer,  # type: ignore[arg-type]
+    )
+    return loop, executor
+
+
+def _chat_tool_use_only() -> FakeChatClient:
+    """Turn 0 = a single TOOL_USE; NO turn-1 response (a 2nd LLM call would raise),
+    so a green test proves the between-turns pause happened BEFORE turn 1's LLM call.
+    """
+    return FakeChatClient(
+        responses=[
+            (
+                "calling tool",
+                [ToolCall(id="tc-1", name="sensitive_tool", arguments={"x": 42})],
+                StopReason.TOOL_USE,
+            ),
+        ],
+    )
+
+
+def _build_resume_loop_between_turns(
+    *,
+    chat_client: ChatClient,
+    hitl_manager: HITLManager,
+    checkpointer: InMemoryCheckpointer,
+    reducer: InMemoryReducer,
+) -> tuple[AgentLoopImpl, SpyExecutor]:
+    """A resume loop wired with the between-turns guardrail + deferred machinery.
+
+    The always-escalate BETWEEN_TURNS guardrail means that WITHOUT
+    `skip_between_turns_once` the gate would re-escalate at the top of the resumed
+    turn — so a clean end_turn (no re-pause) proves the skip flag works.
+    """
+    registry = _registry_with_tool()
+    executor = _executor(registry)
+    engine = GuardrailEngine()
+    engine.register(BetweenTurnsEscalateGuardrail())
+    loop = AgentLoopImpl(
+        chat_client=chat_client,
+        output_parser=OutputParserImpl(),
+        tool_executor=executor,
+        tool_registry=registry,
+        guardrail_engine=engine,
+        tenant_id=_TENANT_ID,
+        hitl_manager=hitl_manager,
+        hitl_deferred=True,
+        checkpointer=checkpointer,  # type: ignore[arg-type]
+        reducer=reducer,  # type: ignore[arg-type]
+    )
+    return loop, executor
+
+
+def _paused_between_turns_state(*, decision_session: UUID) -> LoopState:
+    """A paused checkpoint as a BETWEEN_TURNS-kind pause would rehydrate it.
+
+    current_turn=1 (paused at the top of turn 1, after turn 0 completed); the
+    transcript carries turn 0's assistant + tool messages; no tool_call in
+    pending_approval (between-turns has no pending tool).
+    """
+    return LoopState(
+        transient=TransientState(
+            messages=[
+                Message(role="user", content="please act"),
+                Message(
+                    role="assistant",
+                    content="calling tool",
+                    tool_calls=[ToolCall(id="tc-1", name="sensitive_tool", arguments={"x": 42})],
+                ),
+                Message(role="tool", content="tool_executed_ok", tool_call_id="tc-1"),
+            ],
+            current_turn=1,
+            token_usage_so_far=2,
+        ),
+        durable=DurableState(
+            session_id=decision_session,
+            tenant_id=_TENANT_ID,
+            metadata={
+                "pending_approval": {
+                    "kind": "between_turns",
+                    "approval_request_id": str(uuid4()),
+                    "turn": 1,
+                }
+            },
+        ),
+        version=StateVersion(
+            version=1,
+            parent_version=None,
+            created_at=_DATETIME_NOW,
+            created_by_category="orchestrator_loop:hitl_pause",
+        ),
+    )
+
+
+async def test_between_turns_escalate_pauses_before_next_turn() -> None:
+    """Sprint 57.92: after turn 0 completes, the loop-top between-turns guardrail
+    ESCALATE (deferred wiring) pauses BEFORE turn 1's LLM call — checkpoint
+    pending_approval{kind:"between_turns"} (no tool_call) +
+    LoopCompleted(awaiting_approval) + ApprovalRequested; turn 1's LLM is NEVER
+    called (the fake has only the turn-0 response → a 2nd call would raise)."""
+    chat = _chat_tool_use_only()
+    hitl = SpyHITLManager(decision=DecisionType.APPROVED)
+    checkpointer = InMemoryCheckpointer()
+    reducer = InMemoryReducer()
+    loop, executor = _build_between_turns_loop(
+        chat_client=chat,
+        hitl_manager=hitl,
+        hitl_deferred=True,
+        checkpointer=checkpointer,
+        reducer=reducer,
+    )
+
+    events = await _run(loop)
+
+    # Turn 0's tool executed (the just-completed turn ran end-to-end in the loop).
+    assert executor.executed and executor.executed[0].name == "sensitive_tool"
+    # Paused at the top of turn 1 (awaiting_approval) before any turn-1 LLM call.
+    completes = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completes[-1].stop_reason == TerminationReason.AWAITING_APPROVAL.value
+    assert any(isinstance(e, ApprovalRequested) for e in events)
+    assert hitl.wait_called is False  # deferred, not blocking
+    # Checkpoint carries a BETWEEN_TURNS-kind pending_approval (no tool_call).
+    pauses = [s for s in checkpointer.saved if "pending_approval" in s.durable.metadata]
+    assert pauses, "expected a between-turns pause checkpoint"
+    pa = pauses[-1].durable.metadata["pending_approval"]
+    assert pa["kind"] == "between_turns"
+    assert "tool_call" not in pa
+    assert "approval_request_id" in pa
+    assert pa["turn"] == 1
+
+
+async def test_between_turns_escalate_without_hitl_blocks() -> None:
+    """Sprint 57.92 US-4: a between-turns ESCALATE WITHOUT the deferred HITL wiring
+    fails closed to BLOCK (GUARDRAIL_BLOCKED), not silent-proceed."""
+    chat = _chat_tool_use_only()
+    loop, executor = _build_between_turns_loop(
+        chat_client=chat,
+        hitl_manager=SpyHITLManager(decision=None),
+        hitl_deferred=False,  # HITL present but NOT deferred → cannot durably pause
+        checkpointer=None,
+        reducer=None,
+    )
+
+    events = await _run(loop)
+
+    # Turn 0's tool executed; then the loop-top gate blocked before turn 1.
+    assert executor.executed and executor.executed[0].name == "sensitive_tool"
+    completes = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completes[-1].stop_reason == TerminationReason.GUARDRAIL_BLOCKED.value
+    blocks = [e for e in events if isinstance(e, GuardrailTriggered)]
+    assert blocks and blocks[-1].guardrail_type == "between_turns"
+    assert not any(c.stop_reason == TerminationReason.AWAITING_APPROVAL.value for c in completes)
+
+
+async def test_resume_between_turns_approved_continues_no_repause() -> None:
+    """Sprint 57.92: resume() of a BETWEEN_TURNS-kind pause, APPROVED → drives
+    _run_turns to end_turn with the gate SKIPPED once (no re-escalate on the
+    just-approved boundary) and NO tool exec (between-turns has no pending tool)."""
+    session_id = uuid4()
+    # The resumed turn 1's LLM ends the turn (the gate must be skipped to reach it).
+    chat = FakeChatClient(responses=[("final answer", None, StopReason.END_TURN)])
+    hitl = SpyHITLManager(decision=DecisionType.APPROVED)
+    checkpointer = InMemoryCheckpointer()
+    reducer = InMemoryReducer()
+    loop, executor = _build_resume_loop_between_turns(
+        chat_client=chat,
+        hitl_manager=hitl,
+        checkpointer=checkpointer,
+        reducer=reducer,
+    )
+
+    state = _paused_between_turns_state(decision_session=session_id)
+    ctx = TraceContext(tenant_id=_TENANT_ID, session_id=session_id)
+    events = [ev async for ev in loop.resume(state=state, trace_context=ctx)]
+
+    assert hitl.get_decision_called is True
+    received = [e for e in events if isinstance(e, ApprovalReceived)]
+    assert received and received[0].decision == DecisionType.APPROVED.value
+    # NO tool executed by resume (between-turns has no pending tool).
+    assert not executor.executed
+    assert not any(isinstance(e, ToolCallExecuted) for e in events)
+    # Drove the shared _run_turns to end_turn WITHOUT re-pausing (gate skipped once).
+    completes = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completes[-1].stop_reason == TerminationReason.END_TURN.value
+    assert not any(c.stop_reason == TerminationReason.AWAITING_APPROVAL.value for c in completes)
+    assert any(isinstance(e, SpanStarted) and e.span_type == "LOOP" for e in events)
+
+
+async def test_resume_between_turns_rejected_blocks() -> None:
+    """Sprint 57.92: resume() of a BETWEEN_TURNS-kind pause, REJECTED →
+    GuardrailTriggered(between_turns, block) + GUARDRAIL_BLOCKED; no LLM call."""
+    session_id = uuid4()
+    chat = FakeChatClient(responses=[])  # reject never calls the LLM
+    hitl = SpyHITLManager(decision=DecisionType.REJECTED)
+    loop, executor = _build_resume_loop(chat_client=chat, hitl_manager=hitl)
+
+    state = _paused_between_turns_state(decision_session=session_id)
+    ctx = TraceContext(tenant_id=_TENANT_ID, session_id=session_id)
+    events = [ev async for ev in loop.resume(state=state, trace_context=ctx)]
+
+    blocks = [e for e in events if isinstance(e, GuardrailTriggered)]
+    assert blocks and blocks[0].guardrail_type == "between_turns" and blocks[0].action == "block"
     assert not executor.executed
     completes = [e for e in events if isinstance(e, LoopCompleted)]
     assert completes[-1].stop_reason == TerminationReason.GUARDRAIL_BLOCKED.value

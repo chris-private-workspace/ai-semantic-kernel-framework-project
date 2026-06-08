@@ -70,7 +70,7 @@ Build enterprise AI agent teams that work like **human professional teams** — 
 | Attribute | Value |
 |-----------|-------|
 | **Phase** | V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend ongoing (Phase 57+) |
-| **Current Sprint** | Sprint 57.91 (PR pending) — **地基 A Slice 3 leg 1: generalized pause primitive + input-ESCALATE pause point**: extracted `_emit_deferred_pause` (durable-pause tail decoupled from a tool; `pending_approval.kind` discriminator) + first non-tool pause point = input-guardrail ESCALATE (pauses BEFORE any LLM call, no tool; resume continues to the first LLM turn). New `KeywordEscalationGuardrail` (Cat 9 input). **Drive-through PASS** (real UI + Azure gpt-5.2: `approval required:…` → pause → approve → "Paris"; no frontend change). CHANGE-058. mypy 0/347 + pytest **2243** (+11) + run_all 10/10. Detail: `memory/project_phase57_91_generalized_pause_input_escalate.md`. Next: Slice 3 legs 2/3 (between-turns / mid-thinking) / subagent child-loop (Cat 11) — `claudedocs/1-planning/next-phase-candidates.md`. |
+| **Current Sprint** | Sprint 57.92 (PR pending) — **地基 A Slice 3 leg 2: between-turns guardrail ESCALATE pause point**: 2nd generalized pause point on `_emit_deferred_pause` — NEW `GuardrailType.BETWEEN_TURNS` + a gate at the `_run_turns` loop TOP (after ≥1 completed turn, before the next LLM call) → ESCALATE pauses BETWEEN turns (`pending_approval.kind="between_turns"`, no tool_call); `resume()` continues with `skip_between_turns_once` (loop-top seam avoids the mid-turn re-generation trap). New `BetweenTurnsKeywordGuardrail` + non-escalate `note_tool` (echo_tool tool-escalates → can't reach a between-turns boundary). **Drive-through PASS** (real UI + Azure gpt-5.2: `note the word checkpoint` → pause `tool: —` → approve → "checkpoint"; no frontend change). CHANGE-059. mypy 0/350 + pytest **2254** (+11) + run_all 10/10. Detail: `memory/project_phase57_92_between_turns_pause.md`. Next: Slice 3 leg 3 (mid-thinking) / output-guardrail ESCALATE / subagent child-loop (Cat 11) — `claudedocs/1-planning/next-phase-candidates.md`. |
 | **Sprint History** | See [`memory/MEMORY.md`](memory/MEMORY.md) §Recent Sprints + per-sprint subfile `memory/project_phase57_XX_*.md` + retrospective.md under `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-XX/` |
 | **Pending / Next Phase** | See [`claudedocs/1-planning/next-phase-candidates.md`](claudedocs/1-planning/next-phase-candidates.md) |
 | **Roadmap** | Phase 49-55 V2 ✅ / Phase 56-58 SaaS Stage 1 3/3 ✅ / Phase 57+ Frontend ongoing |
@@ -619,7 +619,7 @@ V1 完整 CLAUDE.md 已保留於 `CLAUDE.backup.md`。如需查閱 V1 架構（M
 
 ---
 
-**Last Updated**: 2026-06-08 (Sprint 57.91 — 地基 A Slice 3 leg 1: generalized pause primitive `_emit_deferred_pause` + input-ESCALATE pause point + `KeywordEscalationGuardrail`; drive-through PASS; CHANGE-058); see `memory/` for sprint history
+**Last Updated**: 2026-06-08 (Sprint 57.92 — 地基 A Slice 3 leg 2: between-turns guardrail ESCALATE pause point; NEW `GuardrailType.BETWEEN_TURNS` + `_run_turns` loop-top gate + non-escalate `note_tool`; drive-through PASS; CHANGE-059); see `memory/` for sprint history
 **Project Start**: 2025-11-14
 **V2 Authority**: `docs/03-implementation/agent-harness-planning/` (21 docs — 20 規劃 + 1 review)
 **V1 Reference**: `CLAUDE.backup.md` + `docs/07-analysis/V9/00-index.md`

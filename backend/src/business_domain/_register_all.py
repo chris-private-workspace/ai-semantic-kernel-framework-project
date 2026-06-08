@@ -51,6 +51,7 @@ from agent_harness.tools import (
     register_builtin_tools,
 )
 from agent_harness.tools.echo_tool import ECHO_TOOL_SPEC, echo_handler
+from agent_harness.tools.note_tool import NOTE_TOOL_SPEC, note_handler
 
 from ._service_factory import BusinessServiceFactory
 
@@ -236,6 +237,16 @@ def make_default_executor(
         # echo_tool (50.1 built-in for bring-up tests; migrated out of _inmemory in 51.1)
         registry.register(ECHO_TOOL_SPEC)
         handlers["echo_tool"] = echo_handler
+
+    # Sprint 57.92 (地基 A Slice 3 leg 2): note_tool — a NON-escalate deterministic
+    # demo tool (mirror of echo_tool minus CHAT_HITL_ESCALATE_TOOLS) so a
+    # between-turns boundary is reachable on 主流量: turn 0 runs note_tool
+    # end-to-end INSIDE the loop → turn_count → 1 → the between-turns gate fires
+    # at the top of turn 1 on note_tool's deterministic output. Registered
+    # unconditionally (both branches above register echo; this adds note once,
+    # regardless of memory deps).
+    registry.register(NOTE_TOOL_SPEC)
+    handlers["note_tool"] = note_handler
 
     # 18 business tools
     register_all_business_tools(
