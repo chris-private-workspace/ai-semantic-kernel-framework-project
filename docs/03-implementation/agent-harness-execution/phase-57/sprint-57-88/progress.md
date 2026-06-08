@@ -177,3 +177,34 @@ Parent-direct + **parent re-verify (all gates run by parent)**.
 ### Next: Day 4 (part 2) — chat-v2 DRIVE-THROUGH (real UI + real backend + real LLM): "echo hello" → paused + HITL card → approve → continuation renders. Then design note `19-pause-resume-design.md` (8-point gate) + closeout.
 
 ---
+
+## Day 4 (part 2) — 2026-06-08 — DRIVE-THROUGH (real UI + real backend + real LLM) ✅ PASSED
+
+Parent-driven via Playwright MCP (user authorized "我來執行") against dev frontend (:3007) + a clean no-reload uvicorn (:8000) + real Azure gpt-5.2. **This is the hard-constraint acceptance — and it caught THREE real defects that every gate (mypy/pytest/lint/Vitest) was green on.**
+
+### The drive-through caught what gates could not (exactly why the constraint exists)
+
+1. **Risk Class E — stale `--reload` spawn-worker served old code.** First 3 attempts: echo_tool executed normally, NO pause. Diagnosed: a uvicorn `--reload` `multiprocessing.spawn` WORKER (PID 40856, started 14:21 — BEFORE the Day-4 14:53 edit; cmdline lacks "uvicorn") survived every `dev.py restart` (dev.py kills only the reloader parent) and kept serving on :8000 via SO_REUSEADDR with pre-ToolGuardrail code. Fix: killed ALL spawn workers + ran a single no-reload uvicorn I control + log. A standalone `build_real_llm_handler()` diagnostic proved the on-disk code escalates (TOOL chain=1, echo_tool→ESCALATE) the whole time. → reinforces Risk Class E.
+
+2. **🔴 FIX (router): chat session row not committed → approval FK violation → no pause.** With the clean backend, ESCALATE fired (confirmed via temp DIAG: `engine_none=False hitl_mgr=True deferred=True action=ESCALATE`) but the deferred branch's `request_approval` INSERT raised `ForeignKeyViolationError approvals_session_id_fkey` — the chat session_id was created in the request db's still-open transaction (begin_nested savepoint), invisible to the HITL manager's OWN connection during SSE streaming. Loop soft-blocked the tool instead of pausing. Fix: `await db.commit()` after `create_session` in the router's sessions-observer block (tests skip it via `SESSIONS_CHAT_OBSERVER=false`). Gates passed because the integration test pre-creates the session row.
+
+3. **🔴 FIX (service): ResumeService default builder didn't wire HITLManager → resume() failed closed.** After fix #2, the PAUSE worked end-to-end (HITL card, stream closed, answer NOT rendered, `loop_end stop=awaiting_approval`). Approve → decide(APPROVED) → resume → but `loop_end stop=error`: `_default_build_loop` called `build_real_llm_handler` WITHOUT `hitl_manager` → resumed loop's `_hitl_manager=None` → resume() skipped `get_decision` → `decision=None` → fail-closed ERROR before tool exec. Fix: `_default_build_loop` resolves `get_service_factory().get_hitl_manager()` (same process-singleton the chat pause used) → resume reads the decision. The integration test masked this by injecting a mock loop that already had a hitl_manager.
+
+### Final drive-through result (after both fixes) — PASS
+
+- **Pause**: `echo hello world` → gpt-5.2 calls echo_tool → ToolGuardrail ESCALATE (HIGH) → deferred checkpoint + ApprovalRequested + `loop_end stop=awaiting_approval` → SSE stream closed. UI: HITL card (approval_id `0c8f657e`/`...`, Approve & continue + Reject), agent turn "awaiting approval", **answer NOT rendered** (genuinely paused, not completed). Screenshot: `artifacts/sprint-57-88-drivethrough-1-paused.png`.
+- **Resume**: Approve → `POST /governance/approvals/{id}/decide` 200 → `POST /chat/{id}/resume` 200 → loop_start → approval_received(APPROVED) → echo_tool executes (**pending→success, output "hello world"**) → turn_start → llm_response → `loop_end stop=end_turn turns=1`. UI: HITL "Decision: APPROVED", continuation **answer "hello world" rendered** (Inspector TURN 2 · END_TURN, BLOCK SEQUENCE: answer hello world), status completed. Screenshot: `artifacts/sprint-57-88-drivethrough-2-resumed-answer.png`.
+- Every control walked: Approve button real (fires decide+resume), continuation renders, labels real, NO Potemkin. Observed == intended.
+
+### Parent re-verify (gates run by parent, after temp DIAG reverted)
+- `mypy src/` **0 / 346** ✅ · `run_all` **10/10** ✅ · **full backend pytest 2229 passed / 4 skipped** ✅ (router fix gated by SESSIONS_CHAT_OBSERVER; service fix covered)
+- Temp instrumentation removed: loop.py DIAG reverted; `_diag_toolguard.py` / `_diag_session.py` / `_devbackend.log` deleted; `grep DIAG-5788 src` clean.
+
+### Files changed (Day-4 part 2)
+- `api/v1/chat/router.py` (commit sessions row before loop — FK fix)
+- `platform_layer/resume/service.py` (default builder wires HITLManager — resume get_decision fix)
+- `docs/.../sprint-57-88/artifacts/*.png` (2 drive-through screenshots)
+
+### Next: design note `19-pause-resume-design.md` (8-point gate) + 17.md resume contract + CHANGE-056 + retrospective + calibration + MEMORY.md + restore dev.py backend.
+
+---

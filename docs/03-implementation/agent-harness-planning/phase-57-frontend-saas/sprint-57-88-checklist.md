@@ -79,9 +79,12 @@
 ## Day 4 — Drive-through + Design note (8-point gate) + Closeout
 
 ### 4.1 Drive-through (US-5 — hard constraint)
-- [ ] `dev.py start` (real backend) + `real_llm` + chat-v2 in browser (Playwright MCP or manual): message → paused state + stream closed → approve → continuation + final answer rendered
-- [ ] Walk every control (approve button real? resume fires? continuation renders? labels real?) — no Potemkin
-- [ ] Screenshots + "observed vs intended" diff → progress.md / CHANGE-056
+- [x] `dev.py start` (real backend) + `real_llm` + chat-v2 in browser (Playwright MCP or manual): message → paused state + stream closed → approve → continuation + final answer rendered
+  - PASSED after a deterministic ESCALATE trigger (Day-4 part 1) + 2 FK/wiring fixes (Day-4 part 2). Drive-through caught 3 defects gates were green on (Risk Class E stale worker + router session-commit FK + ResumeService hitl_manager). "echo hello world" → ESCALATE → pause (HITL card, answer NOT rendered, loop_end awaiting_approval) → Approve → decide → resume → echo_tool pending→success → answer "hello world" rendered → end_turn.
+- [x] Walk every control (approve button real? resume fires? continuation renders? labels real?) — no Potemkin
+  - Approve fires decide+resume; continuation renders; HITL "Decision: APPROVED"; labels real; observed == intended.
+- [x] Screenshots + "observed vs intended" diff → progress.md / CHANGE-056
+  - `artifacts/sprint-57-88-drivethrough-1-paused.png` + `-2-resumed-answer.png`; full observed-vs-intended in progress.md Day-4 part 2.
 
 ### 4.2 Design note extract (US-5)
 - [ ] `19-pause-resume-design.md` (NEW) — 8-point gate ALL (1 headers↔stories / 2 file:line / 3 decision matrix [deferred vs blocking; resume-endpoint vs governance-inline; JSONB-enrich vs migration] / 4 verify command / 5 fixture ref / 6 verified-vs-deferred / 7 rollback / 8 17.md cross-ref); verified-ratio ≥95%

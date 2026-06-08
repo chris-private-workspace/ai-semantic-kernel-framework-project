@@ -265,6 +265,18 @@ async def chat(
                     user_id=current_user,
                     tenant_id=current_tenant,
                 )
+            # Sprint 57.88 (Day-4 drive-through fix): COMMIT the sessions row before
+            # the loop runs. A deferred-HITL ESCALATE (durable pause-resume) persists
+            # an `approvals` row that FKs to `sessions`; that INSERT happens mid-SSE-
+            # stream via the HITL manager's OWN db connection, which cannot see this
+            # request session's still-open transaction. Without an early commit the
+            # approval INSERT raises FK violation `approvals_session_id_fkey` →
+            # the loop soft-blocks the tool instead of pausing (the gates pass because
+            # integration tests pre-create the session row; only a real drive-through
+            # surfaced it). Committing here makes the row visible cross-connection.
+            # Tests skip this block entirely (SESSIONS_CHAT_OBSERVER=false), so their
+            # rollback-based isolation is unaffected.
+            await db.commit()
         except Exception:  # noqa: BLE001
             logger.exception(
                 "chat session %s/%s: sessions row INSERT failed (best-effort)",

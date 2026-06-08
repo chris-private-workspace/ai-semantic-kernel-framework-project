@@ -39,6 +39,7 @@ Created: 2026-06-08 (Sprint 57.88 Day 2 — US-4)
 Last Modified: 2026-06-08
 
 Modification History (newest-first):
+    - 2026-06-08: Sprint 57.88 Day-4 — wire HITLManager into default builder so resume() reads decision
     - 2026-06-08: Initial creation (Sprint 57.88 US-4) — durable pause-resume orchestration
 
 Related:
@@ -103,14 +104,27 @@ async def _default_build_loop(
     `build_real_llm_handler` returns (loop, verifier_registry); resume drives the
     loop directly (verification is the normal-run wrapper's concern), so the
     registry is discarded here.
+
+    Sprint 57.88 (Day-4 drive-through fix): wire the SAME process-singleton
+    HITLManager the chat path used to REQUEST the approval. `resume()` reads the
+    recorded decision via `HITLManager.get_decision(request_id)`; without a wired
+    manager the resumed loop's `_hitl_manager` is None → resume() fails closed
+    with LoopCompleted(ERROR) BEFORE executing the approved tool. The integration
+    test masked this by injecting a mock loop that already had a hitl_manager;
+    only the real drive-through surfaced the gap. `get_service_factory()` is the
+    same process-singleton the chat endpoint resolves via Depends, so request
+    (pause) and resume share one HITLManager → consistent approvals view.
     """
     from api.v1.chat.handler import build_real_llm_handler
+    from platform_layer.governance.service_factory import get_service_factory
 
+    hitl_manager = get_service_factory().get_hitl_manager()
     loop, _registry = build_real_llm_handler(
         db=db,
         session_id=session_id,
         tenant_id=tenant_id,
         user_id=user_id,
+        hitl_manager=hitl_manager,
     )
     return loop
 
