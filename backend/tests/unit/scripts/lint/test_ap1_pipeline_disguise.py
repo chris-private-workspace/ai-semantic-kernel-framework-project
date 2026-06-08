@@ -102,6 +102,59 @@ class AgentLoopImpl:
         yield None
 '''
 
+# Sprint 57.89: run() drives the while via a delegated re-enterable helper
+# (_run_turns) — the loop lives one delegation hop away but still satisfies AP-1.
+DELEGATED_WHILE_BODY = '''
+"""run() delegates the while-loop to a re-enterable _run_turns helper (Sprint 57.89)."""
+from collections.abc import AsyncIterator
+
+
+class AgentLoopImpl:
+    async def run(self) -> AsyncIterator[object]:
+        async for ev in self._run_turns():
+            yield ev
+
+    async def _run_turns(self) -> AsyncIterator[object]:
+        turn = 0
+        while True:
+            if turn >= 5:
+                break
+            messages = []
+            messages.append(Message(role="tool", tool_call_id="x", content=""))  # noqa
+            turn += 1
+        yield None
+
+
+class Message:
+    def __init__(self, **_kw): ...
+'''
+
+# Sprint 57.89: delegation must NOT over-broaden — a run() that delegates to a
+# helper with NO while loop (a real for-pipeline behind a helper) still fails.
+DELEGATED_NO_WHILE_BODY = '''
+"""run() delegates to a helper that has NO while loop → still AP-1 (pipeline)."""
+from collections.abc import AsyncIterator
+
+
+class AgentLoopImpl:
+    async def run(self) -> AsyncIterator[object]:
+        async for ev in self._run_steps():
+            yield ev
+
+    async def _run_steps(self) -> AsyncIterator[object]:
+        for step in [step1, step2]:
+            await step()
+        messages = []
+        messages.append(Message(role="tool", tool_call_id="x", content=""))  # noqa
+        yield None
+
+
+def step1(): ...
+def step2(): ...
+class Message:
+    def __init__(self, **_kw): ...
+'''
+
 
 def test_pos_valid_while_loop_passes(tmp_path: Path) -> None:
     """AgentLoopImpl with `while True` + tool-message feedback → no violations."""
@@ -118,7 +171,7 @@ def test_neg_for_step_pipeline_fails(tmp_path: Path) -> None:
     _write_loop_file(tmp_path, PIPELINE_FOR_BODY)
     target_file = tmp_path / "agent_harness" / "orchestrator_loop" / "loop.py"
     violations = mod.check_file(target_file)  # type: ignore[attr-defined]
-    assert any("must contain a `while` loop" in v for v in violations)
+    assert any("must drive a `while` loop" in v for v in violations)
 
 
 def test_variant_while_conditional_passes(tmp_path: Path) -> None:
@@ -137,3 +190,21 @@ def test_neg_missing_tool_feedback_fails(tmp_path: Path) -> None:
     target_file = tmp_path / "agent_harness" / "orchestrator_loop" / "loop.py"
     violations = mod.check_file(target_file)  # type: ignore[attr-defined]
     assert any("Message(role" in v and "tool" in v for v in violations)
+
+
+def test_pos_delegated_while_loop_passes(tmp_path: Path) -> None:
+    """run() driving the while via a delegated _run_turns helper → no violations (Sprint 57.89)."""
+    mod = _load_lint_module()
+    _write_loop_file(tmp_path, DELEGATED_WHILE_BODY)
+    target_file = tmp_path / "agent_harness" / "orchestrator_loop" / "loop.py"
+    violations = mod.check_file(target_file)  # type: ignore[attr-defined]
+    assert violations == []
+
+
+def test_neg_delegated_no_while_still_fails(tmp_path: Path) -> None:
+    """run() delegating to a helper with NO while is still a pipeline → AP-1 violation."""
+    mod = _load_lint_module()
+    _write_loop_file(tmp_path, DELEGATED_NO_WHILE_BODY)
+    target_file = tmp_path / "agent_harness" / "orchestrator_loop" / "loop.py"
+    violations = mod.check_file(target_file)  # type: ignore[attr-defined]
+    assert any("must drive a `while` loop" in v for v in violations)
