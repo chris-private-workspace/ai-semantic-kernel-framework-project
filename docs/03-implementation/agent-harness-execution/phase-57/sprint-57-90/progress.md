@@ -36,3 +36,32 @@
 
 ### Calibration intent
 - Scope class `backend-core-loop-refactor` 0.55 (2nd data point, CAVEATED — behavior change + drive-through, distinct shape from Slice 1's pure extraction). `agent_factor` 1.0 (parent-direct — 主流量 loop surgery). Bottom-up ~10 hr → ~5.5 hr commit (mult 0.55). Does NOT extend the AgentDelegated-WallClock streak.
+
+---
+
+## Day 1-2 — Rewire + delete + tests (2026-06-08)
+
+### Code (`loop.py`)
+- **resume() rewire** — replaced the `_resume_continuation(...)` call with a fresh `metrics_acc = LoopMetricsAccumulator()` + a `root_ctx` LOOP span (`start_span(name="agent_loop.run", category=ORCHESTRATOR, attributes={"span_type":"LOOP"})` + `SpanStarted(LOOP)` in `try` + `SpanEnded(LOOP)` loop-measured `duration_ms` in `finally`) driving `async for ev in self._run_turns(session_id, messages, turn_count, tokens_used, metrics_acc, ctx, root_ctx)`. The pending-tool exec + approval bridge ABOVE are byte-identical (the pre-approved tool is still exec'd once outside `_run_turns` → no re-escalation, locked §6.1 (b)).
+- **DELETE `_resume_continuation`** — the 148-line reduced copy removed; grep shows zero code callers (only the explanatory mention in resume()'s docstring).
+- **Stale docstring fix (Karpathy §3)** — resume()'s docstring previously said the continuation "intentionally does NOT re-enter run()'s body"; rewritten to describe the Slice-2 shared-`_run_turns` drive + the multi-pause gain + the deleted copy.
+- **File-header MHist** — 1-line E501-safe entry (`Sprint 57.90 Slice 2 — resume() drives shared _run_turns; delete the reduced copy`).
+
+### Tests (`test_loop_pause_resume.py`)
+- **+1 NEW `test_resume_continuation_can_pause_again`** (multi-pause) + NEW builder `_build_resume_loop_multipause` (wires EscalateGuardrail + hitl_deferred + checkpointer/reducer). Proves: 1st pending tool (tc-1) exec'd once → continuation requests tc-2 (approval-required) → ESCALATE → deferred pause → `LoopCompleted(awaiting_approval)` + NEW `pending_approval` checkpoint (tc-2) + `ApprovalRequested` re-emitted; tc-2 NOT executed. Impossible with the deleted reduced copy → the core Slice-2 close.
+- **+1 lock-in assertion** in `test_resume_approved_executes_tool_and_continues`: a `SpanStarted(span_type="LOOP")` is present → proves resume drives `_run_turns` (the deleted copy emitted no span). The other 7 pause-resume tests pass UNCHANGED (contains-style assertions; the new spans/checkpoints are additive; the new path IS exercised — `_build_resume_loop` wires no checkpointer so `_emit_state_checkpoint` no-ops, but `_run_turns` still runs). Karpathy §3: did not force-rewrite passing tests.
+
+### Gate (Day 1-2)
+- pytest **2232 passed / 4 skipped** (57.89 baseline 2231 → **+1** = the new multi-pause test; NET delta documented, no test deleted).
+- mypy `src/ --strict` **0/346** (CI gate; tests not mypy-gated — the new `# type: ignore[arg-type]` mirrors the existing `_build_loop` pattern, Risk Class B cross-context unused-ignore in isolation only).
+- run_all **10/10** (`check_ap1_pipeline_disguise` OK = resume driving `_run_turns` not flagged; `check_event_schema_sync` OK; `check_llm_sdk_leak` OK; AP-8 OK).
+- black/isort/flake8 clean on `loop.py` + `test_loop_pause_resume.py`.
+
+### Drift / decisions confirmed in code
+- **D-DAY0-2 (Option Y) applied** — LOOP span brackets only the `_run_turns` continuation; the approval-bridge + early-return paths byte-identical → the 7 unchanged 57.88 tests confirm zero churn on those paths.
+- **D-DAY0-3 (orphan import) resolved** — flake8 F401 clean; the deleted copy's symbols are all still used by `_run_turns`.
+- Multi-pause checkpoint wiring (the key Day-0 risk) **proven by the new test** + Day-0's `build_real_llm_handler` analysis (`handler.py:274` `reducer, checkpointer = make_chat_state_deps(db, session_id, tenant_id)` — the resume path shares this builder).
+
+### Remaining (Day 3+)
+- Drive-through (US-5, user-facing) — real UI + real backend + real Azure: echo→pause→approve→echo→2nd pause→approve→answer (+ any frontend fix for a 2nd HITLTurn).
+- CHANGE-057 + `19-pause-resume-design.md §5` CLOSE + retrospective + calibration + MEMORY + CLAUDE lean.

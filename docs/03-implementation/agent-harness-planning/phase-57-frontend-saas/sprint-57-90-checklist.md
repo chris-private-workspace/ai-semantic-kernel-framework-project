@@ -20,62 +20,52 @@
 
 ### 0.2 Branch
 - [x] Branch `feature/sprint-57-90-resume-reentrancy-slice-2` from `main` (`dc25dbf5`)
-- [ ] plan + checklist committed (Day-0 commit)
+- [x] plan + checklist + progress committed (Day-0 commit `17103640`)
 
 ---
 
 ## Day 1 — Rewire resume() + delete _resume_continuation (US-1/US-2/US-4)
 
 ### 1.1 Rewire resume() to drive _run_turns
-- [ ] **Replace the `_resume_continuation` call (`loop.py:~1990-1996`) with a LOOP-span `_run_turns` drive**
-  - fresh `metrics_acc = LoopMetricsAccumulator()`; `async with self._tracer.start_span(name="agent_loop.run", category=SpanCategory.ORCHESTRATOR, trace_context=ctx, attributes={"span_type": "LOOP"}) as root_ctx:` + `_root_ctx_t0` + `SpanStarted(LOOP)` (in `try`) + `SpanEnded(LOOP)` (in `finally`); inside: `async for ev in self._run_turns(session_id=session_id, messages=messages, turn_count=turn_count, tokens_used=tokens_used, metrics_acc=metrics_acc, ctx=ctx, root_ctx=root_ctx): yield ev`
-  - DoD: resume drives `_run_turns`; the pending-tool exec + approval bridge above are byte-identical (0-line diff to `resume()`'s LoopStarted→…→pending-tool-append block)
-  - Verify: `grep -n "_run_turns\|_resume_continuation" backend/src/agent_harness/orchestrator_loop/loop.py`
-- [ ] **US-4: pending tool exec stays OUTSIDE `_run_turns` (no re-escalation)**
-  - DoD: the already-APPROVED pending tool is executed once (raw) + observation appended BEFORE the `_run_turns` drive; `_run_turns`'s first iteration is a fresh LLM turn (does not re-run the pending tool)
-- [ ] **mypy clean on the rewired resume()**
-  - DoD: resume() fully typed (root_ctx: TraceContext, metrics_acc: LoopMetricsAccumulator); no new mypy errors
-  - Verify: `cd backend && python -m mypy src/agent_harness/orchestrator_loop/loop.py 2>&1 | tail -1`
+- [x] **Replace the `_resume_continuation` call with a LOOP-span `_run_turns` drive**
+  - fresh `metrics_acc = LoopMetricsAccumulator()` + `start_span(LOOP) as root_ctx` (mirror run(): `_root_ctx_t0` + `SpanStarted(LOOP)` in `try` + `SpanEnded(LOOP)` in `finally`); inside: `async for ev in self._run_turns(session_id, messages, turn_count, tokens_used, metrics_acc, ctx, root_ctx): yield ev`
+  - DoD met: resume drives `_run_turns`; the pending-tool exec + approval bridge above byte-identical
+  - Verify: grep — only docstring mention of `_resume_continuation` remains; `_run_turns` driven from resume()
+- [x] **US-4: pending tool exec stays OUTSIDE `_run_turns` (no re-escalation)**
+  - DoD met: pending tool executed once (raw) + observation appended BEFORE the `_run_turns` drive; multi-pause test proves the 1st tool exec'd once + a 2nd tool pauses (no re-escalation of the 1st)
+- [x] **mypy clean on the rewired resume()** — `mypy src/agent_harness/orchestrator_loop/loop.py` = Success; `mypy src/` 0/346
+  - Also updated resume() docstring (stale Karpathy §3 — was "does NOT re-enter run()'s body") + file-header MHist (1-line E501-safe)
 
 ### 1.2 Delete _resume_continuation (US-2)
-- [ ] **DELETE `_resume_continuation` (`loop.py:1998-2145`)**
-  - DoD: method removed; `grep` shows zero `_resume_continuation` references in `backend/src`
-  - Verify: `grep -rn "_resume_continuation" backend/src backend/tests`
-- [ ] **Remove orphan imports** the deleted copy solely required
-  - DoD: `CacheBreakpoint` / `ChatRequest` / `classify_output` / `should_terminate_*` / `LoopState`/`TransientState`/`DurableState`/`StateVersion` checked — keep those still used by `_run_turns`, drop any now-orphan; `flake8` F401 clean
-  - Verify: `cd backend && python -m flake8 src/agent_harness/orchestrator_loop/loop.py 2>&1 | tail -3`
+- [x] **DELETE `_resume_continuation`** — method removed; grep shows zero CODE references (only the explanatory docstring mention in resume() + a stale .pyc)
+  - Verify: `grep -rn "_resume_continuation" src tests` → docstring line only
+- [x] **No orphan imports** — `flake8 loop.py` clean (F401 none); all symbols the deleted copy used are still used by `_run_turns` (verbatim run() body)
 
 ---
 
 ## Day 2 — Tests: convert 57.88 + multi-pause (US-3)
 
 ### 2.1 Convert 57.88 continuation assertions (Never-Delete)
-- [ ] **`test_loop_pause_resume.py` (8 unit) — approve-then-continue paths assert the run()-grade stream**
-  - DoD: early-return paths (pending-absent ERROR / decision-None ERROR / reject GUARDRAIL_BLOCKED) assertions UNCHANGED; the approve-then-continue paths updated for the richer stream (SpanStarted/SpanEnded(LOOP), per-turn spans, StateCheckpointed, LoopCompleted now carrying 57.2/57.65/57.82 fields); zero tests deleted
-  - Verify: `cd backend && python -m pytest tests/unit/agent_harness/orchestrator_loop/test_loop_pause_resume.py -q 2>&1 | tail -3`
-- [ ] **`test_chat_pause_resume_e2e.py` (5 integration) — resumed-continuation event assertions updated**
-  - DoD: the resumed-continuation assertions match the richer stream; converted, not deleted
-  - Verify: `cd backend && python -m pytest tests/integration/api/test_chat_pause_resume_e2e.py -q 2>&1 | tail -3`
+- [x] **`test_loop_pause_resume.py` — approve-then-continue locks in the new path**
+  - Outcome: the existing 8 tests PASS UNCHANGED (they use contains-style assertions; the new spans/checkpoints are additive — verified the new path IS exercised: `_build_resume_loop` wires no checkpointer so `_emit_state_checkpoint` no-ops, but resume now drives `_run_turns`). ADDED a LOOP-span assertion to `test_resume_approved_executes_tool_and_continues` to LOCK IN that resume drives `_run_turns` (the deleted copy emitted no span). Zero tests deleted. (Karpathy §3: did not force-rewrite passing tests; added the one meaningful lock-in assertion.)
+  - Verify: `pytest test_loop_pause_resume.py -q` → 9 passed
+- [x] **`test_chat_pause_resume_e2e.py` (5 integration)** — pass unchanged within the full suite (contains-style; resumed path now richer but additive); converted-not-needed (no assertion broke)
+  - Verify: green within full `pytest -q` (2232)
 
 ### 2.2 Multi-pause unit test (US-3)
-- [ ] **NEW test: a 2nd ESCALATE in the resumed continuation pauses again**
-  - DoD: resume with a continuation whose first LLM turn requests an approval-required tool → stream ends `LoopCompleted(stop_reason="awaiting_approval")` AND a NEW `hitl_pause` checkpoint emitted (deferred-branch contract); proves the resumed loop can pause again (closes the one-approval-per-run limitation)
-  - Verify: `cd backend && python -m pytest tests/unit/agent_harness/orchestrator_loop/test_loop_pause_resume.py -q -k "multi_pause or pause_again or second_escalate" 2>&1 | tail -3`
-- [ ] **Span-tree + event-schema guards green**
-  - DoD: the resumed path's LOOP→TURN nesting + `check_event_schema_sync` hold (continuation turns now appear in the tree — expected gain)
-  - Verify: `cd backend && python scripts/lint/run_all.py 2>&1 | tail -3`
+- [x] **NEW `test_resume_continuation_can_pause_again`** — green
+  - DoD met: resume → 1st pending tool (tc-1) exec'd once → continuation's 1st LLM turn requests tc-2 (approval-required) → ESCALATE → deferred pause → `LoopCompleted(awaiting_approval)` + NEW `pending_approval` checkpoint (tc-2) + `ApprovalRequested` re-emitted; tc-2 NOT executed. Proves multi-pause-per-run (impossible with the deleted copy).
+  - NEW builder `_build_resume_loop_multipause` (wires EscalateGuardrail + hitl_deferred + checkpointer/reducer)
+- [x] **Span-tree + event-schema guards green** — `run_all` 10/10 (incl. `check_event_schema_sync` + AP-1 accepts resume driving `_run_turns`)
 
 ---
 
 ## Day 3 — Full regression + drive-through (US-5) + CHANGE-057
 
 ### 3.1 Full gate sweep
-- [ ] **Full backend pytest green (NET delta documented)**
-  - DoD: suite green; NET test-count delta = + the new multi-pause test (+ any split helpers), stated explicitly (not a silent baseline move)
-  - Verify: `cd backend && python -m pytest -q 2>&1 | tail -3`
-- [ ] **mypy 0 + run_all 10/10 + format chain**
-  - DoD: AP-1 accepts resume driving `_run_turns` (delegation-aware detector); LLM SDK leak 0; AP-8 green
-  - Verify: `cd backend && python -m mypy src/ && python scripts/lint/run_all.py && python -m black --check src/ tests/ && python -m isort --check-only src/ tests/ && python -m flake8 src/ tests/`
+- [x] **Full backend pytest green (NET delta documented)** — **2232 passed / 4 skipped** (57.89 baseline 2231 → +1 = the NEW multi-pause test; NET delta = +1, documented, no test deleted)
+  - Verify: `python -m pytest -q` → 2232 passed
+- [x] **mypy 0 + run_all 10/10 + format chain** — mypy `src/` 0/346; run_all 10/10 (AP-1 accepts resume driving `_run_turns`; LLM SDK leak 0; AP-8 green; event-schema sync); black/isort/flake8 clean on changed files
 
 ### 3.2 Drive-through (US-5 — resume is user-facing)
 - [ ] **Clean backend restart (Risk Class E)** — kill all stale uvicorn reloader+worker procs on :8000; confirm sole owner; `dev.py start` backend + frontend

@@ -45,6 +45,7 @@ Created: 2026-04-30 (Sprint 50.1 Day 2.2)
 Last Modified: 2026-06-08
 
 Modification History (newest-first):
+    - 2026-06-08: Sprint 57.90 Slice 2 — resume() drives shared _run_turns; delete the reduced copy
     - 2026-06-08: Sprint 57.89 Slice 1 — extract per-turn body into re-enterable _run_turns()
     - 2026-06-08: Sprint 57.88 US-2 D2 — pause checkpoint self-contains messages (decision B)
     - 2026-06-08: Sprint 57.88 US-1/US-3 — deferred-HITL pause branch + resume() impl
@@ -1869,15 +1870,20 @@ class AgentLoopImpl(AgentLoop):
                 - undecided / no manager → LoopCompleted(ERROR) (caller should
                   have gated on decided; defensive).
                 - APPROVED  → execute the pending tool → append the observation
-                  as a tool message → run a continuation loop to end_turn.
+                  as a tool message → drive the shared `_run_turns` to end_turn.
                 - REJECTED / ESCALATED → GuardrailTriggered(block) +
                   LoopCompleted(GUARDRAIL_BLOCKED); the tool is NOT executed.
 
-        The continuation loop is a self-contained while-true (LLM → parse →
-        end_turn / tool exec) — it intentionally does NOT re-enter run()'s body
-        (run() starts a fresh conversation from user_input). Deeper resume
-        points + full Cat 8/9 re-arming in the continuation are a design-note
-        open question (plan §9); this slice proves the durable pause-resume line.
+        Sprint 57.90 Slice 2 (closes AD-Resume-Continuation-Fidelity): after
+        executing the pre-approved pending tool ONCE (outside the loop — already
+        HITL-APPROVED, so it must NOT re-enter `_cat9_hitl_branch`; the locked
+        analysis-note §6.1 option (b)), resume() drives the SAME `_run_turns`
+        run() uses (inside a fresh metrics_acc + LOOP span). The resumed
+        continuation therefore gains Cat 4 compaction / Cat 7 checkpoints / Cat 8
+        retry / Cat 9 per-tool deferred-pause + output guardrail / Cat 12 spans /
+        HANDOFF, and a 2nd ESCALATE in the continuation checkpoints + pauses AGAIN
+        (multi-pause-per-run). The prior `_resume_continuation` reduced copy is
+        deleted — single source of truth for the per-turn loop.
         """
         ctx = trace_context or TraceContext.create_root()
         session_id = state.durable.session_id
@@ -1986,163 +1992,54 @@ class AgentLoopImpl(AgentLoop):
             )
         messages.append(Message(role="tool", content=tool_content, tool_call_id=pending_tc.id))
 
-        # --- Continuation loop: LLM → parse → end_turn / tool exec -----------
-        async for ev in self._resume_continuation(
-            messages=messages,
-            turn_count=turn_count,
-            tokens_used=tokens_used,
-            ctx=ctx,
-        ):
-            yield ev
-
-    async def _resume_continuation(
-        self,
-        *,
-        messages: list[Message],
-        turn_count: int,
-        tokens_used: int,
-        ctx: TraceContext,
-    ) -> AsyncIterator[LoopEvent]:
-        """Self-contained continuation loop for resume() (57.88 US-3).
-
-        A minimal while-true (LLM → parse → end_turn / tool exec) that drives the
-        approved-and-resumed conversation to ``end_turn``. It deliberately omits
-        run()'s span/checkpoint/Cat 8/Cat 9 machinery (re-arming those in the
-        continuation is a design-note open question, plan §9) so this slice does
-        NOT refactor run()'s deeply-nested body. Honors max_turns / token_budget.
-        """
-        while True:
-            if should_terminate_by_turns(turn_count, self._max_turns):
-                yield LoopCompleted(
-                    stop_reason=TerminationReason.MAX_TURNS.value,
-                    total_turns=turn_count,
-                    total_tokens=tokens_used,
-                    trace_context=ctx,
+        # --- Drive the SHARED re-enterable loop (Sprint 57.90 Slice 2) -------
+        # The pre-approved pending tool was already executed above (OUTSIDE the
+        # loop — the locked analysis-note §6.1 option (b); its observation is now
+        # in `messages`), so it does NOT re-enter `_cat9_hitl_branch` and cannot
+        # re-escalate. resume() now drives the SAME `_run_turns` run() uses, so
+        # the resumed continuation gains Cat 4 compaction / Cat 7 checkpoints /
+        # Cat 8 retry / Cat 9 per-tool deferred-pause + output guardrail / Cat 12
+        # spans / HANDOFF — and a 2nd ESCALATE in the continuation checkpoints +
+        # pauses AGAIN (multi-pause-per-run) because `_run_turns` carries the same
+        # `_cat9_hitl_branch` deferred branch. A fresh `metrics_acc` is built (the
+        # continuation's per-run metrics start clean, like a fresh run()), and a
+        # LOOP span is opened so the continuation TURN spans nest under it (mirror
+        # run()'s `start_span` + SpanStarted/SpanEnded bracket; the SpanEnded fires
+        # in `finally` on every exit path, incl. a 2nd-pause return).
+        metrics_acc = LoopMetricsAccumulator()
+        async with self._tracer.start_span(
+            name="agent_loop.run",
+            category=SpanCategory.ORCHESTRATOR,
+            trace_context=ctx,
+            attributes={"span_type": "LOOP"},
+        ) as root_ctx:
+            _root_ctx_t0 = time.monotonic()
+            try:
+                yield SpanStarted(
+                    span_name="agent_loop.run",
+                    span_id=root_ctx.span_id,
+                    parent_span_id=root_ctx.parent_span_id or "",
+                    span_type="LOOP",
+                    trace_context=root_ctx,
                 )
-                return
-            if should_terminate_by_tokens(tokens_used, self._token_budget):
-                yield LoopCompleted(
-                    stop_reason=TerminationReason.TOKEN_BUDGET.value,
-                    total_turns=turn_count,
-                    total_tokens=tokens_used,
-                    trace_context=ctx,
+                async for ev in self._run_turns(
+                    session_id=session_id,
+                    messages=messages,
+                    turn_count=turn_count,
+                    tokens_used=tokens_used,
+                    metrics_acc=metrics_acc,
+                    ctx=ctx,
+                    root_ctx=root_ctx,
+                ):
+                    yield ev
+            finally:
+                yield SpanEnded(
+                    span_name="agent_loop.run",
+                    span_id=root_ctx.span_id,
+                    span_type="LOOP",
+                    duration_ms=(time.monotonic() - _root_ctx_t0) * 1000.0,
+                    trace_context=root_ctx,
                 )
-                return
-
-            turn_count += 1
-            yield TurnStarted(turn_num=turn_count, trace_context=ctx)
-
-            # Mirror run()'s Cat 5 contract: when a PromptBuilder is injected,
-            # build the per-turn chat() input through it (so memory layers are
-            # injected — the AP-8 invariant) and forward cache breakpoints. When
-            # None, fall back to the raw messages buffer (50.x baseline).
-            chat_messages: list[Message] = messages
-            cache_breakpoints: list[CacheBreakpoint] | None = None
-            if self._prompt_builder is not None:
-                build_state = LoopState(
-                    transient=TransientState(
-                        messages=list(messages),
-                        current_turn=turn_count,
-                        token_usage_so_far=tokens_used,
-                    ),
-                    durable=DurableState(
-                        session_id=ctx.session_id or uuid4(),
-                        tenant_id=self._tenant_id or (ctx.session_id or uuid4()),
-                    ),
-                    version=StateVersion(
-                        version=turn_count,
-                        parent_version=turn_count - 1 if turn_count > 0 else None,
-                        created_at=datetime.now(),
-                        created_by_category="orchestrator_loop:resume",
-                    ),
-                )
-                artifact = await self._prompt_builder.build(
-                    state=build_state,
-                    tenant_id=self._tenant_id or (ctx.session_id or uuid4()),
-                    user_id=ctx.user_id,
-                    tools=self._tool_registry.list(),
-                    trace_context=ctx,
-                )
-                chat_messages = list(artifact.messages)
-                cache_breakpoints = (
-                    list(artifact.cache_breakpoints) if artifact.cache_breakpoints else None
-                )
-            request = ChatRequest(
-                messages=chat_messages,
-                tools=self._tool_registry.list(),
-            )
-            response = await self._chat_client.chat(
-                request, cache_breakpoints=cache_breakpoints, trace_context=ctx
-            )
-            if response.usage is not None:
-                tokens_used += response.usage.total_tokens
-            parsed = await self._output_parser.parse(response, trace_context=ctx)
-            yield LLMResponded(
-                content=parsed.text,
-                tool_calls=tuple(parsed.tool_calls),
-                thinking=None,
-                model=response.model,
-                trace_context=ctx,
-            )
-            yield Thinking(text=parsed.text, trace_context=ctx)
-
-            if should_terminate_by_stop_reason(response):
-                yield LoopCompleted(
-                    stop_reason=TerminationReason.END_TURN.value,
-                    total_turns=turn_count,
-                    total_tokens=tokens_used,
-                    trace_context=ctx,
-                )
-                return
-
-            output_type = classify_output(response)
-            if output_type != OutputType.TOOL_USE:
-                # FINAL (or HANDOFF — not expected in this slice) → end.
-                yield LoopCompleted(
-                    stop_reason=TerminationReason.END_TURN.value,
-                    total_turns=turn_count,
-                    total_tokens=tokens_used,
-                    trace_context=ctx,
-                )
-                return
-
-            messages.append(
-                Message(
-                    role="assistant",
-                    content=parsed.text,
-                    tool_calls=parsed.tool_calls,
-                )
-            )
-            for tc in parsed.tool_calls:
-                yield ToolCallRequested(
-                    tool_call_id=tc.id,
-                    tool_name=tc.name,
-                    arguments=tc.arguments,
-                    trace_context=ctx,
-                )
-                exec_ctx = ExecutionContext(
-                    tenant_id=ctx.tenant_id,
-                    user_id=ctx.user_id,
-                    session_id=ctx.session_id,
-                )
-                result = await self._tool_executor.execute(tc, trace_context=ctx, context=exec_ctx)
-                tool_content = self._tool_result_to_text(result.content)
-                if result.success:
-                    yield ToolCallExecuted(
-                        tool_call_id=tc.id,
-                        tool_name=tc.name,
-                        duration_ms=result.duration_ms or 0.0,
-                        result_content=tool_content,
-                        trace_context=ctx,
-                    )
-                else:
-                    yield ToolCallFailed(
-                        tool_call_id=tc.id,
-                        tool_name=tc.name,
-                        error=result.error or "unknown tool error",
-                        trace_context=ctx,
-                    )
-                messages.append(Message(role="tool", content=tool_content, tool_call_id=tc.id))
 
     async def _emit_state_checkpoint(
         self,
