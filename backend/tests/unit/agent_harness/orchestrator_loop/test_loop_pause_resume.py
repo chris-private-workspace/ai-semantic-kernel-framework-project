@@ -2,7 +2,7 @@
 File: backend/tests/unit/agent_harness/orchestrator_loop/test_loop_pause_resume.py
 Purpose: Unit tests for 57.88 durable HITL pause-resume (deferred branch + resume()).
 Category: Tests / 範疇 1 + 範疇 7 + 範疇 9 + §HITL Centralization
-Scope: Phase 57 / Sprint 57.88 + 57.90 (multi-pause) + 57.91 (input-ESCALATE) + 57.92 (between-turns)
+Scope: Phase 57 / Sprint 57.88 + 57.90 + 57.91 (input-ESCALATE) + 57.92 (between-turns)
 
 Description:
     Validates the Stage-1 backend core of the durable HITL pause-resume spike:
