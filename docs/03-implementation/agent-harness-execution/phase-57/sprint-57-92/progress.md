@@ -44,3 +44,27 @@
 ### Go/No-Go: **GO**
 
 All 4 drifts anticipated by the plan; scope shift ~0% (D-DAY0-1 only refined the note_tool location, same scope). The between-turns gate is reachable end-to-end via `note_tool` + the new gate; new GuardrailType value has no exhaustiveness break; no ResumeService / endpoint / migration / frontend change. Day-0 commit then Day 1.
+
+---
+
+## Day 1-2 — 2026-06-08 — Code + tests (US-1..US-5)
+
+### Code (all in one Day; mirror of leg-1 input pattern kept the surface thin)
+
+- **Cat 9 `GuardrailType.BETWEEN_TURNS`** (`_abc.py`) + **`GuardrailEngine.check_between_turns`** (`engine.py`, mirror of `check_output`; "three→four cut points" docstring). Prong 2.5 held — no exhaustiveness consumer broke.
+- **NEW `guardrails/between_turns/keyword_detector.py`** `BetweenTurnsKeywordGuardrail` (BETWEEN_TURNS type; ESCALATE on a case-insensitive phrase; `_extract_text` mirrors the input sibling) + `__init__.py`.
+- **NEW `tools/note_tool.py`** (`NOTE_TOOL_SPEC` + `note_handler`, `text`→`text`) + registered unconditionally in `_register_all.py` (covers both the `register_builtin_tools` branch and the bring-up `else` branch; not in `CHAT_HITL_ESCALATE_TOOLS` → CapabilityMatrix auto-PASS in chat).
+- **loop.py** — `_latest_output_text` (static; last truthy assistant/tool message) + `_cat9_between_turns_check` (PASS→return / ESCALATE+wiring→pause / else→GUARDRAIL_BLOCKED fail-closed) + `_cat9_between_turns_hitl_pause` (verbatim mirror of `_cat9_input_hitl_pause`, between_turns-kind `pending_approval`, no tool_call, reuses `_emit_deferred_pause`). NEW loop-top gate in `_run_turns` (`turn_count > 0 and not skip_between_turns_once`, consumed after the 1st iteration). `_run_turns` gained `skip_between_turns_once: bool = False`. `resume()` gained an `elif kind == "between_turns"` branch (APPROVED→no tool + `skip_between_turns_once=True`; REJECTED→GUARDRAIL_BLOCKED) + passes the flag to the shared drive. **The input/tool branches + the `_run_turns` drive + `_cat9_output_check` are byte-unchanged.**
+- **handler.py** — `CHAT_HITL_ESCALATE_BETWEEN_TURNS_PHRASES = {"checkpoint"}` (≠ the input phrase `approval required` so the input gate doesn't pre-empt) + register `BetweenTurnsKeywordGuardrail` in the same `if hitl_manager is not None:` block + extended `DEMO_SYSTEM_PROMPT` to drive `note_tool` on "note X".
+
+### Tests
+
+- **`test_loop_pause_resume.py`** +4: `test_between_turns_escalate_pauses_before_next_turn` (turn-0 tool runs, top-of-turn-1 ESCALATE pause, `pending_approval{kind:"between_turns",turn:1}`, no tool_call, turn-1 LLM never called) / `test_between_turns_escalate_without_hitl_blocks` (fail-closed GUARDRAIL_BLOCKED) / `test_resume_between_turns_approved_continues_no_repause` (always-escalate guardrail wired + `skip_between_turns_once` → end_turn, NO re-pause, NO tool exec) / `test_resume_between_turns_rejected_blocks`. New fakes `BetweenTurnsEscalateGuardrail` + builders `_build_between_turns_loop` / `_build_resume_loop_between_turns` / `_paused_between_turns_state`. The 13 existing input/tool cases are byte-unchanged.
+- **NEW `test_between_turns_keyword_detector.py`** (7): type / match / case-insensitive / no-match / empty-phrases / blank-drop / Message-extract.
+
+### Gate (Day 3.1 sweep pulled forward)
+
+- pytest **2254 passed / 4 skipped** (baseline 2243 → **+11**: 4 loop + 7 guardrail); NO test deleted.
+- mypy `src --strict` **0** (350 files, +2). run_all **10/10** (LLM SDK leak 0; AP-1 pipeline-disguise; AP-8 PromptBuilder; event-schema sync — no new events). black/isort/flake8 clean.
+
+Next: Day 3 drive-through (real UI + real backend + real Azure) — the between-turns pause is user-facing.

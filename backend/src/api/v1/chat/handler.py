@@ -30,6 +30,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.4)
 Last Modified: 2026-06-08
 
 Modification History (newest-first):
+    - 2026-06-08: Sprint 57.92 — BetweenTurnsKeywordGuardrail + note_tool (between-turns pause)
     - 2026-06-08: Sprint 57.91 — wire KeywordEscalationGuardrail (input-ESCALATE pause trigger)
     - 2026-06-08: Sprint 57.88 Day-4 — ToolGuardrail (registry matrix) gates echo_tool ESCALATE
     - 2026-06-08: Sprint 57.88 US-1 — chat path opts into hitl_deferred=True (durable pause-resume)
@@ -70,6 +71,7 @@ from agent_harness._contracts import (
     ToolCall,
 )
 from agent_harness.guardrails import build_default_guardrail_engine
+from agent_harness.guardrails.between_turns import BetweenTurnsKeywordGuardrail
 from agent_harness.guardrails.input import KeywordEscalationGuardrail
 from agent_harness.guardrails.tool.capability_matrix import CapabilityMatrix, PermissionRule
 from agent_harness.guardrails.tool.tool_guardrail import ToolGuardrail
@@ -102,11 +104,17 @@ if TYPE_CHECKING:
 
 # Phase 50.2 demo system prompt — instructs the model to use echo_tool when the
 # user explicitly asks to "echo" something. Real LLM only.
+# Sprint 57.92 (Slice 3 leg 2): also drives note_tool for "note" requests — a
+# NON-escalate deterministic tool whose completed-turn output trips the
+# between-turns guardrail (so the between-turns pause is reachable on 主流量).
 DEMO_SYSTEM_PROMPT = (
     "You are a Sprint 50.2 demonstration agent. When the user asks you to "
     "'echo' some text, you MUST call the `echo_tool` function with that text "
     "as the `text` argument, then return the tool's output verbatim as your "
-    "final answer. Do not paraphrase. For any other request, answer directly."
+    "final answer. When the user asks you to 'note' some text, you MUST call "
+    "the `note_tool` function with that text as the `text` argument, then "
+    "return the tool's output verbatim as your final answer. Do not paraphrase. "
+    "For any other request, answer directly."
 )
 
 # Sprint 57.88 (Day-4): tools that require human approval on the real chat path.
@@ -129,6 +137,17 @@ CHAT_HITL_ESCALATE_TOOLS = frozenset({"echo_tool"})
 # path); production per-tenant escalation phrases would source from policy
 # (deferred AD). Only wired when a HITLManager is present (deferred pause needs it).
 CHAT_HITL_ESCALATE_INPUT_PHRASES = frozenset({"approval required"})
+
+# Sprint 57.92 (地基 A Slice 3 leg 2): output phrases that ESCALATE the between-turns
+# guardrail → a durable HITL pause at the loop top, AFTER ≥1 completed turn and BEFORE
+# the next LLM call. The BetweenTurnsKeywordGuardrail (BETWEEN_TURNS chain) returns
+# ESCALATE on a case-insensitive substring match against the just-completed turn's
+# output. The demo drives it via note_tool: a "note the word checkpoint" request runs
+# note_tool("checkpoint") in turn 0 (note_tool is NOT escalate-gated, so it executes
+# end-to-end), then the between-turns gate matches "checkpoint" at the top of turn 1
+# and pauses. The phrase MUST NOT contain CHAT_HITL_ESCALATE_INPUT_PHRASES so the input
+# gate does not pre-empt. Only wired when a HITLManager is present (deferred pause).
+CHAT_HITL_ESCALATE_BETWEEN_TURNS_PHRASES = frozenset({"checkpoint"})
 
 
 def build_echo_demo_handler(
@@ -320,6 +339,13 @@ def build_real_llm_handler(
         guardrail_engine.register(
             KeywordEscalationGuardrail(CHAT_HITL_ESCALATE_INPUT_PHRASES),
             priority=5,
+        )
+        # Sprint 57.92 (Slice 3 leg 2): between-turns-ESCALATE pause trigger (same
+        # deferred-pause requirement). Registers on the BETWEEN_TURNS chain (its own
+        # guardrail_type) so it does NOT double-fire with the per-response OUTPUT
+        # check; the loop runs it at the loop top after ≥1 completed turn.
+        guardrail_engine.register(
+            BetweenTurnsKeywordGuardrail(CHAT_HITL_ESCALATE_BETWEEN_TURNS_PHRASES),
         )
 
     loop = AgentLoopImpl(

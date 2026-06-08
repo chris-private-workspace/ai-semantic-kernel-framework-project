@@ -22,60 +22,60 @@
 
 ### 0.2 Branch
 - [x] Branch `feature/sprint-57-92-between-turns-pause` from `main` (`0ceb788d`)
-- [ ] plan + checklist + progress committed (Day-0 commit)
+- [x] plan + checklist + progress committed (Day-0 commit `d12e68ed`)
 
 ---
 
 ## Day 1 — GuardrailType + between-turns gate + pause helper (US-1/US-2/US-4/US-5)
 
 ### 1.1 New `GuardrailType.BETWEEN_TURNS` + `check_between_turns` (US-5)
-- [ ] **`_abc.py`** — add `BETWEEN_TURNS = "between_turns"` to `GuardrailType`; MHist 1-line
-- [ ] **`engine.py`** — add `check_between_turns()` mirror of `check_output` (BETWEEN_TURNS chain, default PASS when empty); MHist 1-line
-- [ ] **Fix any exhaustiveness break** found in Prong 2.5 (expect none)
-- [ ] **mypy clean** — `mypy src --strict` Success
+- [x] **`_abc.py`** — added `BETWEEN_TURNS = "between_turns"` to `GuardrailType`; MHist 1-line
+- [x] **`engine.py`** — added `check_between_turns()` mirror of `check_output` (BETWEEN_TURNS chain, default PASS when empty); docstring "three→four cut points"; MHist 1-line
+- [x] **No exhaustiveness break** (Prong 2.5 confirmed none; `_chains` factory auto-includes)
+- [x] **mypy clean** — `mypy src --strict` Success (350 files)
 
 ### 1.2 `_cat9_between_turns_check` + `_cat9_between_turns_hitl_pause` + `_latest_output_text` (US-1/US-2/US-4)
-- [ ] **`_latest_output_text(messages) -> str`** — content of last truthy assistant/tool message, `""` fallback (tiny pure helper)
-- [ ] **`_cat9_between_turns_check`** — runs `check_between_turns(content)`; ESCALATE + deferred wiring → `_cat9_between_turns_hitl_pause` + return; `action != PASS` (BLOCK / ESCALATE-no-HITL) → audit + `GuardrailTriggered(between_turns)` + `LoopCompleted(GUARDRAIL_BLOCKED)` + return (US-4 fail-closed)
-- [ ] **`_cat9_between_turns_hitl_pause`** — mirror `_cat9_input_hitl_pause`: identity gate (no-identity → block) / `ApprovalRequest(payload kind=between_turns, output_excerpt, summary="approve continuation")` / `request_approval` try-except (persist-fail → block) / audit `guardrail.between_turns.escalate.requested` / `ApprovalRequested` / `pending_approval={kind:"between_turns",…}` (no tool_call) / `_emit_deferred_pause(...)`
-- [ ] **mypy clean** on the 3 new methods
+- [x] **`_latest_output_text(messages) -> str`** — content of last truthy assistant/tool message, `""` fallback (static pure helper)
+- [x] **`_cat9_between_turns_check`** — runs `check_between_turns(content)`; PASS→return; ESCALATE + deferred wiring → `_cat9_between_turns_hitl_pause` + return; `action != PASS` (BLOCK / ESCALATE-no-HITL) → audit + `GuardrailTriggered(between_turns)` + `LoopCompleted(GUARDRAIL_BLOCKED)` (US-4 fail-closed)
+- [x] **`_cat9_between_turns_hitl_pause`** — mirror `_cat9_input_hitl_pause`: identity gate / `ApprovalRequest(payload kind=between_turns, output_excerpt, summary="approve continuation")` / `request_approval` try-except / audit `guardrail.between_turns.escalate.requested` / `ApprovalRequested` / `pending_approval={kind:"between_turns",…}` (no tool_call) / `_emit_deferred_pause(...)`
+- [x] **mypy clean** on the 3 new methods
 
 ### 1.3 Loop-top gate in `_run_turns` (US-2)
-- [ ] **`_run_turns` signature** — add `skip_between_turns_once: bool = False` (keyword)
-- [ ] **NEW gate** after the cancellation termination check, before compaction: `if turn_count > 0 and not skip_between_turns_once:` → `async for ev in self._cat9_between_turns_check(...)` (yield; `LoopCompleted` → `return`); then `skip_between_turns_once = False` (consume after 1st iter)
-- [ ] **`run()` call site** — unchanged (default False); confirm it still type-checks
+- [x] **`_run_turns` signature** — added `skip_between_turns_once: bool = False` (keyword)
+- [x] **NEW gate** after the cancellation termination check, before compaction: `if turn_count > 0 and not skip_between_turns_once:` → `async for ev in self._cat9_between_turns_check(...)` (yield; `LoopCompleted` → `return`); then `skip_between_turns_once = False` (consume after 1st iter)
+- [x] **`run()` call site** (`:1440`) — unchanged (default False); type-checks
 
 ### 1.4 Real guardrail + non-escalate demo tool + handler wiring (US-5)
-- [ ] **NEW `guardrails/between_turns/keyword_detector.py`** — `BetweenTurnsKeywordGuardrail(Guardrail)`, `GuardrailType.BETWEEN_TURNS`, ESCALATE on configured phrase; `_extract_text` mirrors `KeywordEscalationGuardrail`; `between_turns/__init__.py` export; mypy clean
-- [ ] **`note_tool`** — register a deterministic non-escalate tool (`text`→`text`) beside echo_tool's real registration; NOT in `CHAT_HITL_ESCALATE_TOOLS`
-- [ ] **Handler wiring** (`handler.py`) — `CHAT_HITL_ESCALATE_BETWEEN_TURNS_PHRASES = {"checkpoint"}` + `engine.register(BetweenTurnsKeywordGuardrail(...))` gated on `hitl_manager is not None`; extend `DEMO_SYSTEM_PROMPT` with the `note_tool` instruction
+- [x] **NEW `guardrails/between_turns/keyword_detector.py`** — `BetweenTurnsKeywordGuardrail(Guardrail)`, `GuardrailType.BETWEEN_TURNS`, ESCALATE on configured phrase; `_extract_text` mirrors `KeywordEscalationGuardrail`; `between_turns/__init__.py` export; mypy clean
+- [x] **`note_tool`** — NEW `agent_harness/tools/note_tool.py` (`text`→`text`) + registered unconditionally in `_register_all.py` (covers both branches); NOT in `CHAT_HITL_ESCALATE_TOOLS` → auto-PASS in chat
+- [x] **Handler wiring** (`handler.py`) — `CHAT_HITL_ESCALATE_BETWEEN_TURNS_PHRASES = {"checkpoint"}` + `engine.register(BetweenTurnsKeywordGuardrail(...))` gated on `hitl_manager is not None`; extended `DEMO_SYSTEM_PROMPT` with the `note_tool` instruction
 
 ---
 
 ## Day 2 — resume() between-turns kind + tests (US-3)
 
 ### 2.1 `resume()` between-turns kind-branch (US-3)
-- [ ] **Init `skip_between_turns_once = False`** before the kind-branch
-- [ ] **NEW `elif kind == "between_turns":`** — APPROVED → audit `resume.between_turns.approved` + no tool + `skip_between_turns_once = True`; REJECTED → `GuardrailTriggered(between_turns, block)` + `GUARDRAIL_BLOCKED` + return. input + tool branches byte-identical
-- [ ] **Shared drive** — pass `skip_between_turns_once=skip_between_turns_once` to `self._run_turns(...)`
-- [ ] **mypy clean** on the restructured `resume()`
+- [x] **Init `skip_between_turns_once = False`** before the kind-branch
+- [x] **NEW `elif kind == "between_turns":`** — APPROVED → audit `resume.between_turns.approved` + no tool + `skip_between_turns_once = True`; REJECTED → `GuardrailTriggered(between_turns, block)` + `GUARDRAIL_BLOCKED` + return. input + tool branches byte-identical
+- [x] **Shared drive** (`:2499`) — passes `skip_between_turns_once=skip_between_turns_once` to `self._run_turns(...)`
+- [x] **mypy clean** on the restructured `resume()`
 
 ### 2.2 Unit tests (US-2/US-3/US-4/US-5)
-- [ ] **Between-turns pause** — `test_between_turns_escalate_pauses_before_next_turn`: 2-turn loop (non-escalate tool) → ESCALATE at top of turn 1 → `ApprovalRequested` + checkpoint `pending_approval{kind:"between_turns"}` + `awaiting_approval`; assert turn-1 LLM NOT called (e.g. FakeChatClient response budget proves it)
-- [ ] **Between-turns resume APPROVED** — `test_resume_between_turns_approved_continues_no_repause`: drives `_run_turns` to `end_turn`; gate skipped once (NO second pause); NO tool exec attributable to resume
-- [ ] **Between-turns resume REJECTED** — `test_resume_between_turns_rejected_blocks`: `GuardrailTriggered(between_turns, block)` + `GUARDRAIL_BLOCKED`
-- [ ] **ESCALATE-without-HITL → BLOCK** — `test_between_turns_escalate_without_hitl_blocks` (fail closed, US-4)
-- [ ] **`BetweenTurnsKeywordGuardrail` unit test** (type/match/case-insensitive/no-match/empty/Message-extract)
-- [ ] **Input/tool-path tests UNCHANGED** — 57.88-91 cases pass without edit (skip flag defaults False; input/tool branches byte-identical)
-- [ ] **Span-tree + event-schema guards** — `run_all` 10/10 (incl. `check_event_schema_sync` + AP-1; no new events — reuses `ApprovalRequested`/`GuardrailTriggered`/`LoopCompleted`)
+- [x] **Between-turns pause** — `test_between_turns_escalate_pauses_before_next_turn`: 2-turn loop (non-escalate tool) → ESCALATE at top of turn 1 → `ApprovalRequested` + checkpoint `pending_approval{kind:"between_turns"}` + `awaiting_approval`; turn-1 LLM NOT called (FakeChatClient 1-response budget proves it)
+- [x] **Between-turns resume APPROVED** — `test_resume_between_turns_approved_continues_no_repause`: drives `_run_turns` to `end_turn`; gate skipped once (NO second pause, always-escalate guardrail wired proves skip); NO tool exec
+- [x] **Between-turns resume REJECTED** — `test_resume_between_turns_rejected_blocks`: `GuardrailTriggered(between_turns, block)` + `GUARDRAIL_BLOCKED`
+- [x] **ESCALATE-without-HITL → BLOCK** — `test_between_turns_escalate_without_hitl_blocks` (fail closed, US-4)
+- [x] **`BetweenTurnsKeywordGuardrail` unit test** (7 cases: type/match/case/no-match/empty/blank-drop/Message-extract)
+- [x] **Input/tool-path tests UNCHANGED** — 57.88-91 cases pass without edit (skip flag defaults False; input/tool branches byte-identical)
+- [x] **Span-tree + event-schema guards** — `run_all` 10/10 (incl. `check_event_schema_sync` + AP-1; no new events — reuses `ApprovalRequested`/`GuardrailTriggered`/`LoopCompleted`)
 
 ---
 
 ## Day 3 — Full regression + drive-through (US-6) + CHANGE-059
 
 ### 3.1 Full gate sweep
-- [ ] **Full backend pytest green (NET delta documented)** — baseline 2243 → expected ~2252-2254 (4 between-turns pause-resume unit + ~6 guardrail unit); NO test deleted
-- [ ] **mypy 0 + run_all 10/10 + format chain** — mypy `src --strict` 0; run_all 10/10 (LLM SDK leak 0; AP-1; AP-8; event-schema sync); black/isort/flake8 clean
+- [x] **Full backend pytest green (NET delta documented)** — baseline 2243 → **2254 passed / 4 skipped** = +11 (4 between-turns loop unit + 7 guardrail unit); NO test deleted
+- [x] **mypy 0 + run_all 10/10 + format chain** — mypy `src --strict` 0 (350 files); run_all **10/10** (LLM SDK leak 0; AP-1; AP-8; event-schema sync); black/isort/flake8 clean
 
 ### 3.2 Drive-through (US-6 — between-turns pause is user-facing) — **PASS required**
 - [ ] **Clean backend restart (Risk Class E)** — kill ALL stale uvicorn (listener + spawn-worker); verify :8000 OWNER is the fresh PID; `HITL_ENABLED` ON; `note_tool` + `BetweenTurnsKeywordGuardrail` + demo prompt startup-wired

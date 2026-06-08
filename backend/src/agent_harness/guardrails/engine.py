@@ -7,8 +7,9 @@ Scope: Phase 53.3 / Sprint 53.3 Day 1 (US-1)
 Description:
     Single coordinator owning per-type Guardrail chains. Each chain runs
     in priority order (lower = higher priority); first non-PASS result
-    short-circuits and returns. Cat 1 Loop wires the engine at three cut
-    points (input start / per tool_call / output end), per plan §US-7.
+    short-circuits and returns. Cat 1 Loop wires the engine at four cut
+    points (input start / between turns / per tool_call / output end), per
+    plan §US-7 (between-turns added Sprint 57.92).
 
     Why fail-fast: a BLOCK / ESCALATE / REROLL decision should not be
     overruled by a later PASS — one detector saying "stop" is enough.
@@ -31,6 +32,7 @@ Single-source: 17.md §1.1 (Guardrail / GuardrailResult dataclasses)
 Created: 2026-05-03 (Sprint 53.3 Day 1)
 
 Modification History (newest-first):
+    - 2026-06-08: Sprint 57.92 — add check_between_turns (BETWEEN_TURNS chain)
     - 2026-05-03: Initial creation (Sprint 53.3 US-1) — engine framework
 
 Related:
@@ -131,6 +133,23 @@ class GuardrailEngine:
     ) -> GuardrailResult:
         """Run output chain (loop end). Defaults to PASS when chain empty."""
         return await self._run_chain(GuardrailType.OUTPUT, content, trace_context=trace_context)
+
+    async def check_between_turns(
+        self,
+        content: Any,
+        *,
+        trace_context: TraceContext | None = None,
+    ) -> GuardrailResult:
+        """Run between-turns chain (loop top, after ≥1 completed turn).
+
+        Sprint 57.92 (地基 A Slice 3 leg 2): the Cat 1 loop runs this on the
+        just-completed turn's output BEFORE the next LLM call. Distinct from the
+        OUTPUT chain so it does NOT double-fire with the per-LLM-response output
+        check. Defaults to PASS when the chain is empty (backward-compat no-op).
+        """
+        return await self._run_chain(
+            GuardrailType.BETWEEN_TURNS, content, trace_context=trace_context
+        )
 
     async def check_tool_call(
         self,
