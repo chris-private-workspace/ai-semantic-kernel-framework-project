@@ -6,6 +6,16 @@
 
 ---
 
+## 🆕 Sprint 57.89 Carryover — run() re-entrancy refactor (地基 A keystone, Slice 2 next)
+
+**Source**: Sprint 57.89 closed 2026-06-08 — Slice 1/2 of `AD-Resume-Continuation-Fidelity` (pure extraction of `_run_turns`; resume()/`_resume_continuation` untouched). Detail: `memory/project_phase57_89_run_loop_reentrancy.md` + REFACTOR-006 + analysis note `run-loop-reentrancy-refactor-analysis-20260608.md §7`.
+
+- **`AD-Resume-Continuation-Fidelity` Slice 2** (🔴 the immediate next step) — rewire `resume()` to execute the pre-approved pending tool then drive the NEW shared `_run_turns(...)`; **DELETE `_resume_continuation`** (the reduced copy); add multi-pause-per-run (a 2nd ESCALATE in the continuation checkpoints + pauses again — falls out for free once resume drives `_run_turns` which carries the Cat 9 deferred branch) + a **drive-through** (echo twice → pause → approve → 2nd pause → approve → answer). **Locked decision for the Slice-2 plan**: the pre-approved pending tool must NOT re-trigger `_cat9_hitl_branch` ESCALATE on resume (analysis note §6.1 — prefer executing it once outside `_run_turns` then entering the shared loop). ~1 sprint.
+- **`AD-Resume-Continuation-Fidelity` Slice 3** (🟡, after Slice 2) — generalized pause points (input ESCALATE / mid-loop) now enabled by the shared `_run_turns` + checkpoint-everywhere.
+- **Subagent child-loop (Cat 11)** (🟡 downstream) — consumes the shared re-enterable loop; distinct larger sprint after Slice 2/3.
+
+---
+
 ## 🆕 Sprint 57.88 Carryover — durable HITL pause-resume (地基 A keystone)
 
 **Source**: Sprint 57.88 closed 2026-06-08 — first 地基 A spike (durable pause-resume vertical, chat path). Design note `19-pause-resume-design.md` §5 Open Invariants. Detail: `memory/project_phase57_88_pause_resume.md`.

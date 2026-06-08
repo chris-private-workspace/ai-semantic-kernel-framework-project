@@ -70,7 +70,7 @@ Build enterprise AI agent teams that work like **human professional teams** — 
 | Attribute | Value |
 |-----------|-------|
 | **Phase** | V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend ongoing (Phase 57+) |
-| **Current Sprint** | Sprint 57.88 (PR pending) — **durable HITL pause-resume (地基 A keystone SPIKE)**: replaces blocking `wait_for_decision` (chat path, additive discriminator) with deferred ESCALATE → checkpoint (`pending_approval`+`resume_messages` in `state_snapshots` JSONB, no migration) → `LoopCompleted(stop_reason="awaiting_approval")` releasing the SSE connection → human approve hours/days → NEW `POST /chat/{id}/resume` drives implemented `AgentLoopImpl.resume()` (non-blocking `HITLManager.get_decision`) → exec pending tool → end_turn. ESCALATE trigger = real Cat 9 `ToolGuardrail` + registry-derived `CapabilityMatrix`. **Drive-Through PASS (real backend + real Azure gpt-5.2) caught 3 defects all gates green on** (Risk Class E stale `--reload` worker / FK session-uncommitted / ResumeService hitl_manager wire). Spike → design note `19-pause-resume-design.md` (8-pt gate). mypy 0/346 + pytest 2229 + run_all 10/10 + Vitest 772 + mockup-fidelity ✓ (oklch baseline 53); CHANGE-056. Detail: `memory/project_phase57_88_pause_resume.md`. Next: `claudedocs/1-planning/next-phase-candidates.md`. |
+| **Current Sprint** | Sprint 57.89 (PR pending) — **run() re-entrancy refactor Slice 1/2 (地基 A keystone debt; closes AD-Resume-Continuation-Fidelity Slice 1)**: PURE EXTRACTION zero-behavior-change — run()'s 797-line outer-`while True` body moved verbatim (programmatic move + dedent-by-8, the 57.71 pattern; dry-run-verified anchors) into NEW re-enterable `_run_turns(...)`; run() keeps the pre-loop input guardrail + LOOP-span try/finally and delegates `async for ev in self._run_turns(...)`. Single source of truth Slice 2 will point resume() at (deleting the reduced `_resume_continuation`). AP-1 lint made delegation-aware (run() may drive the loop via a helper). mypy 0/346 + pytest **2231** (2229 loop UNCHANGED + 2 detector) + run_all 10/10; resume()/_resume_continuation byte-unchanged. REFACTOR-006 (no design note — refactor). Detail: `memory/project_phase57_89_run_loop_reentrancy.md`. Next: Slice 2 (rewire resume + delete copy + multi-pause + drive-through) — `claudedocs/1-planning/next-phase-candidates.md`. |
 | **Sprint History** | See [`memory/MEMORY.md`](memory/MEMORY.md) §Recent Sprints + per-sprint subfile `memory/project_phase57_XX_*.md` + retrospective.md under `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-XX/` |
 | **Pending / Next Phase** | See [`claudedocs/1-planning/next-phase-candidates.md`](claudedocs/1-planning/next-phase-candidates.md) |
 | **Roadmap** | Phase 49-55 V2 ✅ / Phase 56-58 SaaS Stage 1 3/3 ✅ / Phase 57+ Frontend ongoing |
@@ -619,7 +619,7 @@ V1 完整 CLAUDE.md 已保留於 `CLAUDE.backup.md`。如需查閱 V1 架構（M
 
 ---
 
-**Last Updated**: 2026-06-08 (Sprint 57.88 — durable HITL pause-resume 地基 A keystone spike; design note `19-pause-resume-design.md`); see `memory/` for sprint history
+**Last Updated**: 2026-06-08 (Sprint 57.89 — run() re-entrancy refactor Slice 1: extract `_run_turns`, pure extraction; REFACTOR-006); see `memory/` for sprint history
 **Project Start**: 2025-11-14
 **V2 Authority**: `docs/03-implementation/agent-harness-planning/` (21 docs — 20 規劃 + 1 review)
 **V1 Reference**: `CLAUDE.backup.md` + `docs/07-analysis/V9/00-index.md`

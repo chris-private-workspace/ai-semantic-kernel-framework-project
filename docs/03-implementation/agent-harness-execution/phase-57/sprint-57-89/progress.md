@@ -40,3 +40,44 @@
 ### go/no-go = **GO** (scope unchanged; raw-locals signature adopted per D-DAY0-1; verbatim-move strategy locks zero-behavior-change)
 
 ### Next: Day 1 — extract `_run_turns` (programmatic verbatim move + dedent, like Sprint 57.71's 472-line re-indent) → run() delegates → full regression gate (pytest UNCHANGED).
+
+---
+
+## Day 1 — 2026-06-08 — Extraction + full gate (parent-direct)
+
+Parent-direct (no agent delegation — high-blast-radius 主流量 extraction per plan §7). Programmatic move (the Sprint 57.71 pattern), parent-run gates.
+
+### Done (US-1/US-2/US-3 + the AP-1 fallout)
+- **Extraction** — dry-run script confirmed the boundary (CRLF; `while True` @1035 unique; try-`finally` @1832 unique; 797-line block; all non-blank lines ≥8-space indent → clean dedent-by-8). Applied: verbatim move + uniform dedent-by-8 into NEW `_run_turns(self, *, session_id, messages, turn_count, tokens_used, metrics_acc, ctx, root_ctx) -> AsyncIterator[LoopEvent]`; `run()` keeps input guardrail + LOOP-span try/finally and delegates via `async for ev in self._run_turns(...): yield ev`. File 2240 → 2272 lines (+32 = sig+delegation; body moved). `py_compile` OK.
+- **Raw-locals signature (D-DAY0-1)** adopted over plan §3.1's LoopState carrier — lower-risk + still resume-reusable. `mypy loop.py` "no issues" CONFIRMS no undefined free variable (a missing param would be `[name-defined]`).
+- **AP-1 lint false positive fixed** — `check_ap1_pipeline_disguise.py` required the `while` lexically in `run()`; extraction moved it to `_run_turns`. Added delegation-aware `run_drives_while_loop()` (run() may drive the loop via a sibling it calls; one hop). Intent preserved (for-pipeline-behind-helper still fails). Detector test +2 (delegated-while passes / delegated-no-while fails) + stale "must contain"→"must drive" assertion fixed. `black`-clean (E501-at-79 from running flake8 at repo root w/o the backend `.flake8` 100-config = false alarm; scripts/lint not in CI flake8 scope; my lines ≤88).
+
+### Parent re-verify (all gates run by parent)
+- **pytest 2231 passed / 4 skipped** = 2229 (loop extraction **UNCHANGED** — the zero-behavior-change proof) + 2 (new AP-1 detector tests). 104s.
+- `mypy src/` **0 / 346** ✅ · `run_all` **10/10** ✅ (AP-1 delegation-aware green) · black + isort + flake8 clean (loop.py + detector + test).
+- `test_reconstructs_loop_turn_operation_tree_with_correct_nesting` + 8 pause-resume unit + 5 integration green (span tree + pause path intact — both in the 2231).
+- **Scope-guard**: `git diff main -- loop.py` → 0 +/- lines touching `resume()` / `_resume_continuation` (byte-unchanged; Slice 2 untouched).
+
+### Justified test-count delta (honest)
+- Plan §Acceptance said "pytest UNCHANGED (2229)". Actual 2231 = 2229 **unchanged for the loop extraction** (the contract held) + 2 NEW detector tests. The +2 is the AP-1 detector enhancement (a necessary consequence — the lint had to learn the legitimate delegation pattern), NOT a smuggled behavior change. Documented per the "no silent scope change" rule.
+
+### Files changed (Day-1)
+- `backend/src/agent_harness/orchestrator_loop/loop.py` (extract `_run_turns` + run() delegates + MHist)
+- `scripts/lint/check_ap1_pipeline_disguise.py` (delegation-aware while check + docstring/MHist)
+- `backend/tests/unit/scripts/lint/test_ap1_pipeline_disguise.py` (+2 tests + assertion fix)
+- Commit `75243368`.
+
+### Next: closeout — REFACTOR-006 + retrospective + calibration + MEMORY.md + CLAUDE.md lean; push + PR (user-authorized).
+
+---
+
+## Day 2-4 (compressed) — 2026-06-08 — Closeout
+
+The extraction + full gate landed Day-1 (single mechanical move; the per-day split in the checklist collapsed since a pure extraction is one atomic change verified by the unchanged suite). Closeout:
+- REFACTOR-006 written.
+- retrospective.md (Q1-Q7 + calibration).
+- calibration-log §3: `backend-core-loop-refactor` 0.55 (NEW, 1 pt, caveated) + `agent_factor` 1.0 (parent-direct).
+- MEMORY.md pointer + `project_phase57_89_run_loop_reentrancy.md` subfile + CLAUDE.md lean.
+- No drive-through (no user-facing change — Slice 1 gate is the unchanged suite; Slice 2 carries the drive-through).
+
+### Next: closeout-docs commit + push + PR — user-authorized.
