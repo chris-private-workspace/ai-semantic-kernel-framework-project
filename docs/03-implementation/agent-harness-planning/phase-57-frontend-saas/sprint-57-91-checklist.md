@@ -20,58 +20,50 @@
 
 ### 0.2 Branch
 - [x] Branch `feature/sprint-57-91-generalized-pause-input-escalate` from `main` (`1cf0ceb4`)
-- [ ] plan + checklist + progress committed (Day-0 commit)
+- [x] plan + checklist + progress committed (Day-0 commit `faee9a27`)
 
 ---
 
 ## Day 1 — Generalized primitive + input ESCALATE branch (US-1/US-2/US-4/US-5)
 
 ### 1.1 `_emit_deferred_pause` primitive + tool reroute (US-1)
-- [ ] **NEW `_emit_deferred_pause(...)`** — the durable-pause tail (checkpoint `pending_approval` + audit + `LoopCompleted(awaiting_approval)`); caller pre-builds the ApprovalRequest + yields ApprovalRequested
-  - DoD: helper exists; signature `(*, request_id, pending_approval, messages, turn_count, session_id, audit_event_type, audit_content, ctx)`
-- [ ] **Route `_cat9_hitl_branch` deferred tail through it** — `pending_approval` gains `"kind":"tool"`; behavior byte-identical
-  - Verify: `pytest test_loop_pause_resume.py -q` tool-path cases pass UNCHANGED; grep the deferred tail now calls `_emit_deferred_pause`
-- [ ] **mypy clean** on the helper + reroute — `mypy src/agent_harness/orchestrator_loop/loop.py` Success
+- [x] **NEW `_emit_deferred_pause(...)`** — durable-pause tail (checkpoint + audit + `awaiting_approval`); signature `(*, request_id, pending_approval, messages, turn_count, session_id, audit_event_type, audit_content, ctx)` (loop.py)
+- [x] **Route `_cat9_hitl_branch` deferred tail through it** — `pending_approval` gains `"kind":"tool"`; behavior byte-identical (14 tool-path pause-resume tests pass UNCHANGED)
+- [x] **mypy clean** on the helper + reroute — `mypy src --strict` Success (347 files)
 
 ### 1.2 `_cat9_input_check` ESCALATE branch (US-2/US-4)
-- [ ] **Extend `_cat9_input_check` signature** (`session_id`/`messages`/`turn_count`) + update `run()` call site (`:1032`)
-- [ ] **ESCALATE→input-pause branch** — build input `ApprovalRequest` + `ApprovalRequested` + `_emit_deferred_pause(input-kind)`; no-identity / persist-fail → BLOCK (mirror tool path)
-  - DoD: `pending_approval = {"kind":"input", "approval_request_id":…, "turn":…}` (no `tool_call`)
-- [ ] **ESCALATE-without-HITL → BLOCK** (fail closed, US-4) — `elif action != PASS` covers BLOCK/SANITIZE/REROLL + ESCALATE-no-HITL
+- [x] **Extend `_cat9_input_check` signature** (`session_id`/`messages`/`turn_count`) + update `run()` call site
+- [x] **ESCALATE→input-pause branch** — new `_cat9_input_hitl_pause` builds input `ApprovalRequest` + `ApprovalRequested` + `_emit_deferred_pause(input-kind)`; no-identity / persist-fail → BLOCK (mirror tool path); `pending_approval = {"kind":"input", ...}` (no `tool_call`)
+- [x] **ESCALATE-without-HITL → BLOCK** (fail closed, US-4) — `elif action != PASS` covers BLOCK/SANITIZE/REROLL + ESCALATE-no-HITL (test_input_escalate_without_hitl_blocks)
 
 ### 1.3 `KeywordEscalationGuardrail` + handler wiring (US-5)
-- [ ] **NEW `guardrails/input/escalation_keyword_detector.py`** — `KeywordEscalationGuardrail(Guardrail)`, `GuardrailType.INPUT`, ESCALATE on configured phrase; PASS otherwise; file header
-  - Verify: `mypy` clean; export from `input/__init__.py` if package re-exports
-- [ ] **Handler wiring** (`api/v1/chat/handler.py`) — `CHAT_HITL_ESCALATE_INPUT_PHRASES` + `engine.register(KeywordEscalationGuardrail(...))` when `hitl_manager` present
+- [x] **NEW `guardrails/input/escalation_keyword_detector.py`** — `KeywordEscalationGuardrail(Guardrail)`, `GuardrailType.INPUT`, ESCALATE on configured phrase; PASS otherwise; exported from `input/__init__.py`; mypy clean
+- [x] **Handler wiring** (`api/v1/chat/handler.py`) — `CHAT_HITL_ESCALATE_INPUT_PHRASES = {"approval required"}` + `engine.register(KeywordEscalationGuardrail(...), priority=5)` gated on `hitl_manager is not None`
 
 ---
 
 ## Day 2 — resume() kind-branch + tests (US-3)
 
 ### 2.1 `resume()` kind-branch (US-3)
-- [ ] **Branch on `pending_approval["kind"]`** (default `"tool"`) after `ApprovalReceived`
-  - input-kind: APPROVED → audit + fall through to shared `_run_turns` drive (NO tool exec); REJECTED → `GuardrailTriggered(input, block)` + `GUARDRAIL_BLOCKED`
-  - tool-kind: move `pending_tc` build here; existing exec/append (unchanged)
-  - DoD: the shared `metrics_acc` + LOOP span + `_run_turns` drive reached by both kinds
-- [ ] **mypy clean** on the restructured `resume()` — `mypy src/` 0/346
+- [x] **Branch on `pending_approval["kind"]`** (default `"tool"`) after `ApprovalReceived` — input-kind: APPROVED → audit + fall through to shared `_run_turns` (NO tool exec); REJECTED → `GuardrailTriggered(input, block)` + `GUARDRAIL_BLOCKED`. tool-kind: `pending_tc` build moved here; exec/append unchanged. Shared `metrics_acc`+LOOP span+`_run_turns` reached by both kinds.
+- [x] **mypy clean** on the restructured `resume()` — `mypy src --strict` 0 (347 files)
 
 ### 2.2 Unit tests (US-2/US-3/US-4)
-- [ ] **Input pause** — input ESCALATE → `ApprovalRequested` + checkpoint `pending_approval{kind:"input"}` + `LoopCompleted(awaiting_approval)`; assert NO LLM call happened
-- [ ] **Input resume APPROVED** — drives `_run_turns` to `end_turn`, NO `ToolCall*` events (no tool exec)
-- [ ] **Input resume REJECTED** — `GuardrailTriggered(input, block)` + `GUARDRAIL_BLOCKED`
-- [ ] **ESCALATE-without-HITL → BLOCK** (fail closed, US-4)
-- [ ] **`KeywordEscalationGuardrail` unit test** (`tests/unit/agent_harness/guardrails/test_escalation_keyword_detector.py`) — match→ESCALATE / no-match→PASS
-- [ ] **Tool-path tests UNCHANGED** — `pytest test_loop_pause_resume.py -q` 57.88-90 cases pass without edit (byte-identical tool deferred behavior)
-- [ ] **Span-tree + event-schema guards** — `run_all` 10/10 (incl. `check_event_schema_sync` + AP-1)
+- [x] **Input pause** — `test_input_escalate_pauses_before_llm`: ESCALATE → `ApprovalRequested` + checkpoint `pending_approval{kind:"input"}` (no tool_call) + `awaiting_approval`; FakeChatClient(responses=[]) proves NO LLM call
+- [x] **Input resume APPROVED** — `test_resume_input_approved_continues_no_tool`: drives `_run_turns` to `end_turn` + LOOP span; NO `ToolCallExecuted`; `not executor.executed`
+- [x] **Input resume REJECTED** — `test_resume_input_rejected_blocks`: `GuardrailTriggered(input, block)` + `GUARDRAIL_BLOCKED`
+- [x] **ESCALATE-without-HITL → BLOCK** — `test_input_escalate_without_hitl_blocks` (fail closed, US-4)
+- [x] **`KeywordEscalationGuardrail` unit test** (7 tests: type/match/case/no-match/empty/blank-drop/Message-extract)
+- [x] **Tool-path tests UNCHANGED** — 57.88-90 cases pass without edit (byte-identical tool deferred behavior)
+- [x] **Span-tree + event-schema guards** — `run_all` 10/10 (incl. `check_event_schema_sync` + AP-1; no new events)
 
 ---
 
 ## Day 3 — Full regression + drive-through (US-6) + CHANGE-058
 
 ### 3.1 Full gate sweep
-- [ ] **Full backend pytest green (NET delta documented)** — baseline 2232 → +N (the new input + guardrail tests); NO test deleted
-  - Verify: `python -m pytest -q`
-- [ ] **mypy 0 + run_all 10/10 + format chain** — mypy `src/` 0; run_all 10/10 (LLM SDK leak 0; AP-1; AP-8; event-schema sync); black/isort/flake8 clean
+- [x] **Full backend pytest green (NET delta documented)** — baseline 2232 → **2243 passed / 4 skipped** = +11 (4 input pause-resume unit + 7 guardrail unit); NO test deleted
+- [x] **mypy 0 + run_all 10/10 + format chain** — mypy `src --strict` 0 (347 files); run_all 10/10 (LLM SDK leak 0; AP-1; AP-8; event-schema sync); black/isort/flake8 clean
 
 ### 3.2 Drive-through (US-6 — input pause is user-facing)
 - [ ] **Clean backend restart (Risk Class E)** — `dev.py restart backend` kill stale `--reload` workers → fresh process (committed code incl. the new guardrail); real Azure gpt-5.2 from repo-root `.env`
