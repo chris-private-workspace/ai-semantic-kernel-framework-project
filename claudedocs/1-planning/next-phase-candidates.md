@@ -6,11 +6,23 @@
 
 ---
 
-## 🆕 Sprint 57.90 Carryover — `AD-Resume-Continuation-Fidelity` CLOSED (Slice 1+2); Slice 3 + subagent child-loop next
+## 🆕 Sprint 57.91 Carryover — Slice 3 leg 1 SHIPPED (generalized pause primitive + input-ESCALATE); legs 2/3 + subagent next
+
+**Source**: Sprint 57.91 closed 2026-06-08 — Slice 3 leg 1: extracted the generalized `_emit_deferred_pause` primitive (durable-pause tail decoupled from a tool; `pending_approval.kind` discriminator) + the FIRST new pause point = input-guardrail ESCALATE (pauses before any LLM call, no tool; resume continues to the first LLM turn). New `KeywordEscalationGuardrail` (Cat 9 input). Drive-through PASS (no frontend change). Detail: `memory/project_phase57_91_generalized_pause_input_escalate.md` + CHANGE-058 + `19-pause-resume-design.md §5`.
+
+- **Slice 3 leg 2 — between-turns pause** (🔴 the natural next leg) — a policy gate inside `_run_turns` (budget / turn-count / periodic check-in → pause via the shipped `_emit_deferred_pause` primitive). Needs a trigger-policy design. ~1 sprint.
+- **Slice 3 leg 3 — mid-thinking pause** (🟡 hardest) — interrupt an in-flight streaming LLM call. Separate.
+- **Output-guardrail ESCALATE pause** (🟢 small) — the primitive supports it (an output ESCALATE → pause before the answer is committed). Possible smaller future leg.
+- **Subagent child-loop (Cat 11)** (🟡 downstream) — consumes the shared re-enterable `_run_turns` + the now-generalized pause machinery. Distinct larger sprint; the 地基 A lifecycle 骨架 feeds it.
+- 57.88 carryover ADs unchanged: `AD-Resume-Checkpoint-Bloat` (the input pause adds another `resume_messages` writer) / `AD-Resume-Tenant-Capability-Policy` (now also per-tenant input-escalation phrases) / `AD-Resume-Reject-Path` (an input-kind reject leaves a dangling checkpoint the same way).
+
+---
+
+## Sprint 57.90 Carryover — `AD-Resume-Continuation-Fidelity` CLOSED (Slice 1+2); Slice 3 leg 1 ✅ DONE (Sprint 57.91)
 
 **Source**: Sprint 57.90 closed 2026-06-08 — Slice 2/2: rewired `resume()` onto the shared `_run_turns` + DELETED `_resume_continuation` + multi-pause-per-run + drive-through PASS. **`AD-Resume-Continuation-Fidelity` is now CLOSED.** Detail: `memory/project_phase57_90_resume_reentrancy_slice_2.md` + CHANGE-057 + `19-pause-resume-design.md §5`.
 
-- **`AD-Resume-Continuation-Fidelity` Slice 3** (🔴 the immediate next step) — generalized pause points (input ESCALATE / mid-thinking / between-turns), now enabled by the shared `_run_turns` + checkpoint-everywhere. Per-pause-point drive-through. ~1-2 sprint.
+- **`AD-Resume-Continuation-Fidelity` Slice 3** — ✅ **leg 1 DONE (Sprint 57.91)**: generalized pause primitive + input-ESCALATE pause point (see Sprint 57.91 Carryover above); legs 2/3 (between-turns / mid-thinking) carried forward there.
 - **Subagent child-loop (Cat 11)** (🟡 downstream) — consumes the shared re-enterable `_run_turns` (no longer inherits the reduced-copy debt — a child loop can now pause/resume properly). Distinct larger sprint; the 地基 A lifecycle 骨架 (pause-resume + re-entrant loop) now feeds it.
 - **Cat 8 retry on the resumed pre-approved pending-tool exec** (🟢 minor, deferred plan §9) — the pending tool currently executes raw (already approved); wrapping that single bridge exec in Cat 8 retry is a minor enhancement (a failure already surfaces to the continuation LLM).
 - 57.88 carryover ADs unchanged: `AD-Resume-Checkpoint-Bloat` / `AD-Resume-Tenant-Capability-Policy` / `AD-Resume-Reject-Path` (see Sprint 57.88 Carryover below).

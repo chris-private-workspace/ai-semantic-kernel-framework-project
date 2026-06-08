@@ -23,6 +23,8 @@ The blocking `wait_for_decision` (which held the SSE connection open until a hum
 
 The existing governance decide endpoint (`POST /governance/approvals/{id}/decide`), `ApprovalRequested`/`ApprovalReceived` events, and frontend `ApprovalCard`/`HITLTurn` are reused as-is.
 
+> **Sprint 57.91 (Slice 3 leg 1, CHANGE-058)** generalized the above: the durable-pause tail (US-1/US-2) was extracted into `_emit_deferred_pause(...)` decoupled from a tool call, and `pending_approval` gained a `"kind"` discriminator (`"tool"` carries a tool_call; `"input"` carries none). The first non-tool pause point — an input-guardrail ESCALATE — pauses before any LLM call (input-kind) and `resume()` continues to the first LLM turn with no tool exec. The 57.88 events / endpoint / frontend are reused unchanged (the HITL card renders generically — an input pause shows `tool: —`). See §5 + CHANGE-058.
+
 ---
 
 ## 2. Decision Matrix
@@ -80,7 +82,8 @@ No NEW dataclass duplicated — `ApprovalRequest`/`ApprovalDecision`/`ApprovalRe
 - **`AD-Resume-Checkpoint-Bloat`** (NEW) — `resume_messages` self-contains the full conversation buffer in the pause checkpoint JSONB (no `messages` table). Long conversations → large rows; long-horizon retention (days) assumes messages persist. Production: a `messages` table / bounded summary + checkpoint TTL.
 - **`AD-Resume-Tenant-Capability-Policy`** (NEW) — the ESCALATE matrix is derived from the live `registry.list()` (every tool PASS except `echo_tool`). Production per-tenant `capability_matrix.yaml` policy (which tools require approval per tenant/role) is deferred.
 - **`AD-Resume-Reject-Path`** (NEW) — reject is recorded via the governance decide endpoint but the client does NOT call `/resume` on reject (the checkpoint is left dangling, not GC'd). A reject-then-resume (to emit the block + clean the checkpoint) or a checkpoint reaper is deferred.
-- **Generalized pause points / 地基 B cognition phases / subagent child-loop / session-list paused badge + cross-device resume / approval notification (email/webhook)** — all deferred (plan §9); 地基 A's lifecycle骨架 feeds the subagent build (a distinct larger sprint).
+- **Generalized pause points** — PARTIALLY SHIPPED (Sprint 57.91 Slice 3 leg 1, CHANGE-058): the durable-pause tail was extracted into the generalized `_emit_deferred_pause(...)` primitive (decoupled from a tool call; `pending_approval` gains a `"kind"` discriminator — `"tool"` carries a tool_call resume() re-executes, `"input"` carries none), and the FIRST new pause point — **input-guardrail ESCALATE** — was built on it: an input flagged ESCALATE pauses BEFORE any LLM call (input-kind, no tool), and `resume()` continues to the first LLM turn with no tool exec. Proven by 4 unit tests + a real-UI drive-through (`approval required: …` → pause `awaiting_approval` no LLM call → approve → "Paris"). STILL DEFERRED (legs 2/3): **between-turns pause** (a policy gate inside `_run_turns` — budget/turn/periodic check-in) and **mid-thinking pause** (interrupt an in-flight streaming LLM call); an **output-guardrail ESCALATE pause** is also a possible future leg (the primitive supports it).
+- **地基 B cognition phases / subagent child-loop / session-list paused badge + cross-device resume / approval notification (email/webhook)** — all deferred (plan §9); 地基 A's lifecycle骨架 feeds the subagent build (a distinct larger sprint).
 
 ---
 

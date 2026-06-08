@@ -45,6 +45,7 @@ Created: 2026-04-30 (Sprint 50.1 Day 2.2)
 Last Modified: 2026-06-08
 
 Modification History (newest-first):
+    - 2026-06-08: Sprint 57.91 — _emit_deferred_pause primitive + input-ESCALATE pause point
     - 2026-06-08: Sprint 57.90 Slice 2 — resume() drives shared _run_turns; delete the reduced copy
     - 2026-06-08: Sprint 57.89 Slice 1 — extract per-turn body into re-enterable _run_turns()
     - 2026-06-08: Sprint 57.88 US-2 D2 — pause checkpoint self-contains messages (decision B)
@@ -547,13 +548,45 @@ class AgentLoopImpl(AgentLoop):
         *,
         user_input: str,
         ctx: TraceContext,
+        session_id: UUID,
+        messages: list[Message],
+        turn_count: int = 0,
     ) -> AsyncIterator[LoopEvent]:
         """Cat 9 loop-start gating. Yields GuardrailTriggered/TripwireTriggered
         + LoopCompleted on block; nothing on PASS.
+
+        Sprint 57.91 (Slice 3 leg 1): an input-guardrail ESCALATE with the
+        deferred-HITL wiring PAUSES the loop (durable HITL) before any LLM call,
+        awaiting human approval of the input itself — the first generalized pause
+        point built on the _emit_deferred_pause primitive. `session_id` / `messages`
+        / `turn_count` are threaded so the pause can persist a resumable checkpoint
+        (input check runs at turn 0; the buffer is [system?, user]).
         """
         if self._guardrail_engine is not None:
             g_result = await self._guardrail_engine.check_input(user_input, trace_context=ctx)
             if g_result.action != GuardrailAction.PASS:
+                # ESCALATE + deferred wiring → durable input pause. Otherwise
+                # (BLOCK / SANITIZE / REROLL, or ESCALATE WITHOUT the HITL wiring)
+                # fall through to the soft block below — fail closed: an ESCALATE
+                # that cannot pause must NOT silently proceed.
+                if (
+                    g_result.action == GuardrailAction.ESCALATE
+                    and self._hitl_manager is not None
+                    and self._hitl_deferred
+                    and self._checkpointer is not None
+                    and self._reducer is not None
+                ):
+                    async for ev in self._cat9_input_hitl_pause(
+                        user_input=user_input,
+                        reason=g_result.reason or "escalated",
+                        ctx=ctx,
+                        session_id=session_id,
+                        messages=messages,
+                        turn_count=turn_count,
+                    ):
+                        yield ev
+                    return
+
                 await self._audit_log_safe(
                     event_type=f"guardrail.input.{g_result.action.value}",
                     content={
@@ -594,6 +627,126 @@ class AgentLoopImpl(AgentLoop):
                     trace_context=ctx,
                 )
                 return
+
+    async def _cat9_input_hitl_pause(
+        self,
+        *,
+        user_input: str,
+        reason: str,
+        ctx: TraceContext,
+        session_id: UUID,
+        messages: list[Message],
+        turn_count: int,
+    ) -> AsyncIterator[LoopEvent]:
+        """Cat 9 input-guardrail ESCALATE → durable HITL pause (Sprint 57.91).
+
+        The input analogue of the tool-call _cat9_hitl_branch deferred path:
+        build an input ApprovalRequest, emit ApprovalRequested, and pause via the
+        generalized _emit_deferred_pause primitive with an INPUT-kind
+        pending_approval (no tool_call). resume() of an input-kind pause runs no
+        tool — the approved input simply proceeds to the first LLM turn. The
+        caller (_cat9_input_check) gates on hitl_manager + hitl_deferred +
+        checkpointer + reducer; this method handles the remaining no-identity /
+        persist-failure cases by failing closed to a soft block
+        (GuardrailTriggered(input, block) + GUARDRAIL_BLOCKED) — an ESCALATE that
+        cannot pause must not proceed. risk_level defaults to HIGH (escalation
+        implies human review), mirroring _cat9_hitl_branch.
+        """
+        if self._hitl_manager is None:  # defensive; caller already checked
+            return
+
+        tenant_id = self._tenant_id or ctx.tenant_id
+        session_id_eff = ctx.session_id or session_id
+        if tenant_id is None or session_id_eff is None:
+            await self._audit_log_safe(
+                event_type="guardrail.input.escalate.no_identity",
+                content={"reason": reason},
+                ctx=ctx,
+            )
+            yield GuardrailTriggered(
+                guardrail_type="input",
+                action="block",
+                reason=f"escalation requires identity context: {reason}",
+                trace_context=ctx,
+            )
+            yield LoopCompleted(
+                stop_reason=TerminationReason.GUARDRAIL_BLOCKED.value,
+                total_turns=turn_count,
+                trace_context=ctx,
+            )
+            return
+
+        request_id = uuid4()
+        risk_level = RiskLevel.HIGH  # ESCALATE default; mirror _cat9_hitl_branch
+        sla_deadline = datetime.now(timezone.utc) + timedelta(seconds=self._hitl_timeout_s)
+        approval_req = ApprovalRequest(
+            request_id=request_id,
+            tenant_id=tenant_id,
+            session_id=session_id_eff,
+            requester="guardrails",
+            risk_level=risk_level,
+            payload={
+                "kind": "input",
+                "input_excerpt": user_input[:200],
+                "reason": reason,
+                "summary": "approve user input",
+            },
+            sla_deadline=sla_deadline,
+            context_snapshot={"trace_id": ctx.trace_id},
+        )
+
+        try:
+            await self._hitl_manager.request_approval(approval_req, trace_context=ctx)
+        except Exception as exc:  # noqa: BLE001 — fail closed on persistence error
+            await self._audit_log_safe(
+                event_type="guardrail.input.escalate.persist_failed",
+                content={"error": str(exc)},
+                ctx=ctx,
+            )
+            yield GuardrailTriggered(
+                guardrail_type="input",
+                action="block",
+                reason=f"approval persistence failed: {exc}",
+                trace_context=ctx,
+            )
+            yield LoopCompleted(
+                stop_reason=TerminationReason.GUARDRAIL_BLOCKED.value,
+                total_turns=turn_count,
+                trace_context=ctx,
+            )
+            return
+
+        await self._audit_log_safe(
+            event_type="guardrail.input.escalate.requested",
+            content={
+                "request_id": str(request_id),
+                "risk_level": risk_level.value,
+                "reason": reason,
+            },
+            ctx=ctx,
+        )
+        yield ApprovalRequested(
+            approval_request_id=request_id,
+            risk_level=risk_level.value,
+            trace_context=ctx,
+        )
+
+        pending_approval = {
+            "kind": "input",
+            "approval_request_id": str(request_id),
+            "turn": turn_count,
+        }
+        async for ev in self._emit_deferred_pause(
+            request_id=request_id,
+            pending_approval=pending_approval,
+            messages=messages,
+            turn_count=turn_count,
+            session_id=session_id_eff,
+            audit_event_type="guardrail.input.escalate.deferred",
+            audit_content={"request_id": str(request_id), "turn": turn_count},
+            ctx=ctx,
+        ):
+            yield ev
 
     async def _cat9_tool_check(
         self,
@@ -802,7 +955,12 @@ class AgentLoopImpl(AgentLoop):
             and self._reducer is not None
             and session_id is not None
         ):
+            # Sprint 57.91 (Slice 3 leg 1): route through the generalized
+            # _emit_deferred_pause primitive. The `kind` discriminator lets
+            # resume() pick the tool re-entry path (exec the pending tool) vs the
+            # input path (no tool). Behavior here is byte-identical to 57.88.
             pending_approval = {
+                "kind": "tool",
                 "tool_call": {
                     "name": tc.name,
                     "arguments": dict(tc.arguments),
@@ -811,31 +969,21 @@ class AgentLoopImpl(AgentLoop):
                 "approval_request_id": str(request_id),
                 "turn": turn_count,
             }
-            checkpoint_event = await self._emit_state_checkpoint(
-                session_id=session_id,
+            async for ev in self._emit_deferred_pause(
+                request_id=request_id,
+                pending_approval=pending_approval,
                 messages=messages if messages is not None else [],
                 turn_count=turn_count,
-                tokens_used=0,
-                source_category="orchestrator_loop:hitl_pause",
-                ctx=ctx,
-                pending_approval=pending_approval,
-            )
-            if checkpoint_event is not None:
-                yield checkpoint_event
-            await self._audit_log_safe(
-                event_type="guardrail.tool.escalate.deferred",
-                content={
+                session_id=session_id,
+                audit_event_type="guardrail.tool.escalate.deferred",
+                audit_content={
                     "tool": tc.name,
                     "request_id": str(request_id),
                     "turn": turn_count,
                 },
                 ctx=ctx,
-            )
-            yield LoopCompleted(
-                stop_reason=TerminationReason.AWAITING_APPROVAL.value,
-                total_turns=turn_count,
-                trace_context=ctx,
-            )
+            ):
+                yield ev
             return
 
         # 2b. Block for reviewer decision (cross-session resume supported by DB
@@ -883,6 +1031,57 @@ class AgentLoopImpl(AgentLoop):
             guardrail_type="tool",
             action="block",
             reason=f"approval {outcome.value.lower()}: {decision.reason or 'no reason'}",
+            trace_context=ctx,
+        )
+
+    async def _emit_deferred_pause(
+        self,
+        *,
+        request_id: UUID,
+        pending_approval: dict[str, Any],
+        messages: list[Message],
+        turn_count: int,
+        session_id: UUID,
+        audit_event_type: str,
+        audit_content: dict[str, Any],
+        ctx: TraceContext,
+    ) -> AsyncIterator[LoopEvent]:
+        """Generalized durable-pause tail (Sprint 57.91, 地基 A Slice 3 leg 1).
+
+        The shared end of EVERY durable pause: persist a resumable checkpoint
+        carrying ``pending_approval`` (+ the message buffer, via
+        _emit_state_checkpoint) in the existing state_snapshots JSONB (no
+        migration), audit, and terminate with ``awaiting_approval`` — releasing
+        the SSE connection so a later resume() can re-enter. Decoupled from WHAT
+        is being approved: the caller has already created + persisted the
+        ApprovalRequest, yielded ApprovalRequested, and built the
+        ``pending_approval`` payload (``kind`` discriminator: "tool" carries a
+        tool_call resume() re-executes, "input" carries none — resume() just
+        continues to the first LLM turn). Shared by the tool-call ESCALATE branch
+        (_cat9_hitl_branch) and the input-guardrail ESCALATE branch
+        (_cat9_input_check). Requires Cat 7 (reducer + checkpointer + tenant_id);
+        the caller gates on that — if a checkpoint cannot persist, the caller
+        falls back to its block path (it cannot offer a resumable pause).
+        """
+        checkpoint_event = await self._emit_state_checkpoint(
+            session_id=session_id,
+            messages=messages,
+            turn_count=turn_count,
+            tokens_used=0,
+            source_category="orchestrator_loop:hitl_pause",
+            ctx=ctx,
+            pending_approval=pending_approval,
+        )
+        if checkpoint_event is not None:
+            yield checkpoint_event
+        await self._audit_log_safe(
+            event_type=audit_event_type,
+            content=audit_content,
+            ctx=ctx,
+        )
+        yield LoopCompleted(
+            stop_reason=TerminationReason.AWAITING_APPROVAL.value,
+            total_turns=turn_count,
             trace_context=ctx,
         )
 
@@ -1029,7 +1228,13 @@ class AgentLoopImpl(AgentLoop):
                 #   tripwire trigger         → TripwireTriggered + audit
                 #                              + LoopCompleted(TRIPWIRE)
                 # No-op when corresponding deps are None (53.2 baseline).
-                async for ev in self._cat9_input_check(user_input=user_input, ctx=ctx):
+                async for ev in self._cat9_input_check(
+                    user_input=user_input,
+                    ctx=ctx,
+                    session_id=session_id,
+                    messages=messages,
+                    turn_count=turn_count,
+                ):
                     yield ev
                     if isinstance(ev, LoopCompleted):
                         return
@@ -1864,15 +2069,18 @@ class AgentLoopImpl(AgentLoop):
         the buffer in its metadata — a SPIKE shortcut, see _emit_state_checkpoint
         + messages_from_metadata; production → `messages` table, plan §9).
 
-        Flow (this slice handles exactly ONE pending-tool approval):
+        Flow:
             1. Read pending_approval; if absent → LoopCompleted(ERROR).
             2. Non-blocking `HITLManager.get_decision(approval_request_id)`.
                 - undecided / no manager → LoopCompleted(ERROR) (caller should
                   have gated on decided; defensive).
-                - APPROVED  → execute the pending tool → append the observation
-                  as a tool message → drive the shared `_run_turns` to end_turn.
+                - APPROVED → branch on pending_approval["kind"] (Sprint 57.91):
+                    tool-kind  → execute the pending tool → append the observation
+                      as a tool message → drive the shared `_run_turns` to end_turn.
+                    input-kind → no tool; the approved input proceeds to the first
+                      LLM turn via the shared `_run_turns` drive.
                 - REJECTED / ESCALATED → GuardrailTriggered(block) +
-                  LoopCompleted(GUARDRAIL_BLOCKED); the tool is NOT executed.
+                  LoopCompleted(GUARDRAIL_BLOCKED); nothing is executed.
 
         Sprint 57.90 Slice 2 (closes AD-Resume-Continuation-Fidelity): after
         executing the pre-approved pending tool ONCE (outside the loop — already
@@ -1904,12 +2112,6 @@ class AgentLoopImpl(AgentLoop):
             )
             return
 
-        tc_data = pending.get("tool_call", {})
-        pending_tc = ToolCall(
-            id=str(tc_data.get("tool_call_id", "")),
-            name=str(tc_data.get("name", "")),
-            arguments=dict(tc_data.get("arguments", {})),
-        )
         request_id_raw = pending.get("approval_request_id")
         request_id = UUID(str(request_id_raw)) if request_id_raw is not None else None
 
@@ -1934,69 +2136,117 @@ class AgentLoopImpl(AgentLoop):
             trace_context=ctx,
         )
 
-        if decision.decision != DecisionType.APPROVED:
-            # REJECTED / ESCALATED → block the pending tool; terminate.
+        # Sprint 57.91 (Slice 3 leg 1): branch on the pause kind. An input-kind
+        # pause (no tool_call) was an input-guardrail ESCALATE before the first
+        # LLM call — APPROVED resumes by continuing to the first LLM turn (NO tool
+        # exec); the approved input proceeds exactly as it would have un-paused. A
+        # tool-kind pause (the 57.88 path) execs the pre-approved pending tool
+        # once, OUTSIDE the loop (already HITL-APPROVED → no re-escalation, the
+        # locked analysis-note §6.1 option (b)). Both kinds then drive the SHARED
+        # _run_turns. Default "tool" preserves any in-flight 57.88-era checkpoints.
+        kind = str(pending.get("kind", "tool"))
+        if kind == "input":
+            if decision.decision != DecisionType.APPROVED:
+                await self._audit_log_safe(
+                    event_type=f"resume.input.{decision.decision.value.lower()}",
+                    content={"request_id": str(request_id)},
+                    ctx=ctx,
+                )
+                yield GuardrailTriggered(
+                    guardrail_type="input",
+                    action="block",
+                    reason=f"approval {decision.decision.value.lower()}: "
+                    f"{decision.reason or 'no reason'}",
+                    trace_context=ctx,
+                )
+                yield LoopCompleted(
+                    stop_reason=TerminationReason.GUARDRAIL_BLOCKED.value,
+                    total_turns=turn_count,
+                    total_tokens=tokens_used,
+                    trace_context=ctx,
+                )
+                return
+            # APPROVED → no tool to execute; the approved input proceeds to the
+            # first LLM turn via the shared _run_turns drive below.
             await self._audit_log_safe(
-                event_type=f"resume.approval.{decision.decision.value.lower()}",
+                event_type="resume.input.approved",
+                content={"request_id": str(request_id)},
+                ctx=ctx,
+            )
+        else:
+            tc_data = pending.get("tool_call", {})
+            pending_tc = ToolCall(
+                id=str(tc_data.get("tool_call_id", "")),
+                name=str(tc_data.get("name", "")),
+                arguments=dict(tc_data.get("arguments", {})),
+            )
+            if decision.decision != DecisionType.APPROVED:
+                # REJECTED / ESCALATED → block the pending tool; terminate.
+                await self._audit_log_safe(
+                    event_type=f"resume.approval.{decision.decision.value.lower()}",
+                    content={"tool": pending_tc.name, "request_id": str(request_id)},
+                    ctx=ctx,
+                )
+                yield GuardrailTriggered(
+                    guardrail_type="tool",
+                    action="block",
+                    reason=f"approval {decision.decision.value.lower()}: "
+                    f"{decision.reason or 'no reason'}",
+                    trace_context=ctx,
+                )
+                yield LoopCompleted(
+                    stop_reason=TerminationReason.GUARDRAIL_BLOCKED.value,
+                    total_turns=turn_count,
+                    total_tokens=tokens_used,
+                    trace_context=ctx,
+                )
+                return
+
+            # --- APPROVED → execute the pending tool, then continue ----------
+            await self._audit_log_safe(
+                event_type="resume.approval.approved",
                 content={"tool": pending_tc.name, "request_id": str(request_id)},
                 ctx=ctx,
             )
-            yield GuardrailTriggered(
-                guardrail_type="tool",
-                action="block",
-                reason=f"approval {decision.decision.value.lower()}: "
-                f"{decision.reason or 'no reason'}",
-                trace_context=ctx,
-            )
-            yield LoopCompleted(
-                stop_reason=TerminationReason.GUARDRAIL_BLOCKED.value,
-                total_turns=turn_count,
-                total_tokens=tokens_used,
-                trace_context=ctx,
-            )
-            return
-
-        # --- APPROVED → execute the pending tool, then continue --------------
-        await self._audit_log_safe(
-            event_type="resume.approval.approved",
-            content={"tool": pending_tc.name, "request_id": str(request_id)},
-            ctx=ctx,
-        )
-        yield ToolCallRequested(
-            tool_call_id=pending_tc.id,
-            tool_name=pending_tc.name,
-            arguments=pending_tc.arguments,
-            trace_context=ctx,
-        )
-        exec_ctx = ExecutionContext(
-            tenant_id=ctx.tenant_id,
-            user_id=ctx.user_id,
-            session_id=ctx.session_id or session_id,
-        )
-        result = await self._tool_executor.execute(pending_tc, trace_context=ctx, context=exec_ctx)
-        tool_content = self._tool_result_to_text(result.content)
-        if result.success:
-            yield ToolCallExecuted(
+            yield ToolCallRequested(
                 tool_call_id=pending_tc.id,
                 tool_name=pending_tc.name,
-                duration_ms=result.duration_ms or 0.0,
-                result_content=tool_content,
+                arguments=pending_tc.arguments,
                 trace_context=ctx,
             )
-        else:
-            yield ToolCallFailed(
-                tool_call_id=pending_tc.id,
-                tool_name=pending_tc.name,
-                error=result.error or "unknown tool error",
-                trace_context=ctx,
+            exec_ctx = ExecutionContext(
+                tenant_id=ctx.tenant_id,
+                user_id=ctx.user_id,
+                session_id=ctx.session_id or session_id,
             )
-        messages.append(Message(role="tool", content=tool_content, tool_call_id=pending_tc.id))
+            result = await self._tool_executor.execute(
+                pending_tc, trace_context=ctx, context=exec_ctx
+            )
+            tool_content = self._tool_result_to_text(result.content)
+            if result.success:
+                yield ToolCallExecuted(
+                    tool_call_id=pending_tc.id,
+                    tool_name=pending_tc.name,
+                    duration_ms=result.duration_ms or 0.0,
+                    result_content=tool_content,
+                    trace_context=ctx,
+                )
+            else:
+                yield ToolCallFailed(
+                    tool_call_id=pending_tc.id,
+                    tool_name=pending_tc.name,
+                    error=result.error or "unknown tool error",
+                    trace_context=ctx,
+                )
+            messages.append(Message(role="tool", content=tool_content, tool_call_id=pending_tc.id))
 
         # --- Drive the SHARED re-enterable loop (Sprint 57.90 Slice 2) -------
-        # The pre-approved pending tool was already executed above (OUTSIDE the
-        # loop — the locked analysis-note §6.1 option (b); its observation is now
-        # in `messages`), so it does NOT re-enter `_cat9_hitl_branch` and cannot
-        # re-escalate. resume() now drives the SAME `_run_turns` run() uses, so
+        # Per kind, the approval-specific prep is done above: a tool-kind pause
+        # executed its pre-approved pending tool OUTSIDE the loop (locked
+        # analysis-note §6.1 option (b); its observation is now in `messages`) so
+        # it does NOT re-enter `_cat9_hitl_branch` and cannot re-escalate; an
+        # input-kind pause has no tool to run (the approved input just continues
+        # to the first LLM turn). Both now drive the SAME `_run_turns` run() uses, so
         # the resumed continuation gains Cat 4 compaction / Cat 7 checkpoints /
         # Cat 8 retry / Cat 9 per-tool deferred-pause + output guardrail / Cat 12
         # spans / HANDOFF — and a 2nd ESCALATE in the continuation checkpoints +

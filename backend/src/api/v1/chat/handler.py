@@ -30,6 +30,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.4)
 Last Modified: 2026-06-08
 
 Modification History (newest-first):
+    - 2026-06-08: Sprint 57.91 — wire KeywordEscalationGuardrail (input-ESCALATE pause trigger)
     - 2026-06-08: Sprint 57.88 Day-4 — ToolGuardrail (registry matrix) gates echo_tool ESCALATE
     - 2026-06-08: Sprint 57.88 US-1 — chat path opts into hitl_deferred=True (durable pause-resume)
     - 2026-06-02: Sprint 57.71 — thread tracer param through build_handler to loop (A-4 Tier 0)
@@ -69,6 +70,7 @@ from agent_harness._contracts import (
     ToolCall,
 )
 from agent_harness.guardrails import build_default_guardrail_engine
+from agent_harness.guardrails.input import KeywordEscalationGuardrail
 from agent_harness.guardrails.tool.capability_matrix import CapabilityMatrix, PermissionRule
 from agent_harness.guardrails.tool.tool_guardrail import ToolGuardrail
 from agent_harness.orchestrator_loop import AgentLoopImpl
@@ -117,6 +119,16 @@ DEMO_SYSTEM_PROMPT = (
 # (deferred — design note open question); the chat path derives the matrix from the
 # live tool registry instead (see build_real_llm_handler).
 CHAT_HITL_ESCALATE_TOOLS = frozenset({"echo_tool"})
+
+# Sprint 57.91 (地基 A Slice 3 leg 1): input phrases that ESCALATE the loop-start
+# input guardrail → a durable HITL pause BEFORE any LLM call (the generalized
+# input-ESCALATE pause point built on _emit_deferred_pause). The KeywordEscalation
+# Guardrail (input chain) returns ESCALATE on a case-insensitive substring match,
+# so a real "approval required: <question>" reliably pauses for approval of the
+# input itself. Deterministic demo trigger (analogous to echo_tool on the tool
+# path); production per-tenant escalation phrases would source from policy
+# (deferred AD). Only wired when a HITLManager is present (deferred pause needs it).
+CHAT_HITL_ESCALATE_INPUT_PHRASES = frozenset({"approval required"})
 
 
 def build_echo_demo_handler(
@@ -300,6 +312,15 @@ def build_real_llm_handler(
         ToolGuardrail(CapabilityMatrix(capability_to_tools={}, permission_rules=tool_rules)),
         priority=10,
     )
+    # Sprint 57.91 (Slice 3 leg 1): wire the input-ESCALATE pause trigger only when
+    # a HITLManager is present (the deferred pause needs it; without it an ESCALATE
+    # would fail closed to BLOCK). Priority 5 runs it before PII / Jailbreak — it
+    # PASSes any non-trigger input, so the rest of the input chain still runs.
+    if hitl_manager is not None:
+        guardrail_engine.register(
+            KeywordEscalationGuardrail(CHAT_HITL_ESCALATE_INPUT_PHRASES),
+            priority=5,
+        )
 
     loop = AgentLoopImpl(
         chat_client=chat_client,

@@ -1,8 +1,8 @@
 """
 File: backend/tests/unit/agent_harness/orchestrator_loop/test_loop_pause_resume.py
 Purpose: Unit tests for 57.88 durable HITL pause-resume (deferred branch + resume()).
-Category: Tests / 範疇 1 + 範疇 7 + §HITL Centralization
-Scope: Phase 57 / Sprint 57.88 (US-1 / US-3) + Sprint 57.90 Slice 2 (multi-pause)
+Category: Tests / 範疇 1 + 範疇 7 + 範疇 9 + §HITL Centralization
+Scope: Phase 57 / Sprint 57.88 (US-1 / US-3) + 57.90 Slice 2 (multi-pause) + 57.91 (input-ESCALATE)
 
 Description:
     Validates the Stage-1 backend core of the durable HITL pause-resume spike:
@@ -17,9 +17,13 @@ Description:
     - Sprint 57.90 Slice 2: resume() now drives the shared `_run_turns` (it emits
       a LOOP span) and a 2nd approval-required tool in the resumed continuation
       pauses AGAIN (multi-pause-per-run) — impossible with the old reduced copy.
+    - Sprint 57.91 (Slice 3 leg 1): the generalized input-ESCALATE pause point —
+      an input-guardrail ESCALATE pauses BEFORE any LLM call (input-kind
+      pending_approval, no tool_call); ESCALATE without HITL fails closed to BLOCK;
+      resume() of an input-kind pause drives _run_turns with NO tool exec.
 
 Created: 2026-06-08 (Sprint 57.88)
-Last Modified: 2026-06-08 (Sprint 57.90 Slice 2 — multi-pause test + LOOP-span assertion)
+Last Modified: 2026-06-08 (Sprint 57.91 — input-ESCALATE pause + input-resume tests)
 """
 
 from __future__ import annotations
@@ -68,6 +72,9 @@ from agent_harness.guardrails._abc import (
     GuardrailType,
 )
 from agent_harness.guardrails.engine import GuardrailEngine
+from agent_harness.guardrails.input.escalation_keyword_detector import (
+    KeywordEscalationGuardrail,
+)
 from agent_harness.hitl import HITLManager
 from agent_harness.orchestrator_loop.loop import AgentLoopImpl
 from agent_harness.orchestrator_loop.termination import TerminationReason
@@ -707,6 +714,182 @@ async def test_resume_continuation_can_pause_again() -> None:
     assert pauses[-1].durable.metadata["pending_approval"]["tool_call"]["tool_call_id"] == "tc-2"
     # The 2nd pause re-requested approval (deferred) for the new tool.
     assert any(isinstance(e, ApprovalRequested) for e in events)
+
+
+# === Tests: input-ESCALATE pause point (57.91 Slice 3 leg 1) ================
+
+
+def _build_input_loop(
+    *,
+    chat_client: ChatClient,
+    hitl_manager: HITLManager,
+    hitl_deferred: bool,
+    checkpointer: InMemoryCheckpointer | None = None,
+    reducer: InMemoryReducer | None = None,
+    phrases: frozenset[str] = frozenset({"escalate me"}),
+) -> tuple[AgentLoopImpl, SpyExecutor]:
+    """A loop whose INPUT chain ESCALATEs on a trigger phrase (Sprint 57.91).
+
+    Wires the REAL KeywordEscalationGuardrail (input chain) so an input matching
+    the phrase routes through `_cat9_input_check` → `_cat9_input_hitl_pause` →
+    the generalized `_emit_deferred_pause` primitive (no tool involved).
+    """
+    registry = _registry_with_tool()
+    executor = _executor(registry)
+    engine = GuardrailEngine()
+    engine.register(KeywordEscalationGuardrail(phrases), priority=5)
+    loop = AgentLoopImpl(
+        chat_client=chat_client,
+        output_parser=OutputParserImpl(),
+        tool_executor=executor,
+        tool_registry=registry,
+        guardrail_engine=engine,
+        tenant_id=_TENANT_ID,
+        hitl_manager=hitl_manager,
+        hitl_deferred=hitl_deferred,
+        checkpointer=checkpointer,  # type: ignore[arg-type]
+        reducer=reducer,  # type: ignore[arg-type]
+    )
+    return loop, executor
+
+
+async def _run_with_input(loop: AgentLoopImpl, user_input: str) -> list[LoopEvent]:
+    session_id = uuid4()
+    ctx = TraceContext(tenant_id=_TENANT_ID, session_id=session_id)
+    return [
+        ev async for ev in loop.run(session_id=session_id, user_input=user_input, trace_context=ctx)
+    ]
+
+
+async def test_input_escalate_pauses_before_llm() -> None:
+    """Sprint 57.91: an input-guardrail ESCALATE (deferred wiring) pauses BEFORE
+    any LLM call — checkpoint pending_approval{kind:"input"} (no tool_call) +
+    LoopCompleted(awaiting_approval) + ApprovalRequested; the LLM is NEVER called.
+    """
+    # FakeChatClient with NO responses → raises if the loop ever calls the LLM,
+    # so a green test PROVES the pause happened before any LLM turn.
+    chat = FakeChatClient(responses=[])
+    hitl = SpyHITLManager(decision=DecisionType.APPROVED)
+    checkpointer = InMemoryCheckpointer()
+    reducer = InMemoryReducer()
+    loop, executor = _build_input_loop(
+        chat_client=chat,
+        hitl_manager=hitl,
+        hitl_deferred=True,
+        checkpointer=checkpointer,
+        reducer=reducer,
+    )
+
+    events = await _run_with_input(loop, "please escalate me now")
+
+    completes = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completes[-1].stop_reason == TerminationReason.AWAITING_APPROVAL.value
+    assert any(isinstance(e, ApprovalRequested) for e in events)
+    assert hitl.wait_called is False  # deferred, not blocking
+    assert not executor.executed  # no tool — input pause is before the loop body
+    # Checkpoint carries an INPUT-kind pending_approval (no tool_call).
+    pauses = [s for s in checkpointer.saved if "pending_approval" in s.durable.metadata]
+    assert pauses, "expected an input-pause checkpoint"
+    pa = pauses[-1].durable.metadata["pending_approval"]
+    assert pa["kind"] == "input"
+    assert "tool_call" not in pa
+    assert "approval_request_id" in pa
+
+
+async def test_input_escalate_without_hitl_blocks() -> None:
+    """Sprint 57.91 US-4: an input ESCALATE WITHOUT the deferred HITL wiring fails
+    closed to BLOCK (GUARDRAIL_BLOCKED), not silent-proceed."""
+    chat = FakeChatClient(responses=[])
+    loop, executor = _build_input_loop(
+        chat_client=chat,
+        hitl_manager=SpyHITLManager(decision=None),
+        hitl_deferred=False,  # HITL present but NOT deferred → cannot durably pause
+        checkpointer=None,
+        reducer=None,
+    )
+
+    events = await _run_with_input(loop, "please escalate me now")
+
+    completes = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completes[-1].stop_reason == TerminationReason.GUARDRAIL_BLOCKED.value
+    blocks = [e for e in events if isinstance(e, GuardrailTriggered)]
+    assert blocks and blocks[0].guardrail_type == "input"
+    assert not executor.executed
+
+
+def _paused_input_state(*, decision_session: UUID) -> LoopState:
+    """A paused checkpoint as an INPUT-kind pause would rehydrate it (no tool_call)."""
+    return LoopState(
+        transient=TransientState(
+            messages=[
+                Message(role="system", content="sys"),
+                Message(role="user", content="please escalate me now"),
+            ],
+            current_turn=0,
+            token_usage_so_far=0,
+        ),
+        durable=DurableState(
+            session_id=decision_session,
+            tenant_id=_TENANT_ID,
+            metadata={
+                "pending_approval": {
+                    "kind": "input",
+                    "approval_request_id": str(uuid4()),
+                    "turn": 0,
+                }
+            },
+        ),
+        version=StateVersion(
+            version=1,
+            parent_version=None,
+            created_at=_DATETIME_NOW,
+            created_by_category="orchestrator_loop:hitl_pause",
+        ),
+    )
+
+
+async def test_resume_input_approved_continues_no_tool() -> None:
+    """Sprint 57.91: resume() of an INPUT-kind pause, APPROVED → drives _run_turns
+    to end_turn WITHOUT executing any tool (the approved input proceeds to the
+    first LLM turn)."""
+    session_id = uuid4()
+    chat = FakeChatClient(responses=[("answer to the approved input", None, StopReason.END_TURN)])
+    hitl = SpyHITLManager(decision=DecisionType.APPROVED)
+    loop, executor = _build_resume_loop(chat_client=chat, hitl_manager=hitl)
+
+    state = _paused_input_state(decision_session=session_id)
+    ctx = TraceContext(tenant_id=_TENANT_ID, session_id=session_id)
+    events = [ev async for ev in loop.resume(state=state, trace_context=ctx)]
+
+    assert hitl.get_decision_called is True
+    received = [e for e in events if isinstance(e, ApprovalReceived)]
+    assert received and received[0].decision == DecisionType.APPROVED.value
+    # NO tool executed (input-kind has no pending tool).
+    assert not executor.executed
+    assert not any(isinstance(e, ToolCallExecuted) for e in events)
+    # Drove the shared _run_turns to end_turn (a LOOP span brackets it).
+    completes = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completes[-1].stop_reason == TerminationReason.END_TURN.value
+    assert any(isinstance(e, SpanStarted) and e.span_type == "LOOP" for e in events)
+
+
+async def test_resume_input_rejected_blocks() -> None:
+    """Sprint 57.91: resume() of an INPUT-kind pause, REJECTED →
+    GuardrailTriggered(input, block) + GUARDRAIL_BLOCKED; no LLM call."""
+    session_id = uuid4()
+    chat = FakeChatClient(responses=[])  # reject never calls the LLM
+    hitl = SpyHITLManager(decision=DecisionType.REJECTED)
+    loop, executor = _build_resume_loop(chat_client=chat, hitl_manager=hitl)
+
+    state = _paused_input_state(decision_session=session_id)
+    ctx = TraceContext(tenant_id=_TENANT_ID, session_id=session_id)
+    events = [ev async for ev in loop.resume(state=state, trace_context=ctx)]
+
+    blocks = [e for e in events if isinstance(e, GuardrailTriggered)]
+    assert blocks and blocks[0].guardrail_type == "input" and blocks[0].action == "block"
+    assert not executor.executed
+    completes = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completes[-1].stop_reason == TerminationReason.GUARDRAIL_BLOCKED.value
 
 
 # === Tests: HITLManager.get_decision (US-3) =================================

@@ -1,0 +1,88 @@
+# Sprint 57.91 — Checklist (Generalized Pause Primitive + Input-ESCALATE Pause Point — 地基 A Slice 3 leg 1)
+
+**Plan**: [`sprint-57-91-plan.md`](./sprint-57-91-plan.md)
+**Created**: 2026-06-08
+**Status**: Draft (code gated on Day-0 GO)
+
+> Rule: only `[ ]` → `[x]`; never delete unchecked items; defer with `🚧 + reason`.
+> CHANGE (feature add — new pause point) → CHANGE-058 record; no new design note (update `19-pause-resume-design.md §5`). Gate = full backend pytest green (NET delta documented) + **drive-through PASS** (input pause is user-facing). Locked scope: generalized primitive + input-ESCALATE only (between-turns / mid-thinking deferred to legs 2/3).
+
+---
+
+## Day 0 — Plan-vs-Repo Verify + Branch
+
+### 0.1 Three-prong Day-0 verify
+- [x] **Prong 1 (path)**: confirmed — `run()` input-check `loop.py:1032` (inside LOOP span) / `_cat9_input_check` `:545` (no ESCALATE, no session_id/messages) / `_cat9_hitl_branch` deferred tail `:799-839` / `resume()` `:1848` (`pending_tc` build `:1907`) / shared `_run_turns` drive `:2009-2042` / `_emit_state_checkpoint` `:2044`. Guardrails: `GuardrailAction.ESCALATE` `_abc.py:43`, `Guardrail` ABC `:57` (`check(*, content, trace_context)`), `GuardrailResult.risk_level` Literal `:54`, `GuardrailType.INPUT` `:32`, `engine.register/check_input` `engine.py:84/117`, input guardrails `input/pii_detector.py`+`jailbreak_detector.py`. Handler `CHAT_HITL_ESCALATE_TOOLS` `:119` + `build_default_guardrail_engine` `:294` + `ToolGuardrail` reg `:299` + `hitl_deferred` `:331`; same builder used by ResumeService. (progress.md Day-0 Prong 1)
+- [x] **Prong 2 (content)**: confirmed — (a) `check_input`→`_run_chain(INPUT)` carries ESCALATE (not tool-gated); (b) `resume()` builds `pending_tc` unconditionally `:1907` → move into tool-kind branch; (c) ResumeService tool-agnostic (no change); (d) `_emit_state_checkpoint` stores `resume_messages` only when `pending_approval` set (input pause inherits no-bloat); (e) frontend HITL card renders from `ApprovalRequested`+`awaiting_approval` (eyeball input card copy in drive-through, not trusting Explore). (progress.md Day-0 Prong 2)
+- [x] **Prong 3 (schema)**: N/A — no DB/migration/ORM change; `pending_approval.kind` additive JSONB. (progress.md Day-0)
+- [x] **Baseline capture**: baseline = main `1cf0ceb4` (57.90 merged): expected pytest 2232 / mypy 0/346 / run_all 10/10 / Vitest 772; re-confirm Day-1 before editing
+- [x] Catalogue D-DAY0-1..4 drift findings in progress.md; **go/no-go = GO** (primitive seam + input-pause path reachable end-to-end, no ResumeService/endpoint/migration change; all 4 drifts anticipated by plan §3)
+
+### 0.2 Branch
+- [x] Branch `feature/sprint-57-91-generalized-pause-input-escalate` from `main` (`1cf0ceb4`)
+- [x] plan + checklist + progress committed (Day-0 commit `faee9a27`)
+
+---
+
+## Day 1 — Generalized primitive + input ESCALATE branch (US-1/US-2/US-4/US-5)
+
+### 1.1 `_emit_deferred_pause` primitive + tool reroute (US-1)
+- [x] **NEW `_emit_deferred_pause(...)`** — durable-pause tail (checkpoint + audit + `awaiting_approval`); signature `(*, request_id, pending_approval, messages, turn_count, session_id, audit_event_type, audit_content, ctx)` (loop.py)
+- [x] **Route `_cat9_hitl_branch` deferred tail through it** — `pending_approval` gains `"kind":"tool"`; behavior byte-identical (14 tool-path pause-resume tests pass UNCHANGED)
+- [x] **mypy clean** on the helper + reroute — `mypy src --strict` Success (347 files)
+
+### 1.2 `_cat9_input_check` ESCALATE branch (US-2/US-4)
+- [x] **Extend `_cat9_input_check` signature** (`session_id`/`messages`/`turn_count`) + update `run()` call site
+- [x] **ESCALATE→input-pause branch** — new `_cat9_input_hitl_pause` builds input `ApprovalRequest` + `ApprovalRequested` + `_emit_deferred_pause(input-kind)`; no-identity / persist-fail → BLOCK (mirror tool path); `pending_approval = {"kind":"input", ...}` (no `tool_call`)
+- [x] **ESCALATE-without-HITL → BLOCK** (fail closed, US-4) — `elif action != PASS` covers BLOCK/SANITIZE/REROLL + ESCALATE-no-HITL (test_input_escalate_without_hitl_blocks)
+
+### 1.3 `KeywordEscalationGuardrail` + handler wiring (US-5)
+- [x] **NEW `guardrails/input/escalation_keyword_detector.py`** — `KeywordEscalationGuardrail(Guardrail)`, `GuardrailType.INPUT`, ESCALATE on configured phrase; PASS otherwise; exported from `input/__init__.py`; mypy clean
+- [x] **Handler wiring** (`api/v1/chat/handler.py`) — `CHAT_HITL_ESCALATE_INPUT_PHRASES = {"approval required"}` + `engine.register(KeywordEscalationGuardrail(...), priority=5)` gated on `hitl_manager is not None`
+
+---
+
+## Day 2 — resume() kind-branch + tests (US-3)
+
+### 2.1 `resume()` kind-branch (US-3)
+- [x] **Branch on `pending_approval["kind"]`** (default `"tool"`) after `ApprovalReceived` — input-kind: APPROVED → audit + fall through to shared `_run_turns` (NO tool exec); REJECTED → `GuardrailTriggered(input, block)` + `GUARDRAIL_BLOCKED`. tool-kind: `pending_tc` build moved here; exec/append unchanged. Shared `metrics_acc`+LOOP span+`_run_turns` reached by both kinds.
+- [x] **mypy clean** on the restructured `resume()` — `mypy src --strict` 0 (347 files)
+
+### 2.2 Unit tests (US-2/US-3/US-4)
+- [x] **Input pause** — `test_input_escalate_pauses_before_llm`: ESCALATE → `ApprovalRequested` + checkpoint `pending_approval{kind:"input"}` (no tool_call) + `awaiting_approval`; FakeChatClient(responses=[]) proves NO LLM call
+- [x] **Input resume APPROVED** — `test_resume_input_approved_continues_no_tool`: drives `_run_turns` to `end_turn` + LOOP span; NO `ToolCallExecuted`; `not executor.executed`
+- [x] **Input resume REJECTED** — `test_resume_input_rejected_blocks`: `GuardrailTriggered(input, block)` + `GUARDRAIL_BLOCKED`
+- [x] **ESCALATE-without-HITL → BLOCK** — `test_input_escalate_without_hitl_blocks` (fail closed, US-4)
+- [x] **`KeywordEscalationGuardrail` unit test** (7 tests: type/match/case/no-match/empty/blank-drop/Message-extract)
+- [x] **Tool-path tests UNCHANGED** — 57.88-90 cases pass without edit (byte-identical tool deferred behavior)
+- [x] **Span-tree + event-schema guards** — `run_all` 10/10 (incl. `check_event_schema_sync` + AP-1; no new events)
+
+---
+
+## Day 3 — Full regression + drive-through (US-6) + CHANGE-058
+
+### 3.1 Full gate sweep
+- [x] **Full backend pytest green (NET delta documented)** — baseline 2232 → **2243 passed / 4 skipped** = +11 (4 input pause-resume unit + 7 guardrail unit); NO test deleted
+- [x] **mypy 0 + run_all 10/10 + format chain** — mypy `src --strict` 0 (347 files); run_all 10/10 (LLM SDK leak 0; AP-1; AP-8; event-schema sync); black/isort/flake8 clean
+
+### 3.2 Drive-through (US-6 — input pause is user-facing) — **PASS**
+- [x] **Clean backend restart (Risk Class E)** — caught a stale pre-57.91 listener (PID 19056) serving old code via SO_REUSEADDR; killed all stale uvicorn procs → ONE clean backend (PID 50548, health 200, committed code). `HITL_ENABLED` default ON; `hitl_manager` present on run path.
+- [x] **Drive the input pause through real UI + real backend + real Azure** — `approval required: …` → pause (HITL card "tool: —" = input-kind, no answer, `loop_end awaiting_approval turns=0`, no LLM call) → Approve → `Decision: APPROVED` → resume → real gpt-5.2 answers "Paris" (`end_turn`). Observed-vs-intended table in progress.md Day 3.
+  - Evidence: `artifacts/sprint-57-91-input-pause-1-paused.png` + `-2-resumed-answer.png`
+- [x] **Frontend gap (if any) fixed** — NONE needed; the HITL card + Approve surfaced generically for a no-tool pause (events are tool-agnostic; `tool: —`)
+
+### 3.3 CHANGE-058 + design-note update
+- [x] `claudedocs/4-changes/feature-changes/CHANGE-058-generalized-pause-input-escalate.md` written
+- [x] `19-pause-resume-design.md §5` — "Generalized pause points" split into shipped (input-ESCALATE + `_emit_deferred_pause` primitive) + still-deferred (between-turns / mid-thinking); §1 pointer + `pending_approval.kind`
+- [x] `17-cross-category-interfaces.md` — `LoopCompleted` row: `awaiting_approval` now also originates from an input-guardrail ESCALATE (no new contract)
+
+---
+
+## Day 4 — Closeout
+
+### 4.1 Closeout
+- [x] Full validation (parent re-verified): pytest **2243** (+11) / mypy 0/347 / run_all 10/10 / tool-path tests unchanged / **drive-through PASS** (2 screenshots + observed-vs-intended table)
+- [x] progress.md (Day 0-4) + retrospective.md (Q1-Q7)
+- [x] Calibration: `backend-core-loop-refactor` 0.55 (3rd data point, caveated — feature-add shape) + `agent_factor` 1.0 (parent-direct); recorded `calibration-log.md §3`; carryover (Slice 3 legs 2/3 / subagent child-loop / 57.88 ADs) → next-phase-candidates.md
+- [x] MEMORY.md pointer + `project_phase57_91_*.md` subfile + CLAUDE.md lean (Current Sprint row + Last Updated) + CHANGE-058 + `19-pause-resume-design.md §5` + 17.md note updated
+- [ ] commit (Day 0-N) + push + PR — **push + PR pending user authorization**
