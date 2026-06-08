@@ -39,7 +39,7 @@ Created: 2026-06-08 (Sprint 57.88 Day 2 — US-4)
 Last Modified: 2026-06-08
 
 Modification History (newest-first):
-    - 2026-06-08: Sprint 57.88 Day-4 — wire HITLManager into default builder so resume() reads decision
+    - 2026-06-08: Sprint 57.88 Day-4 — wire HITLManager into default builder (resume get_decision)
     - 2026-06-08: Initial creation (Sprint 57.88 US-4) — durable pause-resume orchestration
 
 Related:
