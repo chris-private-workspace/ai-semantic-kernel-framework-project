@@ -68,3 +68,44 @@ All 4 drifts anticipated by the plan; scope shift ~0% (D-DAY0-1 only refined the
 - mypy `src --strict` **0** (350 files, +2). run_all **10/10** (LLM SDK leak 0; AP-1 pipeline-disguise; AP-8 PromptBuilder; event-schema sync — no new events). black/isort/flake8 clean.
 
 Next: Day 3 drive-through (real UI + real backend + real Azure) — the between-turns pause is user-facing.
+
+---
+
+## Day 3 — 2026-06-08 — Drive-through (US-6) + CHANGE-059
+
+### Clean backend restart (Risk Class E)
+
+`:8000` was owned by stale PID 50548 (the 57.91 drive-through process, running PRE-57.92 code — no `note_tool`, no between-turns guardrail). Full uvicorn tree killed: worker PID 16992 (`multiprocessing.spawn` child) + reloader PID 50548; `:8000` verified to have NO LISTEN state (only TimeWait). Fresh backend started via `dev.py start backend` → `:8000` LISTEN owned by **fresh PID 53688** (loads 57.92 code). Frontend was on `:3007` (dev.py restarted it → PID 6200; node, START only). Azure config present in root `.env` (all 4 keys SET).
+
+### Drive-through — real chat-v2 UI + real backend + real Azure gpt-5.2 — **PASS**
+
+Logged in via dev-login as `dan@acme.com · admin` / `acme-prod`; chat-v2 `real_llm` mode; sent **"note the word checkpoint"**.
+
+**Observed vs intended** (loop visualizer + turn blocks):
+
+| Step | Intended | Observed | ✓ |
+|------|----------|----------|---|
+| Turn 0 LLM | calls `note_tool` (DEMO_SYSTEM_PROMPT) | `llm_request model=gpt-5.2` → `llm_response 1 tool call` → `tool_call_request note_tool` | ✅ |
+| Tool exec | `note_tool` executes (NON-escalate) | `tool_call_result note_tool`, input `{"text":"checkpoint"}` → output `checkpoint`, `state_checkpointed v2` (turn 0 ran end-to-end INSIDE the loop) | ✅ |
+| Between-turns gate | ESCALATE at top of turn 1 on the output | `approval_requested risk=HIGH` AFTER the TURN span ended → `state_checkpointed v3` (the pause checkpoint) | ✅ |
+| Pause | `awaiting_approval`, no answer | `loop_end stop=awaiting_approval turns=1`; HITL card **`tool: —`** (between-turns-kind, no tool_call); no agent answer rendered | ✅ |
+| Frontend | renders the HITL card generically (no tool) | card shows `severity: HIGH / tool: — / policy: always_ask` + Approve/Reject; **NO frontend change needed** (events tool-agnostic) | ✅ |
+| Approve | resume continues to turn 1 LLM | clicked Approve → **`Decision: APPROVED`** | ✅ |
+| Resume | gate SKIPPED (no re-pause), LLM answers | turn block `stop: end_turn` → answer **"checkpoint"** (the verbatim note output); NO second pause | ✅ |
+
+Evidence: `artifacts/sprint-57-92-between-turns-1-paused.png` (HITL card, `tool: —`, `loop_end awaiting_approval turns=1`) + `artifacts/sprint-57-92-between-turns-2-resumed-answer.png` (`Decision: APPROVED` → `end_turn` "checkpoint").
+
+**Proven**: the between-turns pause works end-to-end on 主流量 — `note_tool` is non-escalate (reaches the between-turns boundary, unlike echo_tool which tool-escalates); the gate ESCALATEs on the just-completed turn's output; the pause is a no-tool (`tool: —`) HITL card the existing frontend renders unchanged; resume APPROVED skips the just-approved boundary (no re-pause) and the LLM answers. Drive-Through Acceptance satisfied (NOT gate-only).
+
+**Risk Class E re-applied**: did NOT trust `dev.py`'s prior state; killed ALL stale uvicorn procs (listener + spawn-worker) + verified `:8000` had no LISTEN owner before starting the fresh process.
+
+---
+
+## Day 4 — 2026-06-08 — Closeout
+
+- retrospective.md (Q1-Q7) written; calibration-log.md §3 57.92 entry (4th `backend-core-loop-refactor` data point, 2nd consecutive feature-add < 0.7 → `loop-pause-point-feature` ~0.40 split PROPOSED for the next pause-point plan).
+- CHANGE-059 + `19-pause-resume-design.md §5` (legs 1+2 SHIPPED, leg 3 deferred) + `17-cross-category-interfaces.md` (`LoopCompleted` 3rd origin + new `GuardrailType.BETWEEN_TURNS` enum value).
+- MEMORY subfile `project_phase57_92_between_turns_pause.md` + MEMORY.md pointer; CLAUDE.md lean (Current Sprint row + Last Updated footer); next-phase-candidates.md 57.92 carryover (leg 3 / output-guardrail ESCALATE / subagent child-loop / loop-pause-point-feature class).
+- Closeout commit; push + PR pending user authorization.
+
+**Final**: pytest **2254 / 4 skipped** (+11) · mypy 0/350 · run_all 10/10 · black/isort/flake8 clean · **drive-through PASS** (real UI + real backend + real Azure gpt-5.2; 2 screenshots). Input/tool pause-resume tests byte-unchanged. NO frontend change. One additive contract value (`GuardrailType.BETWEEN_TURNS`).

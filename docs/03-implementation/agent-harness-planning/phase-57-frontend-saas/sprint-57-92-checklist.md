@@ -77,24 +77,24 @@
 - [x] **Full backend pytest green (NET delta documented)** — baseline 2243 → **2254 passed / 4 skipped** = +11 (4 between-turns loop unit + 7 guardrail unit); NO test deleted
 - [x] **mypy 0 + run_all 10/10 + format chain** — mypy `src --strict` 0 (350 files); run_all **10/10** (LLM SDK leak 0; AP-1; AP-8; event-schema sync); black/isort/flake8 clean
 
-### 3.2 Drive-through (US-6 — between-turns pause is user-facing) — **PASS required**
-- [ ] **Clean backend restart (Risk Class E)** — kill ALL stale uvicorn (listener + spawn-worker); verify :8000 OWNER is the fresh PID; `HITL_ENABLED` ON; `note_tool` + `BetweenTurnsKeywordGuardrail` + demo prompt startup-wired
-- [ ] **Drive the between-turns pause through real UI + real backend + real Azure** — `note the word checkpoint, then confirm` → turn 0 `note_tool("checkpoint")` executes → top of turn 1 between-turns ESCALATE → pause (HITL card, no answer, `loop_end awaiting_approval`, turn-1 LLM not called) → Approve → `Decision: APPROVED` → resume → real gpt-5.2 answers (`end_turn`). Observed-vs-intended table in progress.md Day 3.
+### 3.2 Drive-through (US-6 — between-turns pause is user-facing) — **PASS**
+- [x] **Clean backend restart (Risk Class E)** — killed stale uvicorn worker 16992 + reloader 50548 (57.91 PRE-57.92 process); verified :8000 no LISTEN owner; fresh backend PID 53688 (57.92 code); frontend :3007 (PID 6200); Azure SET
+- [x] **Drove the between-turns pause through real UI + real backend + real Azure gpt-5.2** — `note the word checkpoint` → turn 0 `note_tool` exec (input `{text:checkpoint}` → output `checkpoint`, NON-escalate, `state_checkpointed v2`) → top of turn 1 `approval_requested risk=HIGH` → pause (HITL card **`tool: —`** between-turns-kind, `loop_end stop=awaiting_approval turns=1`, NO answer, turn-1 LLM not called) → Approve → `Decision: APPROVED` → resume → `stop: end_turn` answer **"checkpoint"** (gate skipped, NO re-pause). Observed-vs-intended table in progress.md Day 3.
   - Evidence: `artifacts/sprint-57-92-between-turns-1-paused.png` + `-2-resumed-answer.png`
-- [ ] **Frontend gap (if any) fixed** — likely NONE (events tool-agnostic; the HITL card surfaced generically for the input pause in leg 1)
+- [x] **Frontend gap** — NONE needed; the HITL card + Approve surfaced generically for a no-tool pause (`tool: —`; events tool-agnostic, as leg 1)
 
 ### 3.3 CHANGE-059 + design-note update
-- [ ] `claudedocs/4-changes/feature-changes/CHANGE-059-between-turns-pause.md` written
-- [ ] `19-pause-resume-design.md §5` — "Generalized pause points" split into shipped (input + between-turns) + still-deferred (mid-thinking); §1/§3 add the between-turns gate + `pending_approval.kind="between_turns"`
-- [ ] `17-cross-category-interfaces.md` — §2.1 add `GuardrailType.BETWEEN_TURNS`; §4.1/§5.3 note `awaiting_approval` now also originates from a between-turns guardrail ESCALATE
+- [x] `claudedocs/4-changes/feature-changes/CHANGE-059-between-turns-pause.md` written
+- [x] `19-pause-resume-design.md §5` — "Generalized pause points" split into shipped (leg 1 input + leg 2 between-turns) + still-deferred (leg 3 mid-thinking); MHist 57.91+57.92 lines
+- [x] `17-cross-category-interfaces.md` — `LoopCompleted` row: `awaiting_approval` 3rd origin = between-turns guardrail ESCALATE + new `GuardrailType.BETWEEN_TURNS` enum value (single-source `_abc.py`)
 
 ---
 
 ## Day 4 — Closeout
 
 ### 4.1 Closeout
-- [ ] Full validation (parent re-verified): pytest delta / mypy 0 / run_all 10/10 / input+tool-path tests unchanged / **drive-through PASS** (2 screenshots + observed-vs-intended table)
-- [ ] progress.md (Day 0-4) + retrospective.md (Q1-Q7)
-- [ ] Calibration: `backend-core-loop-refactor` 0.55 (4th data point, caveated — feature-add shape, 2nd consecutive) + `agent_factor` 1.0 (parent-direct); recorded `calibration-log.md §3`; if 2nd consecutive feature-add < 0.7 → flag `loop-pause-point-feature` split proposal; carryover (Slice 3 leg 3 mid-thinking / subagent child-loop / 57.88 ADs) → next-phase-candidates.md
-- [ ] MEMORY.md pointer + `project_phase57_92_*.md` subfile + CLAUDE.md lean (Current Sprint row + Last Updated) + CHANGE-059 + `19-pause-resume-design.md §5` + 17.md note updated
-- [ ] commit (Day 0-N) + push + PR — **push + PR pending user authorization**
+- [x] Full validation (parent re-verified): pytest **2254** (+11) / mypy 0/350 / run_all 10/10 / input+tool-path tests unchanged / **drive-through PASS** (2 screenshots + observed-vs-intended table)
+- [x] progress.md (Day 0-4) + retrospective.md (Q1-Q7)
+- [x] Calibration: `backend-core-loop-refactor` 0.55 (4th data point, caveated — feature-add shape, 2nd consecutive < 0.7) + `agent_factor` 1.0 (parent-direct); recorded `calibration-log.md §3`; flagged `loop-pause-point-feature` ~0.40 split PROPOSAL (3rd same-shape confirms); carryover (Slice 3 leg 3 / output-guardrail ESCALATE / subagent child-loop / 57.88 ADs) → next-phase-candidates.md
+- [x] MEMORY.md pointer + `project_phase57_92_between_turns_pause.md` subfile + CLAUDE.md lean (Current Sprint row + Last Updated) + CHANGE-059 + `19-pause-resume-design.md §5` + 17.md `LoopCompleted` 3rd-origin note updated
+- [ ] commit (Day 0-N) + push + PR — closeout commit done; **push + PR pending user authorization**
