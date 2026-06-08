@@ -42,9 +42,10 @@ Description:
     revisit if per-run override is needed.
 
 Created: 2026-04-30 (Sprint 50.1 Day 2.2)
-Last Modified: 2026-06-03
+Last Modified: 2026-06-08
 
 Modification History (newest-first):
+    - 2026-06-08: Sprint 57.89 Slice 1 — extract per-turn body into re-enterable _run_turns()
     - 2026-06-08: Sprint 57.88 US-2 D2 — pause checkpoint self-contains messages (decision B)
     - 2026-06-08: Sprint 57.88 US-1/US-3 — deferred-HITL pause branch + resume() impl
     - 2026-06-03: Sprint 57.75 A-5c — emit SpanStarted/Ended (6 sites) + MemoryAccessed per-hint
@@ -1032,38 +1033,182 @@ class AgentLoopImpl(AgentLoop):
                     if isinstance(ev, LoopCompleted):
                         return
 
-                while True:
-                    # === Pre-LLM termination checks ============================
-                    if should_terminate_by_turns(turn_count, self._max_turns):
-                        yield LoopCompleted(
-                            stop_reason=TerminationReason.MAX_TURNS.value,
-                            total_turns=turn_count,
-                            total_tokens=tokens_used,
-                            trace_context=ctx,
-                        )
-                        return
-                    if should_terminate_by_tokens(tokens_used, self._token_budget):
-                        yield LoopCompleted(
-                            stop_reason=TerminationReason.TOKEN_BUDGET.value,
-                            total_turns=turn_count,
-                            total_tokens=tokens_used,
-                            trace_context=ctx,
-                        )
-                        return
-                    if should_terminate_by_cancellation():
-                        yield LoopCompleted(
-                            stop_reason=TerminationReason.CANCELLED.value,
-                            total_turns=turn_count,
-                            total_tokens=tokens_used,
-                            trace_context=ctx,
-                        )
-                        return
+                async for ev in self._run_turns(
+                    session_id=session_id,
+                    messages=messages,
+                    turn_count=turn_count,
+                    tokens_used=tokens_used,
+                    metrics_acc=metrics_acc,
+                    ctx=ctx,
+                    root_ctx=root_ctx,
+                ):
+                    yield ev
+            finally:
+                yield SpanEnded(
+                    span_name="agent_loop.run",
+                    span_id=root_ctx.span_id,
+                    span_type="LOOP",
+                    duration_ms=(time.monotonic() - _root_ctx_t0) * 1000.0,
+                    trace_context=root_ctx,
+                )
 
-                    # === Compaction check (Sprint 52.1 Day 2.7) =================
-                    # Cat 4 Compactor: Pre-LLM context compaction. Optional injection
-                    # — when None, this is a no-op (50.x backward compat).
-                    if self._compactor is not None:
-                        compact_state = LoopState(
+    async def _run_turns(
+        self,
+        *,
+        session_id: UUID,
+        messages: list[Message],
+        turn_count: int,
+        tokens_used: int,
+        metrics_acc: LoopMetricsAccumulator,
+        ctx: TraceContext,
+        root_ctx: TraceContext,
+    ) -> AsyncIterator[LoopEvent]:
+        """Re-enterable per-turn loop (Sprint 57.89 Slice 1).
+
+        The verbatim per-turn body extracted from run() so a SINGLE source of
+        truth drives both run() (now) and resume() (Slice 2). Pure extraction:
+        zero behavior change. Operates on the raw per-run locals the caller owns
+        (session_id / messages / turn_count / tokens_used / metrics_acc) plus the
+        LOOP span ctx (root_ctx) the caller opened, so the per-turn TURN spans
+        nest under it. A `return` here ends the generator; the caller's LOOP-span
+        try/finally still fires SpanEnded(LOOP) on every exit path.
+        """
+        while True:
+            # === Pre-LLM termination checks ============================
+            if should_terminate_by_turns(turn_count, self._max_turns):
+                yield LoopCompleted(
+                    stop_reason=TerminationReason.MAX_TURNS.value,
+                    total_turns=turn_count,
+                    total_tokens=tokens_used,
+                    trace_context=ctx,
+                )
+                return
+            if should_terminate_by_tokens(tokens_used, self._token_budget):
+                yield LoopCompleted(
+                    stop_reason=TerminationReason.TOKEN_BUDGET.value,
+                    total_turns=turn_count,
+                    total_tokens=tokens_used,
+                    trace_context=ctx,
+                )
+                return
+            if should_terminate_by_cancellation():
+                yield LoopCompleted(
+                    stop_reason=TerminationReason.CANCELLED.value,
+                    total_turns=turn_count,
+                    total_tokens=tokens_used,
+                    trace_context=ctx,
+                )
+                return
+
+            # === Compaction check (Sprint 52.1 Day 2.7) =================
+            # Cat 4 Compactor: Pre-LLM context compaction. Optional injection
+            # — when None, this is a no-op (50.x backward compat).
+            if self._compactor is not None:
+                compact_state = LoopState(
+                    transient=TransientState(
+                        messages=list(messages),
+                        current_turn=turn_count,
+                        token_usage_so_far=tokens_used,
+                    ),
+                    durable=DurableState(
+                        session_id=session_id,
+                        # 53.1: real tenant when ctor-injected; else session_id fallback
+                        tenant_id=self._tenant_id or session_id,
+                    ),
+                    version=StateVersion(
+                        version=turn_count,
+                        parent_version=turn_count - 1 if turn_count > 0 else None,
+                        created_at=datetime.now(),
+                        created_by_category="orchestrator_loop",
+                    ),
+                )
+                # Sprint 57.71 (A-4 Tier 1, Stage 2): COMPACTION span brackets
+                # the compaction check. Opened only when a compactor is injected
+                # (gated above) — so a None-compactor turn emits no empty span.
+                # compact_if_needed always does real work when present (token
+                # counting + threshold eval), so the span is non-empty even on a
+                # no-trigger turn. The compactor's own internal tracer stays NoOp
+                # (loop is the single trace-tree owner, D8). NESTING: this check
+                # runs structurally BEFORE the per-turn TURN span opens (a
+                # surgical, no-control-flow-change wrap), so COMPACTION nests
+                # under root_ctx (the pre-turn loop-level position) rather than
+                # turn_ctx — faithfully reflecting the loop's real structure.
+                async with self._tracer.start_span(
+                    name="agent_loop.compaction",
+                    category=SpanCategory.CONTEXT_MGMT,
+                    trace_context=root_ctx,
+                    attributes={"span_type": "COMPACTION"},
+                ) as compaction_ctx:
+                    _compaction_ctx_t0 = time.monotonic()
+                    yield SpanStarted(
+                        span_name="agent_loop.compaction",
+                        span_id=compaction_ctx.span_id,
+                        parent_span_id=compaction_ctx.parent_span_id or "",
+                        span_type="COMPACTION",
+                        trace_context=compaction_ctx,
+                    )
+                    try:
+                        compaction_result = await self._compactor.compact_if_needed(
+                            compact_state, trace_context=ctx
+                        )
+                    finally:
+                        yield SpanEnded(
+                            span_name="agent_loop.compaction",
+                            span_id=compaction_ctx.span_id,
+                            span_type="COMPACTION",
+                            duration_ms=(time.monotonic() - _compaction_ctx_t0) * 1000.0,
+                            trace_context=compaction_ctx,
+                        )
+                if compaction_result.triggered and compaction_result.compacted_state is not None:
+                    messages = list(compaction_result.compacted_state.transient.messages)
+                    tokens_used = compaction_result.tokens_after
+                    strategy_label = (
+                        compaction_result.strategy_used.value
+                        if compaction_result.strategy_used is not None
+                        else "unknown"
+                    )
+                    yield ContextCompacted(
+                        tokens_before=compaction_result.tokens_before,
+                        tokens_after=compaction_result.tokens_after,
+                        compaction_strategy=strategy_label,
+                        messages_compacted=compaction_result.messages_compacted,
+                        duration_ms=compaction_result.duration_ms,
+                        trace_context=ctx,
+                    )
+
+            # === Per-turn marker (Sprint 50.2) ==========================
+            # Sprint 57.71 (A-4 Tier 1): TURN span per turn — wraps the
+            # genuine per-turn work (post-termination/compaction) so
+            # LLM_CALL / TOOL_EXEC nest under it (root_ctx -> turn_ctx ->
+            # operation). Opened AFTER the pre-LLM terminators so a final
+            # MAX_TURNS / budget exit does not emit an empty TURN span.
+            async with self._tracer.start_span(
+                name="agent_loop.turn",
+                category=SpanCategory.ORCHESTRATOR,
+                trace_context=root_ctx,
+                attributes={"span_type": "TURN", "turn": turn_count},
+            ) as turn_ctx:
+                _turn_ctx_t0 = time.monotonic()
+                yield SpanStarted(
+                    span_name="agent_loop.turn",
+                    span_id=turn_ctx.span_id,
+                    parent_span_id=turn_ctx.parent_span_id or "",
+                    span_type="TURN",
+                    trace_context=turn_ctx,
+                )
+                try:
+                    yield TurnStarted(turn_num=turn_count, trace_context=ctx)
+
+                    # === Cat 5 PromptBuilder (Sprint 52.2 Day 3.1) ==============
+                    # When prompt_builder is injected, build a per-turn artifact
+                    # replacing the raw `messages` list at LLM call time. Conversation
+                    # accumulator (`messages`) continues to grow with assistant + tool
+                    # messages — only the chat() input is rebuilt each turn.
+                    # When None, falls back to 50.x baseline (raw messages, no cache).
+                    chat_messages: list[Message] = messages
+                    cache_breakpoints: list[CacheBreakpoint] | None = None
+                    if self._prompt_builder is not None:
+                        build_state = LoopState(
                             transient=TransientState(
                                 messages=list(messages),
                                 current_turn=turn_count,
@@ -1071,7 +1216,8 @@ class AgentLoopImpl(AgentLoop):
                             ),
                             durable=DurableState(
                                 session_id=session_id,
-                                # 53.1: real tenant when ctor-injected; else session_id fallback
+                                # 53.1: real tenant when ctor-injected; else session_id
+                                # fallback
                                 tenant_id=self._tenant_id or session_id,
                             ),
                             version=StateVersion(
@@ -1081,762 +1227,622 @@ class AgentLoopImpl(AgentLoop):
                                 created_by_category="orchestrator_loop",
                             ),
                         )
-                        # Sprint 57.71 (A-4 Tier 1, Stage 2): COMPACTION span brackets
-                        # the compaction check. Opened only when a compactor is injected
-                        # (gated above) — so a None-compactor turn emits no empty span.
-                        # compact_if_needed always does real work when present (token
-                        # counting + threshold eval), so the span is non-empty even on a
-                        # no-trigger turn. The compactor's own internal tracer stays NoOp
-                        # (loop is the single trace-tree owner, D8). NESTING: this check
-                        # runs structurally BEFORE the per-turn TURN span opens (a
-                        # surgical, no-control-flow-change wrap), so COMPACTION nests
-                        # under root_ctx (the pre-turn loop-level position) rather than
-                        # turn_ctx — faithfully reflecting the loop's real structure.
+                        t0 = time.perf_counter()
+                        # Sprint 57.71 (A-4 Tier 1, Stage 2): PROMPT_BUILD span
+                        # brackets the Cat 5 build() call, nested under turn_ctx.
+                        # Opened only inside the `prompt_builder is not None` branch
+                        # → the naked-fallback turn (no builder) emits no empty span.
+                        # NOTE: any memory-layer injection happens INSIDE build()
+                        # (the prompt builder's 5-scope render), so a standalone
+                        # loop-level MEMORY_OP span has no clean call boundary here
+                        # (memory tools go through tool_executor.execute → already
+                        # covered by TOOL_EXEC). MEMORY_OP is therefore N/A at the
+                        # loop level this sprint — deferred (plan §9 carryover).
+                        # The builder's own internal tracer stays NoOp (loop is the
+                        # single trace-tree owner, D8).
                         async with self._tracer.start_span(
-                            name="agent_loop.compaction",
-                            category=SpanCategory.CONTEXT_MGMT,
-                            trace_context=root_ctx,
-                            attributes={"span_type": "COMPACTION"},
-                        ) as compaction_ctx:
-                            _compaction_ctx_t0 = time.monotonic()
+                            name="agent_loop.prompt_build",
+                            category=SpanCategory.PROMPT_BUILDER,
+                            trace_context=turn_ctx,
+                            attributes={"span_type": "PROMPT_BUILD"},
+                        ) as prompt_ctx:
+                            _prompt_ctx_t0 = time.monotonic()
                             yield SpanStarted(
-                                span_name="agent_loop.compaction",
-                                span_id=compaction_ctx.span_id,
-                                parent_span_id=compaction_ctx.parent_span_id or "",
-                                span_type="COMPACTION",
-                                trace_context=compaction_ctx,
+                                span_name="agent_loop.prompt_build",
+                                span_id=prompt_ctx.span_id,
+                                parent_span_id=prompt_ctx.parent_span_id or "",
+                                span_type="PROMPT_BUILD",
+                                trace_context=prompt_ctx,
                             )
                             try:
-                                compaction_result = await self._compactor.compact_if_needed(
-                                    compact_state, trace_context=ctx
+                                artifact = await self._prompt_builder.build(
+                                    state=build_state,
+                                    tenant_id=self._tenant_id
+                                    or session_id,  # 53.1: real tenant when set
+                                    # 57.65 (A-1 Tier2): scope the user-layer memory to the
+                                    # authenticated user from the request TraceContext.
+                                    user_id=ctx.user_id,
+                                    tools=self._tool_registry.list(),
+                                    trace_context=ctx,
                                 )
                             finally:
                                 yield SpanEnded(
-                                    span_name="agent_loop.compaction",
-                                    span_id=compaction_ctx.span_id,
-                                    span_type="COMPACTION",
-                                    duration_ms=(time.monotonic() - _compaction_ctx_t0) * 1000.0,
-                                    trace_context=compaction_ctx,
+                                    span_name="agent_loop.prompt_build",
+                                    span_id=prompt_ctx.span_id,
+                                    span_type="PROMPT_BUILD",
+                                    duration_ms=(time.monotonic() - _prompt_ctx_t0) * 1000.0,
+                                    trace_context=prompt_ctx,
                                 )
-                        if (
-                            compaction_result.triggered
-                            and compaction_result.compacted_state is not None
-                        ):
-                            messages = list(compaction_result.compacted_state.transient.messages)
-                            tokens_used = compaction_result.tokens_after
-                            strategy_label = (
-                                compaction_result.strategy_used.value
-                                if compaction_result.strategy_used is not None
-                                else "unknown"
-                            )
-                            yield ContextCompacted(
-                                tokens_before=compaction_result.tokens_before,
-                                tokens_after=compaction_result.tokens_after,
-                                compaction_strategy=strategy_label,
-                                messages_compacted=compaction_result.messages_compacted,
-                                duration_ms=compaction_result.duration_ms,
-                                trace_context=ctx,
+                        duration_ms = (time.perf_counter() - t0) * 1000.0
+                        chat_messages = list(artifact.messages)
+                        cache_breakpoints = (
+                            list(artifact.cache_breakpoints) if artifact.cache_breakpoints else None
+                        )
+                        layers_used = artifact.layer_metadata.get("memory_layers_used", [])
+                        strategy_used = artifact.layer_metadata.get("position_strategy", "")
+                        yield PromptBuilt(
+                            messages_count=len(artifact.messages),
+                            estimated_input_tokens=artifact.estimated_input_tokens,
+                            cache_breakpoints_count=len(artifact.cache_breakpoints),
+                            memory_layers_used=(
+                                tuple(layers_used) if isinstance(layers_used, (list, tuple)) else ()
+                            ),
+                            position_strategy_used=str(strategy_used),
+                            duration_ms=duration_ms,
+                            trace_context=ctx,
+                        )
+                        # Sprint 57.75 (A-5c Memory tab): emit one
+                        # MemoryAccessed per retrieved hint so the chat-v2
+                        # Inspector Memory tab shows which memories the
+                        # agent read this turn. Sourced from the builder's
+                        # layer_metadata["memory_accesses"] (built from the
+                        # same hints it injected — no extra search()).
+                        # operation="read" (build-time retrieval); write /
+                        # evict happen inside memory tools, already under
+                        # TOOL_EXEC (plan §9 carryover). echo_demo path has
+                        # no prompt_builder → this branch never runs → the
+                        # Memory tab shows an honest empty state (D-DAY0-5).
+                        # summary is the hint's capped summary (PII-safe).
+                        for _acc in artifact.layer_metadata.get("memory_accesses", []):
+                            yield MemoryAccessed(
+                                layer=_acc["scope"],
+                                operation="read",
+                                key=_acc["key"],
+                                summary=_acc["summary"],
+                                time_scale=_acc["time_scale"],
+                                trace_context=turn_ctx,
                             )
 
-                    # === Per-turn marker (Sprint 50.2) ==========================
-                    # Sprint 57.71 (A-4 Tier 1): TURN span per turn — wraps the
-                    # genuine per-turn work (post-termination/compaction) so
-                    # LLM_CALL / TOOL_EXEC nest under it (root_ctx -> turn_ctx ->
-                    # operation). Opened AFTER the pre-LLM terminators so a final
-                    # MAX_TURNS / budget exit does not emit an empty TURN span.
+                    # === LLM call ===============================================
+                    model_name = self._chat_client.model_info().model_name
+                    yield LLMRequested(
+                        model=model_name,
+                        tokens_in=0,  # Phase 52.1 wires count_tokens()
+                        trace_context=ctx,
+                    )
+                    # Sprint 57.71 (A-4 Tier 1): LLM_CALL span brackets the
+                    # chat() call (latency from span timing; ERROR status +
+                    # record_exception fire automatically when an exception
+                    # propagates through the tracer's `async with` body — see
+                    # OTelTracer._span_cm). Token attributes are written into
+                    # `llm_attrs` AFTER the response (this ABC has no dynamic
+                    # set-attribute; the dict is shared with the tracer so a
+                    # recording tracer that keeps it by reference observes the
+                    # post-response tokens, and OTel sees model/span_type at
+                    # open — full per-attribute OTel token export awaits Tier 2).
+                    # Cost (cost_usd) is intentionally NOT computed here: it
+                    # stays a Stage-2 carry to avoid adapter-pricing coupling +
+                    # double-counting with the router cost ledger (span attrs
+                    # never feed the ledger). The CancelledError path keeps the
+                    # 57.x clean-shutdown contract (LoopCompleted + re-raise).
+                    llm_attrs: dict[str, Any] = {
+                        "span_type": "LLM_CALL",
+                        "model": model_name,
+                    }
                     async with self._tracer.start_span(
-                        name="agent_loop.turn",
+                        name="agent_loop.llm_call",
                         category=SpanCategory.ORCHESTRATOR,
-                        trace_context=root_ctx,
-                        attributes={"span_type": "TURN", "turn": turn_count},
-                    ) as turn_ctx:
-                        _turn_ctx_t0 = time.monotonic()
+                        trace_context=turn_ctx,
+                        attributes=llm_attrs,
+                    ) as llm_ctx:
+                        _llm_ctx_t0 = time.monotonic()
                         yield SpanStarted(
-                            span_name="agent_loop.turn",
-                            span_id=turn_ctx.span_id,
-                            parent_span_id=turn_ctx.parent_span_id or "",
-                            span_type="TURN",
-                            trace_context=turn_ctx,
+                            span_name="agent_loop.llm_call",
+                            span_id=llm_ctx.span_id,
+                            parent_span_id=llm_ctx.parent_span_id or "",
+                            span_type="LLM_CALL",
+                            trace_context=llm_ctx,
                         )
                         try:
-                            yield TurnStarted(turn_num=turn_count, trace_context=ctx)
-
-                            # === Cat 5 PromptBuilder (Sprint 52.2 Day 3.1) ==============
-                            # When prompt_builder is injected, build a per-turn artifact
-                            # replacing the raw `messages` list at LLM call time. Conversation
-                            # accumulator (`messages`) continues to grow with assistant + tool
-                            # messages — only the chat() input is rebuilt each turn.
-                            # When None, falls back to 50.x baseline (raw messages, no cache).
-                            chat_messages: list[Message] = messages
-                            cache_breakpoints: list[CacheBreakpoint] | None = None
-                            if self._prompt_builder is not None:
-                                build_state = LoopState(
-                                    transient=TransientState(
-                                        messages=list(messages),
-                                        current_turn=turn_count,
-                                        token_usage_so_far=tokens_used,
-                                    ),
-                                    durable=DurableState(
-                                        session_id=session_id,
-                                        # 53.1: real tenant when ctor-injected; else session_id
-                                        # fallback
-                                        tenant_id=self._tenant_id or session_id,
-                                    ),
-                                    version=StateVersion(
-                                        version=turn_count,
-                                        parent_version=turn_count - 1 if turn_count > 0 else None,
-                                        created_at=datetime.now(),
-                                        created_by_category="orchestrator_loop",
-                                    ),
+                            try:
+                                request = ChatRequest(
+                                    messages=chat_messages,
+                                    tools=self._tool_registry.list(),
                                 )
-                                t0 = time.perf_counter()
-                                # Sprint 57.71 (A-4 Tier 1, Stage 2): PROMPT_BUILD span
-                                # brackets the Cat 5 build() call, nested under turn_ctx.
-                                # Opened only inside the `prompt_builder is not None` branch
-                                # → the naked-fallback turn (no builder) emits no empty span.
-                                # NOTE: any memory-layer injection happens INSIDE build()
-                                # (the prompt builder's 5-scope render), so a standalone
-                                # loop-level MEMORY_OP span has no clean call boundary here
-                                # (memory tools go through tool_executor.execute → already
-                                # covered by TOOL_EXEC). MEMORY_OP is therefore N/A at the
-                                # loop level this sprint — deferred (plan §9 carryover).
-                                # The builder's own internal tracer stays NoOp (loop is the
-                                # single trace-tree owner, D8).
+                                response: ChatResponse = await self._chat_client.chat(
+                                    request,
+                                    cache_breakpoints=cache_breakpoints,
+                                    trace_context=ctx,
+                                )
+                            except asyncio.CancelledError:
+                                yield LoopCompleted(
+                                    stop_reason=TerminationReason.CANCELLED.value,
+                                    total_turns=turn_count,
+                                    total_tokens=tokens_used,
+                                    trace_context=ctx,
+                                )
+                                raise
+                            # Token attrs known only post-response → write into the
+                            # shared attrs dict before the span closes (span-only;
+                            # never to the cost ledger — D8 double-count guard).
+                            if response.usage is not None:
+                                llm_attrs["prompt_tokens"] = response.usage.prompt_tokens
+                                llm_attrs["completion_tokens"] = response.usage.completion_tokens
+                                llm_attrs["cached_input_tokens"] = (
+                                    response.usage.cached_input_tokens
+                                )
+                                llm_attrs["total_tokens"] = response.usage.total_tokens
+                        finally:
+                            yield SpanEnded(
+                                span_name="agent_loop.llm_call",
+                                span_id=llm_ctx.span_id,
+                                span_type="LLM_CALL",
+                                duration_ms=(time.monotonic() - _llm_ctx_t0) * 1000.0,
+                                trace_context=llm_ctx,
+                            )
+
+                    # Update token usage
+                    if response.usage is not None:
+                        tokens_used += response.usage.total_tokens
+
+                    # Sprint 57.2 US-1+US-2 bundled: capture per-call metadata for
+                    # LoopCompleted aggregation (provider via adapter.model_info(),
+                    # model from ChatResponse, input/output split from usage).
+                    _provider = self._chat_client.model_info().provider
+                    _input_tokens = response.usage.prompt_tokens if response.usage else 0
+                    _output_tokens = response.usage.completion_tokens if response.usage else 0
+                    # Sprint 57.65 A-2 Tier2: cached-input tokens (prompt-cache
+                    # observability). Neutral signal from TokenUsage; dropped before
+                    # 57.65 (flowed only to billing). Feeds LoopCompleted.cache_hit_rate.
+                    _cached_input_tokens = (
+                        response.usage.cached_input_tokens if response.usage else 0
+                    )
+                    metrics_acc.cumulative_input_tokens += _input_tokens
+                    metrics_acc.cumulative_output_tokens += _output_tokens
+                    metrics_acc.cumulative_cached_input_tokens += _cached_input_tokens
+                    if _provider:
+                        metrics_acc.last_provider = _provider
+                    if response.model:
+                        metrics_acc.last_model = response.model
+                    metrics_acc.total_turns += 1
+
+                    # === Parse + emit LLMResponded + Thinking ==================
+                    parsed = await self._output_parser.parse(response, trace_context=ctx)
+                    # 50.2: LLMResponded carries the canonical (content, tool_calls,
+                    # thinking) tuple
+                    # per 02-architecture-design.md §SSE llm_response schema. Thinking event
+                    # is kept
+                    # for 50.1 test backward compatibility but no longer the SSE-canonical
+                    # form.
+                    # 57.2: per-call provider/model/input_tokens/output_tokens added.
+                    yield LLMResponded(
+                        content=parsed.text,
+                        tool_calls=tuple(parsed.tool_calls),
+                        thinking=None,
+                        provider=_provider,
+                        model=response.model,
+                        input_tokens=_input_tokens,
+                        output_tokens=_output_tokens,
+                        cached_input_tokens=_cached_input_tokens,
+                        trace_context=ctx,
+                    )
+                    yield Thinking(text=parsed.text, trace_context=ctx)
+
+                    # === Cat 7 post-LLM checkpoint (53.1 Day 3) =================
+                    # When reducer + checkpointer + tenant_id all set, persist a
+                    # state snapshot after LLM response so verifier / HITL pause /
+                    # error recovery have a recent restore point. No-op when any
+                    # is None (51.x backward-compat path).
+                    post_llm_event = await self._emit_state_checkpoint(
+                        session_id=session_id,
+                        messages=messages,
+                        turn_count=turn_count,
+                        tokens_used=tokens_used,
+                        source_category="orchestrator_loop:post_llm",
+                        ctx=ctx,
+                    )
+                    if post_llm_event is not None:
+                        yield post_llm_event
+
+                    # === Cat 9 output guardrail check (53.3 Day 4 US-7) ========
+                    # Runs once per LLM response, BEFORE stop_reason terminator
+                    # so BLOCK / SANITIZE / REROLL can decide before LoopCompleted
+                    # fires. Tripwire on output → terminate. No-op when deps None.
+                    output_terminated = False
+                    async for ev in self._cat9_output_check(
+                        output_text=parsed.text, ctx=ctx, turn_count=turn_count
+                    ):
+                        yield ev
+                        if isinstance(ev, LoopCompleted):
+                            output_terminated = True
+                    if output_terminated:
+                        return
+
+                    # === stop_reason terminator =================================
+                    if should_terminate_by_stop_reason(response):
+                        yield LoopCompleted(
+                            stop_reason=TerminationReason.END_TURN.value,
+                            total_turns=turn_count,
+                            total_tokens=tokens_used,
+                            # Sprint 57.2 US-1+US-2 bundled: accumulator-sourced split
+                            input_tokens=metrics_acc.cumulative_input_tokens,
+                            output_tokens=metrics_acc.cumulative_output_tokens,
+                            provider=metrics_acc.last_provider,
+                            model=metrics_acc.last_model,
+                            # Sprint 57.65 A-2 Tier2: prompt-cache observability
+                            cached_input_tokens=metrics_acc.cumulative_cached_input_tokens,
+                            cache_hit_rate=metrics_acc.cache_hit_rate,
+                            trace_context=ctx,
+                        )
+                        return
+
+                    # === Dispatch on OutputType =================================
+                    output_type = classify_output(response)
+
+                    if output_type == OutputType.FINAL:
+                        yield LoopCompleted(
+                            stop_reason=TerminationReason.END_TURN.value,
+                            total_turns=turn_count,
+                            total_tokens=tokens_used,
+                            # Sprint 57.2 US-1+US-2 bundled: accumulator-sourced split
+                            input_tokens=metrics_acc.cumulative_input_tokens,
+                            output_tokens=metrics_acc.cumulative_output_tokens,
+                            provider=metrics_acc.last_provider,
+                            model=metrics_acc.last_model,
+                            # Sprint 57.65 A-2 Tier2: prompt-cache observability
+                            cached_input_tokens=metrics_acc.cumulative_cached_input_tokens,
+                            cache_hit_rate=metrics_acc.cache_hit_rate,
+                            trace_context=ctx,
+                        )
+                        return
+
+                    if output_type == OutputType.HANDOFF:
+                        # Cat 11 HANDOFF (Sprint 57.68 A-3b): control transfer to a
+                        # target agent. The "handoff" tool_call carries target_agent
+                        # + reason in its arguments dict (classifier matches
+                        # tc.name == HANDOFF_TOOL_NAME). The loop only terminates
+                        # with a `handoff` stop_reason carrying the parsed intent;
+                        # booting the child session is the platform layer's job
+                        # (router post-loop hook) — server-side-first layering keeps
+                        # DB / session knowledge out of the loop.
+                        handoff_tc = next(
+                            (tc for tc in parsed.tool_calls if tc.name == HANDOFF_TOOL_NAME),
+                            None,
+                        )
+                        handoff_args = handoff_tc.arguments if handoff_tc is not None else {}
+                        yield LoopCompleted(
+                            stop_reason=TerminationReason.HANDOFF.value,
+                            total_turns=turn_count,
+                            handoff_target=str(handoff_args.get("target_agent", "")),
+                            handoff_reason=str(handoff_args.get("reason", "")),
+                            # Sprint 57.69 A-3b slice 2: shallow snapshot of the
+                            # in-memory conversation so the platform layer can seed
+                            # the booted child with the prior context (carried only;
+                            # not on the loop_end wire schema).
+                            handoff_context=list(messages),
+                            trace_context=ctx,
+                        )
+                        return
+
+                    # output_type == TOOL_USE
+                    # Append assistant message carrying the tool_calls so the
+                    # next chat() round-trip can correlate tool_call_id.
+                    messages.append(
+                        Message(
+                            role="assistant",
+                            content=parsed.text,
+                            tool_calls=parsed.tool_calls,
+                        )
+                    )
+
+                    for tc in parsed.tool_calls:
+                        yield ToolCallRequested(
+                            tool_call_id=tc.id,
+                            tool_name=tc.name,
+                            arguments=tc.arguments,
+                            trace_context=ctx,
+                        )
+
+                        # === Cat 9 per tool_call check (53.3 Day 4 US-7) ====
+                        # tool guardrail BLOCK/ESCALATE → inject error ToolResult
+                        #   so LLM sees failure + can self-correct (no loop terminate).
+                        # tripwire trigger → emit TripwireTriggered + LoopCompleted.
+                        cat9_blocked: ToolResult | None = None
+                        cat9_terminated = False
+                        async for ev in self._cat9_tool_check(
+                            tc=tc,
+                            ctx=ctx,
+                            turn_count=turn_count,
+                            session_id=session_id,
+                            messages=messages,
+                        ):
+                            yield ev
+                            if isinstance(ev, LoopCompleted):
+                                cat9_terminated = True
+                            elif isinstance(ev, GuardrailTriggered):
+                                cat9_blocked = ToolResult(
+                                    tool_call_id=tc.id,
+                                    tool_name=tc.name,
+                                    content=(f"tool blocked by guardrail: {ev.reason}"),
+                                    success=False,
+                                    error=ev.reason,
+                                    duration_ms=0.0,
+                                )
+                        if cat9_terminated:
+                            return
+                        if cat9_blocked is not None:
+                            result = cat9_blocked
+                            result_text = self._tool_result_to_text(result.content)
+                            # Append result to messages and skip tool execution.
+                            # (Falls through to the result-append code below.)
+                            messages.append(
+                                Message(
+                                    role="tool",
+                                    content=result_text,
+                                    tool_call_id=tc.id,
+                                )
+                            )
+                            yield ToolCallExecuted(
+                                tool_call_id=tc.id,
+                                tool_name=tc.name,
+                                duration_ms=0.0,
+                                result_content=result_text,
+                                trace_context=ctx,
+                            )
+                            continue
+
+                        # Sprint 55.6 — AD-Cat8-2 retry loop wrap (Option H).
+                        # `attempt_num` starts at 1 (1-indexed per 53.2 docstring).
+                        # On retry: yield ErrorRetried + asyncio.sleep(backoff) +
+                        # increment + `continue`. `break` exits to post-execute
+                        # path (tool_content / yield ToolCallExecuted-or-Failed /
+                        # messages.append) which stays at original indent level.
+                        # When Cat 8 deps None → _should_retry_tool_error returns
+                        # (False, 0.0) → break on first iteration → 53.1 baseline.
+                        attempt_num = 1
+                        while True:
+                            try:
+                                # Sprint 52.5 P0 #18: build ExecutionContext from
+                                # trace_context so memory_tools (and future scoped
+                                # tools) get server-authoritative tenant_id /
+                                # user_id / session_id instead of trusting LLM args.
+                                exec_ctx = ExecutionContext(
+                                    tenant_id=ctx.tenant_id,
+                                    user_id=ctx.user_id,
+                                    session_id=ctx.session_id or session_id,
+                                )
+                                # Sprint 57.71 (A-4 Tier 1): TOOL_EXEC span per
+                                # execute() call, nested under turn_ctx. Latency
+                                # comes from span timing; on a raised exception
+                                # the tracer sets ERROR status + record_exception
+                                # automatically as it propagates through the
+                                # `async with` body (caught by the surrounding
+                                # except clauses afterwards). Parallel / multiple
+                                # tool calls in one turn are sibling TOOL_EXEC
+                                # spans under the same TURN. The span is the loop's
+                                # own (the executor's internal tracer stays NoOp —
+                                # loop is the single trace-tree owner, D8 no double
+                                # spans).
                                 async with self._tracer.start_span(
-                                    name="agent_loop.prompt_build",
-                                    category=SpanCategory.PROMPT_BUILDER,
+                                    name=f"agent_loop.tool.{tc.name}",
+                                    category=SpanCategory.TOOLS,
                                     trace_context=turn_ctx,
-                                    attributes={"span_type": "PROMPT_BUILD"},
-                                ) as prompt_ctx:
-                                    _prompt_ctx_t0 = time.monotonic()
+                                    attributes={"span_type": "TOOL_EXEC", "tool": tc.name},
+                                ) as tool_ctx:
+                                    _tool_ctx_t0 = time.monotonic()
                                     yield SpanStarted(
-                                        span_name="agent_loop.prompt_build",
-                                        span_id=prompt_ctx.span_id,
-                                        parent_span_id=prompt_ctx.parent_span_id or "",
-                                        span_type="PROMPT_BUILD",
-                                        trace_context=prompt_ctx,
+                                        span_name=f"agent_loop.tool.{tc.name}",
+                                        span_id=tool_ctx.span_id,
+                                        parent_span_id=tool_ctx.parent_span_id or "",
+                                        span_type="TOOL_EXEC",
+                                        trace_context=tool_ctx,
                                     )
                                     try:
-                                        artifact = await self._prompt_builder.build(
-                                            state=build_state,
-                                            tenant_id=self._tenant_id
-                                            or session_id,  # 53.1: real tenant when set
-                                            # 57.65 (A-1 Tier2): scope the user-layer memory to the
-                                            # authenticated user from the request TraceContext.
-                                            user_id=ctx.user_id,
-                                            tools=self._tool_registry.list(),
-                                            trace_context=ctx,
+                                        result = await self._tool_executor.execute(
+                                            tc, trace_context=ctx, context=exec_ctx
                                         )
                                     finally:
                                         yield SpanEnded(
-                                            span_name="agent_loop.prompt_build",
-                                            span_id=prompt_ctx.span_id,
-                                            span_type="PROMPT_BUILD",
-                                            duration_ms=(time.monotonic() - _prompt_ctx_t0)
-                                            * 1000.0,
-                                            trace_context=prompt_ctx,
+                                            span_name=f"agent_loop.tool.{tc.name}",
+                                            span_id=tool_ctx.span_id,
+                                            span_type="TOOL_EXEC",
+                                            duration_ms=(time.monotonic() - _tool_ctx_t0) * 1000.0,
+                                            trace_context=tool_ctx,
                                         )
-                                duration_ms = (time.perf_counter() - t0) * 1000.0
-                                chat_messages = list(artifact.messages)
-                                cache_breakpoints = (
-                                    list(artifact.cache_breakpoints)
-                                    if artifact.cache_breakpoints
-                                    else None
-                                )
-                                layers_used = artifact.layer_metadata.get("memory_layers_used", [])
-                                strategy_used = artifact.layer_metadata.get("position_strategy", "")
-                                yield PromptBuilt(
-                                    messages_count=len(artifact.messages),
-                                    estimated_input_tokens=artifact.estimated_input_tokens,
-                                    cache_breakpoints_count=len(artifact.cache_breakpoints),
-                                    memory_layers_used=(
-                                        tuple(layers_used)
-                                        if isinstance(layers_used, (list, tuple))
-                                        else ()
-                                    ),
-                                    position_strategy_used=str(strategy_used),
-                                    duration_ms=duration_ms,
+                            except asyncio.CancelledError:
+                                yield LoopCompleted(
+                                    stop_reason=TerminationReason.CANCELLED.value,
+                                    total_turns=turn_count,
                                     trace_context=ctx,
                                 )
-                                # Sprint 57.75 (A-5c Memory tab): emit one
-                                # MemoryAccessed per retrieved hint so the chat-v2
-                                # Inspector Memory tab shows which memories the
-                                # agent read this turn. Sourced from the builder's
-                                # layer_metadata["memory_accesses"] (built from the
-                                # same hints it injected — no extra search()).
-                                # operation="read" (build-time retrieval); write /
-                                # evict happen inside memory tools, already under
-                                # TOOL_EXEC (plan §9 carryover). echo_demo path has
-                                # no prompt_builder → this branch never runs → the
-                                # Memory tab shows an honest empty state (D-DAY0-5).
-                                # summary is the hint's capped summary (PII-safe).
-                                for _acc in artifact.layer_metadata.get("memory_accesses", []):
-                                    yield MemoryAccessed(
-                                        layer=_acc["scope"],
-                                        operation="read",
-                                        key=_acc["key"],
-                                        summary=_acc["summary"],
-                                        time_scale=_acc["time_scale"],
-                                        trace_context=turn_ctx,
+                                raise
+                            except Exception as exc:
+                                # 53.2 Day 4 Cat 8 chain: classify → record budget →
+                                # check terminator. When Cat 8 deps None → re-raise
+                                # (preserves 53.1 baseline).
+                                # Sprint 55.6 D7 fix: pass real attempt_num (was hardcoded
+                                # =1).
+                                terminate, err_class, term_reason, term_detail = (
+                                    await self._handle_tool_error(
+                                        error=exc,
+                                        tool_name=tc.name,
+                                        attempt_num=attempt_num,
+                                        state_version=None,
+                                        trace_context=ctx,
                                     )
-
-                            # === LLM call ===============================================
-                            model_name = self._chat_client.model_info().model_name
-                            yield LLMRequested(
-                                model=model_name,
-                                tokens_in=0,  # Phase 52.1 wires count_tokens()
-                                trace_context=ctx,
-                            )
-                            # Sprint 57.71 (A-4 Tier 1): LLM_CALL span brackets the
-                            # chat() call (latency from span timing; ERROR status +
-                            # record_exception fire automatically when an exception
-                            # propagates through the tracer's `async with` body — see
-                            # OTelTracer._span_cm). Token attributes are written into
-                            # `llm_attrs` AFTER the response (this ABC has no dynamic
-                            # set-attribute; the dict is shared with the tracer so a
-                            # recording tracer that keeps it by reference observes the
-                            # post-response tokens, and OTel sees model/span_type at
-                            # open — full per-attribute OTel token export awaits Tier 2).
-                            # Cost (cost_usd) is intentionally NOT computed here: it
-                            # stays a Stage-2 carry to avoid adapter-pricing coupling +
-                            # double-counting with the router cost ledger (span attrs
-                            # never feed the ledger). The CancelledError path keeps the
-                            # 57.x clean-shutdown contract (LoopCompleted + re-raise).
-                            llm_attrs: dict[str, Any] = {
-                                "span_type": "LLM_CALL",
-                                "model": model_name,
-                            }
-                            async with self._tracer.start_span(
-                                name="agent_loop.llm_call",
-                                category=SpanCategory.ORCHESTRATOR,
-                                trace_context=turn_ctx,
-                                attributes=llm_attrs,
-                            ) as llm_ctx:
-                                _llm_ctx_t0 = time.monotonic()
-                                yield SpanStarted(
-                                    span_name="agent_loop.llm_call",
-                                    span_id=llm_ctx.span_id,
-                                    parent_span_id=llm_ctx.parent_span_id or "",
-                                    span_type="LLM_CALL",
-                                    trace_context=llm_ctx,
                                 )
-                                try:
-                                    try:
-                                        request = ChatRequest(
-                                            messages=chat_messages,
-                                            tools=self._tool_registry.list(),
-                                        )
-                                        response: ChatResponse = await self._chat_client.chat(
-                                            request,
-                                            cache_breakpoints=cache_breakpoints,
-                                            trace_context=ctx,
-                                        )
-                                    except asyncio.CancelledError:
-                                        yield LoopCompleted(
-                                            stop_reason=TerminationReason.CANCELLED.value,
-                                            total_turns=turn_count,
-                                            total_tokens=tokens_used,
-                                            trace_context=ctx,
-                                        )
-                                        raise
-                                    # Token attrs known only post-response → write into the
-                                    # shared attrs dict before the span closes (span-only;
-                                    # never to the cost ledger — D8 double-count guard).
-                                    if response.usage is not None:
-                                        llm_attrs["prompt_tokens"] = response.usage.prompt_tokens
-                                        llm_attrs["completion_tokens"] = (
-                                            response.usage.completion_tokens
-                                        )
-                                        llm_attrs["cached_input_tokens"] = (
-                                            response.usage.cached_input_tokens
-                                        )
-                                        llm_attrs["total_tokens"] = response.usage.total_tokens
-                                finally:
-                                    yield SpanEnded(
-                                        span_name="agent_loop.llm_call",
-                                        span_id=llm_ctx.span_id,
-                                        span_type="LLM_CALL",
-                                        duration_ms=(time.monotonic() - _llm_ctx_t0) * 1000.0,
-                                        trace_context=llm_ctx,
+                                if self._error_policy is None:
+                                    # Opt-out path: no Cat 8 deps → preserve 53.1 raise
+                                    # behavior
+                                    raise
+                                if terminate:
+                                    yield LoopTerminated(
+                                        reason=(
+                                            term_reason.value if term_reason is not None else ""
+                                        ),
+                                        detail=term_detail,
+                                        last_state_version=None,
+                                        trace_context=ctx,
                                     )
+                                    return
 
-                            # Update token usage
-                            if response.usage is not None:
-                                tokens_used += response.usage.total_tokens
-
-                            # Sprint 57.2 US-1+US-2 bundled: capture per-call metadata for
-                            # LoopCompleted aggregation (provider via adapter.model_info(),
-                            # model from ChatResponse, input/output split from usage).
-                            _provider = self._chat_client.model_info().provider
-                            _input_tokens = response.usage.prompt_tokens if response.usage else 0
-                            _output_tokens = (
-                                response.usage.completion_tokens if response.usage else 0
-                            )
-                            # Sprint 57.65 A-2 Tier2: cached-input tokens (prompt-cache
-                            # observability). Neutral signal from TokenUsage; dropped before
-                            # 57.65 (flowed only to billing). Feeds LoopCompleted.cache_hit_rate.
-                            _cached_input_tokens = (
-                                response.usage.cached_input_tokens if response.usage else 0
-                            )
-                            metrics_acc.cumulative_input_tokens += _input_tokens
-                            metrics_acc.cumulative_output_tokens += _output_tokens
-                            metrics_acc.cumulative_cached_input_tokens += _cached_input_tokens
-                            if _provider:
-                                metrics_acc.last_provider = _provider
-                            if response.model:
-                                metrics_acc.last_model = response.model
-                            metrics_acc.total_turns += 1
-
-                            # === Parse + emit LLMResponded + Thinking ==================
-                            parsed = await self._output_parser.parse(response, trace_context=ctx)
-                            # 50.2: LLMResponded carries the canonical (content, tool_calls,
-                            # thinking) tuple
-                            # per 02-architecture-design.md §SSE llm_response schema. Thinking event
-                            # is kept
-                            # for 50.1 test backward compatibility but no longer the SSE-canonical
-                            # form.
-                            # 57.2: per-call provider/model/input_tokens/output_tokens added.
-                            yield LLMResponded(
-                                content=parsed.text,
-                                tool_calls=tuple(parsed.tool_calls),
-                                thinking=None,
-                                provider=_provider,
-                                model=response.model,
-                                input_tokens=_input_tokens,
-                                output_tokens=_output_tokens,
-                                cached_input_tokens=_cached_input_tokens,
-                                trace_context=ctx,
-                            )
-                            yield Thinking(text=parsed.text, trace_context=ctx)
-
-                            # === Cat 7 post-LLM checkpoint (53.1 Day 3) =================
-                            # When reducer + checkpointer + tenant_id all set, persist a
-                            # state snapshot after LLM response so verifier / HITL pause /
-                            # error recovery have a recent restore point. No-op when any
-                            # is None (51.x backward-compat path).
-                            post_llm_event = await self._emit_state_checkpoint(
-                                session_id=session_id,
-                                messages=messages,
-                                turn_count=turn_count,
-                                tokens_used=tokens_used,
-                                source_category="orchestrator_loop:post_llm",
-                                ctx=ctx,
-                            )
-                            if post_llm_event is not None:
-                                yield post_llm_event
-
-                            # === Cat 9 output guardrail check (53.3 Day 4 US-7) ========
-                            # Runs once per LLM response, BEFORE stop_reason terminator
-                            # so BLOCK / SANITIZE / REROLL can decide before LoopCompleted
-                            # fires. Tripwire on output → terminate. No-op when deps None.
-                            output_terminated = False
-                            async for ev in self._cat9_output_check(
-                                output_text=parsed.text, ctx=ctx, turn_count=turn_count
-                            ):
-                                yield ev
-                                if isinstance(ev, LoopCompleted):
-                                    output_terminated = True
-                            if output_terminated:
-                                return
-
-                            # === stop_reason terminator =================================
-                            if should_terminate_by_stop_reason(response):
-                                yield LoopCompleted(
-                                    stop_reason=TerminationReason.END_TURN.value,
-                                    total_turns=turn_count,
-                                    total_tokens=tokens_used,
-                                    # Sprint 57.2 US-1+US-2 bundled: accumulator-sourced split
-                                    input_tokens=metrics_acc.cumulative_input_tokens,
-                                    output_tokens=metrics_acc.cumulative_output_tokens,
-                                    provider=metrics_acc.last_provider,
-                                    model=metrics_acc.last_model,
-                                    # Sprint 57.65 A-2 Tier2: prompt-cache observability
-                                    cached_input_tokens=metrics_acc.cumulative_cached_input_tokens,
-                                    cache_hit_rate=metrics_acc.cache_hit_rate,
-                                    trace_context=ctx,
+                                # Sprint 55.6 — AD-Cat8-2 (Option H) retry consultation
+                                # on hard-exception path.
+                                should_retry, backoff_s = await self._should_retry_tool_error(
+                                    error=exc,
+                                    error_class=err_class,
+                                    tool_name=tc.name,
+                                    attempt=attempt_num,
                                 )
-                                return
+                                if should_retry:
+                                    yield ErrorRetried(
+                                        attempt=attempt_num,
+                                        error_class=err_class.value if err_class else "",
+                                        backoff_ms=backoff_s * 1000.0,
+                                        trace_context=ctx,
+                                    )
+                                    await asyncio.sleep(backoff_s)
+                                    attempt_num += 1
+                                    continue  # retry tool execution
 
-                            # === Dispatch on OutputType =================================
-                            output_type = classify_output(response)
-
-                            if output_type == OutputType.FINAL:
-                                yield LoopCompleted(
-                                    stop_reason=TerminationReason.END_TURN.value,
-                                    total_turns=turn_count,
-                                    total_tokens=tokens_used,
-                                    # Sprint 57.2 US-1+US-2 bundled: accumulator-sourced split
-                                    input_tokens=metrics_acc.cumulative_input_tokens,
-                                    output_tokens=metrics_acc.cumulative_output_tokens,
-                                    provider=metrics_acc.last_provider,
-                                    model=metrics_acc.last_model,
-                                    # Sprint 57.65 A-2 Tier2: prompt-cache observability
-                                    cached_input_tokens=metrics_acc.cumulative_cached_input_tokens,
-                                    cache_hit_rate=metrics_acc.cache_hit_rate,
-                                    trace_context=ctx,
-                                )
-                                return
-
-                            if output_type == OutputType.HANDOFF:
-                                # Cat 11 HANDOFF (Sprint 57.68 A-3b): control transfer to a
-                                # target agent. The "handoff" tool_call carries target_agent
-                                # + reason in its arguments dict (classifier matches
-                                # tc.name == HANDOFF_TOOL_NAME). The loop only terminates
-                                # with a `handoff` stop_reason carrying the parsed intent;
-                                # booting the child session is the platform layer's job
-                                # (router post-loop hook) — server-side-first layering keeps
-                                # DB / session knowledge out of the loop.
-                                handoff_tc = next(
-                                    (
-                                        tc
-                                        for tc in parsed.tool_calls
-                                        if tc.name == HANDOFF_TOOL_NAME
-                                    ),
-                                    None,
-                                )
-                                handoff_args = (
-                                    handoff_tc.arguments if handoff_tc is not None else {}
-                                )
-                                yield LoopCompleted(
-                                    stop_reason=TerminationReason.HANDOFF.value,
-                                    total_turns=turn_count,
-                                    handoff_target=str(handoff_args.get("target_agent", "")),
-                                    handoff_reason=str(handoff_args.get("reason", "")),
-                                    # Sprint 57.69 A-3b slice 2: shallow snapshot of the
-                                    # in-memory conversation so the platform layer can seed
-                                    # the booted child with the prior context (carried only;
-                                    # not on the loop_end wire schema).
-                                    handoff_context=list(messages),
-                                    trace_context=ctx,
-                                )
-                                return
-
-                            # output_type == TOOL_USE
-                            # Append assistant message carrying the tool_calls so the
-                            # next chat() round-trip can correlate tool_call_id.
-                            messages.append(
-                                Message(
-                                    role="assistant",
-                                    content=parsed.text,
-                                    tool_calls=parsed.tool_calls,
-                                )
-                            )
-
-                            for tc in parsed.tool_calls:
-                                yield ToolCallRequested(
+                                # No retry → fall through to LLM-recoverable synthesis.
+                                # Synthesize LLM-recoverable error ToolResult so the
+                                # LLM sees the failure on next turn and can self-correct
+                                # (Cat 8 §LLM-recoverable; Anthropic / LangGraph pattern).
+                                # Note: ToolResult is now imported at module top (53.3 Day
+                                # 4).
+                                result = ToolResult(
                                     tool_call_id=tc.id,
                                     tool_name=tc.name,
-                                    arguments=tc.arguments,
-                                    trace_context=ctx,
+                                    content=f"Error: {exc!r}. Please adjust your approach.",
+                                    success=False,
+                                    error=repr(exc),
+                                    duration_ms=0.0,
                                 )
 
-                                # === Cat 9 per tool_call check (53.3 Day 4 US-7) ====
-                                # tool guardrail BLOCK/ESCALATE → inject error ToolResult
-                                #   so LLM sees failure + can self-correct (no loop terminate).
-                                # tripwire trigger → emit TripwireTriggered + LoopCompleted.
-                                cat9_blocked: ToolResult | None = None
-                                cat9_terminated = False
-                                async for ev in self._cat9_tool_check(
-                                    tc=tc,
-                                    ctx=ctx,
-                                    turn_count=turn_count,
-                                    session_id=session_id,
-                                    messages=messages,
-                                ):
-                                    yield ev
-                                    if isinstance(ev, LoopCompleted):
-                                        cat9_terminated = True
-                                    elif isinstance(ev, GuardrailTriggered):
-                                        cat9_blocked = ToolResult(
-                                            tool_call_id=tc.id,
-                                            tool_name=tc.name,
-                                            content=(f"tool blocked by guardrail: {ev.reason}"),
-                                            success=False,
-                                            error=ev.reason,
-                                            duration_ms=0.0,
-                                        )
-                                if cat9_terminated:
+                            # 53.2 Day 4 Cat 8 chain on soft failure: ToolExecutorImpl
+                            # catches handler exceptions internally → ToolResult(success=
+                            # False). Reconstruct a synthetic exception so the Cat 8
+                            # chain can classify + check terminator. When deps None →
+                            # fall through to existing 53.1 baseline (LLM-recoverable
+                            # via tool message).
+                            # Sprint 55.4 (AD-Cat8-3 narrow Option C): pass
+                            # `result.error_class` (FQ class name set by ToolExecutorImpl
+                            # per 53.3 US-9) so classification flows through
+                            # classify_by_string() instead of MRO walk on the generic
+                            # synthetic Exception (which would always return FATAL).
+                            # Sprint 55.6 D7 fix: pass real attempt_num (was hardcoded =1).
+                            if not result.success and self._error_policy is not None:
+                                synthetic = Exception(result.error or "tool soft failure")
+                                terminate, err_class, term_reason, term_detail = (
+                                    await self._handle_tool_error(
+                                        error=synthetic,
+                                        tool_name=tc.name,
+                                        attempt_num=attempt_num,
+                                        state_version=None,
+                                        trace_context=ctx,
+                                        error_class_str=result.error_class,
+                                    )
+                                )
+                                if terminate:
+                                    yield LoopTerminated(
+                                        reason=(
+                                            term_reason.value if term_reason is not None else ""
+                                        ),
+                                        detail=term_detail,
+                                        last_state_version=None,
+                                        trace_context=ctx,
+                                    )
                                     return
-                                if cat9_blocked is not None:
-                                    result = cat9_blocked
-                                    result_text = self._tool_result_to_text(result.content)
-                                    # Append result to messages and skip tool execution.
-                                    # (Falls through to the result-append code below.)
-                                    messages.append(
-                                        Message(
-                                            role="tool",
-                                            content=result_text,
-                                            tool_call_id=tc.id,
-                                        )
-                                    )
-                                    yield ToolCallExecuted(
-                                        tool_call_id=tc.id,
-                                        tool_name=tc.name,
-                                        duration_ms=0.0,
-                                        result_content=result_text,
-                                        trace_context=ctx,
-                                    )
-                                    continue
 
-                                # Sprint 55.6 — AD-Cat8-2 retry loop wrap (Option H).
-                                # `attempt_num` starts at 1 (1-indexed per 53.2 docstring).
-                                # On retry: yield ErrorRetried + asyncio.sleep(backoff) +
-                                # increment + `continue`. `break` exits to post-execute
-                                # path (tool_content / yield ToolCallExecuted-or-Failed /
-                                # messages.append) which stays at original indent level.
-                                # When Cat 8 deps None → _should_retry_tool_error returns
-                                # (False, 0.0) → break on first iteration → 53.1 baseline.
-                                attempt_num = 1
-                                while True:
-                                    try:
-                                        # Sprint 52.5 P0 #18: build ExecutionContext from
-                                        # trace_context so memory_tools (and future scoped
-                                        # tools) get server-authoritative tenant_id /
-                                        # user_id / session_id instead of trusting LLM args.
-                                        exec_ctx = ExecutionContext(
-                                            tenant_id=ctx.tenant_id,
-                                            user_id=ctx.user_id,
-                                            session_id=ctx.session_id or session_id,
-                                        )
-                                        # Sprint 57.71 (A-4 Tier 1): TOOL_EXEC span per
-                                        # execute() call, nested under turn_ctx. Latency
-                                        # comes from span timing; on a raised exception
-                                        # the tracer sets ERROR status + record_exception
-                                        # automatically as it propagates through the
-                                        # `async with` body (caught by the surrounding
-                                        # except clauses afterwards). Parallel / multiple
-                                        # tool calls in one turn are sibling TOOL_EXEC
-                                        # spans under the same TURN. The span is the loop's
-                                        # own (the executor's internal tracer stays NoOp —
-                                        # loop is the single trace-tree owner, D8 no double
-                                        # spans).
-                                        async with self._tracer.start_span(
-                                            name=f"agent_loop.tool.{tc.name}",
-                                            category=SpanCategory.TOOLS,
-                                            trace_context=turn_ctx,
-                                            attributes={"span_type": "TOOL_EXEC", "tool": tc.name},
-                                        ) as tool_ctx:
-                                            _tool_ctx_t0 = time.monotonic()
-                                            yield SpanStarted(
-                                                span_name=f"agent_loop.tool.{tc.name}",
-                                                span_id=tool_ctx.span_id,
-                                                parent_span_id=tool_ctx.parent_span_id or "",
-                                                span_type="TOOL_EXEC",
-                                                trace_context=tool_ctx,
-                                            )
-                                            try:
-                                                result = await self._tool_executor.execute(
-                                                    tc, trace_context=ctx, context=exec_ctx
-                                                )
-                                            finally:
-                                                yield SpanEnded(
-                                                    span_name=f"agent_loop.tool.{tc.name}",
-                                                    span_id=tool_ctx.span_id,
-                                                    span_type="TOOL_EXEC",
-                                                    duration_ms=(time.monotonic() - _tool_ctx_t0)
-                                                    * 1000.0,
-                                                    trace_context=tool_ctx,
-                                                )
-                                    except asyncio.CancelledError:
-                                        yield LoopCompleted(
-                                            stop_reason=TerminationReason.CANCELLED.value,
-                                            total_turns=turn_count,
-                                            trace_context=ctx,
-                                        )
-                                        raise
-                                    except Exception as exc:
-                                        # 53.2 Day 4 Cat 8 chain: classify → record budget →
-                                        # check terminator. When Cat 8 deps None → re-raise
-                                        # (preserves 53.1 baseline).
-                                        # Sprint 55.6 D7 fix: pass real attempt_num (was hardcoded
-                                        # =1).
-                                        terminate, err_class, term_reason, term_detail = (
-                                            await self._handle_tool_error(
-                                                error=exc,
-                                                tool_name=tc.name,
-                                                attempt_num=attempt_num,
-                                                state_version=None,
-                                                trace_context=ctx,
-                                            )
-                                        )
-                                        if self._error_policy is None:
-                                            # Opt-out path: no Cat 8 deps → preserve 53.1 raise
-                                            # behavior
-                                            raise
-                                        if terminate:
-                                            yield LoopTerminated(
-                                                reason=(
-                                                    term_reason.value
-                                                    if term_reason is not None
-                                                    else ""
-                                                ),
-                                                detail=term_detail,
-                                                last_state_version=None,
-                                                trace_context=ctx,
-                                            )
-                                            return
-
-                                        # Sprint 55.6 — AD-Cat8-2 (Option H) retry consultation
-                                        # on hard-exception path.
-                                        should_retry, backoff_s = (
-                                            await self._should_retry_tool_error(
-                                                error=exc,
-                                                error_class=err_class,
-                                                tool_name=tc.name,
-                                                attempt=attempt_num,
-                                            )
-                                        )
-                                        if should_retry:
-                                            yield ErrorRetried(
-                                                attempt=attempt_num,
-                                                error_class=err_class.value if err_class else "",
-                                                backoff_ms=backoff_s * 1000.0,
-                                                trace_context=ctx,
-                                            )
-                                            await asyncio.sleep(backoff_s)
-                                            attempt_num += 1
-                                            continue  # retry tool execution
-
-                                        # No retry → fall through to LLM-recoverable synthesis.
-                                        # Synthesize LLM-recoverable error ToolResult so the
-                                        # LLM sees the failure on next turn and can self-correct
-                                        # (Cat 8 §LLM-recoverable; Anthropic / LangGraph pattern).
-                                        # Note: ToolResult is now imported at module top (53.3 Day
-                                        # 4).
-                                        result = ToolResult(
-                                            tool_call_id=tc.id,
-                                            tool_name=tc.name,
-                                            content=f"Error: {exc!r}. Please adjust your approach.",
-                                            success=False,
-                                            error=repr(exc),
-                                            duration_ms=0.0,
-                                        )
-
-                                    # 53.2 Day 4 Cat 8 chain on soft failure: ToolExecutorImpl
-                                    # catches handler exceptions internally → ToolResult(success=
-                                    # False). Reconstruct a synthetic exception so the Cat 8
-                                    # chain can classify + check terminator. When deps None →
-                                    # fall through to existing 53.1 baseline (LLM-recoverable
-                                    # via tool message).
-                                    # Sprint 55.4 (AD-Cat8-3 narrow Option C): pass
-                                    # `result.error_class` (FQ class name set by ToolExecutorImpl
-                                    # per 53.3 US-9) so classification flows through
-                                    # classify_by_string() instead of MRO walk on the generic
-                                    # synthetic Exception (which would always return FATAL).
-                                    # Sprint 55.6 D7 fix: pass real attempt_num (was hardcoded =1).
-                                    if not result.success and self._error_policy is not None:
-                                        synthetic = Exception(result.error or "tool soft failure")
-                                        terminate, err_class, term_reason, term_detail = (
-                                            await self._handle_tool_error(
-                                                error=synthetic,
-                                                tool_name=tc.name,
-                                                attempt_num=attempt_num,
-                                                state_version=None,
-                                                trace_context=ctx,
-                                                error_class_str=result.error_class,
-                                            )
-                                        )
-                                        if terminate:
-                                            yield LoopTerminated(
-                                                reason=(
-                                                    term_reason.value
-                                                    if term_reason is not None
-                                                    else ""
-                                                ),
-                                                detail=term_detail,
-                                                last_state_version=None,
-                                                trace_context=ctx,
-                                            )
-                                            return
-
-                                        # Sprint 55.6 — AD-Cat8-2 (Option H) retry consultation
-                                        # on soft-failure path.
-                                        should_retry, backoff_s = (
-                                            await self._should_retry_tool_error(
-                                                error=synthetic,
-                                                error_class=err_class,
-                                                tool_name=tc.name,
-                                                attempt=attempt_num,
-                                            )
-                                        )
-                                        if should_retry:
-                                            yield ErrorRetried(
-                                                attempt=attempt_num,
-                                                error_class=err_class.value if err_class else "",
-                                                backoff_ms=backoff_s * 1000.0,
-                                                trace_context=ctx,
-                                            )
-                                            await asyncio.sleep(backoff_s)
-                                            attempt_num += 1
-                                            continue  # retry tool execution
-
-                                    # Success or no-retry path → exit retry loop. Post-execute
-                                    # code (tool_content / yield ToolCallExecuted-or-Failed /
-                                    # messages.append) follows at original indent level.
-                                    break
-
-                                # Feed back as tool message — KEY V2 cure for AP-1.
-                                tool_content = self._tool_result_to_text(result.content)
-
-                                # 50.2: emit Cat 2-owned completion event so SSE / frontend
-                                # see tool result text + success/failure.
-                                if result.success:
-                                    yield ToolCallExecuted(
-                                        tool_call_id=tc.id,
-                                        tool_name=tc.name,
-                                        duration_ms=result.duration_ms or 0.0,
-                                        result_content=tool_content,
-                                        trace_context=ctx,
-                                    )
-                                else:
-                                    yield ToolCallFailed(
-                                        tool_call_id=tc.id,
-                                        tool_name=tc.name,
-                                        error=result.error or "unknown tool error",
-                                        trace_context=ctx,
-                                    )
-
-                                messages.append(
-                                    Message(
-                                        role="tool",
-                                        content=tool_content,
-                                        tool_call_id=tc.id,
-                                    )
+                                # Sprint 55.6 — AD-Cat8-2 (Option H) retry consultation
+                                # on soft-failure path.
+                                should_retry, backoff_s = await self._should_retry_tool_error(
+                                    error=synthetic,
+                                    error_class=err_class,
+                                    tool_name=tc.name,
+                                    attempt=attempt_num,
                                 )
+                                if should_retry:
+                                    yield ErrorRetried(
+                                        attempt=attempt_num,
+                                        error_class=err_class.value if err_class else "",
+                                        backoff_ms=backoff_s * 1000.0,
+                                        trace_context=ctx,
+                                    )
+                                    await asyncio.sleep(backoff_s)
+                                    attempt_num += 1
+                                    continue  # retry tool execution
 
-                            # === Cat 7 post-tool checkpoint (53.1 Day 3) ================
-                            # After all tool results are appended for this turn, persist
-                            # a snapshot so HITL pause / replay can resume from
-                            # complete-tool-batch boundary. No-op when not configured.
-                            post_tool_event = await self._emit_state_checkpoint(
-                                session_id=session_id,
-                                messages=messages,
-                                turn_count=turn_count,
-                                tokens_used=tokens_used,
-                                source_category="orchestrator_loop:post_tool",
-                                ctx=ctx,
+                            # Success or no-retry path → exit retry loop. Post-execute
+                            # code (tool_content / yield ToolCallExecuted-or-Failed /
+                            # messages.append) follows at original indent level.
+                            break
+
+                        # Feed back as tool message — KEY V2 cure for AP-1.
+                        tool_content = self._tool_result_to_text(result.content)
+
+                        # 50.2: emit Cat 2-owned completion event so SSE / frontend
+                        # see tool result text + success/failure.
+                        if result.success:
+                            yield ToolCallExecuted(
+                                tool_call_id=tc.id,
+                                tool_name=tc.name,
+                                duration_ms=result.duration_ms or 0.0,
+                                result_content=tool_content,
+                                trace_context=ctx,
                             )
-                            if post_tool_event is not None:
-                                yield post_tool_event
-                        finally:
-                            yield SpanEnded(
-                                span_name="agent_loop.turn",
-                                span_id=turn_ctx.span_id,
-                                span_type="TURN",
-                                duration_ms=(time.monotonic() - _turn_ctx_t0) * 1000.0,
-                                trace_context=turn_ctx,
+                        else:
+                            yield ToolCallFailed(
+                                tool_call_id=tc.id,
+                                tool_name=tc.name,
+                                error=result.error or "unknown tool error",
+                                trace_context=ctx,
                             )
 
-                    turn_count += 1
-                    # loop continues to next while iteration
-            finally:
-                yield SpanEnded(
-                    span_name="agent_loop.run",
-                    span_id=root_ctx.span_id,
-                    span_type="LOOP",
-                    duration_ms=(time.monotonic() - _root_ctx_t0) * 1000.0,
-                    trace_context=root_ctx,
-                )
+                        messages.append(
+                            Message(
+                                role="tool",
+                                content=tool_content,
+                                tool_call_id=tc.id,
+                            )
+                        )
+
+                    # === Cat 7 post-tool checkpoint (53.1 Day 3) ================
+                    # After all tool results are appended for this turn, persist
+                    # a snapshot so HITL pause / replay can resume from
+                    # complete-tool-batch boundary. No-op when not configured.
+                    post_tool_event = await self._emit_state_checkpoint(
+                        session_id=session_id,
+                        messages=messages,
+                        turn_count=turn_count,
+                        tokens_used=tokens_used,
+                        source_category="orchestrator_loop:post_tool",
+                        ctx=ctx,
+                    )
+                    if post_tool_event is not None:
+                        yield post_tool_event
+                finally:
+                    yield SpanEnded(
+                        span_name="agent_loop.turn",
+                        span_id=turn_ctx.span_id,
+                        span_type="TURN",
+                        duration_ms=(time.monotonic() - _turn_ctx_t0) * 1000.0,
+                        trace_context=turn_ctx,
+                    )
+
+            turn_count += 1
+            # loop continues to next while iteration
 
     async def resume(
         self,

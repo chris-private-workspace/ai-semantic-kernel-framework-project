@@ -6,8 +6,10 @@ Scope: Phase 50 / Sprint 50.1 (Day 3.4)
 
 Description:
     Enforces 04-anti-patterns.md §AP-1 at lint-time:
-        a) Concrete AgentLoop implementations MUST contain a `while`-loop
-           in their async `run()` method (not a fixed-step `for` pipeline).
+        a) Concrete AgentLoop implementations MUST drive a `while`-loop from
+           their async `run()` method (not a fixed-step `for` pipeline) —
+           either lexically in run() OR via a sibling helper run() delegates to
+           (the Sprint 57.89 re-enterable `_run_turns` extraction).
         b) The implementation MUST feed tool results back as a tool-role
            Message — required for the LLM to observe the action result.
 
@@ -31,9 +33,10 @@ Exit codes:
 Stdlib-only (matches the 4 V2 lint scripts shipped in Sprint 49.4 Day 4).
 
 Created: 2026-04-30 (Sprint 50.1 Day 3.4)
-Last Modified: 2026-05-04 (Sprint 53.7 Day 1)
+Last Modified: 2026-06-08 (Sprint 57.89 Slice 1)
 
 Modification History (newest-first):
+    - 2026-06-08: Sprint 57.89 Slice 1 — delegation-aware while check (run() may drive the loop via _run_turns)
     - 2026-05-04: Sprint 53.7 Day 1 — fail loudly (exit 2) instead of silent OK
       when target_dir is missing. Sprint 53.7 Day 0 drift D1 found that the
       53.6-era invocation `--root backend/src/agent_harness` silently exited
@@ -75,8 +78,53 @@ def find_run_method(class_node: ast.ClassDef) -> ast.AsyncFunctionDef | None:
     return None
 
 
-def has_while_loop(method_node: ast.AsyncFunctionDef) -> bool:
+def has_while_loop(method_node: ast.AsyncFunctionDef | ast.FunctionDef) -> bool:
     return any(isinstance(n, ast.While) for n in ast.walk(method_node))
+
+
+def _class_methods(
+    class_node: ast.ClassDef,
+) -> dict[str, ast.AsyncFunctionDef | ast.FunctionDef]:
+    """Map method-name -> def node for the class's own methods."""
+    return {
+        item.name: item
+        for item in class_node.body
+        if isinstance(item, (ast.AsyncFunctionDef, ast.FunctionDef))
+    }
+
+
+def _self_method_calls(method_node: ast.AsyncFunctionDef | ast.FunctionDef) -> set[str]:
+    """Names of methods invoked as `self.<name>(...)` anywhere in method_node."""
+    names: set[str] = set()
+    for n in ast.walk(method_node):
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute):
+            val = n.func.value
+            if isinstance(val, ast.Name) and val.id == "self":
+                names.add(n.func.attr)
+    return names
+
+
+def run_drives_while_loop(
+    class_node: ast.ClassDef, run_method: ast.AsyncFunctionDef
+) -> bool:
+    """True if run() drives a StopReason `while` loop — directly OR via a sibling
+    method it delegates to.
+
+    Sprint 57.89 (run() re-entrancy refactor): the per-turn `while True` body was
+    extracted from run() into a re-enterable helper `_run_turns(...)` that run()
+    drives via `async for ev in self._run_turns(...)`. The AP-1 invariant (a real
+    StopReason-driven loop, not a fixed-step for-pipeline) still holds — the loop
+    just lives one delegation hop away. Checking only run()'s lexical body would
+    false-positive on this legitimate extraction. One level of self-delegation is
+    sufficient for the current loop shape.
+    """
+    if has_while_loop(run_method):
+        return True
+    methods = _class_methods(class_node)
+    return any(
+        (target := methods.get(name)) is not None and has_while_loop(target)
+        for name in _self_method_calls(run_method)
+    )
 
 
 def check_file(path: Path) -> list[str]:
@@ -100,12 +148,12 @@ def check_file(path: Path) -> list[str]:
         run_method = find_run_method(cls)
         if run_method is None:
             continue  # class does not override run() — not an AgentLoop impl
-        if not has_while_loop(run_method):
+        if not run_drives_while_loop(cls, run_method):
             violations.append(
                 f"{path}:{run_method.lineno}: AP-1 violation: "
-                f"{cls.name}.run() must contain a `while` loop "
-                f"(StopReason-driven), not a fixed-step for-pipeline. "
-                f"See 04-anti-patterns.md §AP-1."
+                f"{cls.name}.run() must drive a `while` loop (StopReason-driven) "
+                f"— directly or via a delegated helper like _run_turns — "
+                f"not a fixed-step for-pipeline. See 04-anti-patterns.md §AP-1."
             )
         if TOOL_FEEDBACK_MARKER not in src:
             violations.append(
