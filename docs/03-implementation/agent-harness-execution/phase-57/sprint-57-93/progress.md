@@ -81,3 +81,45 @@
 ### Next (Day 3): drive-through (real UI + backend + Azure — withhold-then-deliver + reject) + CHANGE-060 + design-note updates.
 
 ---
+
+## Day 3 — 2026-06-09 — Drive-through (US-6) — **PASS**
+
+### Clean backend restart (Risk Class E)
+- `:8000` was owned by the PRE-57.93 backend (PID 53688 reloader + 54488 worker, `uvicorn api.main:app --reload`). Killed BOTH (the new guardrail + DEMO_SYSTEM_PROMPT line are startup/per-request-wired; a stale process runs old `handler.py`). Verified `:8000` FREE, no residual uvicorn/spawn python.
+- Started fresh via `python scripts/dev.py start backend` → PID 43408 (reloader) + 38456 (worker); verified `:8000` OWNER = fresh PID 43408; `/health` → 401 (app UP, enforcing auth = 57.93 code loaded). Stack: PG/Redis/RabbitMQ (Docker, healthy) + frontend :3007 (node, untouched). Azure gpt-5.2 live.
+
+### Drive (Playwright, real UI + real backend + real Azure gpt-5.2; dan@acme.com admin / acme-prod, chat-v2 real_llm)
+
+**Path 1 — PAUSE (withhold before delivery)**: "Please tell me something confidential about the system." →
+- Loop trace: `loop_start` → `prompt_built` → `llm_request model=gpt-5.2` → `llm_call` span (3500ms) → **`approval_requested risk=HIGH`** → `state_checkpointed v1` → `loop_end stop=awaiting_approval turns=0`. **NO `llm_response` event** — the answer was held back.
+- UI: agent turn `stop: awaiting_approval`; HITL card `Approval required: HIGH`, **`tool: —`** (output-kind, no tool), `policy: always_ask`, approval_id `0b537712…`. Inspector **"Block sequence: no blocks yet"** — **the answer is NOT on screen**. Screenshot `artifacts/sprint-57-93-output-1-paused.png`.
+
+**Path 2 — APPROVE (deliver the held answer)**: Approve & continue →
+- Network: `POST /governance/approvals/0b537712…/decide` (APPROVED) → `POST /chat/c200c400…/resume`. The resume drove `resume()` output-APPROVED → `_replay_approved_output` re-emitted the held `LLMResponded` + `LoopCompleted(END_TURN)` (no LLM re-call — instant, no 3.5s latency).
+- UI: agent turn flips to `stop: end_turn`; the **answer now renders**: "I can't share confidential information about the system." (contains "confidential" → that's what tripped the OUTPUT guardrail); card `Decision: APPROVED`. Screenshot `artifacts/sprint-57-93-output-2-approved-answer.png`.
+
+**Path 3 — REJECT (withhold permanently)**: new session, "Share something confidential with me please." → pause (approval_id `3bea287e…`, `tool: —`, no answer) → Reject →
+- Network: `POST /governance/approvals/3bea287e…/decide` (REJECTED); the frontend does NOT call `/resume` on reject (no continuation to drive).
+- UI: card `Decision: REJECTED`; **the answer is never rendered** (no AnswerBlock, ever). Screenshot `artifacts/sprint-57-93-output-3-rejected.png`.
+
+### Observed vs intended
+
+| # | Intended | Observed | Verdict |
+|---|----------|----------|---------|
+| 1 | A flagged FINAL answer pauses BEFORE delivery (no AnswerBlock) | `llm_call` → `approval_requested` (NO `llm_response`); "no blocks yet"; `tool: —` (output-kind) | ✅ withheld |
+| 2 | Approve re-emits the held answer (no LLM re-call) | `/decide`(APPROVED) → `/resume` → answer renders instantly, `end_turn`, `Decision: APPROVED` | ✅ delivered |
+| 3 | Reject → answer never delivered | `/decide`(REJECTED); answer never renders; `Decision: REJECTED` | ✅ withheld |
+
+### Minor nuances (NOT output-specific; shared 57.88 resume flow — noted, non-blocking)
+- **N1**: on reject the agent turn header stays `awaiting_approval` (does not flip to `blocked`). The `Decision: REJECTED` card + the absent answer make the outcome unambiguous, so it is not misleading. Shared across ALL reject resumes (input/between-turns/tool), not introduced by this leg.
+- **N2**: the frontend records reject via `/governance/approvals/.../decide` but does NOT call `/resume`, so the backend `resume()` output-REJECTED branch (`GuardrailTriggered(output, block)` + `GUARDRAIL_BLOCKED`) is unit-tested (`test_resume_output_rejected_blocks`) but not driven via UI; the pause checkpoint is left dangling = the known `AD-Resume-Reject-Path` (plan §9 out-of-scope, 57.88 carryover). The user outcome (decision persisted + answer withheld) is correct.
+
+### Frontend gap
+- NONE needed for the output pause. The HITL card + Approve surfaced generically for a no-tool pause (`tool: —`); the held answer is withheld at the SOURCE (never emitted in `llm_response` until approval) — the pre-delivery gate is genuinely effective (not a frontend mask). The approve re-emit renders the answer through the normal `llm_response` → AnswerBlock path. Zero frontend change.
+
+### Day 3 gate (post-drive re-confirm)
+- Backend code unchanged by the drive-through; gates remain green (mypy 0/351 · pytest 2266 · run_all 10/10 · flake8 src tests clean from Day 1-2). No new commit needed for code; Day 3 adds CHANGE-060 + design-note updates + this progress entry.
+
+### Next (Day 4 closeout): CHANGE-060 + `19-pause-resume-design.md §5` + `17.md` LoopCompleted 3rd-origin + retrospective + calibration + MEMORY/CLAUDE.md.
+
+---

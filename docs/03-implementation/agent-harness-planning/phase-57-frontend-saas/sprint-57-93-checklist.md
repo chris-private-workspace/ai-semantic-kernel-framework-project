@@ -74,24 +74,24 @@
 - [x] **Full backend pytest green (NET delta documented)** — baseline 2254 → **2266 passed / 4 skipped** = +12 (5 output loop unit + 7 output guardrail unit); NO test deleted (2 pre-existing `__import__` warnings, not new)
 - [x] **mypy 0 + run_all 10/10 + format chain** — mypy `src --strict` 0/351; run_all **10/10** (LLM SDK leak 0; AP-1; AP-8; event-schema sync); `black`/`isort` clean; `flake8 src tests` clean (CI-equivalent scope — 4 E501 in docstrings/MHist caught + fixed, the 57.92 lesson applied)
 
-### 3.2 Drive-through (US-6 — output pause is user-facing; withhold-then-deliver) — **PASS required**
-- [ ] **Clean backend restart (Risk Class E)** — kill ALL stale uvicorn reloader+worker procs; verify :8000 OWNER is the fresh PID (`Get-NetTCPConnection -LocalPort 8000`); the new guardrail + demo prompt are startup-wired; Azure SET; note frontend port (57.92 was :3007)
-- [ ] **Drive the output pause through real UI + real backend + real Azure gpt-5.2** — a `confidential`-eliciting request → final answer trips the output guardrail → pause (HITL card, **AnswerBlock ABSENT before approval**, `loop_end stop=awaiting_approval`) → Approve → answer renders ("...confidential..."); ALSO drive a Reject → answer never renders + `GUARDRAIL_BLOCKED`. Observed-vs-intended table in progress.md Day 3
+### 3.2 Drive-through (US-6 — output pause is user-facing; withhold-then-deliver) — **PASS**
+- [x] **Clean backend restart (Risk Class E)** — killed PRE-57.93 reloader 53688 + worker 54488; verified :8000 FREE then fresh PID 43408 (`dev.py start backend`); `/health` 401 = app UP (57.93 code); PG/Redis/RabbitMQ Docker healthy; frontend :3007 (node, untouched); Azure gpt-5.2 live
+- [x] **Drove the output pause through real UI + real backend + real Azure gpt-5.2** (dan@acme.com admin / acme-prod, chat-v2 real_llm) — **PASS**: (1) "tell me something confidential" → `llm_call` → `approval_requested` (NO `llm_response`) → `loop_end awaiting_approval`, HITL card `tool: —` (output-kind), Inspector "no blocks yet" = **answer withheld**; (2) Approve → `/decide`(APPROVED)+`/resume` → held answer re-emitted ("I can't share confidential…") renders, `end_turn`, no LLM re-call; (3) Reject → `/decide`(REJECTED) → answer never renders. Observed-vs-intended table in progress.md Day 3
   - Evidence: `artifacts/sprint-57-93-output-{1-paused,2-approved-answer,3-rejected}.png`
-- [ ] **Frontend gap** — confirm NONE needed (answer held at source = never emitted before approval); if the AnswerBlock leaks, fix the frontend gap (record FIX)
+- [x] **Frontend gap** — NONE needed; answer held at source (never emitted in `llm_response` until approval = genuine pre-delivery gate, not a mask); approve re-emit renders via normal `llm_response`→AnswerBlock path. 2 minor nuances (N1 reject turn-header stays awaiting_approval; N2 reject doesn't drive /resume = known `AD-Resume-Reject-Path`) are shared 57.88 resume flow, NOT output-specific, non-blocking (progress.md Day 3)
 
 ### 3.3 CHANGE-060 + design-note update
-- [ ] `claudedocs/4-changes/feature-changes/CHANGE-060-output-guardrail-pause.md` written
-- [ ] `19-pause-resume-design.md §5` — "Generalized pause points" lists shipped (input + between-turns + output) + still-deferred (mid-thinking); MHist 57.93 line
-- [ ] `17-cross-category-interfaces.md` — `LoopCompleted` row: `awaiting_approval` 3rd origin = output guardrail ESCALATE on a final answer; NO new enum value (OUTPUT already present)
+- [x] `claudedocs/4-changes/feature-changes/CHANGE-060-output-guardrail-pause.md` written
+- [x] `19-pause-resume-design.md §5` — "Generalized pause points" now lists shipped (input + between-turns + output) + only mid-thinking deferred; MHist 57.93 line
+- [x] `17-cross-category-interfaces.md` — `LoopCompleted` row: `awaiting_approval` **4th** origin = output guardrail ESCALATE on a final answer (pre-delivery gate); NO new enum value (OUTPUT already present)
 
 ---
 
 ## Day 4 — Closeout
 
 ### 4.1 Closeout
-- [ ] Full validation (parent re-verified): pytest baseline+delta / mypy 0 / run_all 10/10 / input+between-turns+tool-path tests unchanged / **drive-through PASS** (screenshots + observed-vs-intended table, incl. withhold-before-approval)
-- [ ] progress.md (Day 0-4) + retrospective.md (Q1-Q7)
-- [ ] Calibration: `backend-core-loop-refactor` 0.55 (5th data point, caveated — feature-add shape, 3rd consecutive) + `agent_factor` 1.0 (parent-direct); record `calibration-log.md §3`; if < 0.7 → 3rd same-shape → ACTIVATE `loop-pause-point-feature` ~0.40 split proposal; carryover (Slice 3 leg 3 / subagent child-loop / 57.88 ADs) → next-phase-candidates.md
-- [ ] MEMORY.md pointer + `project_phase57_93_output_guardrail_pause.md` subfile + CLAUDE.md lean (Current Sprint row + Last Updated) + CHANGE-060 + `19-pause-resume-design.md §5` + 17.md `LoopCompleted` 3rd-origin note updated
-- [ ] commit (Day 0-N) + push + PR — **push + PR pending user authorization**
+- [x] Full validation (parent re-verified): pytest **2266** (+12) / mypy 0/351 / run_all 10/10 / input+between-turns+tool-path tests unchanged / **drive-through PASS** (3 screenshots + observed-vs-intended table, incl. withhold-before-approval)
+- [x] progress.md (Day 0-3) + retrospective.md (Q1-Q7)
+- [x] Calibration: `backend-core-loop-refactor` 0.55 (5th data point, caveated — feature-add shape, 3rd consecutive < 0.7, actual/committed ≈ 0.67) + `agent_factor` 1.0 (parent-direct); recorded `calibration-log.md §3`; **3rd same-shape < 0.7 → PROPOSE `loop-pause-point-feature` ~0.40 split** (pending validation); carryover (Slice 3 leg 3 mid-thinking / output-on-non-final / subagent child-loop / 57.88 ADs) → next-phase-candidates.md
+- [x] MEMORY.md pointer + `project_phase57_93_output_guardrail_pause.md` subfile + CLAUDE.md lean (Current Sprint row + Last Updated) + CHANGE-060 + `19-pause-resume-design.md §5` + 17.md `LoopCompleted` 4th-origin note updated
+- [ ] commit (Day 0-N) + push + PR — closeout commit done; **push + PR pending user authorization**
