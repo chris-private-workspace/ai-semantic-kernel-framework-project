@@ -142,3 +142,38 @@ Parent-direct (no agent delegation this stage — surgical 4-file wiring) + **pa
 ### Next: Day 4 — ESCALATE trigger (env-gated demo, user decision pending) → chat-v2 drive-through (real UI + backend + LLM) → design note `19-pause-resume-design.md` 8-point gate → closeout
 
 ---
+
+## Day 4 (part 1) — 2026-06-08 — ESCALATE trigger (real ToolGuardrail + CapabilityMatrix)
+
+Parent-direct + **parent re-verify (all gates run by parent)**.
+
+### User decision (AskUserQuestion)
+- ESCALATE trigger approach: **Option B — wire the REAL `ToolGuardrail` + `CapabilityMatrix`** (chosen over Option A env-gated fake rule / Option C defer drive-through).
+
+### Grounding finding that shaped the implementation (blast-radius sizing)
+- `ToolGuardrail.check()` returns **BLOCK (HIGH)** for any tool NOT in the matrix (`get_rule → None` = unknown tool). The chat path registers echo_tool + memory_search/write + subagent (FORK/TEAMMATE/AS_TOOL) + business tools — a static echo-only matrix would BLOCK all of those, breaking the main flow (AP-4 / Drive-Through violation).
+- Explore blast-radius audit of 21 build_real_llm_handler/echo_tool test files: **0 break** IF the matrix is **derived from `registry.list()`** (every exposed tool → PASS rule, echo_tool → requires_approval=True). The 2 at-risk files (`test_chat_keystone_wiring` memory+subagent exec, `test_chat_tier2_wiring` memory render) stay green because their tools get PASS rules. No test runs echo through real_llm expecting execution.
+
+### Done (Day-4 ESCALATE infra)
+- **`handler.py` `build_real_llm_handler`**: builds `guardrail_engine = build_default_guardrail_engine()` then registers `ToolGuardrail(CapabilityMatrix(permission_rules={spec.name: PermissionRule(requires_approval=spec.name in CHAT_HITL_ESCALATE_TOOLS) for spec in registry.list()}))` at `priority=10`. `CHAT_HITL_ESCALATE_TOOLS = frozenset({"echo_tool"})`.
+- **NOT in `build_default_guardrail_engine()` factory** (caller-level wiring) → `test_factory_does_not_register_tool_chain_by_default` stays green. **echo_demo path unaffected** (no guardrail engine).
+- Result: real_llm `"echo hello"` → LLM calls echo_tool → ToolGuardrail ESCALATE (MEDIUM) → (hitl_manager wired via router `service_factory` + HITL_ENABLED) → deferred branch → checkpoint + ApprovalRequested + `loop_end(awaiting_approval)`.
+
+### Decisions (Day-4 part 1)
+- **Registry-derived matrix, not capability_matrix.yaml**: the YAML has no chat tools; deriving from the live registry guarantees every EXPOSED tool has a rule (no unknown→BLOCK) AND auto-covers future tools. Production per-tenant YAML policy = design-note open question (deferred).
+- **echo_tool as the deterministic trigger**: DEMO_SYSTEM_PROMPT already forces echo_tool on "echo X" → reliable pause without prompt/tool changes.
+- **Always-on (no env gate)**: the user declined Option A's env gating; the chat path now genuinely enforces a per-tool capability matrix (real security layer), echo gated as the demo. Zero test breakage confirmed.
+
+### Parent re-verify (gates run by parent)
+- `mypy src/` **0 issues / 346 files** ✅
+- `python scripts/lint/run_all.py` **10/10 green** ✅ (incl. factory test contract preserved)
+- Affected wiring tests (keystone / tier2 / category_activation / handler / e2e) **44 passed** ✅
+- guardrails + pause-resume + escalation **451 passed** ✅
+- **Full backend suite: 2229 passed, 4 skipped** ✅ (zero regression from the central handler change)
+
+### Files changed (Day-4 part 1)
+- `api/v1/chat/handler.py` (+CHAT_HITL_ESCALATE_TOOLS const + ToolGuardrail/CapabilityMatrix imports + registry-derived matrix wiring + MHist)
+
+### Next: Day 4 (part 2) — chat-v2 DRIVE-THROUGH (real UI + real backend + real LLM): "echo hello" → paused + HITL card → approve → continuation renders. Then design note `19-pause-resume-design.md` (8-point gate) + closeout.
+
+---

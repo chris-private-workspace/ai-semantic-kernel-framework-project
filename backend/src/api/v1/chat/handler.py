@@ -27,9 +27,10 @@ Key Components:
     - build_handler(mode: ChatMode, message: str) -> AgentLoopImpl  (dispatcher)
 
 Created: 2026-04-30 (Sprint 50.2 Day 1.4)
-Last Modified: 2026-06-02
+Last Modified: 2026-06-08
 
 Modification History (newest-first):
+    - 2026-06-08: Sprint 57.88 Day-4 — ToolGuardrail (registry matrix) gates echo_tool ESCALATE
     - 2026-06-08: Sprint 57.88 US-1 — chat path opts into hitl_deferred=True (durable pause-resume)
     - 2026-06-02: Sprint 57.71 — thread tracer param through build_handler to loop (A-4 Tier 0)
     - 2026-06-02: Sprint 57.70 Stage-1a — await async per-tenant resolve_persona
@@ -68,6 +69,8 @@ from agent_harness._contracts import (
     ToolCall,
 )
 from agent_harness.guardrails import build_default_guardrail_engine
+from agent_harness.guardrails.tool.capability_matrix import CapabilityMatrix, PermissionRule
+from agent_harness.guardrails.tool.tool_guardrail import ToolGuardrail
 from agent_harness.orchestrator_loop import AgentLoopImpl
 from agent_harness.output_parser import OutputParserImpl
 from business_domain._register_all import make_default_executor
@@ -103,6 +106,17 @@ DEMO_SYSTEM_PROMPT = (
     "as the `text` argument, then return the tool's output verbatim as your "
     "final answer. Do not paraphrase. For any other request, answer directly."
 )
+
+# Sprint 57.88 (Day-4): tools that require human approval on the real chat path.
+# A call to one of these makes the Cat 9 ToolGuardrail return ESCALATE → the loop
+# enters the deferred-HITL branch (checkpoint + ApprovalRequested + terminate with
+# stop_reason="awaiting_approval"), powering the durable pause-resume drive-through.
+# echo_tool is the demo's DETERMINISTIC trigger — DEMO_SYSTEM_PROMPT already drives
+# the LLM to call it on "echo X", so a real "echo hello" reliably pauses for
+# approval. Production per-tenant policy would source this from capability_matrix.yaml
+# (deferred — design note open question); the chat path derives the matrix from the
+# live tool registry instead (see build_real_llm_handler).
+CHAT_HITL_ESCALATE_TOOLS = frozenset({"echo_tool"})
 
 
 def build_echo_demo_handler(
@@ -269,6 +283,24 @@ def build_real_llm_handler(
         error_terminator,
     ) = make_chat_error_deps()
 
+    # Sprint 57.88 (Day-4): wire the REAL Cat 9 ToolGuardrail + CapabilityMatrix onto
+    # the chat path so tool calls are gated by per-tool policy. The matrix is derived
+    # from THIS request's tool registry — every registered tool (echo_tool + memory +
+    # subagent + business) gets a PASS rule EXCEPT CHAT_HITL_ESCALATE_TOOLS, which get
+    # requires_approval=True → ESCALATE. Deriving from the registry (not a static YAML)
+    # guarantees every EXPOSED tool has a rule, so memory / subagent / business tools
+    # never trip ToolGuardrail's unknown-tool → BLOCK default. Combined with
+    # hitl_deferred (below), an echo_tool call pauses the loop for durable approval.
+    guardrail_engine = build_default_guardrail_engine()
+    tool_rules = {
+        spec.name: PermissionRule(requires_approval=spec.name in CHAT_HITL_ESCALATE_TOOLS)
+        for spec in registry.list()
+    }
+    guardrail_engine.register(
+        ToolGuardrail(CapabilityMatrix(capability_to_tools={}, permission_rules=tool_rules)),
+        priority=10,
+    )
+
     loop = AgentLoopImpl(
         chat_client=chat_client,
         output_parser=parser,
@@ -297,7 +329,7 @@ def build_real_llm_handler(
         # False → 53.5 baseline (the deferred branch is a no-op anyway since it
         # needs the manager). The later POST /chat/{id}/resume drives resume().
         hitl_deferred=(hitl_manager is not None),
-        guardrail_engine=build_default_guardrail_engine(),
+        guardrail_engine=guardrail_engine,
         compactor=compactor,
         prompt_builder=prompt_builder,
         reducer=reducer,
