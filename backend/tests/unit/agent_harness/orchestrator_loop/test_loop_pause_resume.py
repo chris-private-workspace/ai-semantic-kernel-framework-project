@@ -2,7 +2,7 @@
 File: backend/tests/unit/agent_harness/orchestrator_loop/test_loop_pause_resume.py
 Purpose: Unit tests for 57.88 durable HITL pause-resume (deferred branch + resume()).
 Category: Tests / 範疇 1 + 範疇 7 + §HITL Centralization
-Scope: Phase 57 / Sprint 57.88 (US-1 / US-3)
+Scope: Phase 57 / Sprint 57.88 (US-1 / US-3) + Sprint 57.90 Slice 2 (multi-pause)
 
 Description:
     Validates the Stage-1 backend core of the durable HITL pause-resume spike:
@@ -14,8 +14,12 @@ Description:
     - HITLManager.get_decision: pending → None; decided → ApprovalDecision.
     - resume(): APPROVED → pending tool executes + loop continues to end_turn;
       REJECTED → GuardrailTriggered(block), tool NOT executed.
+    - Sprint 57.90 Slice 2: resume() now drives the shared `_run_turns` (it emits
+      a LOOP span) and a 2nd approval-required tool in the resumed continuation
+      pauses AGAIN (multi-pause-per-run) — impossible with the old reduced copy.
 
 Created: 2026-06-08 (Sprint 57.88)
+Last Modified: 2026-06-08 (Sprint 57.90 Slice 2 — multi-pause test + LOOP-span assertion)
 """
 
 from __future__ import annotations
@@ -42,6 +46,7 @@ from agent_harness._contracts import (
     LoopEvent,
     LoopState,
     Message,
+    SpanStarted,
     StateVersion,
     TokenUsage,
     ToolCall,
@@ -572,6 +577,11 @@ async def test_resume_approved_executes_tool_and_continues() -> None:
     # Continued to end_turn.
     completes = [e for e in events if isinstance(e, LoopCompleted)]
     assert completes[-1].stop_reason == TerminationReason.END_TURN.value
+    # Sprint 57.90 Slice 2: the continuation runs through the shared _run_turns,
+    # so a LOOP span brackets it (the deleted _resume_continuation emitted none).
+    assert any(
+        isinstance(e, SpanStarted) and e.span_type == "LOOP" for e in events
+    ), "resume() should drive _run_turns inside a LOOP span"
 
 
 async def test_resume_rejected_blocks_tool() -> None:
@@ -610,6 +620,93 @@ async def test_resume_undecided_terminates_error() -> None:
     completes = [e for e in events if isinstance(e, LoopCompleted)]
     assert completes[-1].stop_reason == TerminationReason.ERROR.value
     assert not executor.executed
+
+
+# === Tests: multi-pause-per-run (57.90 Slice 2) =============================
+
+
+def _build_resume_loop_multipause(
+    *,
+    chat_client: ChatClient,
+    hitl_manager: HITLManager,
+    checkpointer: InMemoryCheckpointer,
+    reducer: InMemoryReducer,
+) -> tuple[AgentLoopImpl, SpyExecutor]:
+    """A resume loop wired for the deferred-pause machinery (Sprint 57.90).
+
+    Unlike `_build_resume_loop`, this wires the ESCALATE guardrail + hitl_deferred
+    + checkpointer/reducer so a 2nd approval-required tool requested DURING the
+    resumed continuation re-enters `_cat9_hitl_branch`'s deferred branch and pauses
+    again — the multi-pause-per-run behavior that only exists because resume() now
+    drives the shared `_run_turns` (the deleted `_resume_continuation` reduced copy
+    had no Cat 9 per-tool path, so it executed the 2nd tool silently).
+    """
+    registry = _registry_with_tool()
+    executor = _executor(registry)
+    engine = GuardrailEngine()
+    engine.register(EscalateGuardrail(), priority=10)
+    loop = AgentLoopImpl(
+        chat_client=chat_client,
+        output_parser=OutputParserImpl(),
+        tool_executor=executor,
+        tool_registry=registry,
+        guardrail_engine=engine,
+        tenant_id=_TENANT_ID,
+        hitl_manager=hitl_manager,
+        hitl_deferred=True,
+        checkpointer=checkpointer,  # type: ignore[arg-type]
+        reducer=reducer,  # type: ignore[arg-type]
+    )
+    return loop, executor
+
+
+async def test_resume_continuation_can_pause_again() -> None:
+    """Sprint 57.90 Slice 2 (multi-pause-per-run): after resume() executes the 1st
+    pre-approved pending tool, the resumed continuation requests a 2nd
+    approval-required tool → it ESCALATEs → the loop pauses AGAIN (a NEW
+    pending_approval checkpoint + LoopCompleted(awaiting_approval)) instead of
+    silently executing it (the one-approval-per-run limitation of the deleted
+    `_resume_continuation`). Only possible because resume() drives the shared
+    `_run_turns` which carries the Cat 9 deferred branch.
+    """
+    session_id = uuid4()
+    # The resumed continuation's first LLM turn requests a 2nd approval tool.
+    chat = FakeChatClient(
+        responses=[
+            (
+                "calling tool again",
+                [ToolCall(id="tc-2", name="sensitive_tool", arguments={"x": 7})],
+                StopReason.TOOL_USE,
+            ),
+        ],
+    )
+    hitl = SpyHITLManager(decision=DecisionType.APPROVED)  # the 1st pending is approved
+    checkpointer = InMemoryCheckpointer()
+    reducer = InMemoryReducer()
+    loop, executor = _build_resume_loop_multipause(
+        chat_client=chat,
+        hitl_manager=hitl,
+        checkpointer=checkpointer,
+        reducer=reducer,
+    )
+
+    state = _paused_state(decision_session=session_id)
+    ctx = TraceContext(tenant_id=_TENANT_ID, session_id=session_id)
+    events = [ev async for ev in loop.resume(state=state, trace_context=ctx)]
+
+    # The 1st pending tool (tc-1) executed once (pre-approved, outside _run_turns).
+    assert executor.executed and executor.executed[0].id == "tc-1"
+    # The 2nd tool (tc-2) was NOT executed — it paused before exec.
+    assert all(c.id != "tc-2" for c in executor.executed)
+    # The resumed continuation paused AGAIN (multi-pause).
+    completes = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completes[-1].stop_reason == TerminationReason.AWAITING_APPROVAL.value
+    # A NEW checkpoint carrying the 2nd tool's pending_approval was persisted.
+    pauses = [s for s in checkpointer.saved if "pending_approval" in s.durable.metadata]
+    assert pauses, "expected a 2nd pause checkpoint"
+    assert pauses[-1].durable.metadata["pending_approval"]["tool_call"]["tool_call_id"] == "tc-2"
+    # The 2nd pause re-requested approval (deferred) for the new tool.
+    assert any(isinstance(e, ApprovalRequested) for e in events)
 
 
 # === Tests: HITLManager.get_decision (US-3) =================================
