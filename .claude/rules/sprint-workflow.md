@@ -135,6 +135,7 @@ Per AD-Sprint-Plan-4 (logged Sprint 55.3) + 4-sprint window evidence,one-multipl
 | `frontend-verbatim-css-repoint -with-extras` | 0.65 | ~1.04 | KEEP (criteria: any of multi-file >3 / AP-2 banner / dual-mount / playback widgets / oklch bump ≥4) |
 | `frontend-page-bug-fix` | 0.45 | n/a (1 pt) | KEEP; if >1.20 recurs →0.55-0.60 |
 | `mixed-multidomain-bundle` | 0.65 | 0.42 | KEEP — agent-confound resolved at agent_factor sub-class layer |
+| `subagent-child-loop-spike` | 0.60 | n/a (1 pt) | KEEP pending 2-3 sprint validation (Sprint 57.94 ratio ~0.93 IN band; Cat 11 new-domain spike, parent-direct) |
 
 > Collapsed/closed historical classes (`frontend-mockup-strict-rebuild — historical`; `frontend-verbatim-css-repoint` pre-57.38 single-baseline, CLOSED Sprint 57.38) → calibration-log.md §1. For verbatim-css-repoint use `-simple` (0.50) or `-with-extras` (0.65) per criteria above.
 

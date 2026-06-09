@@ -56,4 +56,33 @@
 - subagent unit tests: **55 passed** (was 50; +5 = +4 new child-loop + 1 new fork) ✅
 - `test_chat_keystone_wiring.py` **11 passed** ✅ (the 2 FORK integration tests fixed)
 - mypy `src --strict` **0/351** ✅ / run_all **10/10** ✅ (AP-1 does NOT flag the `async for ev in child.run()` drive; LLM SDK leak 0; cross-category-import OK — `ChildLoopFactory` AgentLoop import is TYPE_CHECKING-only) / black + isort + flake8 (src + tests) clean ✅
-- Full backend pytest: re-running (first full run = 2269 passed + 2 failed = the 2 keystone FORK tests, now fixed; expecting 2271 passed).
+- Full backend pytest: **2271 passed, 4 skipped** (baseline 2266 → +5; the 2 keystone FORK integration tests fixed) ✅. Committed Day 0-2 as `6522cf18` (Day-0 docs `9e435278`).
+
+---
+
+## Day 3 — 2026-06-09 — Drive-through (US-6) + CHANGE-061 + design note
+
+### Clean backend restart (Risk Class E)
+- :8000 was owned by the STALE 57.93 backend: uvicorn `--reload` reloader PID 43408 (owns :8000) + its `multiprocessing.spawn` worker child PID 51700 (the Risk-Class-E "cmdline-lacks-uvicorn" worker; parent reloader 46876 already dead). Killed BOTH (Python, not node — frontend node :3007 untouched) → verified :8000 **FREE** (no residual uvicorn).
+- Fresh backend via `dev.py start backend` → PID **14580** on :8000 (loads repo-root .env + Azure config); `/health` → 401 = app UP (57.94 code); frontend :3007 PID 6200 (node) untouched.
+
+### Drive-through (real UI chat-v2 + real backend + real Azure gpt-5.2; dan@acme.com admin / acme-prod) — **PASS**
+
+**Request**: "delegate to a sub-agent using task_spawn (mode fork); the sub-task is 'Use the echo_tool to echo the phrase: child loop is real, then report the echoed result'."
+
+| Observed (UI / parent trace) | Intended | ✓ |
+|------------------------------|----------|---|
+| Parent **turn 2**: `task_spawn` tool call — input `{task: "Use the echo_tool to echo...child loop is real...", mode: fork}` → output `{success: true, summary: "child loop is real", tokens_used: 3684, error: null}` | Parent delegates via task_spawn → child returns a real result | ✅ |
+| `summary: "child loop is real"` = the **echoed phrase** (echo_tool output) | The child EXECUTES echo_tool then reports — a real multi-turn tool-using loop | ✅ |
+| `tokens_used: 3684` (vs a ~tens-of-tokens single-shot) + `agent_loop.tool.task_spawn` **TOOL_EXEC span = 2389ms** | The child ran a real multi-turn loop (NOT a 1-shot) | ✅ |
+| Parent **turn 3**: `end_turn` → "It returned: child loop is real" + Verification passed (0.52) | Parent merges the child summary into its answer | ✅ |
+
+**THE proof it is NOT the old single-shot**: the old `ForkExecutor` made ONE chat call; on a task that requires a tool, the child's first response is a `task_spawn`→`echo_tool` tool-call with `content=""` → the old code returned `empty_response` (success=False). A `success=true` + `summary="child loop is real"` (the echoed phrase) + 3684 tokens is **impossible** under the single-shot → the child genuinely looped + used a tool.
+
+**Honest gap (not a regression)**: the Inspector **Tree** tab shows "no subagents spawned this session" — the chat path's `DefaultSubagentDispatcher` is built WITHOUT an `event_emitter` (pre-existing since 57.12/57.64), so `SubagentSpawned`/`SubagentCompleted` are not relayed to the chat SSE; the child runs **headless** (consistent with the deferred D2 `AD-Subagent-Child-Event-SSE-Relay`). The subagent DID run (proven by the task_spawn result + the 2389ms span). Child LOOP/TURN spans are separate/headless (the parent trace shows only the wrapping `task_spawn` TOOL_EXEC span — child-span nesting is the deferred `AD-Subagent-Child-Span-Nesting`).
+
+- Evidence: `artifacts/sprint-57-94-childloop-{0-initial,1-spawn-and-answer}.png`
+- Backend log: dev.py does not persist backend stdout to a readable file (grep returned nothing); the UI trace + tool result are the authoritative evidence.
+
+### Gate (Day 3) — parent re-verified
+- pytest **2271** / mypy 0/351 / run_all 10/10 / black+isort+flake8 (src+tests) clean / **drive-through PASS** (real loop, not 1-shot).

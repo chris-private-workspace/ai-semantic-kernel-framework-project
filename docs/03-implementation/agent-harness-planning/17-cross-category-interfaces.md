@@ -138,6 +138,7 @@ backend/src/agent_harness/_contracts/
 | `Tripwire` | `01-eleven-categories-spec.md` | 範疇 9（**non-範疇 8**）| `register()` / `trigger()` |
 | `Verifier` | `01-eleven-categories-spec.md` | 範疇 10 | `verify() -> VerificationResult` |
 | `SubagentDispatcher` | `01-eleven-categories-spec.md` | 範疇 11 | `spawn()` / `handoff()` |
+| `ChildLoopFactory` | `_contracts/subagent.py` | 範疇 11 | `Callable[[SubagentBudget], AgentLoop]` — Sprint 57.94 FORK real child loop. **Composition detail, NOT a `SubagentDispatcher` ABC method** (ABC unchanged); built at `build_real_llm_handler`, injected → `ForkExecutor`. Cat 11→Cat 1 ref is TYPE_CHECKING-only. See `20-subagent-child-loop-design.md`. |
 | `Tracer` | `01-eleven-categories-spec.md` | **範疇 12** | `start_span()` / `record_metric()` |
 | `HITLManager` | `01-eleven-categories-spec.md` | §HITL 中央化 | `request_approval()` / `wait()` / `decide()` |
 
