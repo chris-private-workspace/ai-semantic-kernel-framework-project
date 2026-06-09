@@ -97,6 +97,7 @@ from agent_harness._contracts.state import (
 )
 from agent_harness._contracts.subagent import (
     AgentSpec,
+    ChildLoopFactory,
     SubagentBudget,
     SubagentMode,
     SubagentResult,
@@ -183,6 +184,7 @@ __all__ = [
     "SubagentResult",
     "SubagentMode",
     "AgentSpec",
+    "ChildLoopFactory",
     # observability
     "TraceContext",
     "MetricEvent",

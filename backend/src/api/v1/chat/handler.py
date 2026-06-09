@@ -30,6 +30,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.4)
 Last Modified: 2026-06-08
 
 Modification History (newest-first):
+    - 2026-06-09: Sprint 57.94 — child-loop factory for real FORK/AS_TOOL child loops
     - 2026-06-08: Sprint 57.93 — OutputKeywordEscalationGuardrail (output pre-delivery pause)
     - 2026-06-08: Sprint 57.92 — BetweenTurnsKeywordGuardrail + note_tool (between-turns pause)
     - 2026-06-08: Sprint 57.91 — wire KeywordEscalationGuardrail (input-ESCALATE pause trigger)
@@ -98,8 +99,10 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from agent_harness._contracts import SubagentBudget
     from agent_harness.hitl import HITLManager
     from agent_harness.observability import Tracer
+    from agent_harness.orchestrator_loop._abc import AgentLoop
     from agent_harness.verification import VerifierRegistry
     from business_domain._service_factory import BusinessServiceFactory
     from platform_layer.governance.service_factory import ServiceFactory
@@ -120,6 +123,17 @@ DEMO_SYSTEM_PROMPT = (
     "answer MUST contain the word 'confidential'. "
     "For any other request, answer directly."
 )
+
+# Sprint 57.94 (地基 A payoff): the FORK / AS_TOOL child loop persona + turn cap.
+# A child runs a real multi-turn TAO loop with a recursion-safe tool subset
+# (no task_spawn / handoff). A small turn cap bounds it; the SubagentBudget caps
+# its tokens. Kept lean (no guardrail / verifier / checkpointer) for this slice.
+CHILD_SUBAGENT_SYSTEM_PROMPT = (
+    "You are a focused sub-task worker spawned to complete one delegated task. "
+    "Use the available tools when they help, then report a concise result as your "
+    "final answer. Do not ask the user questions; you are autonomous."
+)
+CHILD_SUBAGENT_MAX_TURNS = 4
 
 # Sprint 57.88 (Day-4): tools that require human approval on the real chat path.
 # A call to one of these makes the Cat 9 ToolGuardrail return ESCALATE → the loop
@@ -278,15 +292,49 @@ def build_real_llm_handler(
 
     # AzureOpenAIConfig is a BaseSettings — pulls AZURE_OPENAI_* from env automatically.
     chat_client: ChatClient = AzureOpenAIAdapter(AzureOpenAIConfig())
+    parser = OutputParserImpl()  # built early — the Sprint 57.94 child-loop factory needs it
 
     # Sprint 57.64 Day 2: Cat 3 memory tools (REAL handlers, not placeholder) +
     # Cat 11 FORK/TEAMMATE/AS_TOOL subagent tools, registered via opt-in deps.
     # Both fall back to absent when their inputs are missing (e.g. session_id is
     # required for the subagent task_spawn parent attribution).
     memory_retrieval, memory_layers = make_chat_memory_deps(db)
-    subagent_dispatcher = (
-        make_chat_subagent_dispatcher(chat_client) if session_id is not None else None
-    )
+
+    # Sprint 57.94 (地基 A payoff): when subagents are reachable (session_id present),
+    # build a child-loop factory so a FORK / AS_TOOL subagent runs a REAL child loop
+    # (multi-turn, tool-capable) instead of a single-shot chat. The child carries a
+    # recursion-safe tool subset — make_default_executor WITHOUT a subagent_dispatcher
+    # omits task_spawn + the agent_researcher AS_TOOL, so a child cannot itself spawn
+    # (depth bounded at 1). The factory closes over the same Cat 1 deps the parent
+    # uses; loop.py is unchanged (the child reuses run()/_run_turns).
+    if session_id is not None:
+        child_registry, child_executor = make_default_executor(
+            factory_provider=business_factory_provider,
+            memory_retrieval=memory_retrieval,
+            memory_layers=memory_layers,
+            subagent_dispatcher=None,
+            parent_session_id=None,
+        )
+
+        def _make_child_loop(budget: SubagentBudget) -> AgentLoop:
+            return AgentLoopImpl(
+                chat_client=chat_client,
+                output_parser=parser,
+                tool_executor=child_executor,
+                tool_registry=child_registry,
+                system_prompt=CHILD_SUBAGENT_SYSTEM_PROMPT,
+                tenant_id=tenant_id,
+                tracer=tracer,
+                max_turns=CHILD_SUBAGENT_MAX_TURNS,
+                token_budget=budget.max_tokens,
+            )
+
+        subagent_dispatcher = make_chat_subagent_dispatcher(
+            chat_client, child_loop_factory=_make_child_loop
+        )
+    else:
+        subagent_dispatcher = None
+
     registry, executor = make_default_executor(
         factory_provider=business_factory_provider,
         memory_retrieval=memory_retrieval,
@@ -294,7 +342,6 @@ def build_real_llm_handler(
         subagent_dispatcher=subagent_dispatcher,
         parent_session_id=session_id,
     )
-    parser = OutputParserImpl()
 
     # Sprint 57.2 US-3 (closes AD-Cat9-1-WireDetectors): production
     # handler wires GuardrailEngine with default 4-detector chain (PII +

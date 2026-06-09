@@ -25,6 +25,8 @@ from agent_harness.subagent import (
     ForkExecutor,
 )
 
+from ._child_loop_helpers import make_child_loop_factory
+
 
 def _mock_response(text: str) -> ChatResponse:
     return ChatResponse(
@@ -38,7 +40,9 @@ def _mock_response(text: str) -> ChatResponse:
 def test_as_tool_returns_toolspec_with_correct_schema() -> None:
     """wrap(spec) → ToolSpec with name=agent_<role> and 'task' string property."""
     chat = MockChatClient(responses=[_mock_response("ok")])
-    wrapper = AsToolWrapper(fork_executor=ForkExecutor(chat_client=chat))
+    wrapper = AsToolWrapper(
+        fork_executor=ForkExecutor(child_loop_factory=make_child_loop_factory(chat))
+    )
     spec = AgentSpec(role="researcher", prompt="You investigate facts.")
     tool_spec, handler = wrapper.wrap(spec)
 
@@ -58,7 +62,9 @@ def test_as_tool_returns_toolspec_with_correct_schema() -> None:
 async def test_as_tool_handler_calls_fork_executor_returns_summary_dict() -> None:
     """Handler({"task": "..."}) → executes ForkExecutor → returns dict with success + summary."""
     chat = MockChatClient(responses=[_mock_response("Researcher found 3 facts.")])
-    wrapper = AsToolWrapper(fork_executor=ForkExecutor(chat_client=chat))
+    wrapper = AsToolWrapper(
+        fork_executor=ForkExecutor(child_loop_factory=make_child_loop_factory(chat))
+    )
     spec = AgentSpec(role="researcher", prompt="You investigate facts.")
     _, handler = wrapper.wrap(spec)
 
@@ -74,7 +80,9 @@ async def test_as_tool_handler_calls_fork_executor_returns_summary_dict() -> Non
 async def test_as_tool_handler_missing_task_returns_error() -> None:
     """Handler without 'task' arg → success=False, error='missing_task' (no LLM call)."""
     chat = MockChatClient(responses=[_mock_response("should not be called")])
-    wrapper = AsToolWrapper(fork_executor=ForkExecutor(chat_client=chat))
+    wrapper = AsToolWrapper(
+        fork_executor=ForkExecutor(child_loop_factory=make_child_loop_factory(chat))
+    )
     spec = AgentSpec(role="writer")
     _, handler = wrapper.wrap(spec)
 

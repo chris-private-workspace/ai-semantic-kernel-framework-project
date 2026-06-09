@@ -47,7 +47,7 @@ Description:
       that memory scoping round-trips on the live SSE flow with all three active.
 
 Created: 2026-06-01 (Sprint 57.64 Day 1)
-Last Modified: 2026-06-01 (Sprint 57.64 Day 3 — combined all-three-active test)
+Last Modified: 2026-06-09 (Sprint 57.94 — redirect FORK via child_loop_factory, not _chat)
 """
 
 from __future__ import annotations
@@ -333,8 +333,9 @@ async def test_cat3_negative_no_deps_memory_unregistered() -> None:
 async def test_cat11_chat_path_fork_spawn_and_merge(monkeypatch: pytest.MonkeyPatch) -> None:
     """A FORK task_spawn emits ToolCallExecuted + merges the SubagentResult summary.
 
-    The subagent dispatcher shares the loop's ChatClient; we swap in a MockChatClient
-    whose responses serve BOTH the parent turns and the subagent's single-shot call.
+    Sprint 57.94: FORK drives a REAL child loop; _redirect_subagent_chat swaps the
+    dispatcher's child_loop_factory to a mock-backed child loop so the subagent's one
+    scripted response merges back deterministically (offline).
     """
     import json
 
@@ -346,13 +347,10 @@ async def test_cat11_chat_path_fork_spawn_and_merge(monkeypatch: pytest.MonkeyPa
     tenant_id = uuid4()
     loop, _registry = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id)
 
-    # Parent: turn 1 = task_spawn(FORK); subagent consumes one response;
-    # parent turn 2 = END_TURN. MockChatClient is shared (loop + subagent dispatcher),
-    # but the dispatcher was built with the Azure adapter at handler time — so we
-    # swap the loop's client AND rebuild the dispatcher's fork executor client by
-    # pointing the loop client only; the subagent FORK uses the SAME mock via the
-    # dispatcher's shared adapter reference set at construction. To keep the test
-    # deterministic we give enough scripted responses for both consumers.
+    # Parent: turn 1 = task_spawn(FORK); the child loop consumes one response;
+    # parent turn 2 = END_TURN. The shared MockChatClient serves both consumers
+    # (sequential counter); _redirect_subagent_chat points the FORK's
+    # child_loop_factory at it so the subagent runs offline + deterministically.
     mock = MockChatClient(
         responses=[
             _tool_call_response("task_spawn", {"task": "research X", "mode": "fork"}, "call_t"),
@@ -448,7 +446,7 @@ async def test_combined_all_three_active_one_run(monkeypatch: pytest.MonkeyPatch
 
     The MockChatClient is shared by parent + subagent fork (sequential counter), so
     the scripted responses are ordered: parent t1 (write) → parent t2 (spawn) →
-    subagent single-shot → parent t3 (search) → parent t4 (END_TURN).
+    subagent child loop (one turn) → parent t3 (search) → parent t4 (END_TURN).
     """
     import json
 
@@ -533,18 +531,23 @@ class _RaisingChatClient(MockChatClient):
 
 
 def _redirect_subagent_chat(loop: AgentLoopImpl, client: MockChatClient) -> bool:
-    """Point the registered task_spawn dispatcher's ForkExecutor at `client`.
+    """Point the registered task_spawn dispatcher's FORK at a child loop on `client`.
 
-    The handler built the dispatcher with the Azure adapter; to keep the test
-    offline we reach into the FORK executor (the only thing task_spawn invokes for
-    mode='fork') and swap its ChatClient. This mirrors the loop._chat_client swap
-    the other tests use and keeps the assertion about the SSE flow, not the
-    provider. Returns True when the dispatcher was found + redirected.
+    Sprint 57.94: FORK now drives a REAL child AgentLoop via a ChildLoopFactory (no
+    single-shot). The handler built the factory with the Azure adapter; to keep the
+    test offline we replace the dispatcher's ForkExecutor child_loop_factory with one
+    that builds a minimal child loop on `client` (the child consumes exactly one
+    scripted response, same as the prior single-shot, so the shared mock counter
+    stays aligned). AS_TOOL shares the SAME ForkExecutor, so one swap covers both.
+    Returns True when the dispatcher was found + redirected.
     """
-    # The dispatcher is captured in the task_spawn handler closure; the simplest
-    # deterministic redirect is via the dispatcher instance the handler closed
-    # over. The executor's registered handler is the adapter closure, so we walk
-    # its closure cells to recover the dispatcher.
+    from agent_harness._contracts import SubagentBudget
+    from agent_harness.output_parser import OutputParserImpl
+    from agent_harness.tools.executor import ToolExecutorImpl
+    from agent_harness.tools.registry import ToolRegistryImpl
+
+    # The dispatcher is captured in the task_spawn handler closure; walk its closure
+    # cells to recover the dispatcher instance the handler closed over.
     handlers = loop._tool_executor._handlers  # type: ignore[attr-defined]
     adapted = handlers.get("task_spawn")
     if adapted is None:
@@ -552,8 +555,19 @@ def _redirect_subagent_chat(loop: AgentLoopImpl, client: MockChatClient) -> bool
     dispatcher = _extract_dispatcher_from_closure(adapted)
     if dispatcher is None:
         return False
-    dispatcher._fork._chat = client  # type: ignore[attr-defined]
-    dispatcher._as_tool_wrapper._fork._chat = client  # type: ignore[attr-defined]
+
+    def _child_factory(budget: SubagentBudget) -> AgentLoopImpl:
+        reg = ToolRegistryImpl()
+        return AgentLoopImpl(
+            chat_client=client,
+            output_parser=OutputParserImpl(),
+            tool_executor=ToolExecutorImpl(registry=reg, handlers={}),
+            tool_registry=reg,
+            max_turns=4,
+            token_budget=budget.max_tokens,
+        )
+
+    dispatcher._fork._child_loop_factory = _child_factory  # type: ignore[attr-defined]
     return True
 
 

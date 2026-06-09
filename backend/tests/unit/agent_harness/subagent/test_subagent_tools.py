@@ -26,6 +26,8 @@ from agent_harness.subagent import (
     make_task_spawn_tool,
 )
 
+from ._child_loop_helpers import make_child_loop_factory
+
 
 def _mock_response(text: str) -> ChatResponse:
     return ChatResponse(
@@ -58,7 +60,9 @@ async def test_task_spawn_tool_returns_toolspec_and_handler() -> None:
 async def test_task_spawn_handler_fork_returns_summary() -> None:
     """Handler with mode='fork' invokes dispatcher.spawn(FORK) and returns summary."""
     chat = MockChatClient(responses=[_mock_response("Fork result text")])
-    dispatcher = DefaultSubagentDispatcher(chat_client=chat)
+    dispatcher = DefaultSubagentDispatcher(
+        chat_client=chat, child_loop_factory=make_child_loop_factory(chat)
+    )
     _, handler = make_task_spawn_tool(dispatcher=dispatcher, parent_session_id=uuid4())
     result = await handler({"task": "find facts", "mode": "fork"})
     assert result["success"] is True

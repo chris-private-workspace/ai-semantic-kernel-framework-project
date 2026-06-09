@@ -81,6 +81,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from adapters._base.chat_client import ChatClient
+    from agent_harness._contracts import ChildLoopFactory
 
 # Cat 4 budget — mirrors AgentLoopImpl default (loop.py:193) so compaction
 # triggers at the same threshold the loop reasons about.
@@ -193,28 +194,37 @@ def make_chat_memory_deps(
     return retrieval, layers
 
 
-def make_chat_subagent_dispatcher(chat_client: ChatClient) -> DefaultSubagentDispatcher:
+def make_chat_subagent_dispatcher(
+    chat_client: ChatClient,
+    *,
+    child_loop_factory: ChildLoopFactory | None = None,
+) -> DefaultSubagentDispatcher:
     """Cat 11 (A-3a): the DefaultSubagentDispatcher for the chat path.
 
-    Wraps the loop's own ChatClient adapter so FORK / TEAMMATE single-shot
-    subagents (and AS_TOOL wrappers via as_tool_factory) run on the SAME
-    provider the parent loop runs on. HANDOFF is intentionally NOT exposed as a
-    chat tool this sprint (its executor is a hollow stub; A-3b is OUT) — but the
-    dispatcher.handoff() method remains present (used only by make_handoff_tool,
-    which the chat registration deliberately excludes).
+    Wraps the loop's own ChatClient adapter so TEAMMATE single-shot subagents run
+    on the SAME provider the parent loop runs on. Sprint 57.94: FORK (and AS_TOOL,
+    which delegates to the same ForkExecutor) now runs a REAL child AgentLoop via
+    `child_loop_factory` — built at composition where the full Cat 1 dep-set is in
+    scope. HANDOFF is intentionally NOT exposed as a chat tool (its executor is a
+    hollow stub) — but dispatcher.handoff() remains present.
 
     Per-request DI (AD-Test-1, 53.6): a fresh dispatcher per chat request — NOT a
     module-level singleton — so its in-flight task map / mailbox are scoped to
     this conversation.
 
     LLM-neutrality: receives the adapter as the ChatClient ABC; the dispatcher /
-    ForkExecutor issue provider calls only through that ABC. No openai /
-    anthropic import here or downstream in agent_harness.
+    ForkExecutor issue provider calls only through that ABC (the child loop too).
+    No openai / anthropic import here or downstream in agent_harness.
 
     Args:
         chat_client: the adapter (ChatClient ABC) the loop runs on.
+        child_loop_factory: builds a fresh child AgentLoop per FORK spawn (Sprint
+            57.94). None → FORK fails closed (no single-shot fallback).
     """
-    return DefaultSubagentDispatcher(chat_client=chat_client)
+    return DefaultSubagentDispatcher(
+        chat_client=chat_client,
+        child_loop_factory=child_loop_factory,
+    )
 
 
 def make_chat_state_deps(

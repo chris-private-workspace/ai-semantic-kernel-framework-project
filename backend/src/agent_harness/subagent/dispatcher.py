@@ -33,6 +33,7 @@ US-2 deliverable (this file): wires FORK via ForkExecutor + as_tool_factory
 Created: 2026-05-04 (Sprint 54.2)
 
 Modification History:
+    - 2026-06-09: Sprint 57.94 — thread child_loop_factory → ForkExecutor (real FORK child loop)
     - 2026-05-10: Sprint 57.12 US-1 — emit SubagentSpawned/Completed (closes AD-Cat11-SSEEvents)
     - 2026-05-04: Wire HANDOFF via HandoffExecutor (US-4)
     - 2026-05-04: Wire TEAMMATE via TeammateExecutor + MailboxStore injection (US-3)
@@ -57,6 +58,7 @@ from uuid import UUID, uuid4
 from adapters._base.chat_client import ChatClient
 from agent_harness._contracts import (
     AgentSpec,
+    ChildLoopFactory,
     LoopEvent,
     SubagentBudget,
     SubagentCompleted,
@@ -105,13 +107,17 @@ class DefaultSubagentDispatcher(SubagentDispatcher):
         chat_client: ChatClient,
         mailbox: MailboxStore | None = None,
         event_emitter: SubagentEventEmitter | None = None,
+        child_loop_factory: ChildLoopFactory | None = None,
     ) -> None:
         self._chat = chat_client
         self._enforcer = BudgetEnforcer()
         # Mailbox is per-request DI (NOT module-level singleton; AD-Test-1 53.6).
         # If caller does not inject one, create a fresh instance scoped to this dispatcher.
         self._mailbox = mailbox or MailboxStore()
-        self._fork = ForkExecutor(chat_client=chat_client, enforcer=self._enforcer)
+        # Sprint 57.94: FORK runs a REAL child loop via child_loop_factory (built at
+        # composition where the Cat 1 dep-set is in scope). None = FORK fails closed
+        # (no single-shot fallback — US-5). TEAMMATE still uses chat_client (single-shot).
+        self._fork = ForkExecutor(child_loop_factory=child_loop_factory, enforcer=self._enforcer)
         self._teammate = TeammateExecutor(
             chat_client=chat_client,
             mailbox=self._mailbox,

@@ -41,3 +41,19 @@
 - mypy `src --strict` **0/351** ✅
 - black 5 files unchanged ✅ / flake8 changed files clean ✅
 - subagent unit tests: **12 failed / 38 passed** — the 12 are ALL the FORK path (test_fork / test_as_tool / test_subagent_sse_emission / test_subagent_tools) that constructed `ForkExecutor(chat_client=...)` / expected single-shot. Expected; conversion = Day 2 (Never-Delete → mock-LLM child-loop factory).
+
+---
+
+## Day 2 — 2026-06-09 — Test conversion (Never-Delete) + new child-loop tests
+
+### Done
+- **NEW `tests/.../subagent/_child_loop_helpers.py`** — `make_child_loop_factory(chat, *, registry, executor, tenant_id, tracer, max_turns)` (builds a real child `AgentLoopImpl` on a mock LLM — the SAME real-loop path, mock at the ChatClient ABC boundary → no AP-10 divergence) + `RecordingTracer` (NoOpTracer subclass recording span names).
+- **Converted (Never-Delete)** — `test_fork.py` (5→6: all use the factory; +`test_fork_no_factory_fails_closed`), `test_as_tool.py` (3 ForkExecutor ctors), `test_subagent_tools.py` (1 dispatcher), `test_subagent_sse_emission.py` (3 dispatchers). No test deleted; single-shot assertions became real-loop assertions.
+- **NEW `test_subagent_child_loop.py`** (4) — multi-turn+tool (a 2-step tool→answer script PROVES a real loop: a single-shot would fail with `empty_response` on the turn-1 tool-call response) / recursion-guard (`make_default_executor(subagent_dispatcher=None)` omits `task_spawn`/`handoff`/`agent_researcher`, parent keeps them) / tenant threaded into the child / child opens its own `agent_loop.run` LOOP span.
+- **Integration fix** — `test_chat_keystone_wiring.py` `_redirect_subagent_chat` rewired from `dispatcher._fork._chat = client` (removed `_chat` attr) to swapping `dispatcher._fork._child_loop_factory` to a mock-backed child loop (the child consumes exactly 1 scripted response, same as the prior single-shot → shared mock counter stays aligned). 2 previously-failing FORK tests now pass.
+
+### Gate (Day 2)
+- subagent unit tests: **55 passed** (was 50; +5 = +4 new child-loop + 1 new fork) ✅
+- `test_chat_keystone_wiring.py` **11 passed** ✅ (the 2 FORK integration tests fixed)
+- mypy `src --strict` **0/351** ✅ / run_all **10/10** ✅ (AP-1 does NOT flag the `async for ev in child.run()` drive; LLM SDK leak 0; cross-category-import OK — `ChildLoopFactory` AgentLoop import is TYPE_CHECKING-only) / black + isort + flake8 (src + tests) clean ✅
+- Full backend pytest: re-running (first full run = 2269 passed + 2 failed = the 2 keystone FORK tests, now fixed; expecting 2271 passed).

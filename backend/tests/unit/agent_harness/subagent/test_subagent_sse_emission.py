@@ -44,6 +44,8 @@ from agent_harness._contracts import (
 )
 from agent_harness.subagent import DefaultSubagentDispatcher
 
+from ._child_loop_helpers import make_child_loop_factory
+
 
 def _mock_response(text: str = "ok", prompt: int = 50, completion: int = 30) -> ChatResponse:
     return ChatResponse(
@@ -72,7 +74,10 @@ class _RecordingEmitter:
 async def test_emitter_none_is_noop_no_exception() -> None:
     """event_emitter=None default — dispatcher works as before; no emission errors."""
     chat = MockChatClient(responses=[_mock_response("subagent output")])
-    dispatcher = DefaultSubagentDispatcher(chat_client=chat)  # event_emitter omitted
+    dispatcher = DefaultSubagentDispatcher(
+        chat_client=chat,  # event_emitter omitted
+        child_loop_factory=make_child_loop_factory(chat),
+    )
     sid = await dispatcher.spawn(
         mode=SubagentMode.FORK,
         task="test task",
@@ -131,7 +136,11 @@ async def test_completed_event_carries_summary_and_tokens() -> None:
         responses=[_mock_response("subagent reply text", prompt=42, completion=18)]
     )
     emitter = _RecordingEmitter()
-    dispatcher = DefaultSubagentDispatcher(chat_client=chat, event_emitter=emitter)
+    dispatcher = DefaultSubagentDispatcher(
+        chat_client=chat,
+        event_emitter=emitter,
+        child_loop_factory=make_child_loop_factory(chat),
+    )
     sid = await dispatcher.spawn(
         mode=SubagentMode.FORK,
         task="summary check",
@@ -153,7 +162,11 @@ async def test_emitter_exception_isolated_does_not_break_tool_path() -> None:
         raise RuntimeError("emitter crashed")
 
     chat = MockChatClient(responses=[_mock_response("still ok")])
-    dispatcher = DefaultSubagentDispatcher(chat_client=chat, event_emitter=faulty_emitter)
+    dispatcher = DefaultSubagentDispatcher(
+        chat_client=chat,
+        event_emitter=faulty_emitter,
+        child_loop_factory=make_child_loop_factory(chat),
+    )
     sid = await dispatcher.spawn(
         mode=SubagentMode.FORK,
         task="crash test",

@@ -17,9 +17,10 @@ Owner: 01-eleven-categories-spec.md §範疇 11
 Single-source: 17.md §1.1
 
 Created: 2026-04-29 (Sprint 49.1)
-Last Modified: 2026-05-04
+Last Modified: 2026-06-09
 
 Modification History:
+    - 2026-06-09: Add ChildLoopFactory type (Sprint 57.94) — FORK real child loop
     - 2026-05-04: Add AgentSpec dataclass (Sprint 54.2 US-2; needed by AsToolWrapper
       and Phase 55 multi-role subagent registries). Closes Day 0 D7 partial.
     - 2026-04-29: Initial creation (Sprint 49.1)
@@ -33,8 +34,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any, Callable
 from uuid import UUID
+
+if TYPE_CHECKING:
+    # Type-only reference to the Cat 1 loop ABC for ChildLoopFactory. Guarded so
+    # there is NO runtime Cat 11 -> Cat 1 import (loop.py imports these contracts).
+    from agent_harness.orchestrator_loop._abc import AgentLoop
 
 
 class SubagentMode(Enum):
@@ -84,3 +90,12 @@ class AgentSpec:
     prompt: str | None = None  # initial system / role prompt
     model: str | None = None  # provider model id; None = inherit parent's
     metadata: dict[str, Any] = field(default_factory=dict)
+
+
+# Sprint 57.94 (地基 A payoff): a factory that builds a FRESH child agent loop for
+# a FORK / AS_TOOL subagent. It is supplied at composition (build_real_llm_handler)
+# where every Cat 1 dep is already in scope; Cat 11 only needs the type to annotate
+# the dispatcher / ForkExecutor, so AgentLoop is TYPE_CHECKING-only (no runtime
+# Cat 11 -> Cat 1 import). The SubagentBudget arg lets the factory cap the child's
+# token_budget per spawn; each call MUST return a NEW loop instance (own session).
+ChildLoopFactory = Callable[[SubagentBudget], "AgentLoop"]
