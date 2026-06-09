@@ -2,7 +2,7 @@
 
 **Plan**: [`sprint-57-95-plan.md`](./sprint-57-95-plan.md)
 **Created**: 2026-06-09
-**Status**: In progress (Day 0-2 + Day-3 gate done; drive-through pending)
+**Status**: Day 0-4 done — drive-through PASS; closeout committed; **push + PR pending user authorization**
 
 > Rule: only `[ ]` → `[x]`; never delete unchecked items; defer with `🚧 + reason`.
 > CHANGE (feature-continuation — wire an existing-but-unwired Cat 11 → Cat 12 emitter) → CHANGE-062. **NO design note** (not a spike — `sprint-workflow.md §Step 5.5`). Gate = full backend pytest green (NET delta documented) + **drive-through PASS** (the Inspector Tree shows the subagent node, where it said "no subagents" — the 2026-06-06 audit gap). Locked scope: **Scope A node-level** (relay `SubagentSpawned`/`SubagentCompleted`); Scope B (child inner turn-stream nesting) + TEAMMATE/HANDOFF deferred.
@@ -74,22 +74,22 @@
 - [x] **mypy 0 + run_all 10/10 + format chain** — mypy `src --strict` 0/351; run_all **10/10** (LLM SDK leak 0; AP-1 — drain NOT flagged as pipeline; check_event_schema_sync green — no event schema drift; check_cross_category_import green); `black`/`isort` clean; `flake8 src tests` clean (CI-equivalent scope)
 
 ### 3.2 Drive-through (US-5 — the Tree shows the subagent node) — **PASS pending**
-- [ ] **Clean backend restart (Risk Class E)** — kill stale uvicorn reloader+worker procs on :8000; verify :8000 OWNER is the fresh PID (`dev.py start backend` or `restart`); `/health`; PG/Redis/RabbitMQ healthy; frontend node untouched; Azure gpt-5.2 live
-- [ ] **Drove a `task_spawn` subagent through real UI + real backend + real Azure** — a chat-v2 request that makes the agent spawn a sub-task → open the Inspector "Tree" tab → confirm: the subagent node is SHOWN (mode FORK + a real summary + tokens; running→completed) where before it said "no subagents". Observed-vs-intended table in progress.md Day 3 (before: "no subagents" / after: node populated)
-  - Evidence: `artifacts/sprint-57-95-tree-{1-before-empty,2-spawn,3-tree-populated}.png`
-- [ ] **Backend confirm** — SSE stream contains `subagent_spawned` + `subagent_completed` frames (network tab / trace) corroborating the Tree node
+- [x] **Clean backend restart (Risk Class E)** — killed stale 57.94 reloader 14580 + spawn-worker 38308 (python, not node); verified :8000 FREE; `dev.py start backend` → fresh **PID 50200** owns :8000 (`/health` 401 = server up + tenant middleware); frontend node :3007 untouched; Azure gpt-5.2 live
+- [x] **Drove a `task_spawn` subagent through real UI + real backend + real Azure** — jamie@acme.com/acme-prod/real_llm. BEFORE: Tree "no subagents spawned this session". `task_spawn(mode=fork)` → child `echo_tool` → AFTER: Tree node `1ff0167a…` · root · **completed** · Mode **fork** · Depth 0 · **Tokens 3,692** · "subagent node is visible". Observed-vs-intended table in progress.md Day 3.2
+  - Evidence: `artifacts/sprint-57-95-tree-{1-before-empty,3-populated}.png` + `-after-snapshot.yml`
+- [x] **Backend confirm** — Inspector Trace shows the relayed `subagent_spawned` (mode=fork parent=95b9f45f…) + `subagent_completed` (subagent node is visible · 3692 tokens) frames (dispatcher events, not the tool result → proof of the relay)
 
 ### 3.3 CHANGE-062 (NO design note — feature-continuation)
-- [ ] `claudedocs/4-changes/feature-changes/CHANGE-062-subagent-sse-relay-node-level.md` written (problem: headless subagent / root cause: unwired emitter / solution: thread emitter + buffer-drain bridge / verification: tests + drive-through / impact: backend-only, no contract/frontend change)
-- [ ] **`17-cross-category-interfaces.md`** — Cat 11 §: note the chat path now wires the `SubagentEventEmitter` SSE relay (composition; ABC + type unchanged) IF warranted; else skip with reason in progress.md
+- [x] `claudedocs/4-changes/feature-changes/CHANGE-062-subagent-sse-relay-node-level.md` written
+- [x] **`17-cross-category-interfaces.md`** — Cat 11 §: NEW `SubagentEventEmitter` composition row (chat path now wires it; ABC + type unchanged, pre-existing since 57.12)
 
 ---
 
 ## Day 4 — Closeout
 
 ### 4.1 Closeout
-- [ ] Full validation (parent re-verified): pytest +N / mypy 0 / run_all 10/10 / 57.12 + 57.94 tests unchanged / `loop.py` diff = 0 / **drive-through PASS** (screenshots + before/after observed-vs-intended)
-- [ ] progress.md (Day 0-3) + retrospective.md (Q1-Q7) — NO design-note 8-pt gate (feature-continuation, not a spike)
-- [ ] Calibration: `subagent-sse-relay-wiring` 0.55 (1st data point, pending validation) + `agent_factor` 1.0 (parent-direct); record `calibration-log.md §3` + propose in `sprint-workflow.md §Scope-class matrix`; carryover (Scope B child turn-stream nesting / span nesting / TEAMMATE/HANDOFF real loops / failure policies) → next-phase-candidates.md
-- [ ] MEMORY.md pointer + `project_phase57_95_subagent_sse_relay.md` subfile + CLAUDE.md lean (Current Sprint row + Last Updated) + CHANGE-062 + 17.md note (if warranted)
-- [ ] commit (Day 0-N) + push + PR — closeout commit done; **push + PR pending user authorization**
+- [x] Full validation (parent re-verified): pytest **2277** (+6) / mypy 0/351 / run_all 10/10 / 57.12 + 57.94 tests unchanged / `loop.py` diff = 0 / **drive-through PASS** (screenshots + before/after observed-vs-intended)
+- [x] progress.md (Day 0-3.2) + retrospective.md (Q1-Q7) — NO design-note 8-pt gate (feature-continuation, not a spike)
+- [x] Calibration: `subagent-sse-relay-wiring` 0.55 (1st data point) + `agent_factor` 1.0 (parent-direct); recorded `calibration-log.md §3` + `sprint-workflow.md §Scope-class matrix` row; carryover (Scope B child turn-stream / span nesting / TEAMMATE/HANDOFF / failure policies) → next-phase-candidates.md
+- [x] MEMORY.md pointer + `project_phase57_95_subagent_sse_relay.md` subfile + CLAUDE.md lean (Current Sprint row + Last Updated) + CHANGE-062 + 17.md row
+- [ ] commit (Day 0-N) + push + PR — Day 0-2 commit `a06352b7` + closeout commit done; **push + PR pending user authorization**

@@ -139,6 +139,7 @@ backend/src/agent_harness/_contracts/
 | `Verifier` | `01-eleven-categories-spec.md` | 範疇 10 | `verify() -> VerificationResult` |
 | `SubagentDispatcher` | `01-eleven-categories-spec.md` | 範疇 11 | `spawn()` / `handoff()` |
 | `ChildLoopFactory` | `_contracts/subagent.py` | 範疇 11 | `Callable[[SubagentBudget], AgentLoop]` — Sprint 57.94 FORK real child loop. **Composition detail, NOT a `SubagentDispatcher` ABC method** (ABC unchanged); built at `build_real_llm_handler`, injected → `ForkExecutor`. Cat 11→Cat 1 ref is TYPE_CHECKING-only. See `20-subagent-child-loop-design.md`. |
+| `SubagentEventEmitter` | `subagent/dispatcher.py` | 範疇 11 → 範疇 12 | `Callable[[LoopEvent], Awaitable[None]]` — Sprint 57.12 dispatcher slot; **Sprint 57.95 wired on the chat path** (`make_chat_subagent_dispatcher` ← a router-owned buffer drained by `_stream_loop_events`) so `SubagentSpawned`/`SubagentCompleted` reach the SSE stream (node-level relay; Inspector Tree). Composition detail, ABC + type unchanged. See `CHANGE-062`. |
 | `Tracer` | `01-eleven-categories-spec.md` | **範疇 12** | `start_span()` / `record_metric()` |
 | `HITLManager` | `01-eleven-categories-spec.md` | §HITL 中央化 | `request_approval()` / `wait()` / `decide()` |
 

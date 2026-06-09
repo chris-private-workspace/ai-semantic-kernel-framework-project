@@ -6,6 +6,20 @@
 
 ---
 
+## 🆕 Sprint 57.95 Carryover — Cat 11 → Cat 12 subagent SSE relay SHIPPED (node-level); Scope B child turn-stream + TEAMMATE/HANDOFF next
+
+**Source**: Sprint 57.95 closed 2026-06-09 — closes `AD-Subagent-Child-Event-SSE-Relay` at the **node level**. The chat subagent dispatcher's `event_emitter` is now wired (`make_chat_subagent_dispatcher` ← a router-owned buffer drained by `_stream_loop_events`), so `SubagentSpawned`/`SubagentCompleted` reach the SSE stream and the Inspector "Tree" tab shows the FORK subagent node (was "no subagents"). Day-0 探勘 found the relay chain already existed (dispatcher `event_emitter` slot + emission since 57.12, `sse.py` serialization, `chatStore`/`InspectorTree` consumers); the only gap was the unwired emitter → **NO `LoopEvent` contract change, NO frontend change, `loop.py` UNCHANGED**. Drive-through PASS (Tree node `fork` · completed · 3,692 tok · "subagent node is visible" + Trace `subagent_spawned`/`subagent_completed` frames). Detail: `memory/project_phase57_95_subagent_sse_relay.md` + CHANGE-062.
+
+- **Scope B — child INNER turn-stream nesting** (🟡 — the remaining half of `AD-Subagent-Child-Event-SSE-Relay`) — the Tree shows the subagent as a single collapsed node; to EXPAND it to show the child's per-turn TAO loop (the child's `LLMResponded`/`ToolCall`), relay the child's INNER `LoopEvent`s. Needs a `LoopEvent` base `parent_session_id`/`depth` field (or a wrapper event) + `ForkExecutor` forwarding every child event (currently drained, not relayed) + frontend nested render + `chatStore` routing by `subagent_id`. Larger; touches the contract + frontend.
+- **Inline `SubagentForkBlock` `0t` token-display** (🟢 minor frontend) — the inline fork-block in the conversation turn shows `0t` while the Tree node + the `subagent_completed` frame correctly show 3,692 tokens. A frontend dual-emit display detail surfaced by the 57.95 drive-through; not a 57.95 regression (backend-only sprint).
+- **`AD-Subagent-Child-Span-Nesting`** (🟢) — `task_spawn` passes `trace_context=None` → the child LOOP span isn't explicitly parented. Orthogonal to SSE relay.
+- **TEAMMATE / HANDOFF real loops · `HandoffService`** (🟡) — extend the 57.94 child-loop pattern to modes 2/4.
+- Other Cat 11 deferrals: recursion depth > 1 · `AD-Subagent-Transcript-Isolation` · `AD-Subagent-Child-Governance` · failure policies (FAIL_FAST/SOFT/PARTIAL).
+- **Slice 3 leg 3 — mid-thinking pause** (🟡 — the ONLY remaining generalized-pause-point leg from 地基 A) — orthogonal to Cat 11.
+- `subagent-sse-relay-wiring` calibration class 0.55 (1st data point ~0.9-1.0 IN band; pending 2-3 sprint validation).
+
+---
+
 ## 🆕 Sprint 57.94 Carryover — Cat 11 FORK real child loop SHIPPED (地基 A payoff Slice 1); TEAMMATE/HANDOFF + SSE-relay + leg-3 mid-thinking next
 
 **Source**: Sprint 57.94 closed 2026-06-09 — the FIRST real child agent loop in Cat 11. FORK now drives a real multi-turn, tool-capable child `AgentLoopImpl` (reusing the re-enterable `run()`/`_run_turns`, **ZERO `loop.py` change** — the 57.89 payoff) via an injected `ChildLoopFactory` built at `build_real_llm_handler`, with a recursion-safe tool subset (`make_default_executor(subagent_dispatcher=None)` → no task_spawn/handoff → depth bounded at 1). AS_TOOL inherits the real loop; TEAMMATE/HANDOFF unchanged. No single-shot fallback (US-5 → no AP-10). **Drive-through PASS** (real chat-v2 + Azure: `task_spawn` → child uses `echo_tool` → `summary="child loop is real"` + 3684 tokens + 2389ms TOOL_EXEC span — impossible under the old single-shot). Detail: `memory/project_phase57_94_subagent_fork_child_loop.md` + CHANGE-061 + design note `20-subagent-child-loop-design.md`.

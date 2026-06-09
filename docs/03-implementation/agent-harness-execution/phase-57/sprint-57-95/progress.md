@@ -67,6 +67,31 @@ Existing green (UNCHANGED): 57.12 `test_subagent_sse_emission.py` (8) + 57.94 `t
 
 ---
 
-## Day 3.2 — drive-through (pending)
-## Day 3.3 — CHANGE-062 + 17.md (pending)
-## Day 4 — closeout (pending)
+## Day 3.2 — drive-through (2026-06-09) — **PASS**
+
+Real UI (`:3007`) + real backend (fresh PID 50200) + real Azure gpt-5.2. dev-login jamie@acme.com / acme-prod / real_llm mode.
+
+### Risk Class E — clean restart
+The stale 57.94 backend (reloader 14580 → spawn-worker 38308, pre-57.95 code) owned `:8000`. Killed BOTH python procs (never node), verified `:8000` FREE, `dev.py start backend` → fresh **PID 50200** owns `:8000` (`/health` responds 401 = server up + tenant middleware active). The wiring is startup-built; a stale process would still drop the events → the drive MUST run on the fresh PID.
+
+### Observed vs intended
+
+| | Intended | Observed |
+|---|---|---|
+| **BEFORE** (Tree tab, no spawn) | "no subagents" empty state | ✅ "**no subagents spawned this session**" (`tree-1-before-empty.png`) |
+| Prompt | agent calls `task_spawn` → child uses `echo_tool` | ✅ `task_spawn(mode=fork)` → child echoed; loop 2 turns, gpt-5.2 |
+| **Inspector → Tree** (AFTER) | subagent node shown (mode / summary / tokens / completed) | ✅ **"Subagent tree · live"** → node `1ff0167a…` · root · **completed** · **Mode fork** · Depth 0 · **Tokens 3,692** · summary **"subagent node is visible"** (`tree-3-populated.png`) |
+| **Inspector → Trace** (SSE proof) | `subagent_spawned` + `subagent_completed` frames | ✅ `subagent_spawned  mode=fork parent=95b9f45f-…` + `subagent_completed  subagent node is visible · 3692 tokens` |
+| Child result (task_spawn output) | real summary + tokens | ✅ `{success:true, summary:"subagent node is visible", tokens_used:3692}` |
+
+**Why this proves the relay (not the tool result)**: the `subagent_spawned` / `subagent_completed` frames in the Trace are the **dispatcher's** lifecycle events — emitted only via the `event_emitter` this sprint wired. Before 57.95 they were dropped by `_emit_safely` (no-op), so the Tree showed "no subagents" + the Trace had no subagent frames. Their presence + the populated Tree node = the node-level relay works end-to-end.
+
+**Minor observation (pre-existing, out of scope)**: the INLINE `SubagentForkBlock` in the conversation turn shows `0t` while the Tree node + the `subagent_completed` frame correctly show 3,692 tokens. The inline fork-block token field is a separate frontend dual-emit display detail (not the Tree node this sprint targets); the relay + the Tree are correct. Logged for a future frontend touch, not a 57.95 regression (the inline block is unchanged by this backend-only sprint).
+
+Artifacts: `artifacts/sprint-57-95-tree-{1-before-empty,3-populated}.png` + `artifacts/sprint-57-95-after-snapshot.yml`.
+
+## Day 3.3 — CHANGE-062 + 17.md (2026-06-09)
+- CHANGE-062 written.
+- 17.md: a 1-line Cat 11 note (the chat composition now wires the pre-existing `SubagentEventEmitter` for the SSE relay; ABC + type unchanged).
+
+## Day 4 — closeout (in progress)
