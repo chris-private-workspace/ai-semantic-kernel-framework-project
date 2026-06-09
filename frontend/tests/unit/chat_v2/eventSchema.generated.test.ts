@@ -23,8 +23,12 @@ import { describe, expect, test } from "vitest";
 import { KNOWN_LOOP_EVENT_TYPES } from "@/features/chat_v2/types";
 
 describe("generated SSE event schema (re-exported via chat_v2/types)", () => {
-  test("KNOWN_LOOP_EVENT_TYPES has exactly 22 wire-types", () => {
-    expect(KNOWN_LOOP_EVENT_TYPES.size).toBe(22);
+  test("KNOWN_LOOP_EVENT_TYPES has exactly 23 wire-types", () => {
+    expect(KNOWN_LOOP_EVENT_TYPES.size).toBe(23);
+  });
+
+  test("recognizes the subagent_child event (Sprint 57.96 Scope B)", () => {
+    expect(KNOWN_LOOP_EVENT_TYPES.has("subagent_child")).toBe(true);
   });
 
   test("recognizes the span + memory events (Sprint 57.75 A-5)", () => {

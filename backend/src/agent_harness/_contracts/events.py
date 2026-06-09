@@ -23,6 +23,7 @@ Created: 2026-04-29 (Sprint 49.1)
 Last Modified: 2026-06-03
 
 Modification History (newest-first):
+    - 2026-06-09: Sprint 57.96 — add SubagentChildEvent wrapper (Cat 11 Scope B turn-stream)
     - 2026-06-03: Sprint 57.75 A-5c — Span* +span_type/parent_span_id, MemoryAccessed +summary
     - 2026-06-02: Sprint 57.69 A-3b — add LoopCompleted.handoff_context (in-process carry)
     - 2026-06-02: Sprint 57.68 A-3b — add AgentHandoff event + LoopCompleted.handoff_target/reason
@@ -357,6 +358,23 @@ class SubagentCompleted(LoopEvent):
     subagent_id: UUID | None = None
     summary: str = ""
     tokens_used: int = 0
+
+
+@dataclass(frozen=True)
+class SubagentChildEvent(LoopEvent):
+    """Sprint 57.96 (Cat 11 Scope B): wraps a child subagent loop's inner TAO
+    event (TurnStarted / LLMResponded / ToolCall*) tagged with the spawn
+    subagent_id, so the chat SSE relay routes it to the right Inspector Tree
+    node (the node EXPANDS to the child's per-turn loop). The wrapper IS a
+    LoopEvent → it rides the existing 57.95 emitter + generic router
+    buffer-drain; only sse.py adds a serializer branch (the inner is
+    re-serialized via its own branch → {inner_type, inner}). inner is one of the
+    TAO subset (ForkExecutor filters); both default None for the frozen-dataclass
+    default-arg rule (base fields all default).
+    """
+
+    subagent_id: UUID | None = None
+    inner: LoopEvent | None = None
 
 
 @dataclass(frozen=True)

@@ -21,6 +21,7 @@
  * Created: 2026-05-10 (Sprint 57.12 Day 2 / US-3)
  *
  * Modification History (newest-first):
+ *   - 2026-06-09: Sprint 57.96 — add ChildTurnEvent + SubagentNode.childEvents (Scope B turn-stream)
  *   - 2026-05-10: Initial creation (Sprint 57.12 Day 2 / US-3)
  *
  * Related:
@@ -55,6 +56,26 @@ export type SubagentEvent = SubagentSpawnedEvent | SubagentCompletedEvent;
 export type SubagentStatus = "running" | "completed";
 
 /**
+ * Sprint 57.96 (Cat 11 Scope B): one projected entry of a child subagent loop's
+ * per-turn TAO event, accumulated from the `subagent_child` SSE wire type
+ * (backend SubagentChildEvent wrapper). `kind` is the inner event's wire type;
+ * the remaining fields are a minimal per-kind projection rendered as a nested
+ * row under the subagent node in the Inspector Tree (the node "expands").
+ */
+export interface ChildTurnEvent {
+  /** inner wire type: turn_start / llm_response / tool_call_request / tool_call_result. */
+  kind: string;
+  /** turn number (turn_start). */
+  turn?: number;
+  /** assistant text (llm_response) or tool result/error (tool_call_result). */
+  text?: string;
+  /** tool name (tool_call_request / tool_call_result). */
+  toolName?: string;
+  /** tool call id (tool_call_request / tool_call_result). */
+  toolCallId?: string;
+}
+
+/**
  * UI tree node accumulated by chatStore.subagents slice from the SSE stream.
  * Parent→child links derived from parent_session_id. Root nodes have
  * parentId === chat session_id.
@@ -70,4 +91,6 @@ export interface SubagentNode {
   tokensUsed: number | null;
   /** epoch ms when subagent_spawned arrived. */
   spawnedAt: number;
+  /** Sprint 57.96 (Scope B): the child loop's per-turn TAO events (the node expands). */
+  childEvents: ChildTurnEvent[];
 }

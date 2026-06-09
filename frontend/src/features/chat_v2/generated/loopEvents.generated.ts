@@ -154,6 +154,16 @@ export interface SubagentCompletedEvent {
   };
 }
 
+export interface SubagentChildEvent {
+  type: "subagent_child";
+  data: {
+    trace_id?: string | null;
+    subagent_id: string | null;
+    inner_type: string;
+    inner: Record<string, unknown>;
+  };
+}
+
 export interface ContextCompactedEvent {
   type: "context_compacted";
   data: {
@@ -248,6 +258,7 @@ export type LoopEvent =
   | VerificationFailedEvent
   | SubagentSpawnedEvent
   | SubagentCompletedEvent
+  | SubagentChildEvent
   | ContextCompactedEvent
   | PromptBuiltEvent
   | StateCheckpointedEvent
@@ -272,6 +283,7 @@ export const KNOWN_LOOP_EVENT_TYPES = new Set<string>([
   "verification_failed",
   "subagent_spawned",
   "subagent_completed",
+  "subagent_child",
   "context_compacted",
   "prompt_built",
   "state_checkpointed",

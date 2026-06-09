@@ -101,6 +101,15 @@ const subCompleted = (id: string): LoopEvent => ({
   data: { subagent_id: id, summary: "done", tokens_used: 42 },
 });
 
+const subChild = (
+  id: string,
+  innerType: string,
+  inner: Record<string, unknown>,
+): LoopEvent => ({
+  type: "subagent_child",
+  data: { subagent_id: id, inner_type: innerType, inner },
+});
+
 const approvalRequested = (id: string, level = "HIGH"): LoopEvent => ({
   type: "approval_requested",
   data: { approval_request_id: id, risk_level: level },
@@ -365,6 +374,39 @@ describe("chatStore.mergeEvent Turn block sequence (Sprint 57.21 Day 1)", () => 
     const t = lastAgentTurn(useChatStore.getState().turns);
     const fork = t.blocks.find((b) => b.type === "subagent_fork") as SubagentForkBlock;
     expect(fork.agents[0].status).toBe("done");
+  });
+
+  // --- subagent_child (Sprint 57.96 Scope B turn-stream) -----------------
+
+  test("subagent_child appends a projected ChildTurnEvent to the matching node", () => {
+    useChatStore.getState().mergeEvent(turnStart());
+    useChatStore.getState().mergeEvent(subSpawned("sa-c1", "fork"));
+    useChatStore.getState().mergeEvent(subChild("sa-c1", "turn_start", { turn_num: 1 }));
+    useChatStore
+      .getState()
+      .mergeEvent(subChild("sa-c1", "llm_response", { content: "child says hi" }));
+    useChatStore
+      .getState()
+      .mergeEvent(
+        subChild("sa-c1", "tool_call_request", { tool_name: "echo", tool_call_id: "c1" }),
+      );
+    const node = useChatStore.getState().subagents.find((n) => n.subagentId === "sa-c1");
+    expect(node?.childEvents).toHaveLength(3);
+    expect(node?.childEvents[0]).toMatchObject({ kind: "turn_start", turn: 1 });
+    expect(node?.childEvents[1]).toMatchObject({ kind: "llm_response", text: "child says hi" });
+    expect(node?.childEvents[2]).toMatchObject({
+      kind: "tool_call_request",
+      toolName: "echo",
+      toolCallId: "c1",
+    });
+  });
+
+  test("subagent_child before its spawn defensive-creates the node", () => {
+    useChatStore.getState().mergeEvent(subChild("sa-orphan", "llm_response", { content: "hi" }));
+    const node = useChatStore.getState().subagents.find((n) => n.subagentId === "sa-orphan");
+    expect(node).toBeDefined();
+    expect(node?.childEvents).toHaveLength(1);
+    expect(node?.childEvents[0]).toMatchObject({ kind: "llm_response", text: "hi" });
   });
 
   // --- approval (HITL) ---------------------------------------------------

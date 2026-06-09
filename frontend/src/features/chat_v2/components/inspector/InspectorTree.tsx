@@ -16,23 +16,28 @@
  *   is the dispatching session, i.e. not another known subagent); a visited set
  *   guards self-ancestor cycles and the depth is capped for layout safety.
  *
- *   Render-vs-placeholder (Phase 57.72 D5): SubagentNode carries no per-child
- *   `turns` and no concurrency `max`, so the mockup's "· Nt" turn suffix is
- *   omitted and Concurrency shows the running-count only (NOT a fabricated
- *   "running / max"). Per the InspectorTurn "—" convention, an all-null token
- *   subtree renders "—". Nothing is fabricated (AP-4).
+ *   Render-vs-placeholder (Phase 57.72 D5): no concurrency `max`, so Concurrency
+ *   shows the running-count only (NOT a fabricated "running / max"). Per the
+ *   InspectorTurn "—" convention, an all-null token subtree renders "—". Nothing
+ *   is fabricated (AP-4). Sprint 57.96 (Scope B): SubagentNode now carries
+ *   `childEvents` (the child loop's per-turn TAO subset), rendered as nested
+ *   `.subagent-row`s inside the node's `.indent` (the node "expands"); the
+ *   mockup's "· Nt" summary suffix stays deferred polish. The Depth summary still
+ *   counts subagent nesting only (child-turn rows are not subagents).
  *
  *   Pure read; no side effects. Empty state when subagents slice is empty.
  *
  * Key Components:
  *   - InspectorTree: tab component reading useChatStore((s) => s.subagents)
  *   - buildTree(): flat SubagentNode[] → RenderNode forest (parentId nesting, cycle-guarded)
- *   - NodeRow: one `.subagent-row` + recursive `.indent` children
+ *   - NodeRow: one `.subagent-row` + recursive `.indent` children + childEvents rows
+ *   - ChildTurnRow: one child-loop TAO event as a nested `.subagent-row` (Sprint 57.96)
  *
  * Created: 2026-06-03 (Sprint 57.72)
- * Last Modified: 2026-06-03
+ * Last Modified: 2026-06-09
  *
  * Modification History (newest-first):
+ *   - 2026-06-09: Sprint 57.96 — render childEvents as nested rows (Scope B turn-stream)
  *   - 2026-06-03: Initial creation (Sprint 57.72) — A-5c Tree tab verbatim re-point
  *
  * Related:
@@ -52,7 +57,7 @@
 import { ChevronRight, GitFork, MessageSquare } from "lucide-react";
 
 import { useChatStore } from "../../store/chatStore";
-import type { SubagentNode } from "../../../subagent/types";
+import type { ChildTurnEvent, SubagentNode } from "../../../subagent/types";
 
 // Layout-safety cap: subagent spawning is bounded, but a malformed parentId
 // chain could in theory recurse; mirror SubagentTree.tsx MAX_DEPTH.
@@ -129,6 +134,43 @@ function StatusBadge({ status }: { status: SubagentNode["status"] }): JSX.Elemen
   return <span className="badge warning">running</span>;
 }
 
+/** Human label for one child-loop TAO event row (Sprint 57.96 Scope B). */
+function childTurnLabel(ev: ChildTurnEvent): string {
+  const clip = (t: string | undefined): string =>
+    t && t.length > 48 ? `${t.slice(0, 48)}…` : t ?? "";
+  switch (ev.kind) {
+    case "turn_start":
+      return `turn ${ev.turn ?? "?"}`;
+    case "llm_response":
+      return ev.text ? `LLM · ${clip(ev.text)}` : "LLM";
+    case "tool_call_request":
+      return `→ ${ev.toolName ?? "tool"}()`;
+    case "tool_call_result":
+      return ev.text
+        ? `← ${ev.toolName ?? "tool"} · ${clip(ev.text)}`
+        : `← ${ev.toolName ?? "tool"}`;
+    default:
+      return ev.kind;
+  }
+}
+
+/**
+ * One child-loop TAO event as a nested `.subagent-row` (Sprint 57.96 Scope B).
+ * Reuses the mockup's child-row vocabulary (chevron icon + subtle text) — no new
+ * widget / no new CSS; the child's per-turn loop renders inside the node's
+ * existing `.indent` block alongside any nested subagents.
+ */
+function ChildTurnRow({ ev }: { ev: ChildTurnEvent }): JSX.Element {
+  return (
+    <div className="subagent-row" data-testid="inspector-tree-child-event">
+      <ChevronRight size={11} aria-hidden="true" className="subtle" />
+      <span className="subtle grow" style={{ marginLeft: 4 }}>
+        {childTurnLabel(ev)}
+      </span>
+    </div>
+  );
+}
+
 function NodeRow({ rn }: { rn: RenderNode }): JSX.Element {
   const { node, children, depth } = rn;
   const isRoot = depth === 0;
@@ -161,8 +203,14 @@ function NodeRow({ rn }: { rn: RenderNode }): JSX.Element {
         )}
         <StatusBadge status={node.status} />
       </div>
-      {children.length > 0 && (
+      {(node.childEvents.length > 0 || children.length > 0) && (
         <div className="indent">
+          {/* Sprint 57.96 (Scope B): the child loop's per-turn TAO events render
+              as nested rows under the node (the node "expands"), before any
+              nested subagents. */}
+          {node.childEvents.map((ce, i) => (
+            <ChildTurnRow key={`${node.subagentId}-ce-${i}`} ev={ce} />
+          ))}
           {children.map((c) => (
             <NodeRow key={c.node.subagentId} rn={c} />
           ))}

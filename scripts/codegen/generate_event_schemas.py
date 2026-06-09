@@ -46,6 +46,7 @@ Created: 2026-06-02 (Sprint 57.67)
 Last Modified: 2026-06-03
 
 Modification History (newest-first):
+    - 2026-06-09: Sprint 57.96 — map subagent_child → SubagentChildEvent (Cat 11 Scope B)
     - 2026-06-03: Sprint 57.75 A-5c — map span_started/span_ended/memory_accessed → *Event types
     - 2026-06-02: Sprint 57.68 A-3b — map agent_handoff → AgentHandoffEvent (Cat 11 HANDOFF)
     - 2026-06-02: Initial creation (Sprint 57.67 A-5b) — wire-schema → FE artifact codegen
@@ -99,6 +100,7 @@ WIRE_TYPE_TO_INTERFACE: dict[str, str] = {
     "verification_failed": "VerificationFailedEvent",
     "subagent_spawned": "SubagentSpawnedEvent",
     "subagent_completed": "SubagentCompletedEvent",
+    "subagent_child": "SubagentChildEvent",
     "context_compacted": "ContextCompactedEvent",
     "prompt_built": "PromptBuiltEvent",
     "state_checkpointed": "StateCheckpointedEvent",

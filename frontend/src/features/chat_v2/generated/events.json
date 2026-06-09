@@ -14,6 +14,7 @@
     "span_ended",
     "span_started",
     "state_checkpointed",
+    "subagent_child",
     "subagent_completed",
     "subagent_spawned",
     "tool_call_request",
@@ -96,6 +97,11 @@
       "subagent_id": "string | null",
       "summary": "string",
       "tokens_used": "number"
+    },
+    "subagent_child": {
+      "subagent_id": "string | null",
+      "inner_type": "string",
+      "inner": "Record<string, unknown>"
     },
     "context_compacted": {
       "tokens_before": "number",
