@@ -29,6 +29,7 @@ Created: 2026-05-31 (Sprint 57.63 Day 1)
 Last Modified: 2026-06-05
 
 Modification History (newest-first):
+    - 2026-06-09: Sprint 57.95 — make_chat_subagent_dispatcher threads event_emitter (SSE relay)
     - 2026-06-05: Sprint 57.81 — error budget store via maybe_get_budget_store (B-7 wiring)
     - 2026-06-01: Sprint 57.65 — make_chat_prompt_builder accepts real MemoryRetrieval (A-1 Tier2)
     - 2026-06-01: Sprint 57.64 Day 2 — add Cat 3 memory deps + Cat 11 subagent dispatcher factories
@@ -82,6 +83,7 @@ if TYPE_CHECKING:
 
     from adapters._base.chat_client import ChatClient
     from agent_harness._contracts import ChildLoopFactory
+    from agent_harness.subagent.dispatcher import SubagentEventEmitter
 
 # Cat 4 budget — mirrors AgentLoopImpl default (loop.py:193) so compaction
 # triggers at the same threshold the loop reasons about.
@@ -198,6 +200,7 @@ def make_chat_subagent_dispatcher(
     chat_client: ChatClient,
     *,
     child_loop_factory: ChildLoopFactory | None = None,
+    event_emitter: SubagentEventEmitter | None = None,
 ) -> DefaultSubagentDispatcher:
     """Cat 11 (A-3a): the DefaultSubagentDispatcher for the chat path.
 
@@ -220,10 +223,15 @@ def make_chat_subagent_dispatcher(
         chat_client: the adapter (ChatClient ABC) the loop runs on.
         child_loop_factory: builds a fresh child AgentLoop per FORK spawn (Sprint
             57.94). None → FORK fails closed (no single-shot fallback).
+        event_emitter: best-effort async sink for SubagentSpawned / SubagentCompleted
+            (Sprint 57.95). None → dispatcher emission no-ops (the pre-57.95 chat
+            default). The chat router supplies one so the Inspector "Tree" tab shows
+            the subagent node instead of "no subagents" (Cat 11 → Cat 12 SSE relay).
     """
     return DefaultSubagentDispatcher(
         chat_client=chat_client,
         child_loop_factory=child_loop_factory,
+        event_emitter=event_emitter,
     )
 
 

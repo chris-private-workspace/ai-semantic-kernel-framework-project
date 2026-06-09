@@ -35,9 +35,10 @@ Description:
     actual loop run lives in the worker.
 
 Created: 2026-04-30 (Sprint 50.2 Day 1.5)
-Last Modified: 2026-06-05
+Last Modified: 2026-06-09
 
 Modification History (newest-first):
+    - 2026-06-09: Sprint 57.95 — relay subagent SSE events (buffer drained by _stream_loop_events)
     - 2026-06-08: Sprint 57.88 US-4 — NEW POST /chat/{id}/resume (durable HITL pause-resume)
     - 2026-06-05: Sprint 57.84 — C-15: chat cost-write → billing_outbox enqueue + drainer
     - 2026-06-05: Sprint 57.82 — record verification judge LLM cost + count vs quota (B-8 leg-1)
@@ -82,7 +83,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from agent_harness._contracts import AgentHandoff, LoopCompleted, LoopState, TraceContext
+from agent_harness._contracts import (
+    AgentHandoff,
+    LoopCompleted,
+    LoopEvent,
+    LoopState,
+    TraceContext,
+)
 from agent_harness._contracts.events import ToolCallExecuted
 from agent_harness.observability._abc import Tracer
 from agent_harness.orchestrator_loop import AgentLoop
@@ -218,6 +225,18 @@ async def chat(
     # session_id; a fresh session has no row yet (→ demo persona).
     system_prompt = await resolve_session_persona(db, session_id, current_tenant)
 
+    # Sprint 57.95 (Cat 11 → Cat 12 SSE relay): a router-owned buffer collects the
+    # SubagentSpawned / SubagentCompleted events the dispatcher emits WHILE the loop
+    # is awaiting a task_spawn tool (the loop generator is blocked then, so it cannot
+    # yield them). _stream_loop_events drains the buffer into the SSE stream so the
+    # Inspector "Tree" tab shows the subagent node (was headless: "no subagents").
+    # The emitter append + the drain both run in _stream_loop_events's single asyncio
+    # task → no lock / no queue needed.
+    subagent_event_buffer: list[LoopEvent] = []
+
+    async def _relay_subagent_event(ev: LoopEvent) -> None:
+        subagent_event_buffer.append(ev)
+
     try:
         loop, verifier_registry = build_handler(
             req.mode,
@@ -236,6 +255,8 @@ async def chat(
             # per-turn span tree run on a real tracer (was NoOp on the chat
             # path). Reuses the existing dependency — no new Depends.
             tracer=tracer,
+            # Sprint 57.95: the emitter the dispatcher calls on spawn / complete.
+            subagent_event_emitter=_relay_subagent_event,
         )
     except (RuntimeError, ValueError) as exc:
         # Misconfiguration (env vars / unsupported mode) → 503.
@@ -326,6 +347,7 @@ async def chat(
             billing_outbox=billing_outbox,
             db=db,
             verifier_registry=verifier_registry,
+            subagent_event_buffer=subagent_event_buffer,
         ),
         media_type="text/event-stream",
         headers={
@@ -336,6 +358,31 @@ async def chat(
             "X-Trace-Id": trace_ctx.trace_id,
         },
     )
+
+
+def _drain_subagent_frames(buffer: "list[LoopEvent] | None") -> list[bytes]:
+    """Serialize + frame any buffered subagent events (SubagentSpawned/Completed).
+
+    Cat 11 → Cat 12 SSE relay (Sprint 57.95): subagent lifecycle events are emitted
+    by DefaultSubagentDispatcher while the parent loop is awaiting the task_spawn
+    tool — the loop generator is blocked then and cannot yield them. The chat router
+    collects them in a buffer (via the wired event_emitter); _stream_loop_events
+    drains it here, applying the SAME serialize / skip handling as loop events, so the
+    Inspector "Tree" tab shows the subagent node instead of "no subagents".
+    """
+    if not buffer:
+        return []
+    frames: list[bytes] = []
+    while buffer:
+        ev = buffer.pop(0)
+        try:
+            payload = serialize_loop_event(ev)
+        except NotImplementedError:
+            continue
+        if payload is None:
+            continue
+        frames.append(format_sse_message(payload["type"], payload["data"]))
+    return frames
 
 
 async def _stream_loop_events(
@@ -353,6 +400,7 @@ async def _stream_loop_events(
     billing_outbox: BillingOutboxService | None = None,
     db: AsyncSession | None = None,
     verifier_registry: VerifierRegistry | None = None,
+    subagent_event_buffer: "list[LoopEvent] | None" = None,
 ) -> AsyncIterator[bytes]:
     """Drive the loop generator + emit SSE bytes; finalize tenant-scoped registry.
 
@@ -389,6 +437,11 @@ async def _stream_loop_events(
             verifier_registry=verifier_registry,
             max_correction_attempts=2,
         ):
+            # Sprint 57.95 (Cat 11 → Cat 12 SSE relay): flush any subagent events
+            # emitted during the prior await (e.g. a task_spawn tool call) BEFORE the
+            # loop event that follows them, so the Inspector Tree shows the node.
+            for _frame in _drain_subagent_frames(subagent_event_buffer):
+                yield _frame
             try:
                 payload = serialize_loop_event(event)
             except NotImplementedError:
@@ -680,6 +733,11 @@ async def _stream_loop_events(
                         session_id,
                         event.tool_name,
                     )
+        # Sprint 57.95: drain any subagent events appended during the final await
+        # (defensive — the per-iteration drain already flushes the common case, since
+        # task_spawn precedes the LoopCompleted that breaks the loop).
+        for _frame in _drain_subagent_frames(subagent_event_buffer):
+            yield _frame
     except asyncio.CancelledError:
         logger.info(
             "chat session %s/%s: client disconnected mid-stream",

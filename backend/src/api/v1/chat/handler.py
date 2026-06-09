@@ -30,6 +30,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.4)
 Last Modified: 2026-06-08
 
 Modification History (newest-first):
+    - 2026-06-09: Sprint 57.95 — wire subagent_event_emitter on chat path (SSE relay)
     - 2026-06-09: Sprint 57.94 — child-loop factory for real FORK/AS_TOOL child loops
     - 2026-06-08: Sprint 57.93 — OutputKeywordEscalationGuardrail (output pre-delivery pause)
     - 2026-06-08: Sprint 57.92 — BetweenTurnsKeywordGuardrail + note_tool (between-turns pause)
@@ -103,6 +104,7 @@ if TYPE_CHECKING:
     from agent_harness.hitl import HITLManager
     from agent_harness.observability import Tracer
     from agent_harness.orchestrator_loop._abc import AgentLoop
+    from agent_harness.subagent.dispatcher import SubagentEventEmitter
     from agent_harness.verification import VerifierRegistry
     from business_domain._service_factory import BusinessServiceFactory
     from platform_layer.governance.service_factory import ServiceFactory
@@ -250,6 +252,7 @@ def build_real_llm_handler(
     user_id: "UUID | None" = None,
     system_prompt: str = DEMO_SYSTEM_PROMPT,
     tracer: "Tracer | None" = None,
+    subagent_event_emitter: "SubagentEventEmitter | None" = None,
 ) -> tuple[AgentLoopImpl, "VerifierRegistry | None"]:
     """Wire AgentLoopImpl with AzureOpenAIAdapter. Requires env vars.
 
@@ -330,7 +333,12 @@ def build_real_llm_handler(
             )
 
         subagent_dispatcher = make_chat_subagent_dispatcher(
-            chat_client, child_loop_factory=_make_child_loop
+            chat_client,
+            child_loop_factory=_make_child_loop,
+            # Sprint 57.95: the chat path now wires the emitter so SubagentSpawned/
+            # Completed reach the SSE stream (Inspector Tree node). None on legacy
+            # callers → dispatcher emission no-ops (pre-57.95 behavior).
+            event_emitter=subagent_event_emitter,
         )
     else:
         subagent_dispatcher = None
@@ -487,6 +495,7 @@ def build_handler(
     user_id: "UUID | None" = None,
     system_prompt: str = DEMO_SYSTEM_PROMPT,
     tracer: "Tracer | None" = None,
+    subagent_event_emitter: "SubagentEventEmitter | None" = None,
 ) -> tuple[AgentLoopImpl, "VerifierRegistry | None"]:
     """Dispatch to the per-mode builder. Single entry-point for the router.
 
@@ -525,6 +534,10 @@ def build_handler(
             # Sprint 57.71 (A-4 Tier 0): thread the router's real tracer through
             # to the loop. echo_demo path is unaffected (no tracer arg).
             tracer=tracer,
+            # Sprint 57.95 (Cat 11 → Cat 12 SSE relay): thread the subagent event
+            # emitter so SubagentSpawned/Completed reach the SSE stream. echo_demo
+            # builds no subagent dispatcher → the arg is simply not forwarded.
+            subagent_event_emitter=subagent_event_emitter,
         )
     raise ValueError(f"Unsupported mode: {mode!r}")
 
