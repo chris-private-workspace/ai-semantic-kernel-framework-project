@@ -30,7 +30,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.4)
 Last Modified: 2026-06-08
 
 Modification History (newest-first):
-    - 2026-06-09: Sprint 57.95 — thread subagent_event_emitter to chat subagent dispatcher (SSE relay)
+    - 2026-06-09: Sprint 57.95 — wire subagent_event_emitter on chat path (SSE relay)
     - 2026-06-09: Sprint 57.94 — child-loop factory for real FORK/AS_TOOL child loops
     - 2026-06-08: Sprint 57.93 — OutputKeywordEscalationGuardrail (output pre-delivery pause)
     - 2026-06-08: Sprint 57.92 — BetweenTurnsKeywordGuardrail + note_tool (between-turns pause)
@@ -102,9 +102,9 @@ if TYPE_CHECKING:
 
     from agent_harness._contracts import SubagentBudget
     from agent_harness.hitl import HITLManager
-    from agent_harness.subagent.dispatcher import SubagentEventEmitter
     from agent_harness.observability import Tracer
     from agent_harness.orchestrator_loop._abc import AgentLoop
+    from agent_harness.subagent.dispatcher import SubagentEventEmitter
     from agent_harness.verification import VerifierRegistry
     from business_domain._service_factory import BusinessServiceFactory
     from platform_layer.governance.service_factory import ServiceFactory

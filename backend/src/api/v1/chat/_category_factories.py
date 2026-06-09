@@ -29,7 +29,7 @@ Created: 2026-05-31 (Sprint 57.63 Day 1)
 Last Modified: 2026-06-05
 
 Modification History (newest-first):
-    - 2026-06-09: Sprint 57.95 — make_chat_subagent_dispatcher threads event_emitter (Cat 11 SSE relay)
+    - 2026-06-09: Sprint 57.95 — make_chat_subagent_dispatcher threads event_emitter (SSE relay)
     - 2026-06-05: Sprint 57.81 — error budget store via maybe_get_budget_store (B-7 wiring)
     - 2026-06-01: Sprint 57.65 — make_chat_prompt_builder accepts real MemoryRetrieval (A-1 Tier2)
     - 2026-06-01: Sprint 57.64 Day 2 — add Cat 3 memory deps + Cat 11 subagent dispatcher factories
