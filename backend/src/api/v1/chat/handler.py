@@ -30,6 +30,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.4)
 Last Modified: 2026-06-08
 
 Modification History (newest-first):
+    - 2026-06-08: Sprint 57.93 — OutputKeywordEscalationGuardrail (output pre-delivery pause)
     - 2026-06-08: Sprint 57.92 — BetweenTurnsKeywordGuardrail + note_tool (between-turns pause)
     - 2026-06-08: Sprint 57.91 — wire KeywordEscalationGuardrail (input-ESCALATE pause trigger)
     - 2026-06-08: Sprint 57.88 Day-4 — ToolGuardrail (registry matrix) gates echo_tool ESCALATE
@@ -73,6 +74,7 @@ from agent_harness._contracts import (
 from agent_harness.guardrails import build_default_guardrail_engine
 from agent_harness.guardrails.between_turns import BetweenTurnsKeywordGuardrail
 from agent_harness.guardrails.input import KeywordEscalationGuardrail
+from agent_harness.guardrails.output import OutputKeywordEscalationGuardrail
 from agent_harness.guardrails.tool.capability_matrix import CapabilityMatrix, PermissionRule
 from agent_harness.guardrails.tool.tool_guardrail import ToolGuardrail
 from agent_harness.orchestrator_loop import AgentLoopImpl
@@ -114,6 +116,8 @@ DEMO_SYSTEM_PROMPT = (
     "final answer. When the user asks you to 'note' some text, you MUST call "
     "the `note_tool` function with that text as the `text` argument, then "
     "return the tool's output verbatim as your final answer. Do not paraphrase. "
+    "When the user asks you to share or state something confidential, your final "
+    "answer MUST contain the word 'confidential'. "
     "For any other request, answer directly."
 )
 
@@ -148,6 +152,18 @@ CHAT_HITL_ESCALATE_INPUT_PHRASES = frozenset({"approval required"})
 # and pauses. The phrase MUST NOT contain CHAT_HITL_ESCALATE_INPUT_PHRASES so the input
 # gate does not pre-empt. Only wired when a HITLManager is present (deferred pause).
 CHAT_HITL_ESCALATE_BETWEEN_TURNS_PHRASES = frozenset({"checkpoint"})
+
+# Sprint 57.93 (地基 A Slice 3 output-guardrail leg): phrases that ESCALATE the OUTPUT
+# guardrail on a FINAL answer → a durable HITL pause BEFORE the answer is delivered
+# (before LLMResponded renders the AnswerBlock in the UI). The OutputKeywordEscalation
+# Guardrail (OUTPUT chain) returns ESCALATE on a case-insensitive substring match
+# against the final answer. DEMO_SYSTEM_PROMPT drives the LLM to put "confidential" in
+# a final answer when asked to share something confidential, so a real "tell me
+# something confidential" reliably pauses for approval of DELIVERY. Registered at
+# priority=5 (before the default Toxicity p10 / SensitiveInfo p20 detectors). The
+# phrase MUST NOT contain the input ("approval required") or between-turns
+# ("checkpoint") phrases so those gates do not pre-empt. Only wired with a HITLManager.
+CHAT_HITL_ESCALATE_OUTPUT_PHRASES = frozenset({"confidential"})
 
 
 def build_echo_demo_handler(
@@ -346,6 +362,17 @@ def build_real_llm_handler(
         # check; the loop runs it at the loop top after ≥1 completed turn.
         guardrail_engine.register(
             BetweenTurnsKeywordGuardrail(CHAT_HITL_ESCALATE_BETWEEN_TURNS_PHRASES),
+        )
+        # Sprint 57.93 (地基 A Slice 3 output-guardrail leg): output-ESCALATE
+        # pre-delivery pause trigger. Registers on the OUTPUT chain at priority=5
+        # so it runs BEFORE the default Toxicity (p10) / SensitiveInfo (p20)
+        # detectors (_run_chain is fail-fast-first-non-PASS) — its ESCALATE on a
+        # final answer containing the phrase wins; a non-matching answer PASSes
+        # through to the defaults unchanged. The loop's pre-delivery gate pauses
+        # the flagged answer BEFORE LLMResponded renders it.
+        guardrail_engine.register(
+            OutputKeywordEscalationGuardrail(CHAT_HITL_ESCALATE_OUTPUT_PHRASES),
+            priority=5,
         )
 
     loop = AgentLoopImpl(

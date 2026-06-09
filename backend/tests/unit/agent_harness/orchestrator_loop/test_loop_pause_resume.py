@@ -2,7 +2,7 @@
 File: backend/tests/unit/agent_harness/orchestrator_loop/test_loop_pause_resume.py
 Purpose: Unit tests for 57.88 durable HITL pause-resume (deferred branch + resume()).
 Category: Tests / 範疇 1 + 範疇 7 + 範疇 9 + §HITL Centralization
-Scope: Phase 57 / Sprint 57.88 + 57.90 + 57.91 (input-ESCALATE) + 57.92 (between-turns)
+Scope: Phase 57 / Sprint 57.88 + 57.90 + 57.91 (input) + 57.92 (between-turns) + 57.93 (output)
 
 Description:
     Validates the Stage-1 backend core of the durable HITL pause-resume spike:
@@ -26,9 +26,15 @@ Description:
       ESCALATEs → pause (between-turns-kind pending_approval, no tool_call); ESCALATE
       without HITL fails closed to BLOCK; resume() drives _run_turns with
       skip_between_turns_once so the just-approved boundary does not re-pause.
+    - Sprint 57.93 (Slice 3 output-guardrail leg): the output-ESCALATE pre-delivery
+      pause point — an OUTPUT guardrail ESCALATE on a FINAL answer pauses BEFORE
+      LLMResponded delivers it (output-kind pending_approval carrying the held-answer
+      snapshot); resume() APPROVED re-emits the held answer (no _run_turns drive, no
+      LLM re-call), REJECTED withholds it; the pre-gate is inert without HITL wiring
+      or on a non-final response.
 
 Created: 2026-06-08 (Sprint 57.88)
-Last Modified: 2026-06-08 (Sprint 57.92 — between-turns ESCALATE pause + between-turns-resume tests)
+Last Modified: 2026-06-08 (Sprint 57.93 — output-ESCALATE pre-delivery pause + output-resume tests)
 """
 
 from __future__ import annotations
@@ -51,6 +57,7 @@ from agent_harness._contracts import (
     DurableState,
     ExecutionContext,
     GuardrailTriggered,
+    LLMResponded,
     LoopCompleted,
     LoopEvent,
     LoopState,
@@ -79,6 +86,9 @@ from agent_harness.guardrails._abc import (
 from agent_harness.guardrails.engine import GuardrailEngine
 from agent_harness.guardrails.input.escalation_keyword_detector import (
     KeywordEscalationGuardrail,
+)
+from agent_harness.guardrails.output.escalation_keyword_detector import (
+    OutputKeywordEscalationGuardrail,
 )
 from agent_harness.hitl import HITLManager
 from agent_harness.orchestrator_loop.loop import AgentLoopImpl
@@ -1157,6 +1167,266 @@ async def test_resume_between_turns_rejected_blocks() -> None:
     assert not executor.executed
     completes = [e for e in events if isinstance(e, LoopCompleted)]
     assert completes[-1].stop_reason == TerminationReason.GUARDRAIL_BLOCKED.value
+
+
+# === Tests: output-ESCALATE pre-delivery pause point (57.93 Slice 3) ========
+
+
+class OutputEscalateGuardrail(Guardrail):
+    """Always escalates on the OUTPUT chain — deterministic pre-delivery trigger.
+
+    Content-independent (always ESCALATE) so the loop-integration tests prove the
+    pre-gate / pause / resume machinery without coupling to the answer text. The
+    REAL phrase-based OutputKeywordEscalationGuardrail is tested in
+    test_output_escalation_keyword_detector.py.
+    """
+
+    guardrail_type = GuardrailType.OUTPUT
+
+    async def check(
+        self,
+        *,
+        content: Any,
+        trace_context: TraceContext | None = None,
+    ) -> GuardrailResult:
+        return GuardrailResult(
+            action=GuardrailAction.ESCALATE,
+            reason="output escalation",
+            risk_level="HIGH",
+        )
+
+
+def _build_output_loop(
+    *,
+    chat_client: ChatClient,
+    hitl_manager: HITLManager,
+    hitl_deferred: bool,
+    checkpointer: InMemoryCheckpointer | None = None,
+    reducer: InMemoryReducer | None = None,
+    guardrail: Guardrail | None = None,
+) -> tuple[AgentLoopImpl, SpyExecutor]:
+    """A loop whose OUTPUT chain ESCALATEs on a FINAL answer (Sprint 57.93).
+
+    NO tool guardrail is wired (so a TOOL_USE turn dispatches normally). The OUTPUT
+    guardrail (default: always-escalate) routes a FINAL answer through the
+    pre-delivery gate → `_cat9_output_escalate_pause` → `_cat9_output_hitl_pause` →
+    the generalized `_emit_deferred_pause` (BEFORE LLMResponded renders it).
+    """
+    registry = _registry_with_tool()
+    executor = _executor(registry)
+    engine = GuardrailEngine()
+    engine.register(guardrail or OutputEscalateGuardrail(), priority=5)
+    loop = AgentLoopImpl(
+        chat_client=chat_client,
+        output_parser=OutputParserImpl(),
+        tool_executor=executor,
+        tool_registry=registry,
+        guardrail_engine=engine,
+        tenant_id=_TENANT_ID,
+        hitl_manager=hitl_manager,
+        hitl_deferred=hitl_deferred,
+        checkpointer=checkpointer,  # type: ignore[arg-type]
+        reducer=reducer,  # type: ignore[arg-type]
+    )
+    return loop, executor
+
+
+def _paused_output_state(*, decision_session: UUID) -> LoopState:
+    """A paused checkpoint as an OUTPUT-kind pause would rehydrate it.
+
+    current_turn=0 (paused mid-turn-0, BEFORE the held answer was delivered); the
+    held answer rides in pending_approval.response_snapshot (NOT in messages — the
+    FINAL path never appended it); no tool_call (output pause has no pending tool).
+    """
+    return LoopState(
+        transient=TransientState(
+            messages=[
+                Message(role="system", content="sys"),
+                Message(role="user", content="tell me something confidential"),
+            ],
+            current_turn=0,
+            token_usage_so_far=2,
+        ),
+        durable=DurableState(
+            session_id=decision_session,
+            tenant_id=_TENANT_ID,
+            metadata={
+                "pending_approval": {
+                    "kind": "output",
+                    "approval_request_id": str(uuid4()),
+                    "turn": 0,
+                    "response_snapshot": {
+                        "answer_text": "the held confidential answer",
+                        "input_tokens": 1,
+                        "output_tokens": 1,
+                        "cached_input_tokens": 0,
+                        "provider": "fake",
+                        "model": "fake",
+                        "cache_hit_rate": 0.0,
+                        "total_tokens": 2,
+                    },
+                }
+            },
+        ),
+        version=StateVersion(
+            version=1,
+            parent_version=None,
+            created_at=_DATETIME_NOW,
+            created_by_category="orchestrator_loop:hitl_pause",
+        ),
+    )
+
+
+async def test_output_escalate_pauses_before_delivery() -> None:
+    """Sprint 57.93: a FINAL answer flagged ESCALATE by the OUTPUT guardrail pauses
+    BEFORE LLMResponded delivers it — checkpoint pending_approval{kind:"output",
+    response_snapshot.answer_text} (no tool_call) + LoopCompleted(awaiting_approval)
+    + ApprovalRequested; LLMResponded for the held answer is NEVER yielded (the
+    answer is withheld until approval)."""
+    chat = FakeChatClient(responses=[("the secret is confidential", None, StopReason.END_TURN)])
+    hitl = SpyHITLManager(decision=DecisionType.APPROVED)
+    checkpointer = InMemoryCheckpointer()
+    reducer = InMemoryReducer()
+    loop, executor = _build_output_loop(
+        chat_client=chat,
+        hitl_manager=hitl,
+        hitl_deferred=True,
+        checkpointer=checkpointer,
+        reducer=reducer,
+    )
+
+    events = await _run(loop)
+
+    # Withheld: the held answer's LLMResponded (which renders the AnswerBlock) was
+    # NEVER yielded — the pause precedes delivery.
+    assert not any(isinstance(e, LLMResponded) for e in events)
+    completes = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completes[-1].stop_reason == TerminationReason.AWAITING_APPROVAL.value
+    assert any(isinstance(e, ApprovalRequested) for e in events)
+    assert hitl.wait_called is False  # deferred, not blocking
+    # Checkpoint carries an OUTPUT-kind pending_approval with the held-answer snapshot.
+    pauses = [s for s in checkpointer.saved if "pending_approval" in s.durable.metadata]
+    assert pauses, "expected an output-pause checkpoint"
+    pa = pauses[-1].durable.metadata["pending_approval"]
+    assert pa["kind"] == "output"
+    assert "tool_call" not in pa
+    assert pa["response_snapshot"]["answer_text"] == "the secret is confidential"
+
+
+async def test_resume_output_approved_replays_answer() -> None:
+    """Sprint 57.93: resume() of an OUTPUT-kind pause, APPROVED → re-emits the held
+    LLMResponded(answer_text) + LoopCompleted(END_TURN) with NO _run_turns drive (no
+    LOOP span) and NO LLM call (the held answer is delivered, not regenerated)."""
+    session_id = uuid4()
+    # responses=[] → if resume drove _run_turns and called the LLM, this would raise.
+    chat = FakeChatClient(responses=[])
+    hitl = SpyHITLManager(decision=DecisionType.APPROVED)
+    loop, executor = _build_resume_loop(chat_client=chat, hitl_manager=hitl)
+
+    state = _paused_output_state(decision_session=session_id)
+    ctx = TraceContext(tenant_id=_TENANT_ID, session_id=session_id)
+    events = [ev async for ev in loop.resume(state=state, trace_context=ctx)]
+
+    assert hitl.get_decision_called is True
+    received = [e for e in events if isinstance(e, ApprovalReceived)]
+    assert received and received[0].decision == DecisionType.APPROVED.value
+    # The held answer is re-emitted (now delivered to the UI).
+    responded = [e for e in events if isinstance(e, LLMResponded)]
+    assert responded and responded[-1].content == "the held confidential answer"
+    # Terminal END_TURN; NO drive (no LOOP span); NO tool exec.
+    completes = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completes[-1].stop_reason == TerminationReason.END_TURN.value
+    assert not any(isinstance(e, SpanStarted) and e.span_type == "LOOP" for e in events)
+    assert not executor.executed
+
+
+async def test_resume_output_rejected_blocks() -> None:
+    """Sprint 57.93: resume() of an OUTPUT-kind pause, REJECTED →
+    GuardrailTriggered(output, block) + GUARDRAIL_BLOCKED; the held answer is NEVER
+    delivered (no LLMResponded)."""
+    session_id = uuid4()
+    chat = FakeChatClient(responses=[])
+    hitl = SpyHITLManager(decision=DecisionType.REJECTED)
+    loop, executor = _build_resume_loop(chat_client=chat, hitl_manager=hitl)
+
+    state = _paused_output_state(decision_session=session_id)
+    ctx = TraceContext(tenant_id=_TENANT_ID, session_id=session_id)
+    events = [ev async for ev in loop.resume(state=state, trace_context=ctx)]
+
+    blocks = [e for e in events if isinstance(e, GuardrailTriggered)]
+    assert blocks and blocks[0].guardrail_type == "output" and blocks[0].action == "block"
+    # The held answer is withheld (never re-emitted).
+    assert not any(isinstance(e, LLMResponded) for e in events)
+    completes = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completes[-1].stop_reason == TerminationReason.GUARDRAIL_BLOCKED.value
+
+
+async def test_output_pre_gate_skips_non_final() -> None:
+    """Sprint 57.93 US-4: the pre-gate is gated on is_final_answer — a TOOL_USE turn
+    whose assistant text matches the phrase is NOT pre-gated (the tool dispatches
+    normally). Here the FINAL answer does NOT match → no pause; the loop ends
+    normally (a real phrase-based OUTPUT guardrail makes the contrast concrete)."""
+    chat = FakeChatClient(
+        responses=[
+            (
+                "let me look up that confidential record",
+                [ToolCall(id="tc-1", name="sensitive_tool", arguments={"x": 1})],
+                StopReason.TOOL_USE,
+            ),
+            ("here is the result", None, StopReason.END_TURN),
+        ],
+    )
+    hitl = SpyHITLManager(decision=DecisionType.APPROVED)
+    checkpointer = InMemoryCheckpointer()
+    reducer = InMemoryReducer()
+    loop, executor = _build_output_loop(
+        chat_client=chat,
+        hitl_manager=hitl,
+        hitl_deferred=True,
+        checkpointer=checkpointer,
+        reducer=reducer,
+        guardrail=OutputKeywordEscalationGuardrail(frozenset({"confidential"})),
+    )
+
+    events = await _run(loop)
+
+    # The TOOL_USE turn (text contains "confidential") dispatched the tool — NOT paused.
+    assert executor.executed and executor.executed[0].name == "sensitive_tool"
+    # The FINAL answer ("here is the result") doesn't match → no pause; clean end_turn.
+    completes = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completes[-1].stop_reason == TerminationReason.END_TURN.value
+    assert not any(c.stop_reason == TerminationReason.AWAITING_APPROVAL.value for c in completes)
+    assert not any(isinstance(e, ApprovalRequested) for e in events)
+
+
+async def test_output_pre_gate_inert_without_hitl() -> None:
+    """Sprint 57.93 US-4: without the full deferred-HITL wiring the pre-gate is inert
+    — the FINAL answer renders normally (LLMResponded yielded) and the per-response
+    _cat9_output_check ESCALATE-continue path fires (GuardrailTriggered(output,
+    escalate)); the loop still ends end_turn (answer delivered)."""
+    chat = FakeChatClient(responses=[("the answer is confidential", None, StopReason.END_TURN)])
+    loop, executor = _build_output_loop(
+        chat_client=chat,
+        hitl_manager=SpyHITLManager(decision=None),
+        hitl_deferred=False,  # HITL not deferred + no checkpointer/reducer → pre-gate inert
+        checkpointer=None,
+        reducer=None,
+    )
+
+    events = await _run(loop)
+
+    # The answer was delivered normally (pre-gate inert).
+    responded = [e for e in events if isinstance(e, LLMResponded)]
+    assert responded and responded[-1].content == "the answer is confidential"
+    # The per-response output check still ran its ESCALATE-continue path.
+    triggered = [
+        e for e in events if isinstance(e, GuardrailTriggered) and e.guardrail_type == "output"
+    ]
+    assert triggered and triggered[-1].action == "escalate"
+    # Ended normally (not paused, not blocked).
+    completes = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completes[-1].stop_reason == TerminationReason.END_TURN.value
+    assert not any(c.stop_reason == TerminationReason.AWAITING_APPROVAL.value for c in completes)
 
 
 # === Tests: HITLManager.get_decision (US-3) =================================

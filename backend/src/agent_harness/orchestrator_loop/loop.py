@@ -45,6 +45,7 @@ Created: 2026-04-30 (Sprint 50.1 Day 2.2)
 Last Modified: 2026-06-08
 
 Modification History (newest-first):
+    - 2026-06-08: Sprint 57.93 — output-guardrail ESCALATE pre-delivery pause point (Slice 3)
     - 2026-06-08: Sprint 57.92 — between-turns guardrail ESCALATE pause point (Slice 3 leg 2)
     - 2026-06-08: Sprint 57.91 — _emit_deferred_pause primitive + input-ESCALATE pause point
     - 2026-06-08: Sprint 57.90 Slice 2 — resume() drives shared _run_turns; delete the reduced copy
@@ -1357,6 +1358,166 @@ class AgentLoopImpl(AgentLoop):
         ):
             yield ev
 
+    async def _cat9_output_escalate_pause(
+        self,
+        *,
+        output_text: str,
+        response_snapshot: dict[str, Any],
+        ctx: TraceContext,
+        turn_count: int,
+        session_id: UUID,
+        messages: list[Message],
+    ) -> AsyncIterator[LoopEvent]:
+        """Cat 9 output-guardrail ESCALATE → pre-delivery HITL pause (Sprint 57.93).
+
+        The pre-delivery gate for a FINAL answer: runs the EXISTING OUTPUT chain
+        (check_output) BEFORE LLMResponded renders the answer (the frontend draws
+        the AnswerBlock from llm_response, so a pause after that point would be a
+        Potemkin). On ESCALATE it durably pauses for human approval of DELIVERING
+        the answer — the third generalized pause point on the _emit_deferred_pause
+        primitive; resume() re-emits the held answer (no LLM re-call) on approval,
+        or withholds it (GUARDRAIL_BLOCKED) on rejection. Any non-ESCALATE result
+        returns (no-op): the caller falls through to the unchanged LLMResponded +
+        per-response _cat9_output_check (BLOCK / SANITIZE / REROLL / tripwire). The
+        caller gates this on is_final_answer + the full deferred-HITL wiring so
+        non-HITL / non-final paths never enter here.
+        """
+        if self._guardrail_engine is None:
+            return
+        g_result = await self._guardrail_engine.check_output(output_text, trace_context=ctx)
+        if g_result.action == GuardrailAction.ESCALATE:
+            async for ev in self._cat9_output_hitl_pause(
+                answer_text=output_text,
+                response_snapshot=response_snapshot,
+                reason=g_result.reason or "escalated",
+                ctx=ctx,
+                session_id=session_id,
+                messages=messages,
+                turn_count=turn_count,
+            ):
+                yield ev
+        # else: no-op — the caller falls through to LLMResponded + _cat9_output_check.
+
+    async def _cat9_output_hitl_pause(
+        self,
+        *,
+        answer_text: str,
+        response_snapshot: dict[str, Any],
+        reason: str,
+        ctx: TraceContext,
+        session_id: UUID,
+        messages: list[Message],
+        turn_count: int,
+    ) -> AsyncIterator[LoopEvent]:
+        """Cat 9 output ESCALATE → durable pre-delivery HITL pause (Sprint 57.93).
+
+        The output analogue of _cat9_between_turns_hitl_pause: build an output
+        ApprovalRequest, emit ApprovalRequested, and pause via the generalized
+        _emit_deferred_pause primitive with an OUTPUT-kind pending_approval (no
+        tool_call) carrying the held-answer snapshot so resume() can re-emit the
+        answer WITHOUT re-calling the LLM. The caller (_cat9_output_escalate_pause)
+        gates on hitl_manager + hitl_deferred + checkpointer + reducer; this method
+        fails closed on the remaining no-identity / persist-failure cases
+        (GuardrailTriggered(output, block) + GUARDRAIL_BLOCKED). risk_level defaults
+        to HIGH (escalation implies human review).
+        """
+        if self._hitl_manager is None:  # defensive; caller already checked
+            return
+
+        tenant_id = self._tenant_id or ctx.tenant_id
+        session_id_eff = ctx.session_id or session_id
+        if tenant_id is None or session_id_eff is None:
+            await self._audit_log_safe(
+                event_type="guardrail.output.escalate.no_identity",
+                content={"reason": reason},
+                ctx=ctx,
+            )
+            yield GuardrailTriggered(
+                guardrail_type="output",
+                action="block",
+                reason=f"escalation requires identity context: {reason}",
+                trace_context=ctx,
+            )
+            yield LoopCompleted(
+                stop_reason=TerminationReason.GUARDRAIL_BLOCKED.value,
+                total_turns=turn_count,
+                trace_context=ctx,
+            )
+            return
+
+        request_id = uuid4()
+        risk_level = RiskLevel.HIGH  # ESCALATE default; mirror _cat9_between_turns_hitl_pause
+        sla_deadline = datetime.now(timezone.utc) + timedelta(seconds=self._hitl_timeout_s)
+        approval_req = ApprovalRequest(
+            request_id=request_id,
+            tenant_id=tenant_id,
+            session_id=session_id_eff,
+            requester="guardrails",
+            risk_level=risk_level,
+            payload={
+                "kind": "output",
+                "output_excerpt": answer_text[:200],
+                "reason": reason,
+                "summary": "approve delivery",
+            },
+            sla_deadline=sla_deadline,
+            context_snapshot={"trace_id": ctx.trace_id},
+        )
+
+        try:
+            await self._hitl_manager.request_approval(approval_req, trace_context=ctx)
+        except Exception as exc:  # noqa: BLE001 — fail closed on persistence error
+            await self._audit_log_safe(
+                event_type="guardrail.output.escalate.persist_failed",
+                content={"error": str(exc)},
+                ctx=ctx,
+            )
+            yield GuardrailTriggered(
+                guardrail_type="output",
+                action="block",
+                reason=f"approval persistence failed: {exc}",
+                trace_context=ctx,
+            )
+            yield LoopCompleted(
+                stop_reason=TerminationReason.GUARDRAIL_BLOCKED.value,
+                total_turns=turn_count,
+                trace_context=ctx,
+            )
+            return
+
+        await self._audit_log_safe(
+            event_type="guardrail.output.escalate.requested",
+            content={
+                "request_id": str(request_id),
+                "risk_level": risk_level.value,
+                "reason": reason,
+            },
+            ctx=ctx,
+        )
+        yield ApprovalRequested(
+            approval_request_id=request_id,
+            risk_level=risk_level.value,
+            trace_context=ctx,
+        )
+
+        pending_approval = {
+            "kind": "output",
+            "approval_request_id": str(request_id),
+            "turn": turn_count,
+            "response_snapshot": response_snapshot,
+        }
+        async for ev in self._emit_deferred_pause(
+            request_id=request_id,
+            pending_approval=pending_approval,
+            messages=messages,
+            turn_count=turn_count,
+            session_id=session_id_eff,
+            audit_event_type="guardrail.output.escalate.deferred",
+            audit_content={"request_id": str(request_id), "turn": turn_count},
+            ctx=ctx,
+        ):
+            yield ev
+
     async def run(
         self,
         *,
@@ -1849,6 +2010,53 @@ class AgentLoopImpl(AgentLoop):
 
                     # === Parse + emit LLMResponded + Thinking ==================
                     parsed = await self._output_parser.parse(response, trace_context=ctx)
+
+                    # === Cat 9 output-guardrail ESCALATE pre-delivery pause ====
+                    # (Sprint 57.93, 地基 A Slice 3 output-guardrail leg). For a
+                    # FINAL answer, run the OUTPUT chain BEFORE LLMResponded (the
+                    # frontend renders the AnswerBlock from llm_response, so a pause
+                    # AFTER it would be a Potemkin). On ESCALATE + the full
+                    # deferred-HITL wiring, pause durably for human approval to
+                    # DELIVER the answer; resume() re-emits the held answer (no LLM
+                    # re-call) on APPROVED. Gated on is_final_answer + the wiring so
+                    # non-HITL / non-final turns are byte-unchanged (LLMResponded +
+                    # the per-response _cat9_output_check below still run as before).
+                    if (
+                        (
+                            should_terminate_by_stop_reason(response)
+                            or classify_output(response) == OutputType.FINAL
+                        )
+                        and self._guardrail_engine is not None
+                        and self._hitl_manager is not None
+                        and self._hitl_deferred
+                        and self._checkpointer is not None
+                        and self._reducer is not None
+                    ):
+                        output_pause_terminated = False
+                        response_snapshot: dict[str, Any] = {
+                            "answer_text": parsed.text,
+                            "input_tokens": _input_tokens,
+                            "output_tokens": _output_tokens,
+                            "cached_input_tokens": _cached_input_tokens,
+                            "provider": _provider,
+                            "model": response.model,
+                            "cache_hit_rate": metrics_acc.cache_hit_rate,
+                            "total_tokens": tokens_used,
+                        }
+                        async for ev in self._cat9_output_escalate_pause(
+                            output_text=parsed.text,
+                            response_snapshot=response_snapshot,
+                            ctx=ctx,
+                            turn_count=turn_count,
+                            session_id=session_id,
+                            messages=messages,
+                        ):
+                            yield ev
+                            if isinstance(ev, LoopCompleted):
+                                output_pause_terminated = True
+                        if output_pause_terminated:
+                            return
+
                     # 50.2: LLMResponded carries the canonical (content, tool_calls,
                     # thinking) tuple
                     # per 02-architecture-design.md §SSE llm_response schema. Thinking event
@@ -2432,6 +2640,49 @@ class AgentLoopImpl(AgentLoop):
                 ctx=ctx,
             )
             skip_between_turns_once = True
+        elif kind == "output":
+            # Sprint 57.93 (Slice 3 output-guardrail leg): an output-kind pause (no
+            # tool_call) was an output-guardrail ESCALATE on a FINAL answer, held
+            # BEFORE LLMResponded. This branch is TERMINAL — it re-emits (APPROVED)
+            # or withholds (REJECTED) the held answer and RETURNS before the shared
+            # _run_turns drive below (the turn already produced its terminal answer;
+            # there is nothing more to run, and re-driving would re-call the LLM).
+            snap_raw = pending.get("response_snapshot", {})
+            snap: dict[str, Any] = snap_raw if isinstance(snap_raw, dict) else {}
+            if decision.decision != DecisionType.APPROVED:
+                await self._audit_log_safe(
+                    event_type=f"resume.output.{decision.decision.value.lower()}",
+                    content={"request_id": str(request_id)},
+                    ctx=ctx,
+                )
+                yield GuardrailTriggered(
+                    guardrail_type="output",
+                    action="block",
+                    reason=f"approval {decision.decision.value.lower()}: "
+                    f"{decision.reason or 'no reason'}",
+                    trace_context=ctx,
+                )
+                yield LoopCompleted(
+                    stop_reason=TerminationReason.GUARDRAIL_BLOCKED.value,
+                    total_turns=turn_count,
+                    total_tokens=tokens_used,
+                    trace_context=ctx,
+                )
+                return
+            # APPROVED → deliver the held answer (no LLM re-call, no further turns).
+            await self._audit_log_safe(
+                event_type="resume.output.approved",
+                content={"request_id": str(request_id)},
+                ctx=ctx,
+            )
+            async for ev in self._replay_approved_output(
+                answer_text=str(snap.get("answer_text", "")),
+                snap=snap,
+                turn_count=turn_count,
+                ctx=ctx,
+            ):
+                yield ev
+            return
         else:
             tc_data = pending.get("tool_call", {})
             pending_tc = ToolCall(
@@ -2550,6 +2801,59 @@ class AgentLoopImpl(AgentLoop):
                     duration_ms=(time.monotonic() - _root_ctx_t0) * 1000.0,
                     trace_context=root_ctx,
                 )
+
+    async def _replay_approved_output(
+        self,
+        *,
+        answer_text: str,
+        snap: dict[str, Any],
+        turn_count: int,
+        ctx: TraceContext,
+    ) -> AsyncIterator[LoopEvent]:
+        """Re-emit a held final answer after output-pause APPROVAL (Sprint 57.93).
+
+        An output-kind pause held the FINAL answer BEFORE LLMResponded; on APPROVED
+        resume() calls this to DELIVER it: re-emit the withheld LLMResponded (so the
+        UI now renders the AnswerBlock) + Thinking + LoopCompleted(END_TURN), carrying
+        the per-call token/provider metrics from the checkpoint snapshot so the cost
+        ledger is written at resume (the paused run never emitted END_TURN). NO LLM
+        re-call, NO further turns — the turn already produced its terminal answer; this
+        only replays it. Spike simplification: no fresh LOOP span over the single
+        re-emit (the resumed END_TURN is not nested under a new trace span).
+        """
+        # Snapshot values come from JSONB (Any); default to type-correct zeros so
+        # the strict event field types (non-Optional str/int/float) hold.
+        provider = str(snap.get("provider", ""))
+        model = str(snap.get("model", ""))
+        input_tokens = int(snap.get("input_tokens", 0))
+        output_tokens = int(snap.get("output_tokens", 0))
+        cached_input_tokens = int(snap.get("cached_input_tokens", 0))
+        cache_hit_rate = float(snap.get("cache_hit_rate", 0.0))
+        total_tokens = int(snap.get("total_tokens", 0))
+        yield LLMResponded(
+            content=answer_text,
+            tool_calls=(),
+            thinking=None,
+            provider=provider,
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cached_input_tokens=cached_input_tokens,
+            trace_context=ctx,
+        )
+        yield Thinking(text=answer_text, trace_context=ctx)
+        yield LoopCompleted(
+            stop_reason=TerminationReason.END_TURN.value,
+            total_turns=turn_count,
+            total_tokens=total_tokens,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            provider=provider,
+            model=model,
+            cached_input_tokens=cached_input_tokens,
+            cache_hit_rate=cache_hit_rate,
+            trace_context=ctx,
+        )
 
     async def _emit_state_checkpoint(
         self,
