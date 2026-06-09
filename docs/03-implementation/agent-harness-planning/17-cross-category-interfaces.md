@@ -139,7 +139,7 @@ backend/src/agent_harness/_contracts/
 | `Verifier` | `01-eleven-categories-spec.md` | 範疇 10 | `verify() -> VerificationResult` |
 | `SubagentDispatcher` | `01-eleven-categories-spec.md` | 範疇 11 | `spawn()` / `handoff()` |
 | `ChildLoopFactory` | `_contracts/subagent.py` | 範疇 11 | `Callable[[SubagentBudget], AgentLoop]` — Sprint 57.94 FORK real child loop. **Composition detail, NOT a `SubagentDispatcher` ABC method** (ABC unchanged); built at `build_real_llm_handler`, injected → `ForkExecutor`. Cat 11→Cat 1 ref is TYPE_CHECKING-only. See `20-subagent-child-loop-design.md`. |
-| `SubagentEventEmitter` | `subagent/dispatcher.py` | 範疇 11 → 範疇 12 | `Callable[[LoopEvent], Awaitable[None]]` — Sprint 57.12 dispatcher slot; **Sprint 57.95 wired on the chat path** (`make_chat_subagent_dispatcher` ← a router-owned buffer drained by `_stream_loop_events`) so `SubagentSpawned`/`SubagentCompleted` reach the SSE stream (node-level relay; Inspector Tree). Composition detail, ABC + type unchanged. See `CHANGE-062`. |
+| `SubagentEventEmitter` | `subagent/dispatcher.py` | 範疇 11 → 範疇 12 | `Callable[[LoopEvent], Awaitable[None]]` — Sprint 57.12 dispatcher slot; **Sprint 57.95 wired on the chat path** (`make_chat_subagent_dispatcher` ← a router-owned buffer drained by `_stream_loop_events`) so `SubagentSpawned`/`SubagentCompleted` reach the SSE stream (node-level relay; Inspector Tree). **Sprint 57.96 (Scope B)**: the same emitter (passed to `ForkExecutor` as `_emit_safely`) also forwards the child loop's TAO subset wrapped in `SubagentChildEvent` → the Tree node expands to the child's per-turn loop. Composition detail, ABC + type unchanged. See `CHANGE-062` / `CHANGE-063`. |
 | `Tracer` | `01-eleven-categories-spec.md` | **範疇 12** | `start_span()` / `record_metric()` |
 | `HITLManager` | `01-eleven-categories-spec.md` | §HITL 中央化 | `request_approval()` / `wait()` / `decide()` |
 
@@ -251,6 +251,7 @@ def register_memory_tools(registry: ToolRegistry) -> None:
 | `VerificationFailed` | 範疇 10 | Verifier 拒絕 |
 | `SubagentSpawned` | 範疇 11 | Subagent 啟動 |
 | `SubagentCompleted` | 範疇 11 | Subagent 結束 |
+| `SubagentChildEvent` | 範疇 11 → 範疇 12 | Subagent 子 loop 的 per-turn TAO 事件 wrapper（Sprint 57.96 Scope B；`subagent_id` + `inner: LoopEvent`）。`ForkExecutor` drain 時把 TAO 子集（`TurnStarted`/`LLMResponded`/`ToolCall*`）包進此 wrapper（tagged with the spawn `subagent_id`）→ 經 dispatcher `_emit_safely` → 既有 57.95 router buffer-drain relay（wrapper IS a `LoopEvent` → 免 router 改）。`sse.py` wire type `subagent_child` = `{subagent_id, inner_type, inner}`（inner 經自身 serializer 攤平）。`LoopEvent` base UNCHANGED（wrapper 非 base field）。前端 `SubagentNode.childEvents` + `chatStore` `subagent_child` routing → Inspector Tree 節點展開成 child per-turn rows。AS_TOOL 共用 `ForkExecutor` → 免費繼承。見 `CHANGE-063`。 |
 | `AgentHandoff` | 範疇 11 | HANDOFF 控制轉移：父 agent 退出 + target 子 session 啟動（Sprint 57.68 A-3b；loop 終止 stop_reason="handoff"，platform `HandoffService` boot 子 session 後 router emit `agent_handoff` 含 `new_session_id`） |
 | `ApprovalRequested` | §HITL 中央化 | HITL 觸發等待 |
 | `ApprovalReceived` | §HITL 中央化 | HITL 結果回到 loop |

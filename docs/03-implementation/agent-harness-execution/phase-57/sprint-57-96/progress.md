@@ -48,3 +48,47 @@
 ### Notes
 - Baseline = `main` HEAD `aebeab4c` (57.95 #268): pytest 2277 / mypy 0/351 / run_all 10/10 (exact Vitest baseline to capture Day-1).
 - Calibration class: NEW `subagent-child-turnstream-nesting` 0.55 mid-band (1st data point); agent_factor 1.0 (parent-direct).
+
+---
+
+## Day 1-2 — 2026-06-09 — Wrapper + ForkExecutor forward + frontend (US-1/2/3)
+
+### Day-1 locates (resolved)
+- **`check_event_schema_sync` source**: a codegen chain — `event_wire_schema.py` (registry) → `scripts/codegen/generate_event_schemas.py` → `frontend/.../generated/{events.json,loopEvents.generated.ts}`; lint #10 runs codegen `--check`. A new wire type → registry entry + run codegen + commit generated artifacts + parity test (backend `test_event_wire_schema_parity.py` 22→23 + frontend `eventSchema.generated.test.ts` 22→23).
+- **ForkExecutor emitter path**: `ForkExecutor.__init__` gains `event_emitter`; the dispatcher passes `self._emit_safely` (best-effort + reads live `_event_emitter` at call time → no `__init__` ordering issue). `execute(subagent_id: UUID, …)` ALREADY carries `subagent_id` → tag uses it directly. **AS_TOOL shares `self._fork`** (`AsToolWrapper(fork_executor=self._fork)`) → inherits forwarding free.
+- **Day-1 naming refinement (drift)**: wire type named **`subagent_child`** (NOT `subagent_child_event`) to avoid the `SubagentChildEventEvent` interface in `WIRE_TYPE_TO_INTERFACE` (codegen appends nothing; the map value is the full name). Interface = `SubagentChildEvent` (clean; matches the Python class name cross-layer).
+
+### Implemented
+- Backend: `SubagentChildEvent(subagent_id, inner)` in `_contracts/events.py` (+ `__init__` re-export) · `sse.py` serializer → `subagent_child` (recursive inner re-serialize → `{inner_type, inner}`) · `event_wire_schema.py` +1 (22→23) · codegen regen + lint #10 green · `fork.py` `_TAO_CHILD_EVENT_TYPES` + `_drive` forwards wrapped/tagged · `dispatcher.py` passes `_emit_safely`. **`loop.py`/`router.py`/`LoopEvent` base UNCHANGED.**
+- Frontend: `SubagentNode.childEvents` + `ChildTurnEvent` (`subagent/types.ts`) · `chatStore` `case "subagent_child"` routes by `subagent_id` (type-guarded projection) · `InspectorTree` `ChildTurnRow` nested rows (mockup `.subagent-row`/`.indent` vocabulary, no new CSS).
+- Tests: NEW `test_subagent_child_turnstream.py` (5: TAO-subset forward + tag + filter / no-emitter no-forward / serialize round-trip / Thinking+None skip) · parity 22→23 + instance · 57.12 emission test fixed (locate Completed by type — child TAO now interleaves) · frontend mergeEvent +2 routing tests · ChatInspector +2 render tests · eventSchema 22→23 +recognize test · ChatInspector fixture `childEvents:[]`.
+
+### Gate (parent-verified)
+- mypy `src --strict` **0/351** · pytest **2283 (+6)** / 4 skipped · run_all **10/10** (incl `check_event_schema_sync`) · black/isort/flake8 `src tests` clean · `loop.py`+`router.py` diff = **0**.
+- Vitest **777 (+7)** · `npm run build` (tsc) ✓ · `npm run lint` ✓ · `check:mockup-fidelity` baseline **53 unchanged** (0 new oklch/hex).
+- Commit `d087a451` (Day 1-2 code+tests+regenerated artifacts).
+
+---
+
+## Day 3 — 2026-06-09 — Drive-through (US-5) — **PASS**
+
+### Risk Class E clean restart
+- :8000 held by stale 57.95 reloader **50200** + spawn-worker **20360**; `--reload` respawned a worker (70560) when the worker was killed first → killed the **reloader first** then the orphan worker → :8000 FREE → `dev.py start backend` → fresh **PID 41464** owns :8000 (`/health` 401 = up + tenant middleware). Frontend node :3007 (PID 6200) untouched (constraint: never stop node).
+
+### Drive-through (real UI :3007 + fresh backend PID 41464 + real Azure gpt-5.2; jamie@acme.com / acme-prod / real_llm)
+Prompt: *"Use task_spawn to delegate a sub-task to a child subagent. Instruct that child to call echo_tool with the exact text 'child turn-stream visible', then tell me what the child returned."*
+
+| Layer | Observed | Intended | Verdict |
+|-------|----------|----------|---------|
+| **Tree (BEFORE)** | "no subagents spawned this session" | empty pre-spawn | ✅ |
+| **Tree (AFTER)** | each FORK node EXPANDS → `turn 0` · `LLM` · `→ echo_tool()` · `← echo_tool · child turn-stream visible` · `turn 1` · `LLM · child turn-stream visible` | node shows the child's per-turn TAO loop | ✅ **Scope B met** |
+| **Trace frames** | relayed `subagent_child {subagent_id, inner_type, inner}` frames for turn_start/llm_response/tool_call_request/tool_call_result, interleaved between `subagent_spawned`/`subagent_completed` | the wrapper rides the relay; impossible pre-57.96 (child events discarded) | ✅ corroboration |
+| **Parent answer** | turn 7 `stop: end_turn` → "The child returned: `child turn-stream visible`" | final answer renders in the conversation | ✅ |
+| **Summary row** | Mode fork · Depth 1 · Tokens (subtree) 11,068 | unchanged subagent-nesting depth (child rows ≠ subagents) | ✅ |
+
+- Real LLM task_spawned **3 forks** (LLM retried after the verification judge scored the fragment off-topic — irrelevant to Scope B; all 3 nodes render their child TAO correctly).
+- Out-of-scope nuance confirmed unchanged: the inline `SubagentForkBlock` still shows `0t` (turn count, NOT the Tree; deferred 🟢 per plan §9).
+- Evidence: `artifacts/sprint-57-96-tree-{1-before-empty,2-expanded-child-tao,3-fullpage-answer-and-tree}.png`.
+
+### Verdict
+Shipped + **drive-through PASS**. The Tree node expands to the child's per-turn TAO; the relayed `subagent_child` wire frames in the Trace are unambiguous proof (the exact serializer shape, impossible pre-57.96). `loop.py`/`router.py`/`LoopEvent`-base untouched; wrapper-event minimal blast radius.

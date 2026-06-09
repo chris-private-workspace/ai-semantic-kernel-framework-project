@@ -6,6 +6,21 @@
 
 ---
 
+## 🆕 Sprint 57.96 Carryover — Cat 11 Scope B child turn-stream nesting SHIPPED; recursion depth>1 + TEAMMATE/HANDOFF + leg-3 mid-thinking next
+
+**Source**: Sprint 57.96 closed 2026-06-09 — closes the remaining (turn-stream) half of `AD-Subagent-Child-Event-SSE-Relay`. The chat Inspector "Tree" subagent node now EXPANDS to the child loop's per-turn TAO via a NEW `SubagentChildEvent(subagent_id, inner)` wrapper event (wire type `subagent_child`). The wrapper IS a `LoopEvent` → it rode the existing 57.95 emitter + the already-generic router buffer-drain → **`loop.py`/`router.py`/`LoopEvent` base UNCHANGED**; `ForkExecutor._drive` forwards the TAO subset (tagged with `subagent_id`) via the dispatcher's `_emit_safely` (AS_TOOL inherits free); frontend `SubagentNode.childEvents` + `chatStore` `subagent_child` routing + `InspectorTree` nested rows. Drive-through PASS (the FORK node expands to `turn 0 / LLM / → echo_tool() / ← echo_tool · … / turn 1 / LLM`; the Trace shows the relayed `subagent_child` frames). Detail: `memory/project_phase57_96_subagent_child_turnstream.md` + CHANGE-063.
+
+- **Recursion depth > 1 (child-of-child turn-stream)** (🟡) — a subagent whose child itself spawns needs a 2nd level of `subagent_id` routing + nested-of-nested render. The `AD-Subagent-Child-Event-SSE-Relay` residual after node-level (57.95) + depth-1 turn-stream (57.96).
+- **Full-fidelity child events** (🟢) — the non-TAO child events (`LLMRequested`/`PromptBuilt`/`MemoryAccessed`/`Span*`/`Metric*`/`Checkpoint`/`ContextCompacted`) were deliberately excluded (locked TAO subset). A future "show everything" toggle could relay them; low priority (Tree noise).
+- **Inline `SubagentForkBlock` `0t` token/turn display** (🟢 minor frontend) — the inline fork-block in the conversation turn shows `{a.turns}t` = 0 (integer turn count, a separate component from the Tree; NOT a token bug). Surfaced by both the 57.95 + 57.96 drive-throughs; not a regression.
+- **TEAMMATE / HANDOFF real loops · `HandoffService`** (🟡) — extend the 57.94 child-loop + 57.96 turn-stream pattern to modes 2/4 (TEAMMATE is single-shot + mailbox; HANDOFF's loop-side terminator is wired but the platform service is absent).
+- **`AD-Subagent-Child-Span-Nesting`** (🟢) — `task_spawn` passes `trace_context=None` → the child LOOP span isn't explicitly parented. Orthogonal to the SSE relay.
+- Other Cat 11 deferrals: `AD-Subagent-Transcript-Isolation` · `AD-Subagent-Child-Governance` (Cat 9/10 inside the child) · failure policies (FAIL_FAST/SOFT/PARTIAL).
+- **Slice 3 leg 3 — mid-thinking pause** (🟡 — the ONLY remaining generalized-pause-point leg from 地基 A) — orthogonal to Cat 11.
+- `subagent-child-turnstream-nesting` calibration class 0.55 (1st data point ~0.9-1.1 IN band; pending 2-3 sprint validation).
+
+---
+
 ## 🆕 Sprint 57.95 Carryover — Cat 11 → Cat 12 subagent SSE relay SHIPPED (node-level); Scope B child turn-stream + TEAMMATE/HANDOFF next
 
 **Source**: Sprint 57.95 closed 2026-06-09 — closes `AD-Subagent-Child-Event-SSE-Relay` at the **node level**. The chat subagent dispatcher's `event_emitter` is now wired (`make_chat_subagent_dispatcher` ← a router-owned buffer drained by `_stream_loop_events`), so `SubagentSpawned`/`SubagentCompleted` reach the SSE stream and the Inspector "Tree" tab shows the FORK subagent node (was "no subagents"). Day-0 探勘 found the relay chain already existed (dispatcher `event_emitter` slot + emission since 57.12, `sse.py` serialization, `chatStore`/`InspectorTree` consumers); the only gap was the unwired emitter → **NO `LoopEvent` contract change, NO frontend change, `loop.py` UNCHANGED**. Drive-through PASS (Tree node `fork` · completed · 3,692 tok · "subagent node is visible" + Trace `subagent_spawned`/`subagent_completed` frames). Detail: `memory/project_phase57_95_subagent_sse_relay.md` + CHANGE-062.
