@@ -30,6 +30,7 @@ function makeSubagent(overrides: Partial<SubagentNode> = {}): SubagentNode {
     summary: null,
     tokensUsed: null,
     spawnedAt: Date.now(),
+    childEvents: [],
     ...overrides,
   };
 }
@@ -193,6 +194,47 @@ describe("ChatInspector (Sprint 57.21 Day 4 §4.1)", () => {
     expect(screen.getByText("2,000")).toBeInTheDocument();
     // no ComingSoon placeholder
     expect(screen.queryByTestId("inspector-tab-coming-soon-tree")).toBeNull();
+  });
+
+  test("Switch to Tree tab → a node with childEvents renders the child's per-turn TAO rows (Sprint 57.96)", async () => {
+    useChatStore.setState({
+      subagents: [
+        makeSubagent({
+          subagentId: "sa-root",
+          parentId: "chat-1",
+          mode: "fork",
+          status: "running",
+          childEvents: [
+            { kind: "turn_start", turn: 1 },
+            { kind: "llm_response", text: "child says hi" },
+            { kind: "tool_call_request", toolName: "echo", toolCallId: "c1" },
+          ],
+        }),
+      ],
+    });
+    const user = userEvent.setup();
+    render(<ChatInspector />);
+    await user.click(screen.getByRole("tab", { name: "Tree" }));
+
+    // the child's per-turn TAO events render as nested rows under the node
+    expect(screen.getAllByTestId("inspector-tree-child-event")).toHaveLength(3);
+    expect(screen.getByText("turn 1")).toBeInTheDocument();
+    expect(screen.getByText("LLM · child says hi")).toBeInTheDocument();
+    expect(screen.getByText("→ echo()")).toBeInTheDocument();
+  });
+
+  test("Switch to Tree tab → a node with empty childEvents renders no child-event rows (collapsed preserved)", async () => {
+    useChatStore.setState({
+      subagents: [
+        makeSubagent({ subagentId: "sa-solo", parentId: "chat-1", mode: "fork", status: "running" }),
+      ],
+    });
+    const user = userEvent.setup();
+    render(<ChatInspector />);
+    await user.click(screen.getByRole("tab", { name: "Tree" }));
+
+    expect(screen.getByTestId("inspector-tree-node-sa-solo")).toBeInTheDocument();
+    expect(screen.queryAllByTestId("inspector-tree-child-event")).toHaveLength(0);
   });
 
   test("All 4 tabs render in tablist with correct aria-selected default Turn=true", () => {

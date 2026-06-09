@@ -8,13 +8,13 @@ Description:
     The declarative WIRE_SCHEMA (event_wire_schema.py) is the single source of
     truth that the frontend events.json + loopEvents.generated.ts are generated
     from. This test locks non-drift between WIRE_SCHEMA and the actual
-    `serialize_loop_event` output: for each of the 22 wired event classes it
+    `serialize_loop_event` output: for each of the 23 wired event classes it
     builds one representative instance, serializes it, and asserts the payload's
     `data` key set (minus the universal `trace_id`) equals the registry entry.
     Drift in EITHER direction (serializer adds/removes a field, or registry
     drifts) fails this test. Also asserts the 3 unwired classes still raise
     NotImplementedError, that Thinking still serializes to None, and that the
-    registry has exactly 22 entries.
+    registry has exactly 23 entries.
 
 Created: 2026-06-02 (Sprint 57.67)
 Last Modified: 2026-06-03 (Sprint 57.75 A-5c — wire SpanStarted/Ended + MemoryAccessed; 19→22)
@@ -45,6 +45,7 @@ from agent_harness._contracts import (
     SpanEnded,
     SpanStarted,
     StateCheckpointed,
+    SubagentChildEvent,
     SubagentCompleted,
     SubagentSpawned,
     Thinking,
@@ -90,6 +91,10 @@ WIRED_EVENT_INSTANCES: list[LoopEvent] = [
     ),
     SubagentSpawned(subagent_id=uuid4(), mode="fork", parent_session_id=uuid4()),
     SubagentCompleted(subagent_id=uuid4(), summary="done", tokens_used=12),
+    # Sprint 57.96 (Cat 11 Scope B): wraps a child loop's inner TAO event. The
+    # representative inner is an LLMResponded (→ inner_type "llm_response"); the
+    # serializer flattens to {subagent_id, inner_type, inner}.
+    SubagentChildEvent(subagent_id=uuid4(), inner=LLMResponded(content="child says hi")),
     ContextCompacted(
         tokens_before=8000,
         tokens_after=3000,
@@ -133,8 +138,8 @@ UNWIRED_EVENT_INSTANCES: list[LoopEvent] = [
 
 
 class TestWireSchemaParity:
-    def test_wire_schema_has_22_entries(self) -> None:
-        assert len(WIRE_SCHEMA) == 22
+    def test_wire_schema_has_23_entries(self) -> None:
+        assert len(WIRE_SCHEMA) == 23
 
     def test_base_fields_only_trace_id(self) -> None:
         # trace_id is the universal field injected by serialize_loop_event;
@@ -173,7 +178,7 @@ class TestWireSchemaParity:
         assert failed["type"] == "tool_call_result"
         assert set(executed["data"]) == set(failed["data"])
 
-    def test_all_wired_classes_cover_all_22_wire_types(self) -> None:
+    def test_all_wired_classes_cover_all_23_wire_types(self) -> None:
         # The representative instances must collectively hit every WIRE_SCHEMA
         # key (proves no registry entry lacks a serializer branch).
         produced = set()

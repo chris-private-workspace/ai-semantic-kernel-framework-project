@@ -16,6 +16,7 @@ Description:
 Created: 2026-05-10 (Sprint 57.12 Day 1 / US-1)
 
 Modification History:
+    - 2026-06-09: Sprint 57.96 — locate Completed by type (child TAO events now interleave)
     - 2026-05-10: Initial creation (Sprint 57.12 Day 1 / US-1)
 
 Related:
@@ -147,7 +148,10 @@ async def test_completed_event_carries_summary_and_tokens() -> None:
         parent_session_id=uuid4(),
     )
     await dispatcher.wait_for(sid)
-    completed = emitter.events[1]
+    # Sprint 57.96: with a child_loop_factory the child loop now FORWARDS its
+    # per-turn TAO events (SubagentChildEvent) interleaved between Spawned and
+    # Completed, so locate the Completed by type rather than a fixed index.
+    completed = next(e for e in emitter.events if isinstance(e, SubagentCompleted))
     assert isinstance(completed, SubagentCompleted)
     assert completed.subagent_id == sid
     assert "subagent reply text" in completed.summary

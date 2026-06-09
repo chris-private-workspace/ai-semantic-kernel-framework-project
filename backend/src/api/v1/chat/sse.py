@@ -37,6 +37,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.3)
 Last Modified: 2026-06-03
 
 Modification History (newest-first):
+    - 2026-06-09: Sprint 57.96 — serialize SubagentChildEvent → subagent_child (Cat 11 Scope B)
     - 2026-06-03: Sprint 57.75 A-5c — serialize SpanStarted/Ended + MemoryAccessed (3 wire types)
     - 2026-06-02: Sprint 57.68 (A-3b) — serialize AgentHandoff → agent_handoff (Cat 11 HANDOFF)
     - 2026-06-02: FIX-025 — _jsonable: str-coerce UUID only, not float (cache_hit_rate wire type)
@@ -87,6 +88,7 @@ from agent_harness._contracts import (
     SpanEnded,
     SpanStarted,
     StateCheckpointed,
+    SubagentChildEvent,
     SubagentCompleted,
     SubagentSpawned,
     Thinking,
@@ -322,6 +324,26 @@ def _serialize_inner(event: LoopEvent) -> dict[str, Any] | None:
                 "subagent_id": (str(event.subagent_id) if event.subagent_id else None),
                 "summary": event.summary,
                 "tokens_used": event.tokens_used,
+            },
+        }
+
+    # Sprint 57.96 (Cat 11 Scope B): wraps a child subagent loop's inner TAO
+    # event so the chat-v2 Inspector Tree node EXPANDS to the child's per-turn
+    # loop. The inner is re-serialized via its OWN branch (recursion reuses the
+    # existing per-type serializers) → flattened to {inner_type, inner} where
+    # inner is the inner event's `data` dict (a Record on the wire). inner_payload
+    # is None only for a non-serializable / Thinking inner (the ForkExecutor TAO
+    # filter guarantees a serializable inner; the guard is defensive → skip).
+    if isinstance(event, SubagentChildEvent):
+        inner_payload = _serialize_inner(event.inner) if event.inner is not None else None
+        if inner_payload is None:
+            return None
+        return {
+            "type": "subagent_child",
+            "data": {
+                "subagent_id": (str(event.subagent_id) if event.subagent_id else None),
+                "inner_type": inner_payload["type"],
+                "inner": inner_payload["data"],
             },
         }
 

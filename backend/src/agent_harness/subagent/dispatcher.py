@@ -33,6 +33,7 @@ US-2 deliverable (this file): wires FORK via ForkExecutor + as_tool_factory
 Created: 2026-05-04 (Sprint 54.2)
 
 Modification History:
+    - 2026-06-09: Sprint 57.96 — pass _emit_safely → ForkExecutor (forward child TAO events)
     - 2026-06-09: Sprint 57.94 — thread child_loop_factory → ForkExecutor (real FORK child loop)
     - 2026-05-10: Sprint 57.12 US-1 — emit SubagentSpawned/Completed (closes AD-Cat11-SSEEvents)
     - 2026-05-04: Wire HANDOFF via HandoffExecutor (US-4)
@@ -117,7 +118,16 @@ class DefaultSubagentDispatcher(SubagentDispatcher):
         # Sprint 57.94: FORK runs a REAL child loop via child_loop_factory (built at
         # composition where the Cat 1 dep-set is in scope). None = FORK fails closed
         # (no single-shot fallback — US-5). TEAMMATE still uses chat_client (single-shot).
-        self._fork = ForkExecutor(child_loop_factory=child_loop_factory, enforcer=self._enforcer)
+        # Sprint 57.96 (Cat 11 Scope B): pass _emit_safely so ForkExecutor FORWARDS
+        # the child loop's per-turn TAO events (wrapped in SubagentChildEvent). The
+        # bound method reads self._event_emitter at CALL time (set below), so there
+        # is no __init__ ordering issue; None emitter → _emit_safely no-ops → no
+        # forwarding. AS_TOOL shares this _fork instance → inherits forwarding free.
+        self._fork = ForkExecutor(
+            child_loop_factory=child_loop_factory,
+            enforcer=self._enforcer,
+            event_emitter=self._emit_safely,
+        )
         self._teammate = TeammateExecutor(
             chat_client=chat_client,
             mailbox=self._mailbox,

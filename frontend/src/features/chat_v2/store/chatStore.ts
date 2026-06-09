@@ -25,6 +25,7 @@
  *     - verification_*     → append VerificationBlock + verifications slice (dual-emit)
  *     - subagent_spawned   → append/extend SubagentForkBlock + subagents slice (dual-emit)
  *     - subagent_completed → update SubagentEntry.status + subagents slice (dual-emit)
+ *     - subagent_child     → append ChildTurnEvent to the node (Tree expands; Sprint 57.96)
  *
  *   Dual-emit pattern preserves Sprint 57.11 inline VerificationPanel + Sprint 57.12
  *   SubagentTree behavior (they consume verifications + subagents slices) while
@@ -34,6 +35,7 @@
  * Last Modified: 2026-06-02
  *
  * Modification History:
+ *   - 2026-06-09: Sprint 57.96 — +subagent_child case → SubagentNode.childEvents (Scope B turn-stream)
  *   - 2026-06-06: chat-v2 honest testing surface — default mode echo_demo→real_llm; +currentModel (from llm_request); reset() zeroes _turnCounter (CHANGE-054)
  *   - 2026-06-03: Sprint 57.75 A-5 — +spans / memoryOps derived slices + span_started/span_ended/memory_accessed cases (Inspector Trace + Memory tabs)
  *   - 2026-06-02: Sprint 57.69 A-3b slice 2 — agent_handoff now pivots session (pivotSession + handoffBanner state)
@@ -52,7 +54,7 @@
 
 import { create } from "zustand";
 
-import type { SubagentNode } from "../../subagent/types";
+import type { ChildTurnEvent, SubagentNode } from "../../subagent/types";
 import type { VerificationEvent } from "../../verification/types";
 import type {
   AgentTurn,
@@ -654,6 +656,7 @@ export const useChatStore = create<ChatStoreState>((set) => ({
                   summary: null,
                   tokensUsed: null,
                   spawnedAt: Date.now(),
+                  childEvents: [],
                 },
               ];
           // (b) SubagentForkBlock in active turn — find-or-create then append agent
@@ -710,6 +713,7 @@ export const useChatStore = create<ChatStoreState>((set) => ({
                 summary: ev.data.summary,
                 tokensUsed: ev.data.tokens_used,
                 spawnedAt: Date.now(),
+                childEvents: [],
               },
             ];
           } else {
@@ -741,6 +745,53 @@ export const useChatStore = create<ChatStoreState>((set) => ({
             subagents: newSubagents,
             turns: newTurns,
           };
+        }
+
+        case "subagent_child": {
+          // Sprint 57.96 (Cat 11 Scope B): route a child loop's per-turn TAO event
+          // to its subagent node (by subagent_id) so the Inspector Tree node EXPANDS
+          // to show the child's loop. `inner` is an opaque Record on the wire; project
+          // it to a ChildTurnEvent per inner_type with type guards (no casts).
+          const sid = ev.data.subagent_id;
+          if (!sid) return { ...s, rawEvents };
+          const inner = ev.data.inner;
+          const entry: ChildTurnEvent = {
+            kind: ev.data.inner_type,
+            turn: typeof inner.turn_num === "number" ? inner.turn_num : undefined,
+            text:
+              typeof inner.content === "string"
+                ? inner.content
+                : typeof inner.result === "string"
+                  ? inner.result
+                  : undefined,
+            toolName: typeof inner.tool_name === "string" ? inner.tool_name : undefined,
+            toolCallId: typeof inner.tool_call_id === "string" ? inner.tool_call_id : undefined,
+          };
+          const idx = s.subagents.findIndex((n) => n.subagentId === sid);
+          let newSubagents: SubagentNode[];
+          if (idx === -1) {
+            // Defensive-create (child event before spawn — unlikely; spawn emits first).
+            newSubagents = [
+              ...s.subagents,
+              {
+                subagentId: sid,
+                parentId: null,
+                mode: "unknown",
+                status: "running",
+                summary: null,
+                tokensUsed: null,
+                spawnedAt: Date.now(),
+                childEvents: [entry],
+              },
+            ];
+          } else {
+            newSubagents = s.subagents.slice();
+            newSubagents[idx] = {
+              ...newSubagents[idx],
+              childEvents: [...newSubagents[idx].childEvents, entry],
+            };
+          }
+          return { ...s, rawEvents, subagents: newSubagents };
         }
 
         default: {
