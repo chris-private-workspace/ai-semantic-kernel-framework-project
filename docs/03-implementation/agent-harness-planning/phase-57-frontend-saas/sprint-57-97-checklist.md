@@ -2,7 +2,7 @@
 
 **Plan**: [`sprint-57-97-plan.md`](./sprint-57-97-plan.md)
 **Created**: 2026-06-09
-**Status**: Day 0-3 done — **DRIVE-THROUGH PASS** (verification on gpt-5.4-mini, ~62% cheaper; cost_ledger-proven). Risk Class E zombie-worker hunt (D-DAY3-1). Day 4 remaining: CHANGE-064 + 17.md + design note 24 + calibration + memory + push/PR.
+**Status**: Day 0-4 done — **DRIVE-THROUGH PASS** (verification on gpt-5.4-mini, ~62% cheaper; cost_ledger-proven). Risk Class E zombie-worker hunt (D-DAY3-1) reinforced into sprint-workflow.md. Closeout complete: CHANGE-064 + 17.md §2.1 `ModelProfile` + design note 24 (8-pt gate) + retrospective Q1-Q7 + calibration (`multi-model-profile-spike` 0.55) + MEMORY subfile + CLAUDE.md lean. **Only remaining: Day-4 closeout commit + push + PR (push/PR pending user authorization).**
 
 > Rule: only `[ ]` → `[x]`; never delete unchecked items; defer with `🚧 + reason`.
 > **Spike** (new-domain: first multi-model profile) → Day-4 design-note extract MANDATORY (`sprint-workflow.md §Step 5.5` 8-pt gate) → `24-multi-model-profile-design.md`. Record = CHANGE-064 + 17.md `ModelProfile` registration. Gate = full backend pytest green (NET delta) + **drive-through PASS** (verification demonstrably ran on the cheap deployment with a visible cost delta vs the strong main turn). Locked scope (AskUserQuestion 2026-06-09): abstraction = **thin `ModelProfile` value object** `{action, cheap}`; first cheap-tier phase = **verification (llm_judge)**; cheap deployment **available** → drive-through measures a real cost delta. Out: compaction/memory/thinking cheap-tier, loop threading, per-tenant policy, `ModelProfileChatClient` ABC.
@@ -80,27 +80,27 @@
 - [x] **Cost-delta confirm** — verification ~$0.000301 on gpt-5.4-mini vs ~$0.00080 on gpt-5.2 (~62% cheaper); action turn cost unchanged (gpt-5.2)
 
 ### 3.3 CHANGE-064 + design note + 17.md
-- [ ] `claudedocs/4-changes/feature-changes/CHANGE-064-multi-model-profile-verification.md` written
-- [ ] **`17-cross-category-interfaces.md`** — register `ModelProfile` (provider-neutral value object pairing `ChatClient`s; owner = design note 24)
+- [x] `claudedocs/4-changes/feature-changes/CHANGE-064-multi-model-profile-verification.md` written
+- [x] **`17-cross-category-interfaces.md`** — register `ModelProfile` (provider-neutral value object pairing `ChatClient`s; owner = design note 24) — added §2.1 row
 
 ---
 
 ## Day 4 — Closeout (+ spike design note)
 
 ### 4.1 Design note (MANDATORY — spike)
-- [ ] **`24-multi-model-profile-design.md`** (Day-0 confirmed number) — per `claudedocs/templates/spike-design-note-template.md`; 8-point quality gate verified in retrospective.md:
-  - [ ] 1. Section header maps to the spike US (e.g. "US-3: verification on cheap tier as wired in 57.97")
-  - [ ] 2. each technical claim has file:line (e.g. `LLMJudgeVerifier._chat ← profile.cheap` at `handler.py:NNN`)
-  - [ ] 3. Decision matrix (per-call vs per-construction; thin value object vs `ModelProfileChatClient` ABC vs direct injection)
-  - [ ] 4. verification command (`pytest .../test_model_profile.py`)
-  - [ ] 5. test fixture reference
-  - [ ] 6. Open invariants split (verified: verifier runs cheap, cost cheap-priced / deferred-NOT-verified: compaction/thinking cheap-tier, per-tenant policy, cheap-judge accuracy benchmark)
-  - [ ] 7. rollback path (unset `AZURE_OPENAI_CHEAP_DEPLOYMENT_NAME` / revert the verifier factory arg)
-  - [ ] 8. 17.md cross-ref (`ModelProfile` registered)
+- [x] **`24-multi-model-profile-design.md`** (Day-0 confirmed number) — per `claudedocs/templates/spike-design-note-template.md`; 8-point quality gate verified in retrospective.md:
+  - [x] 1. Section header maps to the spike US (US-1..US-5 §2.1-§2.5)
+  - [x] 2. each technical claim has file:line (`model_profile.py:46-58` / `profile.py:54-82` / `chat_client.py:69-93` / `handler.py:~479` / `llm_judge.py:97-103`)
+  - [x] 3. Decision matrix (per-call vs ABC-wrapper vs thin value object vs direct injection — 4 rows)
+  - [x] 4. verification command (`pytest .../test_model_profile.py` etc. + drive-through reproduce)
+  - [x] 5. test fixture reference (monkeypatch.setenv / cast placeholders / artifact PNG)
+  - [x] 6. Open invariants split (§4 fenced: compaction/memory/thinking cheap-tier, loop threading, per-tenant policy, cheap-judge accuracy, non-Azure, span attr)
+  - [x] 7. rollback path (soft = unset `AZURE_OPENAI_CHEAP_DEPLOYMENT_NAME`; hard = revert ~30 min)
+  - [x] 8. 17.md cross-ref (`ModelProfile` registered §2.1)
 
 ### 4.2 Closeout
-- [ ] Full validation (parent re-verified): pytest +N / mypy 0/351 / run_all 10/10 / 57.83 verification tests unchanged / `loop.py` diff = 0 / **drive-through PASS** (screenshots + before/after observed-vs-intended cost delta)
-- [ ] progress.md (Day 0-3.2) + retrospective.md (Q1-Q7) + **design-note 8-pt gate self-check recorded**
-- [ ] Calibration: `multi-model-profile-spike` 0.55 (1st data point) + `agent_factor` 1.0 (parent-direct); recorded `calibration-log.md §3` + `sprint-workflow.md §Scope-class matrix` row; carryover (compaction/memory/thinking cheap-tier / loop threading / per-tenant policy / cheap-judge accuracy / non-Azure cheap tier) → next-phase-candidates.md
-- [ ] MEMORY.md pointer + `project_phase57_97_multi_model_profile.md` subfile + CLAUDE.md lean (Current Sprint row + Last Updated) + CHANGE-064 + design-note 21 + 17.md registration
-- [ ] commit (Day 0-N) + push + PR — **push + PR pending user authorization**
+- [x] Full validation (parent re-verified): pytest **+8** (2283→2291) / mypy 0/**353** / run_all 10/10 / 57.83 verification tests unchanged / `loop.py` diff = 0 / **drive-through PASS** (cost_ledger ~62% cheaper verification; artifacts PNG)
+- [x] progress.md (Day 0-3) + retrospective.md (Q1-Q7) + **design-note 8-pt gate self-check recorded** (retro Q6)
+- [x] Calibration: `multi-model-profile-spike` 0.55 (1st data point) + `agent_factor` 1.0 (parent-direct); recorded `calibration-log.md §3` + `sprint-workflow.md §Scope-class matrix` row; carryover (compaction/memory/thinking cheap-tier / loop threading / per-tenant policy / cheap-judge accuracy / non-Azure cheap tier) → next-phase-candidates.md
+- [x] MEMORY.md pointer + `project_phase57_97_multi_model_profile.md` subfile + CLAUDE.md lean (Current Sprint row + Last Updated) + CHANGE-064 + design-note 24 + 17.md registration
+- [ ] commit (Day 0-N) + push + PR — Day 0-3 committed (`3dab9a08`/`454d48c2`/`0c8c5013`); Day-4 closeout commit next; **push + PR pending user authorization**

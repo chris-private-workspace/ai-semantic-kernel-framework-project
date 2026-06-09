@@ -103,3 +103,21 @@
 
 ### Remaining (after Day 3)
 - Day 4: design note `24-multi-model-profile-design.md` (8-pt gate) + CHANGE-064 + 17.md `ModelProfile` registration + calibration + MEMORY subfile + CLAUDE.md lean + Risk-Class-E reinforcement fold-in + push/PR (user-authorized).
+
+---
+
+## Day 4 — 2026-06-10 — Closeout
+
+All closeout artifacts written (docs-only; no code change — the code gate was green Day 2/3, `loop.py` diff = 0):
+- **CHANGE-064** (`claudedocs/4-changes/feature-changes/CHANGE-064-multi-model-profile-verification.md`) — change record.
+- **Design note `24-multi-model-profile-design.md`** — spike 8-pt quality gate ✅ (verified-ratio ≥95%; Decision Matrix 4-row; every claim file:line-anchored; Open Invariants fenced; rollback path; 17.md cross-ref).
+- **`17-cross-category-interfaces.md` §2.1** — registered `ModelProfile` (value object WRAPS `ChatClient`; ABC unchanged; owner = design note 24).
+- **retrospective.md** — Q1-Q7; calibration ratio actual/committed ≈ 0.93 IN band; design-note 8-pt self-check (Q6); anti-pattern audit (Q5).
+- **Calibration**: NEW class `multi-model-profile-spike` 0.55 (1st data point) + `agent_factor` 1.0 (parent-direct) → `sprint-workflow.md §Scope-class matrix` row + `calibration-log.md §3` entry.
+- **Risk Class E reinforcement** (D-DAY3-1 orphaned `multiprocessing.spawn` worker) folded into `sprint-workflow.md §Common Risk Classes Risk Class E` (verify the LIVE serving process via `Get-CimInstance Win32_Process` by PID/PPID/StartTime, not the port-owner PID).
+- **MEMORY**: `project_phase57_97_multi_model_profile.md` subfile + MEMORY.md pointer (top of Recent Sprints).
+- **CLAUDE.md lean**: Current Sprint row → 57.97 + Last Updated footer (no prev-sprint history rows added, per §Sprint Closeout policy).
+- **next-phase-candidates.md**: 57.97 carryover section (compaction/memory/thinking cheap-tier / loop threading / per-tenant policy / cheap-judge accuracy / non-Azure builder).
+
+### Remaining
+- Day-4 closeout commit (docs + 17.md + calibration + memory + checklist/progress) — then **push + PR pending user authorization**.

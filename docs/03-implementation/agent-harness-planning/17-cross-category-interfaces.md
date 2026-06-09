@@ -118,6 +118,7 @@ backend/src/agent_harness/_contracts/
 | ABC 名稱 | Owner 文件 | Owner 章節 | 主要方法 |
 |---------|----------|----------|---------|
 | `ChatClient` | `10-server-side-philosophy.md` | 原則 2 | `chat()` / `stream()` / `count_tokens()` / `get_pricing()` / `supports_feature()` / `model_info()` |
+| `ModelProfile` | `24-multi-model-profile-design.md` | adapters/_base | `@dataclass(frozen=True) {action: ChatClient, cheap: ChatClient}` — Sprint 57.97. A provider-neutral **value object** (NOT an ABC) pairing pre-built `ChatClient`s by role so phases run on different tiers (the ABC fixes model at construction — no per-call `model=`). **WRAPS `ChatClient`; does NOT modify it.** Built at `build_real_llm_handler` (`adapters/azure_openai/profile.py:build_azure_model_profile`); this sprint routes only the verification (Cat 10 llm_judge) → `cheap`, loop/compaction → `action`. Unset cheap env → `cheap is action` (byte-identical). See `CHANGE-064`. |
 | `AgentLoop` | `01-eleven-categories-spec.md` | 範疇 1 | `run() -> AsyncIterator[LoopEvent]` |
 | `ToolRegistry` | `01-eleven-categories-spec.md` | 範疇 2 | `register()` / `get()` / `list()` |
 | `ToolExecutor` | `01-eleven-categories-spec.md` | 範疇 2 | `execute()` / `execute_batch()` |

@@ -6,6 +6,22 @@
 
 ---
 
+## 🆕 Sprint 57.97 Carryover — Multi-model profile SHIPPED (verification → cheap tier); other phases + per-tenant policy + accuracy benchmark next
+
+**Source**: Sprint 57.97 closed 2026-06-10 — the FIRST multi-model parity gap (cc-parity §4 C-class #1 ROI). A thin provider-neutral `ModelProfile{action, cheap}` value object (`adapters/_base/model_profile.py`) pairs two pre-built `ChatClient`s by role; `build_azure_model_profile` (`adapters/azure_openai/profile.py`) routes the per-request verification (Cat 10 llm_judge) to a cheap Azure deployment (gpt-5.4-mini) while the main turn + compaction keep the strong tier (gpt-5.2). The `ChatClient` ABC fixes model at construction (no per-call `model=`) → the seam is construction-time DI → `loop.py` diff=0, no ABC/event/DB change; unset cheap env → `cheap is action` (byte-identical). Drive-through PASS (~62% cheaper verification, cost_ledger-proven). Detail: `memory/project_phase57_97_multi_model_profile.md` + CHANGE-064 + design note `24-multi-model-profile-design.md`.
+
+- **Compaction cheap-tier** (🟡 — highest token-volume target) — the seam is built; add a `profile.compaction` field (defaults to `action`) + the compactor factory reads it. Needs a long conversation to drive-through (compaction only triggers near the context budget).
+- **Memory-extraction cheap-tier** (🟢) — same pattern (`memory/extraction.py` accepts a `ChatClient` at construction).
+- **Thinking cheap-tier** (🟢) — route a cheaper model for non-final reasoning turns; needs in-loop phase awareness (see next item).
+- **Thread `ModelProfile` into the loop** (🟡) — this sprint kept it handler-local (constructed + consumed in `handler.py`). In-loop per-phase model selection (e.g. cheap for intermediate turns, strong for the final answer) is a separate slice.
+- **Per-tenant model policy (Config 分層)** (🟡) — a tenant choosing its own model/budget/guardrail override is the SEPARATE cc-parity §7.3 "Config 分層" gap, not multi-model profile.
+- **Cheap-judge accuracy benchmark** (🟢) — a cheaper judge MAY be less reliable; documented as a design-note Open Invariant, NOT formally measured. If it visibly mis-verifies, keep the judge on the strong tier (the seam supports per-phase choice). The action turn is NEVER cheap (user-facing quality preserved).
+- **Non-Azure cheap-tier builder** (🟢) — the seam is provider-neutral but only `build_azure_model_profile` is wired; an Anthropic/OpenAI cheap-tier builder is a follow-on.
+- **LLM-call Trace span `model` attribute** (🟢) — deferred: the cost-ledger sub_type already carries the model attribution; add a span attr only if a future Trace-view feature needs per-call model on the span.
+- `multi-model-profile-spike` calibration class 0.55 (1st data point ~0.93 IN band; pending 2-3 sprint validation).
+
+---
+
 ## 🆕 Sprint 57.96 Carryover — Cat 11 Scope B child turn-stream nesting SHIPPED; recursion depth>1 + TEAMMATE/HANDOFF + leg-3 mid-thinking next
 
 **Source**: Sprint 57.96 closed 2026-06-09 — closes the remaining (turn-stream) half of `AD-Subagent-Child-Event-SSE-Relay`. The chat Inspector "Tree" subagent node now EXPANDS to the child loop's per-turn TAO via a NEW `SubagentChildEvent(subagent_id, inner)` wrapper event (wire type `subagent_child`). The wrapper IS a `LoopEvent` → it rode the existing 57.95 emitter + the already-generic router buffer-drain → **`loop.py`/`router.py`/`LoopEvent` base UNCHANGED**; `ForkExecutor._drive` forwards the TAO subset (tagged with `subagent_id`) via the dispatcher's `_emit_safely` (AS_TOOL inherits free); frontend `SubagentNode.childEvents` + `chatStore` `subagent_child` routing + `InspectorTree` nested rows. Drive-through PASS (the FORK node expands to `turn 0 / LLM / → echo_tool() / ← echo_tool · … / turn 1 / LLM`; the Trace shows the relayed `subagent_child` frames). Detail: `memory/project_phase57_96_subagent_child_turnstream.md` + CHANGE-063.

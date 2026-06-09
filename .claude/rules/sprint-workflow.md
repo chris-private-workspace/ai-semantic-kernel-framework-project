@@ -138,6 +138,7 @@ Per AD-Sprint-Plan-4 (logged Sprint 55.3) + 4-sprint window evidence,one-multipl
 | `subagent-child-loop-spike` | 0.60 | n/a (1 pt) | KEEP pending 2-3 sprint validation (Sprint 57.94 ratio ~0.93 IN band; Cat 11 new-domain spike, parent-direct) |
 | `subagent-sse-relay-wiring` | 0.55 | n/a (1 pt) | KEEP pending 2-3 sprint validation (Sprint 57.95 ratio ~0.9-1.0 IN band; Cat 11→12 backend composition wiring, parent-direct) |
 | `subagent-child-turnstream-nesting` | 0.55 | n/a (1 pt) | KEEP pending 2-3 sprint validation (Sprint 57.96 ratio ~0.9-1.1 IN band; Cat 11×12 multi-layer feature — new wrapper event + executor forward + frontend store/render, parent-direct) |
+| `multi-model-profile-spike` | 0.55 | n/a (1 pt) | KEEP pending 2-3 sprint validation (Sprint 57.97 ratio ~0.93 IN band; adapters-layer new-domain spike — ModelProfile value object + cheap builder + verifier rewiring + drive-through, parent-direct) |
 
 > Collapsed/closed historical classes (`frontend-mockup-strict-rebuild — historical`; `frontend-verbatim-css-repoint` pre-57.38 single-baseline, CLOSED Sprint 57.38) → calibration-log.md §1. For verbatim-css-repoint use `-simple` (0.50) or `-with-extras` (0.65) per criteria above.
 
@@ -743,7 +744,9 @@ When drafting plan §Risks, consider these recurring risk classes (V2 carryover 
 
 **Workaround**: When verifying startup/wiring behavior locally, do a CLEAN restart first: kill ALL stale uvicorn reloader+worker processes on the port (not just the listener — a `--reload` worker is a `multiprocessing.spawn` child whose cmdline lacks `uvicorn`), confirm the port is free + your new process is the sole owner (no Errno 10048), then re-verify and capture the startup log line proving the wiring fired.
 
-**Long-term fix**: Prefer `python scripts/dev.py restart backend` (kills by port owner) over assuming the running process is current; for one-off wiring checks, a no-`--reload` single process with log redirect gives a deterministic startup log.
+**Reinforcement (Sprint 57.97, D-DAY3-1 — orphaned spawn-worker)**: The drive-through verifying cheap-tier verification recorded the STRONG model on the first 2 chats despite a `dev.py restart` reporting a fresh PID — and it was NOT a code bug (a reproduce-script proved the builder built the cheap client). The real culprit: an orphaned `multiprocessing.spawn` worker (a child of a long-DEAD reloader from a PRIOR sprint) was STILL ALIVE serving :8000 via SO_REUSEADDR with old code + old `.env`. `dev.py stop` + `netstat` + `taskkill /PID <port-owner>` ALL missed it because the socket was attributed to the dead PARENT and the worker's cmdline is `python -c "from multiprocessing..."` (no "uvicorn"). **A clean restart must verify the LIVE serving process, not the port-owner PID.** The reliable check on Windows: `Get-CimInstance Win32_Process -Filter "Name='python.exe'"` → inspect PID / PPID / StartTime → `Stop-Process -Force` any worker whose parent is dead or whose StartTime predates the current restart. For startup-only/env-loaded behavior (the cheap client is built at startup from `.env`), set the env BEFORE the restart and confirm the fresh PID is the SOLE live worker.
+
+**Long-term fix**: Prefer `python scripts/dev.py restart backend` (kills by port owner) over assuming the running process is current; for one-off wiring checks, a no-`--reload` single process with log redirect gives a deterministic startup log. When SO_REUSEADDR orphans recur, fall back to the `Win32_Process` PID/PPID/StartTime sweep above (port-owner kills are insufficient against spawn-worker orphans).
 
 ### How to use this section
 
