@@ -24,11 +24,22 @@ It condenses the user's "5-point deepening discussion" into 3 workflows and a re
 
 ---
 
+## 🆕 Sprint 57.100 Carryover — chat-v2 verification-reject UI SHIPPED (the A2 reviewer-UI follow-up); net-new candidates below
+
+**Source**: Sprint 57.100 closed 2026-06-11 — the A2 reviewer-UI follow-up. Surfaced the pause `kind` on the `approval_requested` wire (additive field, no new event type) → the chat-v2 `HITLTurn` branches REJECT on `kind="verification"` (coaching-note textarea → `decide(reason)` + `resume()`) + a kind-aware meta row. Drive-through PASS (the REJECT half — the 57.99 finding CLOSED). Detail: `memory/project_phase57_100_chatv2_verification_reject_ui.md` + CHANGE-067 + 17.md + 25.md §4.
+
+- **rich verification-specific approval card** (🟢) — re-render the held answer + the verifier reasons richly INSIDE the card (today the inline `VerificationBlock` shows them above the card — sufficient, not gold-plated). A frontend follow-on.
+- **`ApprovalCard.tsx` fallback kind-aware** (🟢) — the legacy 53.5 dual-emit fallback card could branch REJECT on `kind` too (low priority; the canonical chat-inline `HITLTurn` is the live path).
+- **soft forced-fail judge template for drive-throughs** (🟢) — a reusable `{"passed": false}` judge prompt that does NOT trip Azure's jailbreak content-filter (the 57.100 D-DAY3-1 / 57.99 D-DAY3-2 family); store under `verification/templates/` for future verification drive-throughs.
+- `frontend-feature-with-event-wire-addition` calibration class 0.55 (1st data point ~1.0 IN band; pending 2-3 sprint validation; `agent_factor` 1.0 parent-direct).
+
+---
+
 ## 🆕 Sprint 57.99 Carryover — A2 verification-ESCALATE SHIPPED (max-fail terminal → conditional human pause; APPROVE-delivers / REJECT-coaches-one-turn); the chat-v2 reject UI + A3 + the rest next
 
 **Source**: Sprint 57.99 closed 2026-06-10 — workflow A slice 2 (the 4th pause leg). The A1 `verification_failed` terminal now conditionally ESCALATEs to a human pause behind `chat_verification_escalate_on_max` (default OFF = A1 byte-identical); `resume()` `kind="verification"` — APPROVE delivers the held failed answer (human overrides the judge, reuses 57.93 `_replay_approved_output`, TERMINAL), REJECT-with-note re-injects the note + runs ONE human-coached turn then binds to the A1 terminal (durable `verification_escalated` flag on `metadata`). NO new event/wire/DB/DTO/frontend. Drive-through PASS (APPROVE half, real UI + real Azure + forced-fail real-LLM judge). Detail: `memory/project_phase57_99_verification_escalate.md` + CHANGE-066 + `25-verification-in-loop-design.md` §4 (A2 invariant SHIPPED).
 
-- **chat-v2 verification-reject UI follow-up** (🟡 — the freshest, a drive-through finding) — A2's REJECT-with-note backend is unit-proven but NOT UI-drivable: `HITLTurn.submitDecision("rejected")` deliberately does NOT `resume()` (built for tool-kind reject=terminate) + the reject button has no note input (`decide()` sends no `reason`). Wire the chat-v2 UI for the verification kind: resume-on-reject + a coaching-note input → `decide(reason)`. Small frontend slice; makes the full reject-with-note loop UI-drivable. (Out of A2's backend scope per user Option A 2026-06-10.)
+- **chat-v2 verification-reject UI follow-up** — ✅ **SHIPPED Sprint 57.100** (CHANGE-067): added `kind` to the `approval_requested` wire (additive field, no new type) → `HITLTurn` branches REJECT on `kind="verification"` (a coaching-note textarea → `decide(reason)` + `resume()`) + a kind-aware meta row; drive-through PASS (the REJECT half). The 57.99 "REJECT not UI-drivable" finding is CLOSED. Detail: `memory/project_phase57_100_chatv2_verification_reject_ui.md`.
 - **A3 — trace-aware critique** (🟢) — a verifier that sees recent turns / tool errors (not just the final string) + a formal cheap-judge accuracy benchmark (design-note 24+25 carryover).
 - **per-tenant verification mode / policy** (🟡 — Config 分層 = workflow C / C3) — a tenant choosing its own escalate / verification policy.
 - **deliver-with-flag terminal** (🟢, option b) — deliver the answer but flag verification failed; not chosen for A1/A2 (would need a new event/UI flag).

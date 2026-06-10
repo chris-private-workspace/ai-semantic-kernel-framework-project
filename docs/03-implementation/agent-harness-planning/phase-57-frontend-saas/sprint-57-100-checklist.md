@@ -90,8 +90,8 @@
 ## Day 4 — Closeout (feature-continuation — NO design note)
 
 ### 4.1 Closeout
-- [ ] Full validation (parent re-verified): backend pytest (NET delta, zero deletion) / mypy `src` 0/353 / run_all 10/10 / **black FULL `src tests` clean** / frontend Vitest (delta) + lint(no `--silent`) + build + check:mockup-fidelity (baseline unchanged) / `resume()`+`hitl.py`-DTO+`governanceService`+DB+`ApprovalCard.tsx`+`ModelProfile` diff = **0** / **drive-through PASS** (the REJECT half — escalate → coaching note → Reject → re-answer; artifacts)
-- [ ] progress.md (Day 0-3) + retrospective.md (Q1-Q7)
-- [ ] Calibration: `frontend-feature-with-event-wire-addition` 0.55 (NEW class, 1st data point) + `agent_factor` 1.0 (parent-direct); recorded `calibration-log.md §3` + `sprint-workflow.md §Scope-class matrix` row; carryover → next-phase-candidates.md
-- [ ] MEMORY.md pointer + `project_phase57_100_*.md` subfile + CLAUDE.md lean (Current Sprint row + Last Updated) + CHANGE-067 + 17.md + 25.md §4
+- [x] Full validation (parent re-verified): backend pytest **2300 passed + 4 skipped** (baseline 2303 → +1, zero deletion) / mypy `src` **0/353** / run_all **10/10** / **black FULL `src tests` (656) clean** / frontend Vitest **782** (+5) + lint(no `--silent`) + build exit 0 + check:mockup-fidelity **53 unchanged** / `resume()`+`hitl.py`-DTO+`governanceService`+DB+`ApprovalCard.tsx`+`ModelProfile` diff = **0** / **drive-through PASS** (the REJECT half — escalate `kind: verification` → coaching note → Reject & coach → coached turn re-answers → bounded `verification_failed`; artifacts dt57100-{A,B}.png) ✅
+- [x] progress.md (Day 0-3) + retrospective.md (Q1-Q7) ✅
+- [x] Calibration: `frontend-feature-with-event-wire-addition` 0.55 (NEW class, 1st pt ~1.0 IN band) + `agent_factor` 1.0 (parent-direct); recorded `calibration-log.md §3` + `sprint-workflow.md §Scope-class matrix` row; carryover → next-phase-candidates.md ✅
+- [x] MEMORY.md pointer + `project_phase57_100_*.md` subfile + CLAUDE.md lean (Current Sprint row + Last Updated) + CHANGE-067 + 17.md + 25.md §4 ✅
 - [ ] commit (Day 0-N) + push + PR (user-authorized)
