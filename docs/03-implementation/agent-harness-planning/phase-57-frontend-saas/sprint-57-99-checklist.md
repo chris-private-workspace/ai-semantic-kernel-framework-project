@@ -30,21 +30,23 @@
 ## Day 1 — Config toggle + the escalate pause (US-1/US-2)
 
 ### 1.1 The config toggle (US-1)
-- [ ] **`core/config` setting** — add `chat_verification_escalate_on_max: bool = False` (env `CHAT_VERIFICATION_ESCALATE_ON_MAX`); `.env.example` documents it; MHist
+- [x] **`core/config` setting** — add `chat_verification_escalate_on_max: bool = False` (env `CHAT_VERIFICATION_ESCALATE_ON_MAX`); `.env.example` documents it; MHist
   - DoD: `mypy src --strict` 0; the setting reads from env with a False default
-- [ ] **`orchestrator_loop/loop.py` `__init__`** — add `verification_escalate_on_max: bool = False` (store `self._verification_escalate_on_max`); MHist
-  - DoD: existing construction sites build (optional param, default False)
-- [ ] **`api/v1/chat/handler.py`** — all 3 builders read `settings.chat_verification_escalate_on_max` + pass `verification_escalate_on_max=` into `AgentLoopImpl(...)`; MHist
-  - DoD: the toggle threads settings → handler → ctor; regression green (default False = A1 unchanged)
+  - ✅ Added to the `chat_verification_*` cluster. **D-DAY1-2**: `.env.example` has NO sibling `CHAT_VERIFICATION_*` entries → skipped the lone entry (the `Settings` default False documents it; match the convention). MHist added.
+- [x] **`orchestrator_loop/loop.py` `__init__`** — add `verification_escalate_on_max: bool = False` (store `self._verification_escalate_on_max`); MHist
+  - ✅ Optional param default False; existing sites build. MHist added.
+- [x] **`api/v1/chat/handler.py`** — all 3 builders read `settings.chat_verification_escalate_on_max` + pass `verification_escalate_on_max=` into `AgentLoopImpl(...)`; MHist
+  - ✅ Threaded into the MAIN real_llm site (the one with verifier_registry + hitl_deferred). The echo-demo + child-loop sites are untouched (no registry → the escalate branch never runs there). MHist added.
 
 ### 1.2 The escalate pause (US-2)
-- [ ] **NEW `_cat10_verification_escalate_pause()`** (mirrors `_cat9_output_hitl_pause`) — build the held-answer + verifier-reasons `response_snapshot` (the `_replay_approved_output` field set), create the `ApprovalRequest` (`"kind":"verification"`, `risk_level="HIGH"`, reasons in the payload), emit `ApprovalRequested(HIGH)`, build `pending_approval` (`kind="verification"` + `response_snapshot`), call `_emit_deferred_pause(kind="verification", ...)`, persist `verification_escalated=True`; MHist
-  - DoD: unit-tested — toggle ON + FAIL==max → `ApprovalRequested(HIGH)` + `awaiting_approval` checkpoint carrying the held answer + reason
-- [ ] **Conditional FAIL==max branch** (`:2344`) — `if self._verification_escalate_on_max and not verification_escalated:` → `async for ev in self._cat10_verification_escalate_pause(...): yield ev; return`; `else:` → the A1 `LoopCompleted(verification_failed)` (byte-identical); MHist
-  - DoD: toggle OFF → the A1 terminal byte-identical (the A1 gate tests stay green); toggle ON + not-escalated → the pause fires
-- [ ] **Durable `verification_escalated` write** — `_emit_state_checkpoint`/`_emit_deferred_pause` write `metadata["verification_escalated"]` when True (mirror `verification_attempts :3185-3186`); thread into `_run_turns` as a param (`verification_escalated: bool = False`); MHist
-  - DoD: the escalate checkpoint carries `metadata["verification_escalated"]=True`
-- [ ] **mypy clean** on the backend files (full `src --strict` 0)
+- [x] **NEW `_cat10_verification_escalate_pause()`** (mirrors `_cat9_output_hitl_pause`) — build the held-answer + verifier-reasons `response_snapshot` (the `_replay_approved_output` field set), create the `ApprovalRequest` (`"kind":"verification"`, `risk_level="HIGH"`, reasons in the payload), emit `ApprovalRequested(HIGH)`, build `pending_approval` (`kind="verification"` + `response_snapshot`), call `_emit_deferred_pause(kind="verification", ...)`, persist `verification_escalated=True`; MHist
+  - ✅ Snapshot carries `answer_text=parsed.text` + the metrics fields (so Day-2 resume APPROVE replays via `_replay_approved_output`). Reason from the failed-verifier `VerificationFailed` events. Fail-closed (no-identity / persist-fail) → A1 `verification_failed` terminal. Covered by `test_verify_escalate_on_max_pauses_for_human`.
+- [x] **Conditional FAIL==max branch** — `if self._verification_escalate_on_max and not verification_escalated:` → `_cat10_verification_escalate_pause(...)` → `return`; `else:` → the A1 `LoopCompleted(verification_failed)` (byte-identical); MHist
+  - ✅ Gated additionally on the full HITL deferred-pause wiring (`hitl_manager + hitl_deferred + checkpointer + reducer`) so it falls back to A1 when a resumable pause isn't possible. `test_verify_escalate_off_preserves_a1_terminal` proves toggle-OFF byte-identical (124 regression green).
+- [x] **Durable `verification_escalated` write** — `_emit_state_checkpoint`/`_emit_deferred_pause` write `metadata["verification_escalated"]` when True (mirror `verification_attempts`); thread into `_run_turns` as a param (`verification_escalated: bool = False`); MHist
+  - ✅ Threaded `_run_turns` → `_emit_deferred_pause` → `_emit_state_checkpoint`; the escalate test asserts `metadata.verification_escalated is True`.
+- [x] **mypy clean** on the backend files (full `src --strict` 0)
+  - ✅ mypy 0/353; black/isort/flake8 (changed src + test) clean.
 
 ---
 

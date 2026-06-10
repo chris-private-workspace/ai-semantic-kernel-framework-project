@@ -34,7 +34,7 @@ Description:
       or on a non-final response.
 
 Created: 2026-06-08 (Sprint 57.88)
-Last Modified: 2026-06-08 (Sprint 57.93 — output-ESCALATE pre-delivery pause + output-resume tests)
+Last Modified: 2026-06-10 (Sprint 57.99 — A2 verification-ESCALATE pause: escalate tests)
 """
 
 from __future__ import annotations
@@ -1667,3 +1667,118 @@ async def test_replay_approved_output_not_reverified() -> None:
     assert responded and responded[-1].content == "held answer"
     completes = [e for e in events if isinstance(e, LoopCompleted)]
     assert completes[-1].stop_reason == TerminationReason.END_TURN.value
+
+
+# === Sprint 57.99 A2: verification-ESCALATE human-in-the-loop ================
+# The max-attempts verification failure (the A1 verification_failed terminal)
+# conditionally ESCALATEs to a durable human HITL pause when the toggle is ON.
+# Day-1 covers the run()-side escalate pause + the toggle-OFF byte-identical
+# guarantee; the resume APPROVE/REJECT branches are Day-2.
+
+
+def _build_verify_escalate_loop(
+    *,
+    chat_client: ChatClient,
+    verifier_registry: VerifierRegistry,
+    escalate_on_max: bool,
+    hitl_manager: HITLManager,
+    checkpointer: InMemoryCheckpointer | None = None,
+    reducer: InMemoryReducer | None = None,
+    max_attempts: int = 2,
+) -> tuple[AgentLoopImpl, SpyExecutor]:
+    """A loop with the in-loop Cat 10 gate + the full deferred-HITL wiring + the A2
+    escalate toggle, so a max-attempts verification failure can ESCALATE to a pause.
+    """
+    registry = _registry_with_tool()
+    executor = _executor(registry)
+    loop = AgentLoopImpl(
+        chat_client=chat_client,
+        output_parser=OutputParserImpl(),
+        tool_executor=executor,
+        tool_registry=registry,
+        tenant_id=_TENANT_ID,
+        hitl_manager=hitl_manager,
+        hitl_deferred=True,
+        checkpointer=checkpointer,  # type: ignore[arg-type]
+        reducer=reducer,  # type: ignore[arg-type]
+        verifier_registry=verifier_registry,
+        max_correction_attempts=max_attempts,
+        verification_escalate_on_max=escalate_on_max,
+    )
+    return loop, executor
+
+
+async def test_verify_escalate_off_preserves_a1_terminal() -> None:
+    """A2 US-2: toggle OFF → a max-attempts verification failure takes the A1
+    verification_failed terminal byte-identical, even WITH the full HITL wiring
+    present (the toggle, not the wiring, gates the escalate). No ApprovalRequested."""
+    chat = FakeChatClient(
+        responses=[
+            ("a", None, StopReason.END_TURN),
+            ("b", None, StopReason.END_TURN),
+            ("c", None, StopReason.END_TURN),  # attempt 2 == max → failed_max
+        ]
+    )
+    hitl = SpyHITLManager(decision=DecisionType.APPROVED)
+    loop, _ = _build_verify_escalate_loop(
+        chat_client=chat,
+        verifier_registry=_vregistry(_FailingVerifier()),
+        escalate_on_max=False,  # OFF → A1 terminal
+        hitl_manager=hitl,
+        checkpointer=InMemoryCheckpointer(),
+        reducer=InMemoryReducer(),
+    )
+
+    events = await _run(loop)
+
+    completes = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completes[-1].stop_reason == VERIFICATION_FAILED_STOP_REASON
+    assert not any(isinstance(e, ApprovalRequested) for e in events)
+    assert hitl.wait_called is False
+
+
+async def test_verify_escalate_on_max_pauses_for_human() -> None:
+    """A2 US-2: toggle ON → a max-attempts verification failure ESCALATEs to a durable
+    human pause instead of verification_failed: ApprovalRequested(HIGH) +
+    LoopCompleted(awaiting_approval) + a checkpoint carrying a verification-kind
+    pending_approval with the held failed answer + the durable verification_escalated
+    flag. No verification_failed terminal."""
+    chat = FakeChatClient(
+        responses=[
+            ("a", None, StopReason.END_TURN),
+            ("b", None, StopReason.END_TURN),
+            ("c is the held failed answer", None, StopReason.END_TURN),  # attempt 2 == max
+        ]
+    )
+    hitl = SpyHITLManager(decision=DecisionType.APPROVED)
+    checkpointer = InMemoryCheckpointer()
+    reducer = InMemoryReducer()
+    loop, _ = _build_verify_escalate_loop(
+        chat_client=chat,
+        verifier_registry=_vregistry(_FailingVerifier()),
+        escalate_on_max=True,  # ON → escalate
+        hitl_manager=hitl,
+        checkpointer=checkpointer,
+        reducer=reducer,
+    )
+
+    events = await _run(loop)
+
+    # ESCALATEd, NOT verification_failed.
+    completes = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completes[-1].stop_reason == TerminationReason.AWAITING_APPROVAL.value
+    assert not any(
+        isinstance(e, LoopCompleted) and e.stop_reason == VERIFICATION_FAILED_STOP_REASON
+        for e in events
+    )
+    approvals = [e for e in events if isinstance(e, ApprovalRequested)]
+    assert approvals and approvals[-1].risk_level == "HIGH"
+    assert hitl.wait_called is False  # deferred, not blocking
+    # The checkpoint carries a verification-kind pending_approval with the held answer
+    # + the durable verification_escalated flag (the bound for one coached turn).
+    pauses = [s for s in checkpointer.saved if "pending_approval" in s.durable.metadata]
+    assert pauses, "expected a verification-escalate pause checkpoint"
+    pa = pauses[-1].durable.metadata["pending_approval"]
+    assert pa["kind"] == "verification"
+    assert pa["response_snapshot"]["answer_text"] == "c is the held failed answer"
+    assert pauses[-1].durable.metadata.get("verification_escalated") is True

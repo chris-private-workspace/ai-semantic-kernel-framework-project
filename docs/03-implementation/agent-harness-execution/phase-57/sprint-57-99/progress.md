@@ -45,3 +45,81 @@ Forcing a real verification fail for the Day-3 drive-through needs a strict judg
 - pytest collected = **2298** (`-m "not real_llm"`); `mypy src` = **0/353**; run_all 10/10 (to re-confirm at Day-0 commit)
 
 ---
+
+## Day 1 — Config toggle + the escalate pause (US-1 / US-2) (2026-06-10)
+
+Day-1 builds the run()-side of A2: the config toggle (US-1) + the escalate pause method
++ the conditional FAIL==max terminal + the durable `verification_escalated` flag (US-2).
+The resume APPROVE/REJECT branches are Day-2. **Toggle defaults OFF → the A1 terminal is
+byte-identical** (proven: 124 loop+verification+smoke tests green, zero regression).
+
+### US-1 — the config toggle
+- `core/config/__init__.py`: `chat_verification_escalate_on_max: bool = False` (env
+  `CHAT_VERIFICATION_ESCALATE_ON_MAX`), in the `chat_verification_*` cluster after the
+  judge template.
+- `orchestrator_loop/loop.py` `__init__`: `verification_escalate_on_max: bool = False`
+  (stored `self._verification_escalate_on_max`).
+- `api/v1/chat/handler.py`: the main real_llm `AgentLoopImpl(...)` site reads
+  `settings.chat_verification_escalate_on_max` + passes it into the ctor (after
+  `verifier_registry=`). The echo-demo + child-loop sites are untouched (no registry →
+  the escalate branch never runs there anyway).
+
+### US-2 — the escalate pause + conditional terminal + durable flag
+- NEW `_cat10_verification_escalate_pause()` (`loop.py`, mirrors `_cat9_output_hitl_pause`):
+  builds a held-answer + verifier-reasons `response_snapshot` (the `_replay_approved_output`
+  field set + `answer_text=parsed.text`), creates an `ApprovalRequest` (`kind="verification"`,
+  `risk_level=HIGH`, the failed-verifier reasons in the payload), emits `ApprovalRequested(HIGH)`,
+  builds `pending_approval{kind:"verification", response_snapshot}`, calls
+  `_emit_deferred_pause(..., verification_escalated=True)`. Fail-closed paths (no-identity /
+  persist-fail) fall back to the A1 `verification_failed` terminal (cannot offer a resumable
+  pause).
+- Conditional FAIL==max branch (the swap point): `if self._verification_escalate_on_max and
+  not verification_escalated and self._hitl_manager and self._hitl_deferred and
+  self._checkpointer and self._reducer:` → `_cat10_verification_escalate_pause(...)` → `return`;
+  `else:` → the A1 `verification_failed` terminal (byte-identical). The snapshot is built from
+  `metrics_acc` + `parsed.text`.
+- Durable `verification_escalated`: threaded `_run_turns` param (`verification_escalated: bool =
+  False`) + `_emit_deferred_pause` param + `_emit_state_checkpoint` writes
+  `metadata["verification_escalated"]=True` when True (mirrors the 57.98
+  `verification_attempts` metadata pattern — no migration). `run()` defaults False (fresh run);
+  resume() (Day-2) reads it back so a REJECT continuation re-enters with the flag set → a 2nd
+  failure takes the A1 terminal (the bound: exactly one human-coached turn).
+
+### Tests (Day-1 — in `test_loop_pause_resume.py`, see D-DAY1-1)
+- `test_verify_escalate_off_preserves_a1_terminal` — toggle OFF + 3 failing answers (max=2) →
+  `verification_failed` terminal, NO `ApprovalRequested`, even WITH the full HITL wiring present
+  (the toggle, not the wiring, gates it).
+- `test_verify_escalate_on_max_pauses_for_human` — toggle ON + max-fail → `ApprovalRequested(HIGH)`
+  + `LoopCompleted(awaiting_approval)` + a checkpoint carrying `pending_approval{kind:"verification",
+  response_snapshot.answer_text="c is the held failed answer"}` + `metadata.verification_escalated
+  is True`; NO `verification_failed` terminal.
+
+### Gate
+- mypy `src` **0/353**; `black`/`isort`/`flake8` (changed src + test) clean (2 E501 MHist trims —
+  the 57.98 lesson applied); the full `test_loop_pause_resume.py` = **28 passed** (26 prior + 2 new);
+  loop + verification + smoke regression = **124 passed** (zero regression → toggle-OFF byte-identical).
+
+### Day-1 drift
+- **D-DAY1-1** — the A2 escalate tests live in `test_loop_pause_resume.py` (NOT a separate NEW
+  `test_loop_verification_escalate.py`). That file already has the exact fixtures the escalate +
+  Day-2 resume tests need (the HITL-wired loop builder + `_FailingVerifier`/`_PassingVerifier` +
+  `_vregistry` + `InMemoryCheckpointer`/`InMemoryReducer` + `SpyHITLManager` + the output-pause
+  template). A new file would DUPLICATE all of it. The plan §4 explicitly allowed "if they fit the
+  existing pause-resume fixtures" → they do. *Plan's "NEW file" preference superseded; no new file.*
+- **D-DAY1-2** — `.env.example` (repo root) has NO `CHAT_VERIFICATION_*` entries (the sibling
+  `chat_verification_mode` / `_judge_template` settings are documented only by their `Settings`
+  defaults, not in `.env.example`). Adding a lone `CHAT_VERIFICATION_ESCALATE_ON_MAX` would be
+  inconsistent. → skip the `.env.example` edit (match the existing convention; the `Settings`
+  default False documents it). *Plan's `.env.example` item dropped per repo convention.*
+- **D-DAY1-3** — `RiskLevel.HIGH.value` serializes as `"HIGH"` (uppercase), not `"high"` — caught
+  by the escalate test assertion; fixed to the literal `"HIGH"`.
+
+### Remaining (Day-2+)
+- US-3 resume APPROVE → deliver the held failed answer (replay, not re-verified).
+- US-4 resume REJECT-with-note → re-inject the note + one bounded human-coached turn → 2nd fail
+  terminates (`verification_escalated` read back on resume).
+- US-5 durable-flag-survives-resume test + no-new-event confirm.
+- US-6 drive-through (strict-judge fail → escalate → approve + reject-coach).
+- CHANGE-066 + 25.md §4 + 17.md (Day-3).
+
+---

@@ -30,6 +30,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.4)
 Last Modified: 2026-06-10
 
 Modification History (newest-first):
+    - 2026-06-10: Sprint 57.99 A2 — thread chat_verification_escalate_on_max into loop ctor
     - 2026-06-10: Sprint 57.98 A1 US-5 — inject verifier_registry into loop ctor; return loop
     - 2026-06-09: Sprint 57.97 — ModelProfile{action,cheap}; verification on profile.cheap
     - 2026-06-09: Sprint 57.95 — wire subagent_event_emitter on chat path (SSE relay)
@@ -466,6 +467,11 @@ def build_real_llm_handler(
         # Sprint 57.98 A1 (US-5): the loop owns the Cat 10 gate (was the router's
         # run_with_verification wrapper). None → dormant gate.
         verifier_registry=verifier_registry,
+        # Sprint 57.99 A2 (US-1): when True, a max-attempts verification failure
+        # ESCALATEs to a human HITL pause (deliver-as-is on APPROVE, one coached
+        # retry on REJECT-with-note) instead of the A1 verification_failed terminal.
+        # Effective only with a registry + hitl_manager; default False = A1.
+        verification_escalate_on_max=settings.chat_verification_escalate_on_max,
         # Sprint 57.71 (A-4 Tier 0): inject the router's real OTelTracer so the
         # loop's root span + per-turn span tree run on a real tracer instead of
         # the NoOpTracer fallback. None preserves the pre-57.71 baseline (NoOp).

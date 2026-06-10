@@ -45,6 +45,7 @@ Created: 2026-04-30 (Sprint 50.1 Day 2.2)
 Last Modified: 2026-06-10
 
 Modification History (newest-first):
+    - 2026-06-10: Sprint 57.99 A2 — verification-ESCALATE pause swaps the max-fail terminal (toggle)
     - 2026-06-10: Sprint 57.98 A1 US-3 — durable verification_attempts via checkpoint metadata
     - 2026-06-10: Sprint 57.98 A1 — in-loop Cat 10 verify gate (ctor registry + _cat10_verify_gate)
     - 2026-06-08: Sprint 57.93 — output-guardrail ESCALATE pre-delivery pause point (Slice 3)
@@ -416,6 +417,15 @@ class AgentLoopImpl(AgentLoop):
         # Replaces the run_with_verification wrapper (Cat 10 moves in-loop).
         verifier_registry: "VerifierRegistry | None" = None,
         max_correction_attempts: int = 2,
+        # 57.99 A2 §Verification-ESCALATE: when True (+ a verifier registry +
+        # hitl_deferred wiring), a max-attempts verification failure ESCALATEs to a
+        # durable human HITL pause instead of the A1 verification_failed terminal.
+        # APPROVE delivers the held failed answer (human overrides the judge);
+        # REJECT-with-note re-injects the reviewer note as ONE human-coached turn
+        # (a 2nd failure terminates, bounded by a durable verification_escalated
+        # flag). Default False → the A1 terminal is byte-identical (the toggle
+        # gates it; resume() drives the same gated _run_turns).
+        verification_escalate_on_max: bool = False,
     ) -> None:
         self._chat_client = chat_client
         self._output_parser = output_parser
@@ -467,6 +477,8 @@ class AgentLoopImpl(AgentLoop):
         # 57.98 A1 §Verification into the loop (see ctor docstring above).
         self._verifier_registry = verifier_registry
         self._max_correction_attempts = max_correction_attempts
+        # 57.99 A2 §Verification-ESCALATE (see ctor docstring above).
+        self._verification_escalate_on_max = verification_escalate_on_max
 
     async def _handle_tool_error(
         self,
@@ -1123,6 +1135,7 @@ class AgentLoopImpl(AgentLoop):
         audit_content: dict[str, Any],
         ctx: TraceContext,
         verification_attempts: int = 0,
+        verification_escalated: bool = False,
     ) -> AsyncIterator[LoopEvent]:
         """Generalized durable-pause tail (Sprint 57.91, 地基 A Slice 3 leg 1).
 
@@ -1150,6 +1163,7 @@ class AgentLoopImpl(AgentLoop):
             ctx=ctx,
             pending_approval=pending_approval,
             verification_attempts=verification_attempts,
+            verification_escalated=verification_escalated,
         )
         if checkpoint_event is not None:
             yield checkpoint_event
@@ -1695,6 +1709,131 @@ class AgentLoopImpl(AgentLoop):
             verif_model,
         )
 
+    async def _cat10_verification_escalate_pause(
+        self,
+        *,
+        answer_text: str,
+        response_snapshot: dict[str, Any],
+        verdict: "_VerifyVerdict",
+        ctx: TraceContext,
+        session_id: UUID,
+        messages: list[Message],
+        turn_count: int,
+        verification_attempts: int = 0,
+    ) -> AsyncIterator[LoopEvent]:
+        """Cat 10 max-attempts verification failure → human ESCALATE pause (57.99 A2).
+
+        The verification analogue of _cat9_output_hitl_pause: when in-loop
+        self-correction is exhausted (verdict.outcome == "failed_max") AND the
+        chat_verification_escalate_on_max toggle is on AND this run has not already
+        escalated, pause for a human instead of the A1 verification_failed terminal.
+        Build a "verification"-kind pending_approval carrying the held failed-answer
+        snapshot (the _replay_approved_output field set) so resume() can DELIVER the
+        held answer on APPROVE (human overrides the judge — NO LLM re-call) or
+        re-inject the reviewer note as one human-coached turn on REJECT. Persists the
+        durable verification_escalated=True so a REJECT continuation that fails again
+        takes the A1 terminal (the bound: exactly one coached turn). The caller gates
+        on the full HITL wiring (hitl_manager + hitl_deferred + checkpointer +
+        reducer); this method fails closed on the remaining no-identity / persist-
+        failure cases by falling back to the A1 verification_failed terminal (it
+        cannot offer a resumable pause). risk_level defaults to HIGH.
+        """
+        if self._hitl_manager is None:  # defensive; caller already checked
+            return
+
+        tenant_id = self._tenant_id or ctx.tenant_id
+        session_id_eff = ctx.session_id or session_id
+        if tenant_id is None or session_id_eff is None:
+            await self._audit_log_safe(
+                event_type="verification.escalate.no_identity",
+                content={"attempts": verification_attempts},
+                ctx=ctx,
+            )
+            # Fall back to the A1 terminal — cannot pause without identity context.
+            yield LoopCompleted(
+                stop_reason=VERIFICATION_FAILED_STOP_REASON,
+                total_turns=turn_count,
+                trace_context=ctx,
+            )
+            return
+
+        # Human-readable reason from the failed verifiers (the verdict for a
+        # failed_max outcome carries the per-verifier VerificationFailed events).
+        reasons = [
+            ev.reason for ev in verdict.events if isinstance(ev, VerificationFailed) and ev.reason
+        ]
+        reason = "; ".join(reasons) if reasons else "verification failed at max attempts"
+
+        request_id = uuid4()
+        risk_level = RiskLevel.HIGH  # ESCALATE default; mirror _cat9_output_hitl_pause
+        sla_deadline = datetime.now(timezone.utc) + timedelta(seconds=self._hitl_timeout_s)
+        approval_req = ApprovalRequest(
+            request_id=request_id,
+            tenant_id=tenant_id,
+            session_id=session_id_eff,
+            requester="verification",
+            risk_level=risk_level,
+            payload={
+                "kind": "verification",
+                "output_excerpt": answer_text[:200],
+                "reason": reason,
+                "summary": "approve delivery (override the verifier) or reject with a note",
+            },
+            sla_deadline=sla_deadline,
+            context_snapshot={"trace_id": ctx.trace_id},
+        )
+
+        try:
+            await self._hitl_manager.request_approval(approval_req, trace_context=ctx)
+        except Exception as exc:  # noqa: BLE001 — fail closed to the A1 terminal
+            await self._audit_log_safe(
+                event_type="verification.escalate.persist_failed",
+                content={"error": str(exc)},
+                ctx=ctx,
+            )
+            yield LoopCompleted(
+                stop_reason=VERIFICATION_FAILED_STOP_REASON,
+                total_turns=turn_count,
+                trace_context=ctx,
+            )
+            return
+
+        await self._audit_log_safe(
+            event_type="verification.escalate.requested",
+            content={
+                "request_id": str(request_id),
+                "risk_level": risk_level.value,
+                "reason": reason,
+                "attempts": verification_attempts,
+            },
+            ctx=ctx,
+        )
+        yield ApprovalRequested(
+            approval_request_id=request_id,
+            risk_level=risk_level.value,
+            trace_context=ctx,
+        )
+
+        pending_approval = {
+            "kind": "verification",
+            "approval_request_id": str(request_id),
+            "turn": turn_count,
+            "response_snapshot": response_snapshot,
+        }
+        async for ev in self._emit_deferred_pause(
+            request_id=request_id,
+            pending_approval=pending_approval,
+            messages=messages,
+            turn_count=turn_count,
+            session_id=session_id_eff,
+            audit_event_type="verification.escalate.deferred",
+            audit_content={"request_id": str(request_id), "turn": turn_count},
+            ctx=ctx,
+            verification_attempts=verification_attempts,
+            verification_escalated=True,
+        ):
+            yield ev
+
     async def run(
         self,
         *,
@@ -1807,6 +1946,7 @@ class AgentLoopImpl(AgentLoop):
         root_ctx: TraceContext,
         skip_between_turns_once: bool = False,
         verification_attempts: int = 0,
+        verification_escalated: bool = False,
     ) -> AsyncIterator[LoopEvent]:
         """Re-enterable per-turn loop (Sprint 57.89 Slice 1).
 
@@ -1823,6 +1963,12 @@ class AgentLoopImpl(AgentLoop):
         checkpointed value so a pause mid-correction keeps counting — US-3).
         `verif_*` accumulate judge-token usage across attempts (Sprint 57.82)
         to stamp the terminal LoopCompleted.
+
+        Sprint 57.99 A2: `verification_escalated` is the durable "this run already
+        ESCALATEd a max-attempts verification failure to a human" flag (False for a
+        fresh run; resume() passes the checkpointed value). When True, a subsequent
+        max-attempts failure takes the A1 verification_failed terminal instead of a
+        2nd escalate — bounding REJECT-with-note to exactly ONE human-coached turn.
         """
         verif_in = 0
         verif_out = 0
@@ -2342,6 +2488,50 @@ class AgentLoopImpl(AgentLoop):
                             turn_count += 1
                             continue
                         if verdict.outcome == "failed_max":
+                            # 57.99 A2: conditionally ESCALATE to a human pause
+                            # instead of the A1 verification_failed terminal, when
+                            # the toggle is ON, this run hasn't already escalated
+                            # (the bound — a REJECT-with-note re-enters with
+                            # verification_escalated=True so a 2nd failure takes the
+                            # A1 terminal below: exactly one human-coached turn), and
+                            # the full HITL deferred-pause wiring is present (no
+                            # resumable pause possible without it → fall back to A1).
+                            if (
+                                self._verification_escalate_on_max
+                                and not verification_escalated
+                                and self._hitl_manager is not None
+                                and self._hitl_deferred
+                                and self._checkpointer is not None
+                                and self._reducer is not None
+                            ):
+                                response_snapshot = {
+                                    # The held failed answer — resume() APPROVE
+                                    # delivers it verbatim via _replay_approved_output
+                                    # (human overrides the judge; the output-pause
+                                    # snapshot field set so the same replay path works).
+                                    "answer_text": parsed.text,
+                                    "provider": metrics_acc.last_provider,
+                                    "model": metrics_acc.last_model,
+                                    "input_tokens": metrics_acc.cumulative_input_tokens,
+                                    "output_tokens": metrics_acc.cumulative_output_tokens,
+                                    "cached_input_tokens": (
+                                        metrics_acc.cumulative_cached_input_tokens
+                                    ),
+                                    "cache_hit_rate": metrics_acc.cache_hit_rate,
+                                    "total_tokens": tokens_used,
+                                }
+                                async for ev in self._cat10_verification_escalate_pause(
+                                    answer_text=parsed.text,
+                                    response_snapshot=response_snapshot,
+                                    verdict=verdict,
+                                    ctx=ctx,
+                                    session_id=session_id,
+                                    messages=messages,
+                                    turn_count=turn_count,
+                                    verification_attempts=verification_attempts,
+                                ):
+                                    yield ev
+                                return
                             yield LoopCompleted(
                                 stop_reason=VERIFICATION_FAILED_STOP_REASON,
                                 total_turns=turn_count,
@@ -3139,6 +3329,7 @@ class AgentLoopImpl(AgentLoop):
         ctx: TraceContext,
         pending_approval: dict[str, Any] | None = None,
         verification_attempts: int = 0,
+        verification_escalated: bool = False,
     ) -> StateCheckpointed | None:
         """Build LoopState from loop locals, reducer.merge → checkpointer.save.
 
@@ -3184,6 +3375,16 @@ class AgentLoopImpl(AgentLoop):
         # resetting it (a fresh run() never sets it → starts at 0).
         if verification_attempts > 0:
             metadata["verification_attempts"] = verification_attempts
+        # Sprint 57.99 A2 (US-5): the durable "this run already escalated a
+        # max-attempts verification failure to a human" flag rides the same
+        # checkpoint metadata (same precedent as verification_attempts — no
+        # serializer/migration change). resume() reads it back so a REJECT-with-note
+        # continuation re-enters _run_turns with verification_escalated=True, making
+        # a 2nd max-attempts failure take the A1 verification_failed terminal (the
+        # bound: exactly one human-coached turn). Stored only when True (happy-path
+        # checkpoints stay empty).
+        if verification_escalated:
+            metadata["verification_escalated"] = True
 
         # Build snapshot state from current loop locals.
         snapshot_state = LoopState(

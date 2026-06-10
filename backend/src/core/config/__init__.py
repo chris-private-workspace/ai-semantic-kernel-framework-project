@@ -8,6 +8,7 @@ Per project rules (.claude/rules/code-quality.md): always use Pydantic
 Settings (not raw os.environ) so type-safe + validation + .env support.
 
 Modification History (newest-first):
+    - 2026-06-10: Sprint 57.99 A2 — add chat_verification_escalate_on_max (default OFF)
     - 2026-05-10: Sprint 57.13 US-A1 — fix oidc_redirect_uri + frontend_base_url + cookie_secure
     - 2026-05-09: Sprint 57.7 US-A2 — add WorkOS OIDC fields (vendor route per US-A1 matrix)
     - 2026-05-06: Sprint 56.1 Day 2 — add quota_enforcement_enabled (US-2)
@@ -121,6 +122,14 @@ class Settings(BaseSettings):
     # complete/accurate/on-topic). Replaces the Cat 9-fitted "safety_review" default
     # which leaned unsafe (high false-positive as a general final-output judge).
     chat_verification_judge_template: str = "output_quality"
+    # Sprint 57.99 A2 §Verification-ESCALATE: when True, a max-attempts
+    # verification failure ESCALATEs to a durable human HITL pause instead of the
+    # A1 stop_reason=verification_failed terminal. APPROVE delivers the held failed
+    # answer (human overrides the judge); REJECT-with-note re-injects the reviewer
+    # note as ONE human-coached turn (a 2nd failure terminates). Gated additionally
+    # on chat_verification_mode == "enabled" + a wired hitl_manager (no pause
+    # possible without HITL). Default False preserves the A1 terminal byte-identical.
+    chat_verification_escalate_on_max: bool = False
 
     # ---- Phase 56.1 SaaS quota (US-2) -------------------------------
     # Off by default — production rollout flips True after Redis client
