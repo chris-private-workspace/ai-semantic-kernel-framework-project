@@ -73,7 +73,7 @@ status: Active
 
 ## 4. Open Invariants (deferred — NOT verified in this spike)
 
-- [ ] **A2 — verification-ESCALATE human-in-the-loop**: on max-attempts (or a config), ESCALATE → `_emit_deferred_pause(kind="verification")` + human approve / reject-with-note → the note re-injects as human-coached correction feedback. A1's terminal is `verification_failed`; A2 swaps it for the pause. Reuses the 57.91-93 pause基建.
+- [x] **A2 — verification-ESCALATE human-in-the-loop** ✅ SHIPPED Sprint 57.99 (feature-continuation; record = CHANGE-066 + this §4 + 17.md, NO new design note). On max-attempts AND the `chat_verification_escalate_on_max` toggle (config `__init__.py:132` → loop ctor `loop.py:429`/`:482` → MAIN real_llm wiring `handler.py:474`; default OFF = A1 byte-identical), the FAIL==max swap-point (`loop.py:2501`, guarded `... and not verification_escalated and <full HITL wiring>`) ESCALATEs via `_cat10_verification_escalate_pause()` (`loop.py:1713`) → `_emit_deferred_pause(kind="verification", verification_escalated=True)` instead of the `verification_failed` terminal. `resume()` (`loop.py:3166` `elif kind == "verification":`) APPROVE → the human OVERRIDES the verifier → `_replay_approved_output` delivers the held failed answer (terminal, no re-verify); REJECT-with-note → the note re-injects as a `user` correction Message + exactly ONE human-coached turn (`verification_attempts` forced to max + the durable `verification_escalated` flag rehydrated at `loop.py:3013` → a 2nd failure binds to the A1 terminal). No new event type (reuses `ApprovalRequested`/`ApprovalReceived`/`LLMResponded`/`LoopCompleted`; `check_event_schema_sync` green).
 - [ ] **A3 — trace-aware critique**: a verifier that sees recent turns / tool errors (not just the final string) + a formal cheap-judge accuracy benchmark (design-note 24 carryover).
 - [ ] **deliver-with-flag terminal** (option b): deliver the answer but flag verification failed; not chosen for A1 (would need a new event/UI flag).
 - [ ] **Per-tenant verification mode / template** (Config 分層): a tenant choosing its own verification policy is workflow C (C3), not A1.
@@ -98,4 +98,5 @@ status: Active
 - **Related rules**: `.claude/rules/sprint-workflow.md` §Step 5.5 (spike design-note 8-pt gate) + §Common Risk Classes E (stale `--reload` backend)
 
 ## Modification History
+- 2026-06-10: Sprint 57.99 A2 — §4 move verification-ESCALATE Open Invariant deferred → SHIPPED (file:line)
 - 2026-06-10: Initial extract from Sprint 57.98 closeout (Day 4) — in-loop Cat 10 verify gate; durable attempt counter on checkpoint metadata; resume path verified for free; outer wrapper retired

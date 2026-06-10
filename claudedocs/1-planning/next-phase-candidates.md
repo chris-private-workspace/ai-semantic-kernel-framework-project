@@ -12,7 +12,7 @@
 
 It condenses the user's "5-point deepening discussion" into 3 workflows and a recommended slice order — **the items in the per-sprint carryovers below (verification, subagent TEAMMATE/HANDOFF, model policy / config 分層) are the raw material it organizes**:
 
-- **A. Verification into loop** (points 1 + 5) — ✅ **A1 SHIPPED (Sprint 57.98)**: in-loop verify gate (retired the `correction_loop.py` wrapper; closed the **resume-bypasses-verification structural hole** — `resume()` now drives the same gated `_run_turns`) → **A2 verification-ESCALATE human loop (next A slice)** → A3 trace-critique (optional).
+- **A. Verification into loop** (points 1 + 5) — ✅ **A1 SHIPPED (Sprint 57.98)**: in-loop verify gate (retired the `correction_loop.py` wrapper; closed the **resume-bypasses-verification structural hole** — `resume()` now drives the same gated `_run_turns`) → ✅ **A2 SHIPPED (Sprint 57.99)**: verification-ESCALATE human loop (the max-fail terminal conditionally becomes a human pause; APPROVE delivers the held answer, REJECT-with-note coaches one bounded turn; behind a toggle, default OFF = A1) → A3 trace-critique (optional).
 - **B. Subagent completion** (point 3 + C-class live injection) — B1 between-turns injection primitive (serves BOTH chat live-injection AND TEAMMATE parent→child — one primitive, two payoffs) → B2 TEAMMATE multi-turn → B3 HANDOFF finish (**platform layer already done 57.68-70** — carryover text below saying "platform service absent" is stale; it shrinks to finish+governance) → B4 child governance.
 - **C. Model policy + config tiering** (point 4 + cc-parity §7.3) — C1 per-tenant model policy (`tenant.meta_data["model_policy"]` JSONB) → C2 compaction cheap tier → C3 policy面 + risky-action detector.
 
@@ -21,6 +21,21 @@ It condenses the user's "5-point deepening discussion" into 3 workflows and a re
 **⚠️ C1 soft-prereq**: `AD-RBAC-DB-To-JWT-Wiring-Phase58` (below) must be authz-effective BEFORE C1's admin PUT, else C1's admin endpoint is an AP-4 Potemkin dead control. A1/A2/B1/B2 do NOT depend on it.
 
 > **Status**: roadmap selected/acknowledged by user; NO slice sprint kicked off yet (rolling discipline — A1 plan is written only on explicit user go).
+
+---
+
+## 🆕 Sprint 57.99 Carryover — A2 verification-ESCALATE SHIPPED (max-fail terminal → conditional human pause; APPROVE-delivers / REJECT-coaches-one-turn); the chat-v2 reject UI + A3 + the rest next
+
+**Source**: Sprint 57.99 closed 2026-06-10 — workflow A slice 2 (the 4th pause leg). The A1 `verification_failed` terminal now conditionally ESCALATEs to a human pause behind `chat_verification_escalate_on_max` (default OFF = A1 byte-identical); `resume()` `kind="verification"` — APPROVE delivers the held failed answer (human overrides the judge, reuses 57.93 `_replay_approved_output`, TERMINAL), REJECT-with-note re-injects the note + runs ONE human-coached turn then binds to the A1 terminal (durable `verification_escalated` flag on `metadata`). NO new event/wire/DB/DTO/frontend. Drive-through PASS (APPROVE half, real UI + real Azure + forced-fail real-LLM judge). Detail: `memory/project_phase57_99_verification_escalate.md` + CHANGE-066 + `25-verification-in-loop-design.md` §4 (A2 invariant SHIPPED).
+
+- **chat-v2 verification-reject UI follow-up** (🟡 — the freshest, a drive-through finding) — A2's REJECT-with-note backend is unit-proven but NOT UI-drivable: `HITLTurn.submitDecision("rejected")` deliberately does NOT `resume()` (built for tool-kind reject=terminate) + the reject button has no note input (`decide()` sends no `reason`). Wire the chat-v2 UI for the verification kind: resume-on-reject + a coaching-note input → `decide(reason)`. Small frontend slice; makes the full reject-with-note loop UI-drivable. (Out of A2's backend scope per user Option A 2026-06-10.)
+- **A3 — trace-aware critique** (🟢) — a verifier that sees recent turns / tool errors (not just the final string) + a formal cheap-judge accuracy benchmark (design-note 24+25 carryover).
+- **per-tenant verification mode / policy** (🟡 — Config 分層 = workflow C / C3) — a tenant choosing its own escalate / verification policy.
+- **deliver-with-flag terminal** (🟢, option b) — deliver the answer but flag verification failed; not chosen for A1/A2 (would need a new event/UI flag).
+- **multi-round human coaching** (🟢) — A2 bounds to EXACTLY one coached turn; a >1-turn human-coaching loop is a separate slice.
+- **cheap-judge accuracy benchmark** (🟢) — whether the cheap tier (57.97) over/under-corrects vs strong; documented, NOT measured.
+- **forced-fail drive-through fixture lesson** (D-DAY3-2) — a tool-equipped agent ACTS on a forced fail (calls `request_approval`) rather than passively re-answering; a forced-fail correction must steer "no tools, just re-answer" so the candidate stays a FINAL answer (else a tool-kind pause fires, not the verification escalate). Reusable when authoring future verification drive-throughs.
+- `loop-pause-point-feature` calibration class 0.50 (1st data point ~0.93 IN band; pending 2-3 sprint validation; `agent_factor` 1.0 parent-direct; honours the 57.92/93 proposed ~0.40, set higher for the bounded REJECT continuation).
 
 ---
 

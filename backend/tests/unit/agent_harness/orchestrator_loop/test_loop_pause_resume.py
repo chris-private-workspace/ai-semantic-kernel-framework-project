@@ -34,7 +34,7 @@ Description:
       or on a non-final response.
 
 Created: 2026-06-08 (Sprint 57.88)
-Last Modified: 2026-06-08 (Sprint 57.93 — output-ESCALATE pre-delivery pause + output-resume tests)
+Last Modified: 2026-06-10 (Sprint 57.99 — A2 verification-ESCALATE pause: escalate tests)
 """
 
 from __future__ import annotations
@@ -1524,11 +1524,23 @@ def _paused_state_verified(
 
     kind="tool" → a tool-HITL pause (resume execs the pending tool then continues);
     kind="output" → an output-guardrail pre-delivery pause (resume REPLAYS the
-    held answer via _replay_approved_output, no _run_turns drive).
+    held answer via _replay_approved_output, no _run_turns drive);
+    kind="verification" → an A2 verification-ESCALATE pause (resume APPROVE replays
+    the held failed answer; REJECT coaches one bounded turn). Sets the durable
+    verification_escalated flag so the REJECT continuation binds to the A1 terminal.
     """
+    escalated = False
     if kind == "output":
         pending: dict[str, Any] = {
             "kind": "output",
+            "approval_request_id": str(uuid4()),
+            "turn": 1,
+            "response_snapshot": {"answer_text": answer_text},
+        }
+    elif kind == "verification":
+        escalated = True
+        pending = {
+            "kind": "verification",
             "approval_request_id": str(uuid4()),
             "turn": 1,
             "response_snapshot": {"answer_text": answer_text},
@@ -1547,6 +1559,8 @@ def _paused_state_verified(
     metadata: dict[str, Any] = {"pending_approval": pending}
     if verification_attempts > 0:
         metadata["verification_attempts"] = verification_attempts
+    if escalated:
+        metadata["verification_escalated"] = True
     return LoopState(
         transient=TransientState(
             messages=[Message(role="user", content="please act")],
@@ -1667,3 +1681,248 @@ async def test_replay_approved_output_not_reverified() -> None:
     assert responded and responded[-1].content == "held answer"
     completes = [e for e in events if isinstance(e, LoopCompleted)]
     assert completes[-1].stop_reason == TerminationReason.END_TURN.value
+
+
+# === Sprint 57.99 A2: verification-ESCALATE human-in-the-loop ================
+# The max-attempts verification failure (the A1 verification_failed terminal)
+# conditionally ESCALATEs to a durable human HITL pause when the toggle is ON.
+# Day-1 covers the run()-side escalate pause + the toggle-OFF byte-identical
+# guarantee; the resume APPROVE/REJECT branches are Day-2.
+
+
+def _build_verify_escalate_loop(
+    *,
+    chat_client: ChatClient,
+    verifier_registry: VerifierRegistry,
+    escalate_on_max: bool,
+    hitl_manager: HITLManager,
+    checkpointer: InMemoryCheckpointer | None = None,
+    reducer: InMemoryReducer | None = None,
+    max_attempts: int = 2,
+) -> tuple[AgentLoopImpl, SpyExecutor]:
+    """A loop with the in-loop Cat 10 gate + the full deferred-HITL wiring + the A2
+    escalate toggle, so a max-attempts verification failure can ESCALATE to a pause.
+    """
+    registry = _registry_with_tool()
+    executor = _executor(registry)
+    loop = AgentLoopImpl(
+        chat_client=chat_client,
+        output_parser=OutputParserImpl(),
+        tool_executor=executor,
+        tool_registry=registry,
+        tenant_id=_TENANT_ID,
+        hitl_manager=hitl_manager,
+        hitl_deferred=True,
+        checkpointer=checkpointer,  # type: ignore[arg-type]
+        reducer=reducer,  # type: ignore[arg-type]
+        verifier_registry=verifier_registry,
+        max_correction_attempts=max_attempts,
+        verification_escalate_on_max=escalate_on_max,
+    )
+    return loop, executor
+
+
+async def test_verify_escalate_off_preserves_a1_terminal() -> None:
+    """A2 US-2: toggle OFF → a max-attempts verification failure takes the A1
+    verification_failed terminal byte-identical, even WITH the full HITL wiring
+    present (the toggle, not the wiring, gates the escalate). No ApprovalRequested."""
+    chat = FakeChatClient(
+        responses=[
+            ("a", None, StopReason.END_TURN),
+            ("b", None, StopReason.END_TURN),
+            ("c", None, StopReason.END_TURN),  # attempt 2 == max → failed_max
+        ]
+    )
+    hitl = SpyHITLManager(decision=DecisionType.APPROVED)
+    loop, _ = _build_verify_escalate_loop(
+        chat_client=chat,
+        verifier_registry=_vregistry(_FailingVerifier()),
+        escalate_on_max=False,  # OFF → A1 terminal
+        hitl_manager=hitl,
+        checkpointer=InMemoryCheckpointer(),
+        reducer=InMemoryReducer(),
+    )
+
+    events = await _run(loop)
+
+    completes = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completes[-1].stop_reason == VERIFICATION_FAILED_STOP_REASON
+    assert not any(isinstance(e, ApprovalRequested) for e in events)
+    assert hitl.wait_called is False
+
+
+async def test_verify_escalate_on_max_pauses_for_human() -> None:
+    """A2 US-2: toggle ON → a max-attempts verification failure ESCALATEs to a durable
+    human pause instead of verification_failed: ApprovalRequested(HIGH) +
+    LoopCompleted(awaiting_approval) + a checkpoint carrying a verification-kind
+    pending_approval with the held failed answer + the durable verification_escalated
+    flag. No verification_failed terminal."""
+    chat = FakeChatClient(
+        responses=[
+            ("a", None, StopReason.END_TURN),
+            ("b", None, StopReason.END_TURN),
+            ("c is the held failed answer", None, StopReason.END_TURN),  # attempt 2 == max
+        ]
+    )
+    hitl = SpyHITLManager(decision=DecisionType.APPROVED)
+    checkpointer = InMemoryCheckpointer()
+    reducer = InMemoryReducer()
+    loop, _ = _build_verify_escalate_loop(
+        chat_client=chat,
+        verifier_registry=_vregistry(_FailingVerifier()),
+        escalate_on_max=True,  # ON → escalate
+        hitl_manager=hitl,
+        checkpointer=checkpointer,
+        reducer=reducer,
+    )
+
+    events = await _run(loop)
+
+    # ESCALATEd, NOT verification_failed.
+    completes = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completes[-1].stop_reason == TerminationReason.AWAITING_APPROVAL.value
+    assert not any(
+        isinstance(e, LoopCompleted) and e.stop_reason == VERIFICATION_FAILED_STOP_REASON
+        for e in events
+    )
+    approvals = [e for e in events if isinstance(e, ApprovalRequested)]
+    assert approvals and approvals[-1].risk_level == "HIGH"
+    assert hitl.wait_called is False  # deferred, not blocking
+    # The checkpoint carries a verification-kind pending_approval with the held answer
+    # + the durable verification_escalated flag (the bound for one coached turn).
+    pauses = [s for s in checkpointer.saved if "pending_approval" in s.durable.metadata]
+    assert pauses, "expected a verification-escalate pause checkpoint"
+    pa = pauses[-1].durable.metadata["pending_approval"]
+    assert pa["kind"] == "verification"
+    assert pa["response_snapshot"]["answer_text"] == "c is the held failed answer"
+    assert pauses[-1].durable.metadata.get("verification_escalated") is True
+
+
+# --- Day-2: the resume APPROVE / REJECT branches ----------------------------
+
+
+class _CapturingChatClient(FakeChatClient):
+    """FakeChatClient that records the messages each chat() call received, so a
+    test can assert the reviewer-note injection reached the coached turn."""
+
+    def __init__(self, responses: list[tuple[str, list[ToolCall] | None, StopReason]]) -> None:
+        super().__init__(responses)
+        self.seen_messages: list[list[Message]] = []
+
+    async def chat(
+        self,
+        request: ChatRequest,
+        *,
+        cache_breakpoints: list[CacheBreakpoint] | None = None,
+        trace_context: TraceContext | None = None,
+    ) -> ChatResponse:
+        self.seen_messages.append(list(request.messages))
+        return await super().chat(
+            request, cache_breakpoints=cache_breakpoints, trace_context=trace_context
+        )
+
+
+async def test_verify_escalate_resume_approve_delivers_held_answer() -> None:
+    """A2 US-3: a verification-kind pause + APPROVE → the human OVERRIDES the verifier;
+    resume DELIVERS the held failed answer verbatim (TERMINAL replay, no LLM re-call,
+    NOT re-verified) — mirrors the 57.93 output-approve replay."""
+    session_id = uuid4()
+    chat = FakeChatClient(responses=[])  # replay makes no LLM call
+    hitl = SpyHITLManager(decision=DecisionType.APPROVED)
+    loop, _ = _build_verify_escalate_loop(
+        chat_client=chat,
+        verifier_registry=_vregistry(_FailingVerifier()),  # would FAIL if re-run
+        escalate_on_max=True,
+        hitl_manager=hitl,
+        checkpointer=InMemoryCheckpointer(),
+        reducer=InMemoryReducer(),
+    )
+
+    state = _paused_state_verified(
+        decision_session=session_id,
+        kind="verification",
+        answer_text="the held failed answer",
+        verification_attempts=2,
+    )
+    ctx = TraceContext(tenant_id=_TENANT_ID, session_id=session_id)
+    events = [ev async for ev in loop.resume(state=state, trace_context=ctx)]
+
+    # The held answer is delivered WITHOUT re-verification (the human overrode the judge).
+    assert not any(isinstance(e, (VerificationPassed, VerificationFailed)) for e in events)
+    responded = [e for e in events if isinstance(e, LLMResponded)]
+    assert responded and responded[-1].content == "the held failed answer"
+    completes = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completes[-1].stop_reason == TerminationReason.END_TURN.value
+    assert not any(isinstance(e, ApprovalRequested) for e in events)
+
+
+async def test_verify_escalate_resume_reject_coaches_one_turn() -> None:
+    """A2 US-4: a verification-kind pause + REJECT → re-inject the reviewer's note as a
+    correction and run ONE human-coached turn. A coached answer that PASSES the gate is
+    delivered (END_TURN), and the reviewer note reached the LLM. No second pause."""
+    session_id = uuid4()
+    chat = _CapturingChatClient(responses=[("the revised good answer", None, StopReason.END_TURN)])
+    hitl = SpyHITLManager(decision=DecisionType.REJECTED)
+    loop, _ = _build_verify_escalate_loop(
+        chat_client=chat,
+        verifier_registry=_vregistry(_PassingVerifier()),  # the coached turn PASSES
+        escalate_on_max=True,
+        hitl_manager=hitl,
+        checkpointer=InMemoryCheckpointer(),
+        reducer=InMemoryReducer(),
+    )
+
+    state = _paused_state_verified(
+        decision_session=session_id, kind="verification", verification_attempts=2
+    )
+    ctx = TraceContext(tenant_id=_TENANT_ID, session_id=session_id)
+    events = [ev async for ev in loop.resume(state=state, trace_context=ctx)]
+
+    # The reviewer note was injected as a correction message into the coached turn.
+    assert any(
+        "Verification rejected by reviewer" in m.content
+        for msgs in chat.seen_messages
+        for m in msgs
+    )
+    # Exactly one coached turn ran; its PASSING answer was delivered.
+    responded = [e for e in events if isinstance(e, LLMResponded)]
+    assert responded and responded[-1].content == "the revised good answer"
+    assert any(isinstance(e, VerificationPassed) for e in events)
+    completes = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completes[-1].stop_reason == TerminationReason.END_TURN.value
+    assert not any(isinstance(e, ApprovalRequested) for e in events)  # no second pause
+
+
+async def test_verify_escalate_reject_then_fail_binds_to_a1_terminal() -> None:
+    """A2 US-4/US-5: a verification REJECT continuation whose ONE coached turn fails the
+    gate AGAIN takes the A1 verification_failed terminal — NOT a second pause. The durable
+    verification_escalated flag (rehydrated from the checkpoint metadata) is the bound:
+    exactly one human-coached turn, then terminal, even with the toggle still ON."""
+    session_id = uuid4()
+    chat = FakeChatClient(responses=[("still a bad answer", None, StopReason.END_TURN)])
+    hitl = SpyHITLManager(decision=DecisionType.REJECTED)
+    checkpointer = InMemoryCheckpointer()
+    loop, _ = _build_verify_escalate_loop(
+        chat_client=chat,
+        verifier_registry=_vregistry(_FailingVerifier()),  # the coached turn FAILS again
+        escalate_on_max=True,  # toggle still ON — only the durable flag prevents re-pause
+        hitl_manager=hitl,
+        checkpointer=checkpointer,
+        reducer=InMemoryReducer(),
+    )
+
+    state = _paused_state_verified(
+        decision_session=session_id, kind="verification", verification_attempts=2
+    )
+    ctx = TraceContext(tenant_id=_TENANT_ID, session_id=session_id)
+    events = [ev async for ev in loop.resume(state=state, trace_context=ctx)]
+
+    # The coached turn ran at attempt == max, failed → the A1 terminal (the bound).
+    failed = [e for e in events if isinstance(e, VerificationFailed)]
+    assert failed and failed[-1].correction_attempt == 2
+    completes = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completes[-1].stop_reason == VERIFICATION_FAILED_STOP_REASON
+    # No second ApprovalRequested + no NEW verification-escalate pause checkpoint.
+    assert not any(isinstance(e, ApprovalRequested) for e in events)
+    new_pauses = [s for s in checkpointer.saved if "pending_approval" in s.durable.metadata]
+    assert not new_pauses, "the durable verification_escalated flag must prevent a 2nd pause"

@@ -76,6 +76,9 @@ def _force_verification_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
         lambda: SimpleNamespace(
             chat_verification_mode="enabled",
             chat_verification_judge_template="output_quality",
+            # Sprint 57.99 A2: the MAIN real_llm loop now reads this toggle too;
+            # the stub must mirror real Settings (default OFF = A1 byte-identical).
+            chat_verification_escalate_on_max=False,
         ),
     )
 
