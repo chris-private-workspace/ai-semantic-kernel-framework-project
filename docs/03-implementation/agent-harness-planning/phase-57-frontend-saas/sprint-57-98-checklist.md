@@ -30,20 +30,24 @@
 ## Day 1 — Loop ctor verifier + the in-loop gate (US-1/US-2)
 
 ### 1.1 Loop ctor gains the verifier (US-1)
-- [ ] **`orchestrator_loop/loop.py` `__init__`** — add `verifier_registry: VerifierRegistry | None = None` (Day-0 confirm the canonical import for the registry type); store `self._verifier_registry`; MHist
+- [x] **`orchestrator_loop/loop.py` `__init__`** — add `verifier_registry: VerifierRegistry | None = None` (Day-0 confirm the canonical import for the registry type); store `self._verifier_registry`; MHist
   - DoD: `mypy src/ --strict` 0; existing construction sites (handler + tests) still build (optional param)
+  - ✅ Added `verifier_registry` + `max_correction_attempts: int = 2`; `VerifierRegistry` via TYPE_CHECKING (avoids the verification-package import cycle); existing sites build (optional, default None) → 132 loop/verification regression tests green
 
 ### 1.2 The `_cat10_verify_gate()` in `_run_turns` (US-2)
-- [ ] **NEW `_cat10_verify_gate()`** (mirrors `_cat9_output_*`) — runs `self._verifier_registry.get_all()` → `await verifier.verify(output=..., state=..., trace_context=...)`; returns a pass/fail-with-corrections result; MHist
+- [x] **NEW `_cat10_verify_gate()`** (mirrors `_cat9_output_*`) — runs `self._verifier_registry.get_all()` → `await verifier.verify(output=..., state=..., trace_context=...)`; returns a pass/fail-with-corrections result; MHist
   - DoD: unit-tested with a mock registry (PASS / FAIL-with-corrections)
-- [ ] **Integrate into `_run_turns`** — after the `_cat9_output_*` output-guardrail handling (`:2014-2023`), before `yield LLMResponded`, gated on `is_final_answer AND self._verifier_registry`:
-  - PASS → `yield VerificationPassed` → fall through to deliver (`yield LLMResponded` → `LoopCompleted(end_turn)`)
-  - FAIL & `attempts < max` → `yield VerificationFailed(correction_attempt=n)` + append correction `Message` (migrate `_build_correction_input` concat) + bump durable counter (1.3) + `continue` the while-loop (next turn re-answers)
-  - FAIL == max → terminal (1.4)
-  - DoD: a FAIL re-injects + continues as a NEW turn (turn_count++, SAME LOOP span — not a new run); `verifier_registry is None` → gate skipped (byte-identical)
-- [ ] **Migrate verification_log persistence** (57.11) — the wrapper's per-attempt writer called from the gate (best-effort); MHist
+  - ✅ Returns `_VerifyVerdict(outcome=pass|correct|failed_max, events, correction_block, verif_in/out/model)`; 4 NEW gate tests green
+- [x] **Integrate into `_run_turns`** — after the `_cat9_output_*` output-guardrail handling, before the stop_reason/FINAL terminator, gated on `is_final_answer AND self._verifier_registry`:
+  - PASS → `yield VerificationPassed` → fall through to deliver (`LoopCompleted(end_turn)` — judge tokens stamped)
+  - FAIL & `attempts < max` → `yield VerificationFailed(correction_attempt=n)` + append the failed answer + correction `Message` + bump `verification_attempts` + `turn_count++` + `continue`
+  - FAIL == max → `LoopCompleted(stop_reason="verification_failed")` (judge tokens stamped)
+  - ✅ DoD met: FAIL re-injects as a NEW turn (turn_count++, SAME LOOP span, correction text reaches the 2nd chat request); `verifier_registry None` → gate skipped (byte-identical, regression green). NOTE: gated AFTER `_cat9_output_check`, BEFORE the terminator (the locked guardrail→verification order). `verification_attempts` is a `_run_turns` LOCAL this day (Day-1); the DURABLE-across-pause threading is Day-2 (1.3).
+- [x] **Migrate verification_log persistence** (57.11) — the wrapper's per-attempt writer called from the gate (best-effort); MHist
   - DoD: persistence happens per attempt in-loop (covered by the converted persist test)
-- [ ] **mypy clean** on the backend files (full `src --strict` 0)
+  - ✅ Extracted to NEW `verification/persistence.py::persist_verification_event`; the gate lazy-imports it (cycle-safe); `correction_loop.py` left untouched Day-1 (transient dup < 1 day; removed with the wrapper Day-2)
+- [x] **mypy clean** on the backend files (full `src --strict` 0)
+  - ✅ `mypy src` 0/354 (baseline 353 + persistence.py); black/isort/flake8 (changed src + new test) clean
 
 ---
 

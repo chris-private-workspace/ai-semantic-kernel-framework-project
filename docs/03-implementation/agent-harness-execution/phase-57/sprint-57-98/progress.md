@@ -47,6 +47,33 @@ No DB/migration/ORM change (durable field rides the existing `state_snapshots` J
 
 ### Baseline (at branch creation)
 - Branch `feature/sprint-57-98-verification-in-loop` from `main` `84389e91`
-- pytest / mypy / run_all baseline numbers to capture at Day-1 start (record NET delta after edits)
+- pytest collected = **2295** (2291 passed + 4 skipped, 57.97-merged); `mypy src` = **0/353**; `run_all` 10/10
+
+---
+
+## Day 1 — Loop ctor verifier + in-loop gate (US-1 / US-2) (2026-06-10)
+
+Added the in-loop Cat 10 verification gate; **production path still uses the wrapper** (the registry is not yet passed to the loop ctor — that is Day-2), so the gate is DORMANT in production → main flow byte-identical, regression green.
+
+### Done
+- **US-1 — loop ctor** (`loop.py`): `AgentLoopImpl.__init__` gains `verifier_registry: "VerifierRegistry | None" = None` + `max_correction_attempts: int = 2` (stored). `VerifierRegistry` imported under `TYPE_CHECKING` (the `verification` package __init__ re-exports `run_with_verification` → imports `orchestrator_loop` → a module-level import would cycle); the gate duck-types `get_all()`/`len()`; persistence is lazy-imported.
+- **US-2 — the gate** (`loop.py`): NEW `_VerifyVerdict` dataclass + `_build_correction_block()` + `_cat10_verify_gate()` (runs the registry's verifiers, collects VerificationPassed/Failed events, persists each, accumulates judge tokens) + integration in `_run_turns` AFTER `_cat9_output_check` and BEFORE the stop_reason/FINAL terminator (locked guardrail→verification order), gated on `is_final_answer AND verifier_registry`. PASS → deliver (judge tokens stamped on the END_TURN terminators); FAIL<max → append the failed assistant answer + a `user` correction Message + `verification_attempts++` + `turn_count++` + `continue` (the in-loop critique); FAIL==max → `LoopCompleted(stop_reason="verification_failed")`. `VERIFICATION_FAILED_STOP_REASON` defined in loop.py.
+- **verification_log persistence**: extracted to NEW `verification/persistence.py::persist_verification_event` (Sprint 57.11 logic verbatim); the gate lazy-imports it. `correction_loop.py` untouched Day-1 (transient dup, removed with the wrapper Day-2).
+- **Tests**: NEW `test_loop_verification_gate.py` (4 tests): pass-delivers / fail-then-pass-reinjects-as-new-turn (asserts the correction text reaches the 2nd chat request + the failed answer is in context) / fail-at-max→verification_failed / no-registry→skipped (byte-identical).
+
+### Gate
+- NEW gate tests **4/4 pass**; regression `tests/unit/agent_harness/{orchestrator_loop,verification}` + `test_chat_verification_smoke` + `test_verification` = **132 passed** (gate dormant → zero behavior change).
+- `mypy src` **0/354** (353 + persistence.py); black/isort/flake8 (changed src + new test) clean. (Single-file `mypy <test>` reports import-untyped artifacts — a known single-file-mode limitation; `mypy src` is the authoritative source gate, and the test is flake8-clean.)
+
+### Day-1 notes / drift
+- **D-DAY1-1** — `verification_attempts` is a `_run_turns` LOCAL (param, default 0) this day; the DURABLE-across-pause persistence (DurableState/metadata + checkpoint + between-turns/output pause forwarding + resume read) is Day-2 (US-3), matching the checklist split. The gate's within-run max logic is fully working + tested today.
+- **D-DAY1-2** — `correction_attempt` on the `VerificationFailed` event is 0-indexed (the first failure = attempt 0), matching the retired wrapper's `_persist` semantics (the proposal's "attempt=1" wording was loose). Tests assert `correction_attempt == 0` on the first failure.
+- **D-DAY1-3** — judge-token accounting across a mid-correction pause is deferred (an Open Invariant for the design note): within a non-paused run the verif tokens accumulate + stamp the terminal LoopCompleted correctly; a rare pause-mid-correction may under-count (no LoopCompleted fires until resume). The `verification_attempts` counter IS made durable Day-2; the judge-token cross-pause accounting is documented, not fixed in A1.
+
+### Remaining (Day-2+)
+- US-3 durable `verification_attempts` (metadata + checkpoint + pause forwarding + resume read) → survives pause→resume mid-correction.
+- US-4 resume coverage assertion + `_replay_approved_output` not-re-verified test (Day-0 Q2 confirmed it re-emits directly → no skip flag needed).
+- US-5 wrapper retire: handler ctor injection + router wrapper delete + `correction_loop.py` removal + `__init__` re-export + convert `test_correction_loop*.py`.
+- US-6 drive-through (fail-then-pass in-loop + resume verified).
 
 ---
