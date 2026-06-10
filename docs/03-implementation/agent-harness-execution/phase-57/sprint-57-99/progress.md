@@ -123,3 +123,77 @@ byte-identical** (proven: 124 loop+verification+smoke tests green, zero regressi
 - CHANGE-066 + 25.md §4 + 17.md (Day-3).
 
 ---
+
+## Day 2 — Resume APPROVE / REJECT-with-note + the durable bound (US-3/US-4/US-5)
+
+### What shipped
+The `resume()` `kind` dispatch gained `elif kind == "verification":` (between the 57.93
+`output` branch and the 57.88 `tool` `else`) — the run()-side escalate pause (Day-1) now has its
+resume counterpart. Two human outcomes:
+
+- **APPROVE (US-3)** — the human OVERRIDES the verifier. resume DELIVERS the held failed answer
+  verbatim via the existing 57.93 `_replay_approved_output` (TERMINAL, no LLM re-call, NOT
+  re-verified). The escalate-pause snapshot set the same `answer_text`/provider/model/token fields
+  the output-pause replay reads, so the replay path is reused as-is — `return` before the shared
+  `_run_turns` drive.
+- **REJECT-with-note (US-4)** — re-inject `Message(role="user", "[Verification rejected by
+  reviewer: {reason}. Please revise the answer.]")` and fall through to the shared `_run_turns`
+  drive for EXACTLY ONE human-coached turn. The bound: `verification_attempts` is forced to
+  `self._max_correction_attempts` + `verification_escalated=True`, so if the coached answer fails
+  the gate AGAIN the swap-point guard `not verification_escalated` is False → the A1
+  `verification_failed` terminal fires (no second pause).
+
+### Durable flag (US-5)
+- `resume()` rehydrates `verification_escalated = bool(metadata.get("verification_escalated",
+  False))` at the top (mirrors the 57.98 `verification_attempts` read — rides metadata, no
+  migration) and threads it into the shared `_run_turns` call. Absent on every other pause kind +
+  on a fresh run() → False → byte-identical to A1.
+- **No new event** — A2 reuses `ApprovalRequested`/`ApprovalReceived`/`GuardrailTriggered`/
+  `LLMResponded`/`LoopCompleted`; `check_event_schema_sync` green WITH no new event class.
+
+### Files (3)
+- `src/agent_harness/orchestrator_loop/loop.py` — `resume()`: top-read of the durable flag + the
+  `elif kind == "verification":` branch + `verification_escalated=` threaded into `_run_turns` +
+  docstring kind-enumeration update + MHist 1-line.
+- `tests/.../test_loop_pause_resume.py` — `_paused_state_verified` gains a `kind="verification"`
+  branch (sets the durable flag); `_CapturingChatClient` (records `request.messages` to assert the
+  note injection); 3 new resume tests.
+- `docs/.../sprint-57-99-checklist.md` — Day-2 (2.1/2.2/2.3) + the §3.1 resume test items marked.
+
+### Tests (3 new resume cases)
+- `test_verify_escalate_resume_approve_delivers_held_answer` — APPROVE → held answer delivered,
+  NO `VerificationPassed`/`Failed` (not re-verified), END_TURN, no `ApprovalRequested`.
+- `test_verify_escalate_resume_reject_coaches_one_turn` — REJECT + PASSING coached turn → the note
+  reaches `chat.seen_messages`, the revised answer is delivered + verified, END_TURN, no 2nd pause.
+- `test_verify_escalate_reject_then_fail_binds_to_a1_terminal` — REJECT + FAILING coached turn (at
+  attempt==max) → `verification_failed` terminal, NO 2nd `ApprovalRequested`, no new pause
+  checkpoint (the durable flag is the bound, even with the toggle still ON).
+
+### Gate
+- mypy `src` **0/353** (gate authority; the test file's pre-existing line-154 `_dummy`
+  `# type: ignore[unreachable]` flags only in a partial 2-file mypy run — it is outside the
+  `mypy src` gate scope and is not my code).
+- `black`/`isort`/`flake8` (changed src + test, FULL scope) clean.
+- `test_loop_pause_resume.py` **31 passed** (28 prior + 3 new); loop + verification regression
+  **126 passed**; `test_chat_verification_smoke.py` + cost-ledger **3 passed**. pytest collect
+  **2303** (Day-0 baseline 2298 + 5 = 2 Day-1 escalate + 3 Day-2 resume; zero deletion).
+- `run_all.py` **10/10** — AP-1 green (the escalate is a conditional `return` in the while-driven
+  `_run_turns`; the reject continuation drives `_run_turns`), `check_event_schema_sync` green (no
+  new event), LLM SDK leak 0.
+
+### Day-2 drift
+- **D-DAY2-1** — the REJECT branch sets BOTH `verification_attempts = self._max_correction_attempts`
+  AND `verification_escalated = True` explicitly, even though the top metadata-read already supplies
+  both (the escalate pause persisted attempts==max + the flag). Kept the explicit set: it makes the
+  one-coached-turn bound airtight regardless of the persisted values (defensive + matches the
+  documented decision), at the cost of one redundant line. The metadata top-read remains THE durable
+  mechanism US-5 tests.
+
+### Remaining (Day-3)
+- US-6 drive-through (real UI + real backend + a strict judge: fail → escalate → APPROVE renders
+  the held answer; a fresh fail → REJECT-with-note → one coached turn). Risk Class E clean restart;
+  set `CHAT_VERIFICATION_ESCALATE_ON_MAX=true` + the strict judge for the drive-through backend.
+- Full backend pytest sweep (NET delta documented).
+- CHANGE-066 + `25-verification-in-loop-design.md` §4 (A2 Open Invariant → SHIPPED) + 17.md.
+
+---

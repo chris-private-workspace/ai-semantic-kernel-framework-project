@@ -45,6 +45,7 @@ Created: 2026-04-30 (Sprint 50.1 Day 2.2)
 Last Modified: 2026-06-10
 
 Modification History (newest-first):
+    - 2026-06-10: Sprint 57.99 A2 — resume() verify-kind: APPROVE replays / REJECT 1 coached turn
     - 2026-06-10: Sprint 57.99 A2 — verification-ESCALATE pause swaps the max-fail terminal (toggle)
     - 2026-06-10: Sprint 57.98 A1 US-3 — durable verification_attempts via checkpoint metadata
     - 2026-06-10: Sprint 57.98 A1 — in-loop Cat 10 verify gate (ctor registry + _cat10_verify_gate)
@@ -2966,8 +2967,17 @@ class AgentLoopImpl(AgentLoop):
                       as a tool message → drive the shared `_run_turns` to end_turn.
                     input-kind → no tool; the approved input proceeds to the first
                       LLM turn via the shared `_run_turns` drive.
-                - REJECTED / ESCALATED → GuardrailTriggered(block) +
-                  LoopCompleted(GUARDRAIL_BLOCKED); nothing is executed.
+                    output-kind (57.93) / verification-kind (57.99 A2) → DELIVER the
+                      held answer via _replay_approved_output (TERMINAL, no LLM
+                      re-call); a verification APPROVE = the human overriding the
+                      verifier.
+                - REJECTED / ESCALATED → for input/between_turns/output/tool kinds:
+                  GuardrailTriggered(block) + LoopCompleted(GUARDRAIL_BLOCKED);
+                  nothing is executed. EXCEPTION — verification-kind REJECT (57.99
+                  A2) re-injects the reviewer's note as a correction and drives
+                  EXACTLY ONE human-coached turn (verification_attempts forced to
+                  max + durable verification_escalated=True bind a 2nd failure to
+                  the A1 terminal — no second pause).
 
         Sprint 57.90 Slice 2 (closes AD-Resume-Continuation-Fidelity): after
         executing the pre-approved pending tool ONCE (outside the loop — already
@@ -2993,6 +3003,14 @@ class AgentLoopImpl(AgentLoop):
         # metadata verbatim, so no serializer / migration change). A fresh run()
         # never writes it → absent → 0.
         verification_attempts = int(state.durable.metadata.get("verification_attempts", 0))
+        # Sprint 57.99 A2 (US-5): rehydrate the durable escalate flag. A
+        # verification-kind escalate pause persisted metadata["verification_
+        # escalated"]=True (mirrors verification_attempts above — rides metadata,
+        # no migration). A REJECT continuation re-drives _run_turns with this True
+        # so a 2nd failed_max takes the A1 terminal instead of re-pausing (the
+        # bound: exactly one human-coached turn). Absent on every other pause kind
+        # and on a fresh run() → False → byte-identical to A1.
+        verification_escalated = bool(state.durable.metadata.get("verification_escalated", False))
 
         yield LoopStarted(session_id=session_id, trace_context=ctx)
 
@@ -3145,6 +3163,54 @@ class AgentLoopImpl(AgentLoop):
             ):
                 yield ev
             return
+        elif kind == "verification":
+            # Sprint 57.99 A2 (US-3/US-4): a verification-kind pause held a FINAL
+            # answer that the in-loop Cat 10 self-correction (A1) exhausted
+            # (failed_max). Two human outcomes:
+            #   APPROVED → the human OVERRIDES the verifier → DELIVER the held
+            #     failed answer verbatim. TERMINAL replay (no LLM re-call), reusing
+            #     the 57.93 output-pause _replay_approved_output (the escalate-pause
+            #     snapshot set the same answer_text/provider/model/token fields).
+            #   REJECTED → re-inject the reviewer's note as a correction message and
+            #     run EXACTLY ONE human-coached turn (falls through to the shared
+            #     _run_turns drive below). The bound: verification_attempts is forced
+            #     to max + the durable verification_escalated flag (rehydrated above)
+            #     is True, so if the coached turn's answer fails verification AGAIN
+            #     the swap-point guard `not verification_escalated` is False → the A1
+            #     verification_failed terminal fires (no second pause).
+            vsnap_raw = pending.get("response_snapshot", {})
+            vsnap: dict[str, Any] = vsnap_raw if isinstance(vsnap_raw, dict) else {}
+            if decision.decision == DecisionType.APPROVED:
+                await self._audit_log_safe(
+                    event_type="resume.verification.approved",
+                    content={"request_id": str(request_id)},
+                    ctx=ctx,
+                )
+                async for ev in self._replay_approved_output(
+                    answer_text=str(vsnap.get("answer_text", "")),
+                    snap=vsnap,
+                    turn_count=turn_count,
+                    ctx=ctx,
+                ):
+                    yield ev
+                return
+            # REJECTED / ESCALATED → coach one more turn, then bind to A1 terminal.
+            await self._audit_log_safe(
+                event_type="resume.verification.rejected",
+                content={"request_id": str(request_id)},
+                ctx=ctx,
+            )
+            messages.append(
+                Message(
+                    role="user",
+                    content=(
+                        f"[Verification rejected by reviewer: "
+                        f"{decision.reason or 'no reason'}. Please revise the answer.]"
+                    ),
+                )
+            )
+            verification_attempts = self._max_correction_attempts
+            verification_escalated = True
         else:
             tc_data = pending.get("tool_call", {})
             pending_tc = ToolCall(
@@ -3254,6 +3320,7 @@ class AgentLoopImpl(AgentLoop):
                     root_ctx=root_ctx,
                     skip_between_turns_once=skip_between_turns_once,
                     verification_attempts=verification_attempts,
+                    verification_escalated=verification_escalated,
                 ):
                     yield ev
             finally:

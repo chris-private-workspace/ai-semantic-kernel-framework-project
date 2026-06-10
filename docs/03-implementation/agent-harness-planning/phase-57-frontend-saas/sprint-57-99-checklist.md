@@ -53,33 +53,33 @@
 ## Day 2 — Resume APPROVE / REJECT-with-note + the durable bound (US-3/US-4/US-5)
 
 ### 2.1 Resume APPROVE → deliver the held answer (US-3)
-- [ ] **`resume()` `elif kind == "verification":` APPROVED** — re-emit the held failed answer via the `_replay_approved_output` shape (terminal, no LLM re-call, NOT re-verified); MHist
-  - DoD: a test asserts the delivered content == the held failed answer + the verifier is NOT called (replay code-path isolation, the A1 rule)
+- [x] **`resume()` `elif kind == "verification":` APPROVED** — re-emit the held failed answer via the `_replay_approved_output` shape (terminal, no LLM re-call, NOT re-verified); MHist
+  - DoD: a test asserts the delivered content == the held failed answer + the verifier is NOT called (replay code-path isolation, the A1 rule) ✅ `test_verify_escalate_resume_approve_delivers_held_answer`
 
 ### 2.2 Resume REJECT-with-note → one bounded human-coached turn (US-4)
-- [ ] **`resume()` `kind="verification"` REJECTED** — append `Message(role="user", content="[Verification rejected by reviewer: {decision.reason or 'no reason given'}. Please revise the answer.]")` + drive `_run_turns` with `verification_attempts=self._max_correction_attempts` + `verification_escalated=True`; MHist
-  - DoD: the note re-injects (reaches the next chat request) + one `_run_turns` turn runs; PASS → deliver
-- [ ] **The bound (reject-then-fail terminates)** — the FAIL==max branch reads `verification_escalated` (from the metadata / the `_run_turns` param) → already-escalated → the A1 terminal (NOT a 2nd escalate)
-  - DoD: a test asserts reject-then-fail → `LoopCompleted(verification_failed)` with NO 2nd `ApprovalRequested`
+- [x] **`resume()` `kind="verification"` REJECTED** — append `Message(role="user", content="[Verification rejected by reviewer: {decision.reason or 'no reason given'}. Please revise the answer.]")` + drive `_run_turns` with `verification_attempts=self._max_correction_attempts` + `verification_escalated=True`; MHist
+  - DoD: the note re-injects (reaches the next chat request) + one `_run_turns` turn runs; PASS → deliver ✅ `test_verify_escalate_resume_reject_coaches_one_turn`
+- [x] **The bound (reject-then-fail terminates)** — the FAIL==max branch reads `verification_escalated` (from the metadata / the `_run_turns` param) → already-escalated → the A1 terminal (NOT a 2nd escalate)
+  - DoD: a test asserts reject-then-fail → `LoopCompleted(verification_failed)` with NO 2nd `ApprovalRequested` ✅ `test_verify_escalate_reject_then_fail_binds_to_a1_terminal`
 
 ### 2.3 Durable flag survives resume + no new event (US-5)
-- [ ] **Durable `verification_escalated` resume read** — `resume()` reads `metadata.get("verification_escalated", False)` → passes to `_run_turns` (mirror the `verification_attempts` resume read); MHist
-  - DoD: a pause→resume mid-escalation preserves the flag; a fresh run starts False
-- [ ] **No new event** — confirm A2 reuses `ApprovalRequested`/`ApprovalReceived`/`GuardrailTriggered`/`VerificationFailed` (no new event type; `check_event_schema_sync` unaffected)
-  - DoD: `grep` no new event class added; `check_event_schema_sync` green
+- [x] **Durable `verification_escalated` resume read** — `resume()` reads `metadata.get("verification_escalated", False)` → passes to `_run_turns` (mirror the `verification_attempts` resume read); MHist
+  - DoD: a pause→resume mid-escalation preserves the flag; a fresh run starts False ✅ (reject-then-fail test honours the rehydrated flag; toggle-OFF test = fresh-False)
+- [x] **No new event** — confirm A2 reuses `ApprovalRequested`/`ApprovalReceived`/`GuardrailTriggered`/`VerificationFailed` (no new event type; `check_event_schema_sync` unaffected)
+  - DoD: `grep` no new event class added; `check_event_schema_sync` green ✅ run_all 10/10 (no new event class)
 
 ---
 
 ## Day 3 — Tests + full regression + drive-through (US-6) + CHANGE-066
 
 ### 3.1 Tests (US-1..US-5)
-- [ ] **NEW `test_loop_verification_escalate.py`** — toggle OFF → A1 `verification_failed` terminal byte-identical (no `ApprovalRequested`); toggle ON + FAIL==max → escalate pause (`ApprovalRequested(HIGH)` + `awaiting_approval` + held answer + verifier reason); `verification_escalated` persisted
-  - DoD: the toggle-OFF byte-identical + the escalate-pause cases pass
-- [ ] **NEW resume APPROVE test** — `kind="verification"` APPROVE → the held failed answer is delivered (content matches) + the verifier is NOT re-called
-- [ ] **NEW resume REJECT-with-note test** — REJECT → the note re-injects as a `user` Message (reaches the next chat request) + one `_run_turns` turn runs; PASS → deliver
-- [ ] **NEW reject-then-fail-terminates test** — REJECT → the human-coached turn FAILS → `LoopCompleted(verification_failed)` (NO 2nd `ApprovalRequested` — the durable bound holds)
-- [ ] **NEW durable-flag test** — a pause→resume mid-escalation preserves `verification_escalated`; a fresh run starts False
-- [ ] **`test_chat_verification_smoke.py`** — green (toggle-OFF default preserves A1; no escalate)
+- [x] **toggle tests** (D-DAY1-1: in `test_loop_pause_resume.py`, NOT a NEW `test_loop_verification_escalate.py` — reuses the full HITL+verifier fixtures) — toggle OFF → A1 `verification_failed` terminal byte-identical (no `ApprovalRequested`); toggle ON + FAIL==max → escalate pause (`ApprovalRequested(HIGH)` + `awaiting_approval` + held answer + verifier reason); `verification_escalated` persisted
+  - DoD: the toggle-OFF byte-identical + the escalate-pause cases pass ✅ `test_verify_escalate_off_preserves_a1_terminal` + `test_verify_escalate_on_max_pauses_for_human` (Day-1)
+- [x] **resume APPROVE test** — `kind="verification"` APPROVE → the held failed answer is delivered (content matches) + the verifier is NOT re-called ✅ `test_verify_escalate_resume_approve_delivers_held_answer`
+- [x] **resume REJECT-with-note test** — REJECT → the note re-injects as a `user` Message (reaches the next chat request) + one `_run_turns` turn runs; PASS → deliver ✅ `test_verify_escalate_resume_reject_coaches_one_turn` (asserts the note in `chat.seen_messages`)
+- [x] **reject-then-fail-terminates test** — REJECT → the human-coached turn FAILS → `LoopCompleted(verification_failed)` (NO 2nd `ApprovalRequested` — the durable bound holds) ✅ `test_verify_escalate_reject_then_fail_binds_to_a1_terminal`
+- [x] **durable-flag test** — a pause→resume mid-escalation preserves `verification_escalated`; a fresh run starts False ✅ (reject-then-fail honours the rehydrated flag; toggle-OFF + `test_fresh_run_starts_counter_at_zero` = fresh-False)
+- [x] **`test_chat_verification_smoke.py`** — green (toggle-OFF default preserves A1; no escalate) ✅ 3 passed
 
 ### 3.2 Full gate sweep
 - [ ] **Full backend pytest green (NET delta documented)** — NO test deleted; record baseline (2298 collect) → delta
