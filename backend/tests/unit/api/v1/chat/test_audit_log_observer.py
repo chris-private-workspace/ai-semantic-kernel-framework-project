@@ -101,9 +101,10 @@ async def _drive_stream(
 ) -> int:
     """Drive `_stream_loop_events` to completion;return SSE frame count.
 
-    Patches `run_with_verification` to yield exactly one fake event so the
-    LoopCompleted handler runs exactly once;patches `serialize_loop_event` /
-    `format_sse_message` to return trivial bytes so SSE iteration completes。
+    Sprint 57.98 A1: the router drives `loop.run(...)` directly (the
+    run_with_verification wrapper is retired), so the fake loop's `run()` yields
+    exactly one fake event;patches `serialize_loop_event` / `format_sse_message`
+    to return trivial bytes so SSE iteration completes。
     """
     chat_router = chat_router_module
 
@@ -111,14 +112,17 @@ async def _drive_stream(
     session_id = session_id or uuid4()
     trace_ctx = TraceContext(tenant_id=tenant_id, session_id=session_id)
 
-    async def _fake_rwv(**_kwargs: Any) -> Any:  # noqa: ANN401
-        yield fake_event
+    class _FakeLoop:
+        def run(self, **_kwargs: Any) -> Any:  # noqa: ANN401
+            async def _gen() -> Any:
+                yield fake_event
+
+            return _gen()
 
     fake_registry = MagicMock()
     fake_registry.mark_completed = AsyncMock()
 
     with (
-        patch.object(chat_router, "run_with_verification", _fake_rwv),
         patch.object(
             chat_router,
             "serialize_loop_event",
@@ -127,7 +131,7 @@ async def _drive_stream(
         patch.object(chat_router, "format_sse_message", return_value=b"data: x\n\n"),
     ):
         gen = chat_router._stream_loop_events(
-            loop=MagicMock(),  # AgentLoopImpl unused — run_with_verification patched out
+            loop=_FakeLoop(),  # router now drives loop.run(...) directly (wrapper retired)
             tenant_id=tenant_id,
             session_id=session_id,
             registry=fake_registry,

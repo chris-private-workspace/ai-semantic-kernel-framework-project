@@ -27,9 +27,10 @@ Key Components:
     - build_handler(mode: ChatMode, message: str) -> AgentLoopImpl  (dispatcher)
 
 Created: 2026-04-30 (Sprint 50.2 Day 1.4)
-Last Modified: 2026-06-08
+Last Modified: 2026-06-10
 
 Modification History (newest-first):
+    - 2026-06-10: Sprint 57.98 A1 US-5 — inject verifier_registry into loop ctor; return loop
     - 2026-06-09: Sprint 57.97 — ModelProfile{action,cheap}; verification on profile.cheap
     - 2026-06-09: Sprint 57.95 — wire subagent_event_emitter on chat path (SSE relay)
     - 2026-06-09: Sprint 57.94 — child-loop factory for real FORK/AS_TOOL child loops
@@ -189,7 +190,7 @@ def build_echo_demo_handler(
     hitl_manager: "HITLManager | None" = None,
     hitl_timeout_s: int = 14400,
     business_factory_provider: Callable[[], "BusinessServiceFactory"] | None = None,
-) -> tuple[AgentLoopImpl, "VerifierRegistry | None"]:
+) -> AgentLoopImpl:
     """Wire AgentLoopImpl with a MockChatClient pre-scripted to call echo_tool.
 
     The mock responds with TOOL_USE on turn 1 (echo_tool with the user's
@@ -202,8 +203,8 @@ def build_echo_demo_handler(
     business domain handlers (settings.business_domain_mode='service' path).
     None preserves PoC mock-mode behavior.
 
-    Sprint 57.63 Day 2 (Cat 10, approach A): returns `(loop, verifier_registry)`.
-    echo_demo always returns `registry=None` (no verification on the demo path).
+    Sprint 57.98 A1 (US-5): returns the wired `AgentLoopImpl`. echo_demo never
+    verifies (no registry injected → the loop's Cat 10 gate stays dormant).
     """
     registry, executor = make_default_executor(factory_provider=business_factory_provider)
     parser = OutputParserImpl()
@@ -239,7 +240,7 @@ def build_echo_demo_handler(
         hitl_manager=hitl_manager,
         hitl_timeout_s=hitl_timeout_s,
     )
-    return loop, None
+    return loop
 
 
 def build_real_llm_handler(
@@ -254,16 +255,18 @@ def build_real_llm_handler(
     system_prompt: str = DEMO_SYSTEM_PROMPT,
     tracer: "Tracer | None" = None,
     subagent_event_emitter: "SubagentEventEmitter | None" = None,
-) -> tuple[AgentLoopImpl, "VerifierRegistry | None"]:
+) -> AgentLoopImpl:
     """Wire AgentLoopImpl with AzureOpenAIAdapter. Requires env vars.
 
     Sprint 55.2 US-3: optional `business_factory_provider` enables service-mode
     business domain handlers. See build_echo_demo_handler for full description.
 
-    Sprint 57.63 Day 2 (Cat 10, approach A): returns `(loop, verifier_registry)`.
-    When `settings.chat_verification_mode == "enabled"`, builds a registry with a
-    real `LLMJudgeVerifier` sharing THIS handler's adapter (the same ChatClient
-    the loop runs on); otherwise returns `registry=None` (wrapper passthrough).
+    Sprint 57.98 A1 (US-5): returns the wired `AgentLoopImpl`. When
+    `settings.chat_verification_mode == "enabled"`, builds a registry with a real
+    `LLMJudgeVerifier` (sharing the cheap-tier ChatClient, 57.97) and INJECTS it
+    into the loop ctor so the loop runs the in-loop Cat 10 verification gate;
+    otherwise the gate is dormant (registry None). The retired
+    run_with_verification wrapper used to run this AROUND loop.run().
 
     Sprint 57.64 Day 2 (Cat 3 + Cat 11): registers the REAL memory tools
     (memory_search / memory_write) and the FORK/TEAMMATE/AS_TOOL subagent tools
@@ -440,11 +443,29 @@ def build_real_llm_handler(
             priority=5,
         )
 
+    # Sprint 57.98 A1 (US-5): build the Cat 10 verifier registry BEFORE the loop
+    # and inject it into the ctor so the loop OWNS the in-loop verification gate
+    # (the retired run_with_verification wrapper used to run it AROUND loop.run()).
+    # Built only when enabled; the judge shares the CHEAP tier (profile.cheap,
+    # 57.97) — it fires every request, the highest-value cheap-tier target, while
+    # the user-facing action turn stays on profile.action. None → the gate is
+    # dormant (byte-identical to a non-verified run). resume() now covers the
+    # resumed continuation for free (the loop's shared _run_turns carries the gate).
+    settings = get_settings()
+    verifier_registry: VerifierRegistry | None = None
+    if settings.chat_verification_mode == "enabled":
+        verifier_registry = make_chat_verifier_registry(
+            profile.cheap, settings.chat_verification_judge_template
+        )
+
     loop = AgentLoopImpl(
         chat_client=chat_client,
         output_parser=parser,
         tool_executor=executor,
         tool_registry=registry,
+        # Sprint 57.98 A1 (US-5): the loop owns the Cat 10 gate (was the router's
+        # run_with_verification wrapper). None → dormant gate.
+        verifier_registry=verifier_registry,
         # Sprint 57.71 (A-4 Tier 0): inject the router's real OTelTracer so the
         # loop's root span + per-turn span tree run on a real tracer instead of
         # the NoOpTracer fallback. None preserves the pre-57.71 baseline (NoOp).
@@ -481,18 +502,7 @@ def build_real_llm_handler(
         error_terminator=error_terminator,
     )
 
-    # Sprint 57.63 Day 2: Cat 10 — build a real verifier registry only when
-    # enabled; it shares THIS adapter (LLM-neutral; same ChatClient as the loop).
-    settings = get_settings()
-    verifier_registry: VerifierRegistry | None = None
-    if settings.chat_verification_mode == "enabled":
-        # Sprint 57.97: the verification (llm_judge) call runs on the CHEAP tier
-        # (profile.cheap) — it fires on every request, so it is the highest-value
-        # cheap-tier target; the user-facing action turn stays on profile.action.
-        verifier_registry = make_chat_verifier_registry(
-            profile.cheap, settings.chat_verification_judge_template
-        )
-    return loop, verifier_registry
+    return loop
 
 
 def build_handler(
@@ -509,11 +519,12 @@ def build_handler(
     system_prompt: str = DEMO_SYSTEM_PROMPT,
     tracer: "Tracer | None" = None,
     subagent_event_emitter: "SubagentEventEmitter | None" = None,
-) -> tuple[AgentLoopImpl, "VerifierRegistry | None"]:
+) -> AgentLoopImpl:
     """Dispatch to the per-mode builder. Single entry-point for the router.
 
-    Sprint 57.63 Day 2 (Cat 10, approach A): returns `(loop, verifier_registry)`
-    — the per-mode builder's tuple is passed through unchanged.
+    Sprint 57.98 A1 (US-5): returns the wired `AgentLoopImpl` — the per-mode
+    builder injects the Cat 10 verifier registry into the loop ctor (the gate is
+    in-loop now; the retired run_with_verification wrapper is gone).
 
     Sprint 53.6 US-4: when `service_factory` is provided AND env flag
     HITL_ENABLED is not "false", resolves the production HITLManager from the

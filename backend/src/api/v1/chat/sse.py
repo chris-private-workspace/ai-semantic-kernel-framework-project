@@ -277,7 +277,7 @@ def _serialize_inner(event: LoopEvent) -> dict[str, Any] | None:
         }
 
     # Sprint 54.1 US-3: Cat 10 verification events.
-    # Emitted by run_with_verification() wrapper after agent_loop.run() completes.
+    # Emitted by the in-loop Cat 10 gate during agent_loop.run() (Sprint 57.98 A1).
     # SSE clients render these next to the LLM final output to surface
     # verification verdict + correction guidance.
     if isinstance(event, VerificationPassed):

@@ -5,8 +5,8 @@ Category: Infrastructure / ORM (Cat 10 Verification Loops persistence)
 Scope: Sprint 57.11 / Day 1 / US-1
 
 Description:
-    Append-only ledger of every verifier execution emitted by
-    `correction_loop.run_with_verification()` (Cat 10):
+    Append-only ledger of every verifier execution emitted by the in-loop
+    Cat 10 gate (`loop.py _cat10_verify_gate`, Sprint 57.98):
         - One row per `VerificationPassed` / `VerificationFailed` LoopEvent
         - Captures verifier identity (name + type), outcome (passed + score),
           failure metadata (reason + suggested_correction), and correction
@@ -19,8 +19,8 @@ Description:
 
     BIGSERIAL primary key (matching audit_log pattern at audit.py:77-80) —
     single global sequence acceptable because the table is append-only,
-    insert-only from `correction_loop._persist_verification_event()` write
-    hook, and queried in tenant-scoped time order. RLS enforces tenant
+    insert-only from `verification/persistence.py persist_verification_event()`
+    write hook, and queried in tenant-scoped time order. RLS enforces tenant
     isolation at storage layer; partitioning may be added later if volume
     requires.
 
@@ -38,7 +38,7 @@ Related:
     - migrations/versions/0017_verification_log.py (Alembic 0017)
     - infrastructure/db/repositories/verification_log.py (DAO)
     - api/v1/verification.py (REST endpoints)
-    - agent_harness/verification/correction_loop.py (write hook source)
+    - agent_harness/verification/persistence.py (persist_verification_event write hook)
     - agent_harness/_contracts/events.py (VerificationPassed / VerificationFailed)
     - .claude/rules/multi-tenant-data.md 鐵律 1 (tenant_id NN + RLS)
     - 01-eleven-categories-spec.md §Cat 10 Verification Loops

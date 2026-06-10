@@ -77,6 +77,20 @@ _FAKE_AZURE_ENV = {
 def _set_fake_azure(monkeypatch: pytest.MonkeyPatch) -> None:
     for k, v in _FAKE_AZURE_ENV.items():
         monkeypatch.setenv(k, v)
+    # Sprint 57.98 A1: the Cat 10 verifier registry is now injected INTO the loop
+    # ctor (pre-57.98 these tests received it in a tuple and discarded it). With
+    # verification enabled (the default), the in-loop gate would fire the
+    # LLMJudgeVerifier — whose OWN ChatClient is the fake-Azure adapter, NOT the
+    # swapped mock — on every FINAL answer, making a real (fake-endpoint) network
+    # call + perturbing the mock-response sequence. These tests exercise category
+    # wiring (tools / memory / prompt builder), NOT verification, so disable it to
+    # drive the loop the way they did pre-57.98 (registry discarded → no gate).
+    monkeypatch.setenv("CHAT_VERIFICATION_MODE", "disabled")
+    # Clear AFTER setenv so build_real_llm_handler's get_settings() reads the new
+    # value (a conftest autouse fixture may re-cache the default after the pre-clear).
+    from core.config import get_settings
+
+    get_settings.cache_clear()
 
 
 @pytest.fixture(autouse=True)
@@ -110,7 +124,7 @@ def _final_response(text: str = "done") -> ChatResponse:
 def test_cat5_real_handler_injects_prompt_builder(monkeypatch: pytest.MonkeyPatch) -> None:
     """AP-4 Potemkin guard: the handler-built loop carries a PromptBuilder."""
     _set_fake_azure(monkeypatch)
-    loop, _registry = build_real_llm_handler()
+    loop = build_real_llm_handler()
     # Cat 5 keystone: prompt_builder present → loop.py:881 true-branch is live.
     assert loop._prompt_builder is not None  # type: ignore[attr-defined]
 
@@ -124,7 +138,7 @@ async def test_cat5_chat_path_emits_prompt_built(monkeypatch: pytest.MonkeyPatch
     drives the PromptBuilt emission.
     """
     _set_fake_azure(monkeypatch)
-    loop, _registry = build_real_llm_handler()
+    loop = build_real_llm_handler()
     loop._chat_client = MockChatClient(responses=[_final_response()])  # type: ignore[attr-defined]
 
     events = [ev async for ev in loop.run(session_id=uuid4(), user_input="hello")]
@@ -207,7 +221,7 @@ async def test_cat3_chat_path_memory_tools_execute(monkeypatch: pytest.MonkeyPat
     tenant_id = uuid4()
     user_id = uuid4()
     session_id = uuid4()
-    loop, _registry = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id)
+    loop = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id)
 
     # Scripted: write a session memory, then search it, then END_TURN.
     loop._chat_client = MockChatClient(  # type: ignore[attr-defined]
@@ -345,7 +359,7 @@ async def test_cat11_chat_path_fork_spawn_and_merge(monkeypatch: pytest.MonkeyPa
     _set_fake_azure(monkeypatch)
     session_id = uuid4()
     tenant_id = uuid4()
-    loop, _registry = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id)
+    loop = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id)
 
     # Parent: turn 1 = task_spawn(FORK); the child loop consumes one response;
     # parent turn 2 = END_TURN. The shared MockChatClient serves both consumers
@@ -395,7 +409,7 @@ async def test_cat11_fork_failure_does_not_crash_parent(monkeypatch: pytest.Monk
     _set_fake_azure(monkeypatch)
     session_id = uuid4()
     tenant_id = uuid4()
-    loop, _registry = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id)
+    loop = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id)
 
     mock = MockChatClient(
         responses=[
@@ -457,7 +471,7 @@ async def test_combined_all_three_active_one_run(monkeypatch: pytest.MonkeyPatch
     tenant_id = uuid4()
     user_id = uuid4()
     session_id = uuid4()
-    loop, _registry = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id)
+    loop = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id)
 
     mock = MockChatClient(
         responses=[

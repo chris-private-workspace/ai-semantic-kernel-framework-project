@@ -58,6 +58,20 @@ _FAKE_AZURE_ENV = {
 def _set_fake_azure(monkeypatch: pytest.MonkeyPatch) -> None:
     for k, v in _FAKE_AZURE_ENV.items():
         monkeypatch.setenv(k, v)
+    # Sprint 57.98 A1: the Cat 10 verifier registry is now injected INTO the loop
+    # ctor (pre-57.98 these tests received it in a tuple and discarded it). With
+    # verification enabled (the default), the in-loop gate would fire the
+    # LLMJudgeVerifier — whose OWN ChatClient is the fake-Azure adapter, NOT the
+    # swapped mock — on every FINAL answer, making a real (fake-endpoint) network
+    # call + perturbing the mock-response sequence. These tests exercise
+    # memory/prompt wiring, NOT verification, so disable it to drive the loop the
+    # way they did pre-57.98 (registry discarded → no in-loop verification).
+    monkeypatch.setenv("CHAT_VERIFICATION_MODE", "disabled")
+    # Clear AFTER setenv so build_real_llm_handler's get_settings() reads the new
+    # value (a conftest autouse fixture may re-cache the default after the pre-clear).
+    from core.config import get_settings
+
+    get_settings.cache_clear()
 
 
 @pytest.fixture(autouse=True)
@@ -115,9 +129,7 @@ async def test_tier2_memory_renders_into_assembled_prompt(
     tenant_id = uuid4()
     user_id = uuid4()
     session_id = uuid4()
-    loop, _registry = build_real_llm_handler(
-        session_id=session_id, tenant_id=tenant_id, user_id=user_id
-    )
+    loop = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id, user_id=user_id)
 
     token = "alpha-secret-token"
     stored = f"the user prefers {token} per their last note"
@@ -172,7 +184,7 @@ async def test_tier2_verify_before_use_rule_present(monkeypatch: pytest.MonkeyPa
     _set_fake_azure(monkeypatch)
     tenant_id = uuid4()
     session_id = uuid4()
-    loop, _registry = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id)
+    loop = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id)
 
     flagged = MemoryHint(
         hint_id=uuid4(),
@@ -228,7 +240,7 @@ async def test_tier2_cross_tenant_no_memory_leak(monkeypatch: pytest.MonkeyPatch
 
     # Tenant A: write a session memory, then echo the token (so it re-renders).
     tenant_a = uuid4()
-    loop_a, _ra = build_real_llm_handler(session_id=session_id, tenant_id=tenant_a)
+    loop_a = build_real_llm_handler(session_id=session_id, tenant_id=tenant_a)
     mock_a = MockChatClient(
         responses=[
             _tool_call_response(
@@ -246,7 +258,7 @@ async def test_tier2_cross_tenant_no_memory_leak(monkeypatch: pytest.MonkeyPatch
 
     # Tenant B: SAME session_id, queries the same token — must see nothing.
     tenant_b = uuid4()
-    loop_b, _rb = build_real_llm_handler(session_id=session_id, tenant_id=tenant_b)
+    loop_b = build_real_llm_handler(session_id=session_id, tenant_id=tenant_b)
     mock_b = MockChatClient(responses=[_final_response("b done")])
     loop_b._chat_client = mock_b  # type: ignore[attr-defined]
     ctx_b = TraceContext(tenant_id=tenant_b, session_id=session_id)
@@ -328,7 +340,7 @@ async def test_tier2_cache_hit_metric_emitted(monkeypatch: pytest.MonkeyPatch) -
     _set_fake_azure(monkeypatch)
     tenant_id = uuid4()
     session_id = uuid4()
-    loop, _registry = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id)
+    loop = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id)
 
     mock = MockChatClient(
         responses=[_final_response_cached(prompt_tokens=100, cached_input_tokens=60)]
@@ -360,7 +372,7 @@ async def test_tier2_cache_hit_metric_accumulates_across_turns(
     _set_fake_azure(monkeypatch)
     tenant_id = uuid4()
     session_id = uuid4()
-    loop, _registry = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id)
+    loop = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id)
 
     # Turn 1: a tool call (cold cache, 0 cached); Turn 2: final (warm cache).
     # memory_write is the proven-good tool path (see render test); its cold-cache
@@ -414,7 +426,7 @@ async def test_tier2_no_cached_tokens_rate_is_zero_no_crash(
     _set_fake_azure(monkeypatch)
     tenant_id = uuid4()
     session_id = uuid4()
-    loop, _registry = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id)
+    loop = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id)
 
     mock = MockChatClient(responses=[_final_response("done")])
     loop._chat_client = mock  # type: ignore[attr-defined]
@@ -453,9 +465,7 @@ async def test_tier2_memory_render_and_cache_metric_one_run(
     tenant_id = uuid4()
     user_id = uuid4()
     session_id = uuid4()
-    loop, _registry = build_real_llm_handler(
-        session_id=session_id, tenant_id=tenant_id, user_id=user_id
-    )
+    loop = build_real_llm_handler(session_id=session_id, tenant_id=tenant_id, user_id=user_id)
 
     token = "combined-tier2-token"
     stored = f"the user prefers {token} per their last note"

@@ -19,9 +19,9 @@ Description:
     that returns suggested_correction → SANITIZE with mutated output.
 
     **AD-Cat9-3 (REROLL replays LLM call)** is closed conceptually by the
-    correction_loop.run_with_verification() wrapper shipped in US-3:
-    operators can post-process Cat 9 SANITIZE results by feeding the
-    mutated output back through the loop via correction_loop instead of
+    in-loop Cat 10 self-correction gate (loop.py _cat10_verify_gate, Sprint
+    57.98): operators can post-process Cat 9 SANITIZE results by feeding the
+    mutated output back through the loop's verify→correct cycle instead of
     accepting the mutation directly.
 
     **Design parity with cat9_fallback.py (Drift D8 wrapper pattern)**:

@@ -67,7 +67,7 @@ class TestChatHITLProductionWiring:
 
             _os.environ.pop("HITL_ENABLED", None)
 
-            loop, _ = build_handler("echo_demo", "test message", service_factory=_factory())
+            loop = build_handler("echo_demo", "test message", service_factory=_factory())
 
         assert loop._hitl_manager is not None  # type: ignore[attr-defined]
         assert isinstance(loop._hitl_manager, HITLManager)  # type: ignore[attr-defined]
@@ -75,12 +75,12 @@ class TestChatHITLProductionWiring:
     def test_build_handler_with_factory_but_hitl_disabled_skips_wiring(self) -> None:
         """Feature toggle off: HITL_ENABLED=false → no hitl_manager wired."""
         with patch.dict("os.environ", {"HITL_ENABLED": "false"}, clear=False):
-            loop, _ = build_handler("echo_demo", "test message", service_factory=_factory())
+            loop = build_handler("echo_demo", "test message", service_factory=_factory())
         assert loop._hitl_manager is None  # type: ignore[attr-defined]
 
     def test_build_handler_without_factory_skips_wiring(self) -> None:
         """Legacy path: no factory passed → hitl_manager stays None (53.3 baseline)."""
-        loop, _ = build_handler("echo_demo", "test message")
+        loop = build_handler("echo_demo", "test message")
         assert loop._hitl_manager is None  # type: ignore[attr-defined]
 
     def test_build_handler_passes_hitl_timeout(self) -> None:
@@ -89,7 +89,7 @@ class TestChatHITLProductionWiring:
             import os as _os
 
             _os.environ.pop("HITL_ENABLED", None)
-            loop, _ = build_handler(
+            loop = build_handler(
                 "echo_demo",
                 "test",
                 service_factory=_factory(),
@@ -104,8 +104,8 @@ class TestChatHITLProductionWiring:
 
             _os.environ.pop("HITL_ENABLED", None)
             f = _factory()
-            loop1, _ = build_handler("echo_demo", "msg1", service_factory=f)
-            loop2, _ = build_handler("echo_demo", "msg2", service_factory=f)
+            loop1 = build_handler("echo_demo", "msg1", service_factory=f)
+            loop2 = build_handler("echo_demo", "msg2", service_factory=f)
         # Same HITLManager instance — factory caches as singleton.
         assert loop1._hitl_manager is loop2._hitl_manager  # type: ignore[attr-defined]
 

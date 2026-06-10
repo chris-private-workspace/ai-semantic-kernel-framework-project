@@ -20,15 +20,16 @@ from api.v1.chat.handler import (
 
 
 def test_build_echo_demo_returns_agent_loop() -> None:
-    # Sprint 57.63 (Cat 10, approach A): builders return (loop, verifier_registry).
-    loop, registry = build_echo_demo_handler(message="hello")
+    # Sprint 57.98 A1: builders return the wired AgentLoopImpl alone (the verifier
+    # registry is injected into the loop ctor). echo_demo never verifies → None.
+    loop = build_echo_demo_handler(message="hello")
     assert isinstance(loop, AgentLoopImpl)
-    assert registry is None  # echo_demo never verifies
+    assert loop._verifier_registry is None  # type: ignore[attr-defined]
 
 
 def test_build_echo_demo_scripts_message_into_tool_call() -> None:
     """Scripted MockChatClient response should carry user's message as echo_tool arg."""
-    loop, _ = build_echo_demo_handler(message="zebra")
+    loop = build_echo_demo_handler(message="zebra")
     # peek at scripted responses via MockChatClient internals
     client = loop._chat_client  # type: ignore[attr-defined]
     first_response = client._responses[0]  # type: ignore[attr-defined]
@@ -46,9 +47,10 @@ def test_build_real_llm_missing_env_raises_runtime_error(monkeypatch: pytest.Mon
 
 
 def test_build_handler_dispatches_echo_demo() -> None:
-    loop, registry = build_handler("echo_demo", "x")
+    # Sprint 57.98 A1: build_handler returns the wired AgentLoopImpl alone
+    # (the verifier registry is injected into the loop ctor, not returned).
+    loop = build_handler("echo_demo", "x")
     assert isinstance(loop, AgentLoopImpl)
-    assert registry is None
 
 
 def test_build_handler_invalid_mode_raises() -> None:
@@ -87,7 +89,8 @@ def test_build_real_llm_routes_cheap_to_verifier_action_to_loop(
     monkeypatch.delenv("AZURE_OPENAI_CHEAP_MODEL_NAME", raising=False)
     _force_verification_enabled(monkeypatch)
 
-    loop, verifier_registry = build_real_llm_handler()
+    loop = build_real_llm_handler()
+    verifier_registry = loop._verifier_registry  # type: ignore[attr-defined]
 
     # The user-facing action turn runs on the STRONG deployment (unchanged).
     assert loop._chat_client.config.deployment_name == "strong-deploy"  # type: ignore[attr-defined]
@@ -105,7 +108,8 @@ def test_build_real_llm_cheap_unset_verifier_shares_action_client(
     monkeypatch.delenv("AZURE_OPENAI_CHEAP_DEPLOYMENT_NAME", raising=False)
     _force_verification_enabled(monkeypatch)
 
-    loop, verifier_registry = build_real_llm_handler()
+    loop = build_real_llm_handler()
+    verifier_registry = loop._verifier_registry  # type: ignore[attr-defined]
 
     assert verifier_registry is not None
     verifier = verifier_registry.get_all()[0]

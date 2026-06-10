@@ -55,23 +55,34 @@
 
 ### 2.1 Durable attempt counter (US-3)
 - [ ] **`_contracts/state.py` `DurableState`** — add `verification_attempts: int = 0` (checkpointed; no migration); MHist
+  - 🚧 SUPERSEDED by **D-DAY2-1** (metadata approach): the checkpoint serializer
+    (`checkpointer.py:217/243`) is an explicit field allowlist → a new DurableState scalar
+    would NOT round-trip without editing both ends + README. The counter rides
+    `metadata["verification_attempts"]` instead (57.88 `pending_approval` precedent; round-trips
+    verbatim, zero serializer/migration change). Still the locked "durable (checkpoint)" decision.
 - [ ] **Reducer** (Day-0 D1 located) — handle increment + fresh-run reset (sole mutator); MHist
-  - DoD: a pause-mid-correction → resume test asserts the count continues (not reset); a fresh run starts at 0
+  - 🚧 SUPERSEDED by **D-DAY2-1**: no Reducer change — `_emit_state_checkpoint` writes the metadata
+    key directly; `resume()` reads it; `run()` defaults 0 (fresh-run reset). Threaded through the
+    3 pause chains (between-turns / output-escalate / tool-HITL).
+  - DoD (delivered via metadata; pause-mid-correction→resume test in Day-3 §3.1): a fresh run starts at 0 ✅
 
 ### 2.2 Terminal + resume coverage + replay-not-reverified (US-4)
-- [ ] **Terminal** — FAIL == max → `LoopCompleted(stop_reason="verification_failed")` (raw string, no new enum per Day-0 D4)
-  - DoD: max → `verification_failed`
-- [ ] **Resume coverage** — NO new code (resume drives `_run_turns`); a test asserts a resumed continuation's final answer is verified
-- [ ] **`_replay_approved_output` skips the gate** — confirm (Day-0 Prong 2c) it re-emits directly; if it routes through parse→gate, add an explicit skip; MHist if changed
-  - DoD: a test asserts an approved replay is NOT re-verified
+- [x] **Terminal** — FAIL == max → `LoopCompleted(stop_reason="verification_failed")` (raw string, no new enum per Day-0 D4)
+  - ✅ `VERIFICATION_FAILED_STOP_REASON` raw string (loop.py); gate tests assert max → `verification_failed`
+- [x] **Resume coverage** — NO new code (resume drives `_run_turns`); a test asserts a resumed continuation's final answer is verified
+  - ✅ Mechanism delivered: `build_real_llm_handler` injects the registry into the loop ctor → `resume()`'s
+    shared `_run_turns` carries the gate (closes the pre-57.98 hole where the wrapper never wrapped resume).
+    Resume-coverage test in Day-3 §3.1.
+- [x] **`_replay_approved_output` skips the gate** — confirm (Day-0 Prong 2c) it re-emits directly; if it routes through parse→gate, add an explicit skip; MHist if changed
+  - ✅ Confirmed re-emits the snapshot DIRECTLY (no parse→gate) → satisfied by code-path isolation; no skip flag. Test in Day-3 §3.1.
 
 ### 2.3 Wrapper retired + flow rewired (US-5)
-- [ ] **`api/v1/chat/handler.py`** — pass `verifier_registry` into `AgentLoopImpl(..., verifier_registry=registry)`; drop it from the `build_handler` return tuple if unused (Day-0 Prong 2e confirmed); MHist
-  - DoD: the loop's `_verifier_registry is` the built registry; cheap judge (57.97) preserved
-- [ ] **`api/v1/chat/router.py`** — delete the `run_with_verification` wrapper (`:432-439` → `async for event in loop.run(...)`); remove the import (`:96`) + unused `verifier_registry` plumbing (`:349`); resume path unchanged; MHist
-  - DoD: `grep -rn "run_with_verification" backend/src` → 0
-- [ ] **`verification/correction_loop.py` REMOVE** + remove the `run_with_verification` re-export from `verification/__init__.py`; MHist
-  - DoD: import 0; rollback = git history
+- [x] **`api/v1/chat/handler.py`** — pass `verifier_registry` into `AgentLoopImpl(..., verifier_registry=registry)`; drop it from the `build_handler` return tuple if unused (Day-0 Prong 2e confirmed); MHist
+  - ✅ Registry built BEFORE the loop + injected into the ctor; all 3 builders return `AgentLoopImpl` alone. Cheap judge (57.97) preserved (profile.cheap unchanged).
+- [x] **`api/v1/chat/router.py`** — delete the `run_with_verification` wrapper (`:432-439` → `async for event in loop.run(...)`); remove the import (`:96`) + unused `verifier_registry` plumbing (`:349`); resume path unchanged; MHist
+  - ✅ `loop = build_handler(...)`; `_stream_loop_events` drops the param; wrapper call → `loop.run(...)`; import removed. `grep run_with_verification backend/src` → 0 (only MHist/docstring mentions).
+- [x] **`verification/correction_loop.py` REMOVE** + remove the `run_with_verification` re-export from `verification/__init__.py`; MHist
+  - ✅ `git rm` correction_loop.py; `__init__` drops `run_with_verification` + `VERIFICATION_FAILED_STOP_REASON`; re-exports `persist_verification_event` (D-DAY2-3 cross-cat lint fix). rollback = git history.
 
 ---
 

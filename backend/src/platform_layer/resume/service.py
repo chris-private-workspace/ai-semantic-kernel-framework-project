@@ -36,9 +36,10 @@ Key Components:
     - ResumeService.resume_session(): load + tenant-guard + rebuild
 
 Created: 2026-06-08 (Sprint 57.88 Day 2 — US-4)
-Last Modified: 2026-06-08
+Last Modified: 2026-06-10
 
 Modification History (newest-first):
+    - 2026-06-10: Sprint 57.98 A1 US-4 — build_real_llm_handler returns loop alone (gate in-loop)
     - 2026-06-08: Sprint 57.88 Day-4 — wire HITLManager into default builder (resume get_decision)
     - 2026-06-08: Initial creation (Sprint 57.88 US-4) — durable pause-resume orchestration
 
@@ -101,9 +102,11 @@ async def _default_build_loop(
 
     Imported lazily to avoid an import cycle (api → platform_layer → api) and to
     keep azure-adapter weight out of unit tests that inject their own builder.
-    `build_real_llm_handler` returns (loop, verifier_registry); resume drives the
-    loop directly (verification is the normal-run wrapper's concern), so the
-    registry is discarded here.
+    `build_real_llm_handler` returns the wired loop with the Cat 10 verifier
+    registry injected into its ctor (Sprint 57.98 A1). resume() drives the loop's
+    shared `_run_turns`, so the resumed continuation's final answer is verified by
+    the SAME in-loop gate as a fresh run — closing the pre-57.98 gap where a
+    resumed answer bypassed verification (the retired wrapper only wrapped run()).
 
     Sprint 57.88 (Day-4 drive-through fix): wire the SAME process-singleton
     HITLManager the chat path used to REQUEST the approval. `resume()` reads the
@@ -119,7 +122,7 @@ async def _default_build_loop(
     from platform_layer.governance.service_factory import get_service_factory
 
     hitl_manager = get_service_factory().get_hitl_manager()
-    loop, _registry = build_real_llm_handler(
+    loop = build_real_llm_handler(
         db=db,
         session_id=session_id,
         tenant_id=tenant_id,

@@ -7,8 +7,9 @@ Scope: Phase 57 / Sprint 57.11 Day 1
 Description:
     DAO encapsulating verification_log INSERT + paginated SELECT operations
     consumed by:
-        - correction_loop write hook (US-2 §1.6) — best-effort INSERT after
-          every VerificationPassed / VerificationFailed yield
+        - the in-loop Cat 10 gate's persist hook (verification/persistence.py,
+          US-2 §1.6) — best-effort INSERT after every VerificationPassed /
+          VerificationFailed yield
         - GET /api/v1/verification/recent (US-2 §1.5) — paginated list with
           session_id / verifier_type / passed filters
         - GET /api/v1/verification/{session_id}/correction-trace (US-2 §1.5)
@@ -25,9 +26,9 @@ Modification History (newest-first):
 Related:
     - infrastructure/db/models/verification_log.py (VerificationLog ORM)
     - api/v1/verification.py (REST consumer)
-    - agent_harness/verification/correction_loop.py (write hook)
+    - agent_harness/verification/persistence.py (write hook)
     - tests/integration/api/test_verification.py
-    - tests/unit/agent_harness/verification/test_correction_loop_persist.py
+    - tests/unit/agent_harness/verification/test_inloop_gate_persist.py
 """
 
 from __future__ import annotations

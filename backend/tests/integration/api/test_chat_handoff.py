@@ -11,8 +11,8 @@ Description:
     Deterministic + Azure-call-free: a fake AgentLoop yields a single
     LoopCompleted(stop_reason="handoff", handoff_target=..., handoff_reason=...).
     The test drives the REAL router generator `_stream_loop_events` (the same
-    serialize + post-loop hook the production POST /chat uses; verifier_registry
-    is None → run_with_verification delegates straight to loop.run()), against a
+    serialize + post-loop hook the production POST /chat uses; the router now
+    drives loop.run() directly — Sprint 57.98 A1 retired the wrapper), against a
     REAL db_session. It asserts the full backend handover:
       (a) the parent LoopCompleted carries stop_reason == "handoff";
       (b) a child session row is persisted (tenant == parent, handoff_parent_id
@@ -75,7 +75,7 @@ class _HandoffLoop:
     """Fake AgentLoop whose run() yields one HANDOFF LoopCompleted.
 
     Mirrors the AgentLoopImpl.run(session_id, user_input, trace_context) async
-    generator signature consumed by run_with_verification (passthrough mode).
+    generator signature the router drives directly (Sprint 57.98 A1).
     """
 
     def __init__(

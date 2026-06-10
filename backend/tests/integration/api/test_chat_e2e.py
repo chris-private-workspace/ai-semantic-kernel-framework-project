@@ -354,14 +354,16 @@ class TestDiagnosticEventsE2E:
     StateCheckpointed / TripwireTriggered were yielded on the chat path but
     silently dropped at ``router.py`` (``except NotImplementedError: continue``,
     L354-359). Stage 1 added their ``sse.py`` isinstance branches; this test
-    drives the real router pipeline (``run_with_verification`` →
+    drives the real router pipeline (``loop.run`` →
     ``serialize_loop_event`` → ``format_sse_message`` → SSE frame) with a mocked
     loop and asserts the 4 events now surface as wire frames, plus the two 57.65
     cache fields are carried on ``llm_response`` / ``loop_end``.
 
-    The loop generator is replaced by patching
-    ``api.v1.chat.router.run_with_verification`` (patched where used, not where
-    defined). Finalization deps (quota / SLA / cost_ledger / db) default to None
+    The loop is replaced by patching ``api.v1.chat.router.build_handler`` to
+    return a fake loop whose ``run`` yields the fixed sequence (Sprint 57.98 A1:
+    the retired run_with_verification wrapper is gone — the router drives
+    ``loop.run`` directly). Finalization deps (quota / SLA / cost_ledger / db)
+    default to None
     in the minimal ``app`` fixture, so the fake LoopCompleted skips those gated
     branches.
     """
@@ -385,8 +387,8 @@ class TestDiagnosticEventsE2E:
         sid = uuid4()
         tc = TraceContext(tenant_id=DEFAULT_TENANT, session_id=sid, user_id=DEFAULT_USER_ID)
 
-        async def _fake_run_with_verification(**_kwargs: object):  # type: ignore[no-untyped-def]
-            """Deterministic fake loop — ignores agent_loop / other kwargs.
+        async def _fake_loop_run(**_kwargs: object):  # type: ignore[no-untyped-def]
+            """Deterministic fake loop.run — ignores session_id / other kwargs.
 
             Yields a fixed sequence including the 4 previously-dropped
             diagnostic events plus the 57.65 cache carriers.
@@ -422,9 +424,13 @@ class TestDiagnosticEventsE2E:
                 trace_context=tc,
             )
 
+        class _FakeLoop:
+            def run(self, **_kwargs: object):  # type: ignore[no-untyped-def]
+                return _fake_loop_run()
+
         with patch(
-            "api.v1.chat.router.run_with_verification",
-            side_effect=_fake_run_with_verification,
+            "api.v1.chat.router.build_handler",
+            return_value=_FakeLoop(),
         ):
             with client.stream(
                 "POST",

@@ -9,8 +9,8 @@ Description:
     the `verify` tool registered to Cat 2 ToolRegistry per 17.md §3.1.
 
     The LLM may invoke this tool mid-loop to ask for verification of a
-    candidate output WITHOUT waiting for the post-completion verifier hook
-    in run_with_verification(). Useful when the LLM wants to self-check
+    candidate output WITHOUT waiting for the loop's post-completion in-loop
+    Cat 10 verify gate. Useful when the LLM wants to self-check
     before producing a final answer.
 
     Handler signature follows Cat 2 conventions:

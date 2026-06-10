@@ -100,15 +100,14 @@ class Settings(BaseSettings):
     business_domain_mode: Literal["mock", "service"] = "mock"
 
     # ---- Cat 10 verification wiring (Sprint 55.5 — AD-Cat10-Wire-1) -
-    # disabled → inject verifier_registry=None at chat router; wrapper
-    #            transparently delegates to loop.run() per
-    #            correction_loop.py:99-106 (54.1 backwards-compat;
-    #            byte-for-byte event stream identical to direct loop.run)
-    # enabled  → inject populated VerifierRegistry; wrapper runs verifiers +
-    #            self-correction loop max 2 attempts (54.1 spec)
+    # disabled → inject verifier_registry=None into the loop ctor; the in-loop
+    #            Cat 10 gate is dormant (Sprint 57.98 A1; byte-for-byte event
+    #            stream identical to a non-verified loop.run)
+    # enabled  → inject a populated VerifierRegistry into the loop ctor; the
+    #            in-loop gate runs verifiers + self-correction max 2 attempts
     # Override via env: CHAT_VERIFICATION_MODE=disabled
-    # Option E 2-mode post-D4+D5: no shadow/enforce mode; rely on
-    # registry-presence dispatch in run_with_verification wrapper.
+    # Sprint 57.98 A1: registry-presence dispatch is now in the loop's
+    # _cat10_verify_gate (the run_with_verification wrapper is retired).
     # Sprint 57.83 (B-8 leg-2): default → "enabled" after a real-Azure measurement of
     # the lightweight output_quality judge showed FP rate 0% on normal prompts (bad/
     # nonsense still caught). See claudedocs/5-status/cat10-verification-real-llm-
@@ -134,10 +133,10 @@ class Settings(BaseSettings):
     quota_estimated_tokens_per_call: int = 1000  # conservative pre-call reservation
 
     # ---- Sprint 57.11 Cat 10 verification persistence (US-2) --------
-    # When True (default): correction_loop.run_with_verification's write
-    # hook best-effort INSERTs each VerificationPassed/VerificationFailed
-    # event into verification_log via VerificationLogRepository. DB flake
-    # is logged at WARNING but never breaks the agent loop event stream.
+    # When True (default): the in-loop Cat 10 gate's persist hook
+    # (verification/persistence.py) best-effort INSERTs each VerificationPassed/
+    # VerificationFailed event into verification_log via VerificationLogRepository.
+    # DB flake is logged at WARNING but never breaks the agent loop event stream.
     # Override via env: VERIFICATION_LOG_PERSIST_ENABLED=false (kill switch).
     verification_log_persist_enabled: bool = True
 

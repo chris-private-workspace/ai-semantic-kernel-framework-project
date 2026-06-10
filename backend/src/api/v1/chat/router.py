@@ -35,9 +35,10 @@ Description:
     actual loop run lives in the worker.
 
 Created: 2026-04-30 (Sprint 50.2 Day 1.5)
-Last Modified: 2026-06-09
+Last Modified: 2026-06-10
 
 Modification History (newest-first):
+    - 2026-06-10: Sprint 57.98 A1 US-5 — drop run_with_verification wrapper; gate is in-loop now
     - 2026-06-09: Sprint 57.95 — relay subagent SSE events (buffer drained by _stream_loop_events)
     - 2026-06-08: Sprint 57.88 US-4 — NEW POST /chat/{id}/resume (durable HITL pause-resume)
     - 2026-06-05: Sprint 57.84 — C-15: chat cost-write → billing_outbox enqueue + drainer
@@ -93,7 +94,6 @@ from agent_harness._contracts import (
 from agent_harness._contracts.events import ToolCallExecuted
 from agent_harness.observability._abc import Tracer
 from agent_harness.orchestrator_loop import AgentLoop
-from agent_harness.verification import VerifierRegistry, run_with_verification
 from business_domain._service_factory import BusinessServiceFactory
 from core.config import get_settings
 from infrastructure.db.audit_helper import append_audit
@@ -238,7 +238,10 @@ async def chat(
         subagent_event_buffer.append(ev)
 
     try:
-        loop, verifier_registry = build_handler(
+        # Sprint 57.98 A1 (US-5): build_handler now returns the wired AgentLoopImpl
+        # alone — the Cat 10 verifier registry is injected INTO the loop ctor (the
+        # gate is in-loop), so the router no longer threads a registry around it.
+        loop = build_handler(
             req.mode,
             req.message,
             service_factory=factory,
@@ -346,7 +349,6 @@ async def chat(
             chat_start_time=chat_start_time,
             billing_outbox=billing_outbox,
             db=db,
-            verifier_registry=verifier_registry,
             subagent_event_buffer=subagent_event_buffer,
         ),
         media_type="text/event-stream",
@@ -399,7 +401,6 @@ async def _stream_loop_events(
     chat_start_time: float | None = None,
     billing_outbox: BillingOutboxService | None = None,
     db: AsyncSession | None = None,
-    verifier_registry: VerifierRegistry | None = None,
     subagent_event_buffer: "list[LoopEvent] | None" = None,
 ) -> AsyncIterator[bytes]:
     """Drive the loop generator + emit SSE bytes; finalize tenant-scoped registry.
@@ -412,30 +413,23 @@ async def _stream_loop_events(
     ``loop.run`` so child spans (TurnStarted / LLMRequested / etc.) inherit
     the trace_id; sse.py extracts trace_id into each SSE event.
 
-    Sprint 55.5 (AD-Cat10-Wire-1; Option E 2-mode post-D4+D5):
-    Always invokes ``run_with_verification`` wrapper. When
-    ``settings.chat_verification_mode == "disabled"`` (default), passes
-    ``verifier_registry=None`` → wrapper transparently delegates to
-    ``loop.run()`` per correction_loop.py:99-106 (byte-for-byte event stream
-    identical to direct loop.run; backwards-compat preserved). When
-    ``"enabled"``, passes a populated ``VerifierRegistry`` → wrapper runs
-    verifiers + self-correction loop (max 2 attempts).
+    Sprint 57.98 A1 (US-5): the Cat 10 verification gate now runs INSIDE the loop
+    (``loop.run()`` → ``_run_turns`` → ``_cat10_verify_gate``); the verifier
+    registry is injected into the loop ctor by ``build_handler``. The retired
+    ``run_with_verification`` wrapper (which used to bracket ``loop.run`` here) is
+    gone, so a paused-then-resumed continuation is verified for free (``resume()``
+    drives the same ``_run_turns``). A non-verified run (registry None) streams a
+    byte-identical event sequence to the pre-57.98 direct ``loop.run``.
     """
-    # Sprint 57.63 (Cat 10, approach A): verifier_registry is now passed in from
-    # build_handler — built with the loop's OWN adapter (shared ChatClient) when
-    # settings.chat_verification_mode == "enabled", else None.
     natural_completion = False
     # Sprint 57.84 (C-15): per-request monotonic seq disambiguates repeated
     # same-tool billing events in the idempotency key (a replay reuses the seq).
     tool_seq = 0
     try:
-        async for event in run_with_verification(
-            agent_loop=loop,  # type: ignore[arg-type]
+        async for event in loop.run(  # type: ignore[attr-defined]
             session_id=session_id,
             user_input=user_input,
             trace_context=trace_context,
-            verifier_registry=verifier_registry,
-            max_correction_attempts=2,
         ):
             # Sprint 57.95 (Cat 11 → Cat 12 SSE relay): flush any subagent events
             # emitted during the prior await (e.g. a task_spawn tool call) BEFORE the

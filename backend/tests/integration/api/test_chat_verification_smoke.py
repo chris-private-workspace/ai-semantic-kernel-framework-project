@@ -5,27 +5,27 @@ Category: 範疇 10 (Verification Loops) / Tests / Integration
 Scope: Sprint 55.5 Day 1 (Option E 2-mode post-D4+D5)
 
 Description:
-    End-to-end smoke validating the always-call-wrapper pattern at
-    `_stream_loop_events()`:
+    End-to-end smoke validating the in-loop Cat 10 gate driven by the router's
+    direct `loop.run()` (Sprint 57.98 A1 retired the run_with_verification wrapper):
 
-    - "disabled" (default): build_handler returns verifier_registry=None → wrapper
-      transparently delegates to loop.run() per correction_loop.py:99-106. Event
-      stream byte-for-byte identical to the existing 50.2 echo_demo 8-event
-      sequence; no verification_* events emitted. (echo_demo, no Azure needed.)
+    - "disabled" (default): build_handler injects verifier_registry=None into the
+      loop ctor → the in-loop gate is dormant → the event stream is byte-for-byte
+      identical to the existing 50.2 echo_demo 8-event sequence; no verification_*
+      events emitted. (echo_demo, no Azure needed.)
 
-    - "enabled": Sprint 57.63 (approach A) moved verifier construction INTO
-      build_real_llm_handler so the LLMJudgeVerifier shares the loop's adapter.
-      Only the real_llm path builds a populated VerifierRegistry; echo_demo always
-      returns registry=None (predictable fixtures, MockChatClient must not be
-      judged). So the "enabled emits verification" assertion now exercises the
-      real_llm path with a MockChatClient injected via dependency override (no
-      real Azure call), proving the wrapper runs the verifier + emits
-      VerificationPassed when the registry is populated.
+    - "enabled": the verifier registry is built in build_real_llm_handler and
+      injected into the loop ctor (the LLMJudgeVerifier shares the loop's cheap-tier
+      adapter). Only the real_llm path builds a populated VerifierRegistry; echo_demo
+      injects registry=None. So the "enabled emits verification" assertion injects a
+      no-op registry onto the echo loop (via _fake_build_handler) — no real Azure
+      call — proving the in-loop gate runs the verifier + emits VerificationPassed
+      when the registry is populated.
 
 Created: 2026-05-05 (Sprint 55.5 Day 1)
-Last Modified: 2026-05-31
+Last Modified: 2026-06-10
 
 Modification History (newest-first):
+    - 2026-06-10: Sprint 57.98 A1 — in-loop gate (loop.run direct); inject registry on the loop
     - 2026-05-31: Sprint 57.63 — enabled-mode assertion moved to the real_llm path
       (approach A: verifier built in build_real_llm_handler; echo_demo no longer
       verifies). echo_demo disabled-mode backwards-compat assertion unchanged.
@@ -136,17 +136,17 @@ class TestChatVerificationWireSmoke:
         # Existing 50.2 8-event echo sequence must still hold
         assert types_disabled[0] == "loop_start"
         assert types_disabled[-1] == "loop_end"
-        # No verification events in disabled mode (registry=None short-circuits wrapper)
+        # No verification events in disabled mode (registry=None → in-loop gate dormant)
         assert "verification_passed" not in types_disabled
         assert "verification_failed" not in types_disabled
 
         # ---- Mode 2: enabled (populated registry path) ----
-        # Sprint 57.63 approach A: the verifier registry is now built INSIDE
-        # build_real_llm_handler (so the LLMJudgeVerifier shares the loop's
-        # adapter); echo_demo always returns registry=None. To prove the
-        # router → wrapper → SSE emission contract for a POPULATED registry
-        # WITHOUT a real Azure call, monkeypatch build_handler to pair the
-        # echo_demo loop with a populated (no-op) registry. The production
+        # The verifier registry is built INSIDE build_real_llm_handler (so the
+        # LLMJudgeVerifier shares the loop's adapter) and injected into the loop
+        # ctor; echo_demo injects registry=None. To prove the
+        # router → loop.run → in-loop gate → SSE emission contract for a POPULATED
+        # registry WITHOUT a real Azure call, monkeypatch build_handler to inject a
+        # populated (no-op) registry onto the echo_demo loop. The production
         # "enabled → handler builds a real LLMJudgeVerifier registry" path is
         # covered by test_chat_category_activation_wiring.py Group A.
         import importlib
@@ -155,14 +155,16 @@ class TestChatVerificationWireSmoke:
         from api.v1.chat.handler import build_echo_demo_handler
 
         def _fake_build_handler(mode, message, **kwargs):  # type: ignore[no-untyped-def]
-            loop, _ = build_echo_demo_handler(message)
-            # B-10 (AD-Cat10-VerifierFactory-Disposition): _verifier_factory removed;
-            # build the no-op registry inline (production "enabled" path builds a real
-            # LLMJudgeVerifier in build_real_llm_handler — covered by
-            # test_chat_category_activation_wiring.py Group A).
+            # Sprint 57.98 A1: build_handler returns the loop alone; the verifier
+            # registry is injected INTO the loop ctor (the gate is in-loop). Inject a
+            # no-op registry onto the echo loop so the in-loop gate fires (production
+            # "enabled" builds a real LLMJudgeVerifier in build_real_llm_handler —
+            # covered by test_chat_category_activation_wiring.py Group A).
+            loop = build_echo_demo_handler(message)
             registry = VerifierRegistry()
             registry.register(RulesBasedVerifier(rules=[]))
-            return loop, registry
+            loop._verifier_registry = registry  # type: ignore[attr-defined]
+            return loop
 
         # `from api.v1.chat import router` yields the APIRouter INSTANCE (the
         # package __init__ re-exports it), so patch the actual module object —
@@ -189,5 +191,5 @@ class TestChatVerificationWireSmoke:
         assert types_enabled[0] == "loop_start"
         # verification_passed emitted by no-op RulesBasedVerifier(rules=[]) before loop_end
         assert "verification_passed" in types_enabled
-        # No correction needed (no-op rules pass) → wrapper forwards original LoopCompleted
+        # No correction needed (no-op rules pass) → the loop delivers the original answer
         assert types_enabled[-1] == "loop_end"

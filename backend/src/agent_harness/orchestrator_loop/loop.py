@@ -45,6 +45,7 @@ Created: 2026-04-30 (Sprint 50.1 Day 2.2)
 Last Modified: 2026-06-10
 
 Modification History (newest-first):
+    - 2026-06-10: Sprint 57.98 A1 US-3 — durable verification_attempts via checkpoint metadata
     - 2026-06-10: Sprint 57.98 A1 — in-loop Cat 10 verify gate (ctor registry + _cat10_verify_gate)
     - 2026-06-08: Sprint 57.93 — output-guardrail ESCALATE pre-delivery pause point (Slice 3)
     - 2026-06-08: Sprint 57.92 — between-turns guardrail ESCALATE pause point (Slice 3 leg 2)
@@ -204,13 +205,14 @@ from .termination import (
 )
 
 if TYPE_CHECKING:
-    # Sprint 57.98 A1: VerifierRegistry annotation only. Imported under
-    # TYPE_CHECKING (NOT at module level) because agent_harness.verification's
-    # package __init__ re-exports run_with_verification, which imports
-    # orchestrator_loop — a module-level import here would be a cycle. The gate
-    # consumes the registry by duck-typing (get_all()/len()); the persistence
-    # helper is lazy-imported inside the gate for the same reason.
-    from agent_harness.verification.registry import VerifierRegistry
+    # Sprint 57.98 A1: VerifierRegistry is a type-only annotation, imported under
+    # TYPE_CHECKING so the loop module carries no runtime dependency on the Cat 10
+    # package for a forward-ref. Imported from the PACKAGE (not the private
+    # submodule) per the cross-category import rule (17.md §1). The gate consumes
+    # the registry by duck-typing (get_all()/len()); the persistence helper is
+    # lazy-imported inside the gate (also from the package) to keep the loop
+    # module's import-time dependency on Cat 10 to zero.
+    from agent_harness.verification import VerifierRegistry
 
 # Sprint 57.98 A1: stop-reason for LoopCompleted when the in-loop self-correction
 # budget is exhausted (mirrors the retired correction_loop.py wrapper constant).
@@ -827,6 +829,7 @@ class AgentLoopImpl(AgentLoop):
         turn_count: int,
         session_id: UUID,
         messages: list[Message],
+        verification_attempts: int = 0,
     ) -> AsyncIterator[LoopEvent]:
         """Cat 9 per-tool_call gating. Yields:
         GuardrailTriggered (action=BLOCK/ESCALATE/SANITIZE/REROLL) when
@@ -854,6 +857,7 @@ class AgentLoopImpl(AgentLoop):
                         turn_count=turn_count,
                         session_id=session_id,
                         messages=messages,
+                        verification_attempts=verification_attempts,
                     ):
                         yield ev
                     # _cat9_hitl_branch yields GuardrailTriggered(block) only
@@ -910,6 +914,7 @@ class AgentLoopImpl(AgentLoop):
         turn_count: int = 0,
         session_id: UUID | None = None,
         messages: list[Message] | None = None,
+        verification_attempts: int = 0,
     ) -> AsyncIterator[LoopEvent]:
         """Cat 9 ESCALATE → HITL pause (Sprint 53.5 US-3 + 57.88 US-1).
 
@@ -1053,6 +1058,7 @@ class AgentLoopImpl(AgentLoop):
                     "turn": turn_count,
                 },
                 ctx=ctx,
+                verification_attempts=verification_attempts,
             ):
                 yield ev
             return
@@ -1116,6 +1122,7 @@ class AgentLoopImpl(AgentLoop):
         audit_event_type: str,
         audit_content: dict[str, Any],
         ctx: TraceContext,
+        verification_attempts: int = 0,
     ) -> AsyncIterator[LoopEvent]:
         """Generalized durable-pause tail (Sprint 57.91, 地基 A Slice 3 leg 1).
 
@@ -1142,6 +1149,7 @@ class AgentLoopImpl(AgentLoop):
             source_category="orchestrator_loop:hitl_pause",
             ctx=ctx,
             pending_approval=pending_approval,
+            verification_attempts=verification_attempts,
         )
         if checkpoint_event is not None:
             yield checkpoint_event
@@ -1250,6 +1258,7 @@ class AgentLoopImpl(AgentLoop):
         ctx: TraceContext,
         turn_count: int,
         session_id: UUID,
+        verification_attempts: int = 0,
     ) -> AsyncIterator[LoopEvent]:
         """Cat 9 between-turns gating (Sprint 57.92, 地基 A Slice 3 leg 2).
 
@@ -1283,6 +1292,7 @@ class AgentLoopImpl(AgentLoop):
                 session_id=session_id,
                 messages=messages,
                 turn_count=turn_count,
+                verification_attempts=verification_attempts,
             ):
                 yield ev
             return
@@ -1316,6 +1326,7 @@ class AgentLoopImpl(AgentLoop):
         session_id: UUID,
         messages: list[Message],
         turn_count: int,
+        verification_attempts: int = 0,
     ) -> AsyncIterator[LoopEvent]:
         """Cat 9 between-turns ESCALATE → durable HITL pause (Sprint 57.92).
 
@@ -1424,6 +1435,7 @@ class AgentLoopImpl(AgentLoop):
             audit_event_type="guardrail.between_turns.escalate.deferred",
             audit_content={"request_id": str(request_id), "turn": turn_count},
             ctx=ctx,
+            verification_attempts=verification_attempts,
         ):
             yield ev
 
@@ -1436,6 +1448,7 @@ class AgentLoopImpl(AgentLoop):
         turn_count: int,
         session_id: UUID,
         messages: list[Message],
+        verification_attempts: int = 0,
     ) -> AsyncIterator[LoopEvent]:
         """Cat 9 output-guardrail ESCALATE → pre-delivery HITL pause (Sprint 57.93).
 
@@ -1463,6 +1476,7 @@ class AgentLoopImpl(AgentLoop):
                 session_id=session_id,
                 messages=messages,
                 turn_count=turn_count,
+                verification_attempts=verification_attempts,
             ):
                 yield ev
         # else: no-op — the caller falls through to LLMResponded + _cat9_output_check.
@@ -1477,6 +1491,7 @@ class AgentLoopImpl(AgentLoop):
         session_id: UUID,
         messages: list[Message],
         turn_count: int,
+        verification_attempts: int = 0,
     ) -> AsyncIterator[LoopEvent]:
         """Cat 9 output ESCALATE → durable pre-delivery HITL pause (Sprint 57.93).
 
@@ -1584,6 +1599,7 @@ class AgentLoopImpl(AgentLoop):
             audit_event_type="guardrail.output.escalate.deferred",
             audit_content={"request_id": str(request_id), "turn": turn_count},
             ctx=ctx,
+            verification_attempts=verification_attempts,
         ):
             yield ev
 
@@ -1606,10 +1622,11 @@ class AgentLoopImpl(AgentLoop):
         correct / failed_max — see _VerifyVerdict). Caller-gated on
         `self._verifier_registry` being set + non-empty.
 
-        The persistence helper is lazy-imported (not module-level) to avoid the
-        verification-package import cycle (see the TYPE_CHECKING note above).
+        The persistence helper is lazy-imported (not module-level) from the Cat 10
+        package so the loop module carries no import-time dependency on Cat 10 (see
+        the TYPE_CHECKING note above; imported from the package per 17.md §1).
         """
-        from agent_harness.verification.persistence import persist_verification_event
+        from agent_harness.verification import persist_verification_event
 
         registry = self._verifier_registry
         assert registry is not None  # caller-gated (registry set + non-empty)
@@ -1854,6 +1871,7 @@ class AgentLoopImpl(AgentLoop):
                     ctx=ctx,
                     turn_count=turn_count,
                     session_id=session_id,
+                    verification_attempts=verification_attempts,
                 ):
                     yield ev
                     if isinstance(ev, LoopCompleted):
@@ -2220,6 +2238,7 @@ class AgentLoopImpl(AgentLoop):
                             turn_count=turn_count,
                             session_id=session_id,
                             messages=messages,
+                            verification_attempts=verification_attempts,
                         ):
                             yield ev
                             if isinstance(ev, LoopCompleted):
@@ -2448,6 +2467,7 @@ class AgentLoopImpl(AgentLoop):
                             turn_count=turn_count,
                             session_id=session_id,
                             messages=messages,
+                            verification_attempts=verification_attempts,
                         ):
                             yield ev
                             if isinstance(ev, LoopCompleted):
@@ -2775,6 +2795,14 @@ class AgentLoopImpl(AgentLoop):
         messages: list[Message] = list(state.transient.messages)
         turn_count = state.transient.current_turn
         tokens_used = state.transient.token_usage_so_far
+        # Sprint 57.98 A1 (US-3): rehydrate the in-loop self-correction count so a
+        # pause that landed mid-correction continues the SAME correction budget
+        # rather than resetting it. The pause checkpoint stored it under
+        # metadata["verification_attempts"] (D-DAY2-1: rides metadata, not a
+        # DurableState scalar field — the checkpoint (de)serializer round-trips
+        # metadata verbatim, so no serializer / migration change). A fresh run()
+        # never writes it → absent → 0.
+        verification_attempts = int(state.durable.metadata.get("verification_attempts", 0))
 
         yield LoopStarted(session_id=session_id, trace_context=ctx)
 
@@ -3035,6 +3063,7 @@ class AgentLoopImpl(AgentLoop):
                     ctx=ctx,
                     root_ctx=root_ctx,
                     skip_between_turns_once=skip_between_turns_once,
+                    verification_attempts=verification_attempts,
                 ):
                     yield ev
             finally:
@@ -3109,6 +3138,7 @@ class AgentLoopImpl(AgentLoop):
         source_category: str,
         ctx: TraceContext,
         pending_approval: dict[str, Any] | None = None,
+        verification_attempts: int = 0,
     ) -> StateCheckpointed | None:
         """Build LoopState from loop locals, reducer.merge → checkpointer.save.
 
@@ -3144,6 +3174,16 @@ class AgentLoopImpl(AgentLoop):
         if pending_approval is not None:
             metadata["pending_approval"] = pending_approval
             metadata["resume_messages"] = [_message_to_dict(m) for m in messages]
+        # Sprint 57.98 A1 (US-3): the in-loop self-correction count rides the
+        # checkpoint metadata (mirrors the 57.88 pending_approval pattern — the
+        # JSONB (de)serializer already round-trips `metadata` verbatim, so no
+        # DurableState scalar field / serializer allowlist / migration change is
+        # needed; D-DAY2-1). Stored only when > 0 so ordinary checkpoints stay
+        # empty (no happy-path size regression). resume() reads it back so a
+        # pause that lands mid-correction keeps the correction budget instead of
+        # resetting it (a fresh run() never sets it → starts at 0).
+        if verification_attempts > 0:
+            metadata["verification_attempts"] = verification_attempts
 
         # Build snapshot state from current loop locals.
         snapshot_state = LoopState(

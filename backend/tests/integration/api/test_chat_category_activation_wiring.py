@@ -93,14 +93,14 @@ def _reset_settings_cache():
 
 def test_real_handler_injects_cat4_compactor(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_fake_azure(monkeypatch)
-    loop, _registry = build_real_llm_handler()
+    loop = build_real_llm_handler()
     # Cat 4: compactor present → loop.py:828 compaction branch is live.
     assert loop._compactor is not None  # type: ignore[attr-defined]
 
 
 def test_real_handler_injects_cat8_five_deps(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_fake_azure(monkeypatch)
-    loop, _registry = build_real_llm_handler()
+    loop = build_real_llm_handler()
     # Cat 8: all 5 error-handling deps present → _handle_tool_error chain live.
     assert loop._error_policy is not None  # type: ignore[attr-defined]
     assert loop._retry_policy is not None  # type: ignore[attr-defined]
@@ -112,7 +112,7 @@ def test_real_handler_injects_cat8_five_deps(monkeypatch: pytest.MonkeyPatch) ->
 def test_real_handler_cat7_noop_without_db(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_fake_azure(monkeypatch)
     # No db/session_id/tenant_id → Cat 7 all-three-or-nothing → no-op (baseline).
-    loop, _registry = build_real_llm_handler()
+    loop = build_real_llm_handler()
     assert loop._reducer is None  # type: ignore[attr-defined]
     assert loop._checkpointer is None  # type: ignore[attr-defined]
 
@@ -123,7 +123,7 @@ def test_real_handler_cat7_wired_with_db(monkeypatch: pytest.MonkeyPatch) -> Non
 
     tid = uuid4()
     sid = uuid4()
-    loop, _registry = build_real_llm_handler(db=MagicMock(), session_id=sid, tenant_id=tid)
+    loop = build_real_llm_handler(db=MagicMock(), session_id=sid, tenant_id=tid)
     # Cat 7: all three present → loop.py:1350 checkpoint branch is live.
     assert loop._reducer is not None  # type: ignore[attr-defined]
     assert loop._checkpointer is not None  # type: ignore[attr-defined]
@@ -142,8 +142,9 @@ def test_real_handler_cat10_disabled_returns_no_registry(
     # get_settings() during setup — after the fixture's pre-clear but before this
     # env change — re-caching the default. Clearing here makes the test hermetic.
     get_settings.cache_clear()
-    loop, registry = build_real_llm_handler()
-    # Cat 10 disabled (default) → wrapper passthrough → registry is None.
+    loop = build_real_llm_handler()
+    registry = loop._verifier_registry  # type: ignore[attr-defined]
+    # Cat 10 disabled (default) → no registry injected → in-loop gate dormant.
     assert registry is None
 
 
@@ -156,8 +157,9 @@ def test_real_handler_cat10_enabled_registers_llm_judge(
     monkeypatch.setenv("CHAT_VERIFICATION_MODE", "enabled")
     # Clear the lru_cache AFTER setenv (hermetic — see disabled test above for why).
     get_settings.cache_clear()
-    loop, registry = build_real_llm_handler()
-    # Cat 10 enabled → registry with exactly one real LLMJudgeVerifier.
+    loop = build_real_llm_handler()
+    registry = loop._verifier_registry  # type: ignore[attr-defined]
+    # Cat 10 enabled → registry injected into the loop ctor with one LLMJudgeVerifier.
     assert registry is not None
     assert len(registry) == 1
     verifier = registry.get_all()[0]
@@ -170,7 +172,7 @@ def test_real_handler_tracer_defaults_to_noop(monkeypatch: pytest.MonkeyPatch) -
     from agent_harness.observability import NoOpTracer
 
     _set_fake_azure(monkeypatch)
-    loop, _registry = build_real_llm_handler()
+    loop = build_real_llm_handler()
     assert isinstance(loop._tracer, NoOpTracer)  # type: ignore[attr-defined]
 
 
@@ -183,7 +185,7 @@ def test_real_handler_injects_real_tracer(monkeypatch: pytest.MonkeyPatch) -> No
 
     _set_fake_azure(monkeypatch)
     real_tracer = OTelTracer()
-    loop, _registry = build_real_llm_handler(tracer=real_tracer)
+    loop = build_real_llm_handler(tracer=real_tracer)
     assert loop._tracer is real_tracer  # type: ignore[attr-defined]
     assert not isinstance(loop._tracer, NoOpTracer)  # type: ignore[attr-defined]
 

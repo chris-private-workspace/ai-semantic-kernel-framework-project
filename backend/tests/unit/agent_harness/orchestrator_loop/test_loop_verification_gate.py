@@ -283,3 +283,15 @@ async def test_gate_skipped_when_no_registry() -> None:
     completed = [e for e in events if isinstance(e, LoopCompleted)]
     assert completed[-1].stop_reason == TerminationReason.END_TURN.value
     assert chat._idx == 1
+
+
+async def test_gate_skipped_when_empty_registry() -> None:
+    # An empty (but non-None) registry → gate gated on len(registry) > 0 → skipped,
+    # byte-identical to a non-verified run (the wrapper's empty-registry passthrough).
+    chat, loop = _build_loop(texts=["any answer"], verifier_registry=_registry())
+    events = await _drive(loop)
+
+    assert [e for e in events if isinstance(e, (VerificationPassed, VerificationFailed))] == []
+    completed = [e for e in events if isinstance(e, LoopCompleted)]
+    assert completed[-1].stop_reason == TerminationReason.END_TURN.value
+    assert chat._idx == 1
