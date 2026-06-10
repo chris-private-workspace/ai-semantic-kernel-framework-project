@@ -1,12 +1,13 @@
 # A+B+C 整合缺口分析 — README Index
 
-**Purpose**: 索引 2026-05-31~06-01 完成的「整合缺口盤點」16 份核心分析（A 接線缺口 6 + B 優化 4 + C 研究 5 + 1 份 A+B+C 總 capstone），附每項當前狀態（A 區更新至 Sprint 57.73；B/C 更新至 57.86）。
+**Purpose**: 索引 2026-05-31~06-01 完成的「整合缺口盤點」16 份核心分析（A 接線缺口 6 + B 優化 4 + C 研究 5 + 1 份 A+B+C 總 capstone），附每項當前狀態（A 區更新至 Sprint 57.78 — **COMPLETE**；B/C 更新至 57.86）。
 **Category / Scope**: Status / Integration-gap inventory (Area A/B/C)
 **Created**: 2026-06-02
 **Last Modified**: 2026-06-06
 **Status**: Active
 
 > **Modification History**
+> - 2026-06-10: Area-A status corrected from stale 57.73 snapshot → 🎉 **57.78 COMPLETE** (A-5c Trace/Memory tabs 57.75 + A-6a stats 57.74 + A-6b memory ops-history 57.76-77 + /subagents real list 57.78 — all closed per next-phase-candidates.md §57.78 Carryover; only A-4 Tier 2 Jaeger export excluded → Area-C/DevOps). Updated A-5/A-6 rows + §A 區剩餘 → §A 區狀態.
 > - 2026-06-06: B/C status refreshed to Sprint 57.86 truth — B-7 CLOSED (57.81), B-8 CLOSED (57.82+57.83 flip enabled), C-11 loop LIVE + UI-driven real_llm verified (chat-v2 #253/#254), C-12 backend invites+password-login shipped (57.85/57.86), C-15 billing Outbox CLOSED (57.84); 鑰匙鏈 ①功能閉 + ②code 層全閉; §當前對齊摘要 + Capstone 優先序 marked done (06-03 narrative kept as audit trail)
 > - 2026-06-03: Area A status synced to Sprint 57.73 (A-4 / A-5 / A-6 rows + 剩餘 line + §當前對齊摘要 addendum) — A 區主 slice 全 ship，僅 4 個 Phase-2/deferred AD 餘留；C-11 real-LLM cost-ledger row-count leg now green (process-state resolved, PR #238)
 > - 2026-06-02: Initial creation — index 16 core + 2 supporting docs；status snapshot post-Sprint 57.70
@@ -34,10 +35,10 @@
 | A-2 | Cat 5 PromptBuilder（拱心石） | `cat5-promptbuilder-loop-injection-analysis-20260531.md` | ✅ T1/T2 shipped | 57.64 / 57.65 |
 | A-3 | Cat 11 Subagent / HANDOFF | `cat11-handoff-loop-injection-analysis-20260531.md` | ✅ A-3a + A-3b shipped | 57.64 / 57.68-70 |
 | A-4 | Cat 12 Loop Tracer | `cat12-loop-tracer-analysis-20260531.md` | ✅ Tier 0+1 shipped（Tier 2 Jaeger 匯出 → Area-C/DevOps）| 57.71 |
-| A-5 | Events → SSE | `cat-events-to-sse-analysis-20260531.md` | ✅ A-5a/b/c shipped（Inspector **Tree** tab；Trace/Memory tabs → Phase-2 AD）| 57.66 / 57.67 / 57.72 |
-| A-6 | 前端真資料 wiring | `frontend-real-data-wiring-analysis-20260531.md` | 🟡 A-6a/b shipped（partial；stats + memory ops-history deferred）| 57.73 |
+| A-5 | Events → SSE | `cat-events-to-sse-analysis-20260531.md` | ✅ A-5a/b/c shipped + **Trace/Memory tabs CLOSED（57.75）** | 57.66 / 57.67 / 57.72 / 57.75 |
+| A-6 | 前端真資料 wiring | `frontend-real-data-wiring-analysis-20260531.md` | ✅ **全閉** — admin stats（57.74）+ memory ops-history backend（57.76）+ frontend（57.77）| 57.73 / 57.74 / 57.76 / 57.77 |
 
-**A 區剩餘**（截至 57.73；主 slice 已全 ship，以下皆 Phase-2/deferred AD）：A-5c 的 **Trace/Memory tab**（`AD-ChatV2-Inspector-Trace-Phase2` / `AD-ChatV2-Inspector-Memory-Phase2`，依賴 span / `memory_accessed` 走 SSE）、A-6a 的 **stats 聚合端點**（`AD-AdminTenants-Stats-Aggregate-Endpoint`）、A-6b 的 **memory ops-history backend**（`AD-Memory-OpsHistory-Backend`）；A-4 Tier 2 真 Jaeger 匯出歸 Area-C/DevOps。
+**A 區狀態（更新至 57.78）**：🎉 **整個 Area-A program COMPLETE**（57.78 milestone；見 `../1-planning/next-phase-candidates.md` §Sprint 57.78 Carryover）。原 57.73 快照列為「剩餘 Phase-2 AD」的項目，後續全閉：A-5c **Trace/Memory tabs**（`AD-ChatV2-Inspector-Trace-Phase2` + `-Memory-Phase2`，**57.75**）· A-6a **stats 聚合端點**（`AD-AdminTenants-Stats-Aggregate-Endpoint`，**57.74**）· A-6b **memory ops-history**（`AD-Memory-OpsHistory-Backend`，backend **57.76** + frontend **57.77**）· `/subagents` **real list**（`AD-Subagent-RealList-Phase58`，**57.78**）。**唯一排除**：A-4 Tier 2 真 Jaeger 匯出（刻意劃給 Area-C/DevOps，非 Area-A 範圍）。
 
 ---
 

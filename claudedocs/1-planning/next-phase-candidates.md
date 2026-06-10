@@ -6,6 +6,24 @@
 
 ---
 
+## 🗺️ Harness Deepening Roadmap (2026-06-10) — organizes many of the carryovers below into 3 workflows + a 10-slice order
+
+**Doc**: [`harness-deepening-proposal-20260610.md`](harness-deepening-proposal-20260610.md) — full 終態 design + all-path slice decomposition (a roadmap / design rationale, NOT a pre-written sprint plan; each slice still runs thin-spike → Day-0 三-prong → code). Built on git HEAD Sprint 57.97 by 3 Explore agents + direct grep (HandoffService) + alignment to this file's carryovers. Provenance + full detail: `memory/project_harness_deepening_proposal.md`.
+
+It condenses the user's "5-point deepening discussion" into 3 workflows and a recommended slice order — **the items in the per-sprint carryovers below (verification, subagent TEAMMATE/HANDOFF, model policy / config 分層) are the raw material it organizes**:
+
+- **A. Verification into loop** (points 1 + 5) — A1 in-loop verify gate (retires the `correction_loop.py` wrapper; also closes the **resume-bypasses-verification structural hole**: `router.py:432` wraps `run()` but `:827`/`:878` resume calls `loop.resume()` un-wrapped) → A2 verification-ESCALATE human loop → A3 trace-critique (optional).
+- **B. Subagent completion** (point 3 + C-class live injection) — B1 between-turns injection primitive (serves BOTH chat live-injection AND TEAMMATE parent→child — one primitive, two payoffs) → B2 TEAMMATE multi-turn → B3 HANDOFF finish (**platform layer already done 57.68-70** — carryover text below saying "platform service absent" is stale; it shrinks to finish+governance) → B4 child governance.
+- **C. Model policy + config tiering** (point 4 + cc-parity §7.3) — C1 per-tenant model policy (`tenant.meta_data["model_policy"]` JSONB) → C2 compaction cheap tier → C3 policy面 + risky-action detector.
+
+**Recommended 10-slice order**: A1 → A2 → B1 → B2 → C1 → B3 → C3 → C2 → B4 → A3 (driven by `loop.py` write-contention: A1+B1 both touch loop.py → serialize). **C1 can float to #2** if a per-tenant-governance milestone is prioritized (it doesn't touch loop.py).
+
+**⚠️ C1 soft-prereq**: `AD-RBAC-DB-To-JWT-Wiring-Phase58` (below) must be authz-effective BEFORE C1's admin PUT, else C1's admin endpoint is an AP-4 Potemkin dead control. A1/A2/B1/B2 do NOT depend on it.
+
+> **Status**: roadmap selected/acknowledged by user; NO slice sprint kicked off yet (rolling discipline — A1 plan is written only on explicit user go).
+
+---
+
 ## 🆕 Sprint 57.97 Carryover — Multi-model profile SHIPPED (verification → cheap tier); other phases + per-tenant policy + accuracy benchmark next
 
 **Source**: Sprint 57.97 closed 2026-06-10 — the FIRST multi-model parity gap (cc-parity §4 C-class #1 ROI). A thin provider-neutral `ModelProfile{action, cheap}` value object (`adapters/_base/model_profile.py`) pairs two pre-built `ChatClient`s by role; `build_azure_model_profile` (`adapters/azure_openai/profile.py`) routes the per-request verification (Cat 10 llm_judge) to a cheap Azure deployment (gpt-5.4-mini) while the main turn + compaction keep the strong tier (gpt-5.2). The `ChatClient` ABC fixes model at construction (no per-call `model=`) → the seam is construction-time DI → `loop.py` diff=0, no ABC/event/DB change; unset cheap env → `cheap is action` (byte-identical). Drive-through PASS (~62% cheaper verification, cost_ledger-proven). Detail: `memory/project_phase57_97_multi_model_profile.md` + CHANGE-064 + design note `24-multi-model-profile-design.md`.
