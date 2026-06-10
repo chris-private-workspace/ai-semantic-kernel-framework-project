@@ -101,8 +101,8 @@
 ## Day 4 — Closeout (feature-continuation — NO design note)
 
 ### 4.1 Closeout
-- [ ] Full validation (parent re-verified): pytest NET delta / mypy 0 / run_all 10/10 / **black FULL `src/ tests/` scope** / `events.py`+`hitl.py`-DTO+`ModelProfile`+frontend+DB diff = 0 / **drive-through PASS** (escalate → approve-delivers + reject-coaches; artifacts PNG)
-- [ ] progress.md (Day 0-3) + retrospective.md (Q1-Q7)
-- [ ] Calibration: `loop-pause-point-feature` 0.50 (NEW class, 1st data point — honours the 57.92/93 proposal) + `agent_factor` 1.0 (parent-direct); recorded `calibration-log.md §3` + `sprint-workflow.md §Scope-class matrix` row; carryover (A3 trace-critique / per-tenant verification policy C3 / deliver-with-flag / multi-round coaching / dedicated approval UI / cheap-judge accuracy) → next-phase-candidates.md
-- [ ] MEMORY.md pointer + `project_phase57_99_verification_escalate.md` subfile + CLAUDE.md lean (Current Sprint row + Last Updated) + CHANGE-066 + 25.md §4 update + 17.md update
-- [ ] commit (Day 0-N) + push + PR — **push + PR pending user authorization**
+- [x] Full validation (parent re-verified): pytest **2299 passed + 4 skipped = 2303** (baseline 2298 +5, zero deletion) / mypy `src` **0/353** / run_all **10/10** / **black FULL `src tests` 656 files clean** / `events.py`+`ModelProfile`+frontend+DB diff = **0** (3 backend src files only) / **drive-through PASS** (escalate → APPROVE-delivers — real UI + real Azure; REJECT-coaches half = backend unit-proven + chat-v2 frontend follow-up, NOT UI-driven; artifacts `dt5799-{A,B}.png`) ✅
+- [x] progress.md (Day 0-3, parts 1+2) + retrospective.md (Q1-Q7) ✅
+- [x] Calibration: `loop-pause-point-feature` 0.50 (NEW class, 1st data point ~0.93 IN band — honours the 57.92/93 proposal, set 0.50 > 0.40 for the bounded REJECT continuation) + `agent_factor` 1.0 (parent-direct); recorded `calibration-log.md §3` + `sprint-workflow.md §Scope-class matrix` row; carryover (chat-v2 reject UI / A3 trace-critique / per-tenant policy C3 / deliver-with-flag / multi-round coaching / cheap-judge accuracy) → next-phase-candidates.md ✅
+- [x] MEMORY.md pointer + `project_phase57_99_verification_escalate.md` subfile + CLAUDE.md lean (Current Sprint row + Last Updated) + CHANGE-066 + 25.md §4 update + 17.md update ✅
+- [ ] commit (Day 0-N) + push + PR — Day-1..Day-3 committed (`bf99ad83`/`aefafc59`/`f2682619`/`e73e3e83`); Day-4 closeout commit next; **push + PR pending user authorization**
