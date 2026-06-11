@@ -108,6 +108,7 @@ from platform_layer.billing.billing_outbox import (
     maybe_get_billing_outbox,
     tool_idempotency_key,
 )
+from platform_layer.billing.model_policy import resolve_tenant_model_policy
 from platform_layer.governance.service_factory import (
     ServiceFactory,
     get_service_factory,
@@ -229,6 +230,13 @@ async def chat(
     # session_id; a fresh session has no row yet (→ demo persona).
     system_prompt = await resolve_session_persona(db, session_id, current_tenant)
 
+    # Sprint 57.104 (C1): resolve the tenant's model policy (TTL-cached) BEFORE the
+    # sync builders — mirrors resolve_session_persona above. The resolved ModelPolicy
+    # threads through build_handler → build_real_llm_handler → build_azure_model_profile
+    # so the loop runs on the tenant's action model + the verifier on its cheap model.
+    # Fail-open to an empty policy (the env-only path).
+    model_policy = await resolve_tenant_model_policy(db, current_tenant)
+
     # Sprint 57.95 (Cat 11 → Cat 12 SSE relay): a router-owned buffer collects the
     # SubagentSpawned / SubagentCompleted events the dispatcher emits WHILE the loop
     # is awaiting a task_spawn tool (the loop generator is blocked then, so it cannot
@@ -255,6 +263,8 @@ async def chat(
             db=db,
             session_id=session_id,
             tenant_id=current_tenant,
+            # Sprint 57.104 (C1): the per-tenant model policy resolved above.
+            model_policy=model_policy,
             user_id=current_user,
             system_prompt=system_prompt,
             # Sprint 57.71 (A-4 Tier 0): thread the already-resolved real

@@ -21,6 +21,7 @@
  * Last Modified: 2026-05-26
  *
  * Modification History (newest-first):
+ *   - 2026-06-11: Sprint 57.104 C1 — +getModelPolicy/putModelPolicy (model-policy tab)
  *   - 2026-05-29: Sprint 57.62 US-3 — +fetchRateLimitsAlerts GET recent alerts service func
  *   - 2026-05-28: Sprint 57.58 Track D — +fetchRateLimitsUsage GET live usage service func
  *   - 2026-05-27: Sprint 57.57 Track B — +saveRateLimits PUT service func
@@ -46,6 +47,9 @@ import type {
   HITLPolicyListResponse,
   HITLPolicyUpsertRequest,
   HITLPolicyUpsertResponse,
+  ModelPolicy,
+  ModelPolicyApiResponse,
+  ModelPolicyApiUpsertRequest,
   QuotaListResponse,
   QuotaOverridesUpsertRequest,
   QuotaOverridesUpsertResponse,
@@ -286,6 +290,71 @@ export async function fetchRateLimitsAlerts(
     { method: "GET", signal },
   );
   return _handleResponse<RateLimitAlertsResponse>(response);
+}
+
+/* === Sprint 57.104 C1 — Model policy (GET + PUT) ===
+ *
+ * GET returns a sparse snake_case policy (unset fields null). PUT is
+ * composite-replace: the body is the COMPLETE desired policy — an omitted/empty
+ * field is cleared (reverts to system default). The service maps the FE
+ * camelCase `ModelPolicy` to/from the snake_case API shape; on write, blank
+ * fields are dropped from the body (so the backend clears them). Errors surface
+ * via _handleResponse (422 `detail` string for unknown/unpriced model or unknown
+ * field).
+ */
+
+function _modelPolicyFromApi(api: ModelPolicyApiResponse): ModelPolicy {
+  return {
+    actionDeployment: api.action_deployment,
+    actionModel: api.action_model,
+    cheapDeployment: api.cheap_deployment,
+    cheapModel: api.cheap_model,
+  };
+}
+
+function _modelPolicyToApi(policy: ModelPolicy): ModelPolicyApiUpsertRequest {
+  // Composite-replace: only include non-blank fields; omitted fields are cleared
+  // (revert to system default) by the backend.
+  const body: ModelPolicyApiUpsertRequest = {};
+  const action = policy.actionDeployment?.trim();
+  const actionModel = policy.actionModel?.trim();
+  const cheap = policy.cheapDeployment?.trim();
+  const cheapModel = policy.cheapModel?.trim();
+  if (action) body.action_deployment = action;
+  if (actionModel) body.action_model = actionModel;
+  if (cheap) body.cheap_deployment = cheap;
+  if (cheapModel) body.cheap_model = cheapModel;
+  return body;
+}
+
+export async function getModelPolicy(
+  tenantId: string,
+  signal?: AbortSignal,
+): Promise<ModelPolicy> {
+  const response = await fetchWithAuth(
+    `${API_BASE}/tenants/${tenantId}/model-policy`,
+    { method: "GET", signal },
+  );
+  const api = await _handleResponse<ModelPolicyApiResponse>(response);
+  return _modelPolicyFromApi(api);
+}
+
+export async function putModelPolicy(
+  tenantId: string,
+  policy: ModelPolicy,
+  signal?: AbortSignal,
+): Promise<ModelPolicy> {
+  const response = await fetchWithAuth(
+    `${API_BASE}/tenants/${tenantId}/model-policy`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(_modelPolicyToApi(policy)),
+      signal,
+    },
+  );
+  const api = await _handleResponse<ModelPolicyApiResponse>(response);
+  return _modelPolicyFromApi(api);
 }
 
 /* === Sprint 57.50 — Identity single-record endpoint === */

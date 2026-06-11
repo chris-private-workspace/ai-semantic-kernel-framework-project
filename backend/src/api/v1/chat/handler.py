@@ -30,6 +30,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.4)
 Last Modified: 2026-06-11
 
 Modification History (newest-first):
+    - 2026-06-11: Sprint 57.104 C1 — resolve per-tenant ModelPolicy → build per-tenant ModelProfile
     - 2026-06-11: Sprint 57.103 B2b — teammate inbox_factory → inbox_scope (register child queue)
     - 2026-06-11: Sprint 57.102 B2a — wire teammate child-loop factory + inbox_factory
     - 2026-06-11: Sprint 57.101 B1 — wire QueueMessageInbox (between-turns injection) into loop ctor
@@ -112,6 +113,7 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from adapters._base.model_policy import ModelPolicy
     from agent_harness._contracts import MessageInbox, SubagentBudget, TeammateInboxScope
     from agent_harness.hitl import HITLManager
     from agent_harness.observability import Tracer
@@ -261,6 +263,7 @@ def build_real_llm_handler(
     db: "AsyncSession | None" = None,
     session_id: "UUID | None" = None,
     tenant_id: "UUID | None" = None,
+    model_policy: "ModelPolicy | None" = None,
     user_id: "UUID | None" = None,
     system_prompt: str = DEMO_SYSTEM_PROMPT,
     tracer: "Tracer | None" = None,
@@ -304,20 +307,18 @@ def build_real_llm_handler(
         )
 
     # Late import — keeps unit tests free of azure SDK weight when only echo_demo is exercised.
-    from adapters.azure_openai.adapter import AzureOpenAIAdapter
-    from adapters.azure_openai.config import AzureOpenAIConfig
     from adapters.azure_openai.profile import build_azure_model_profile
 
-    # AzureOpenAIConfig is a BaseSettings — pulls AZURE_OPENAI_* from env automatically.
-    chat_client: ChatClient = AzureOpenAIAdapter(AzureOpenAIConfig())
-    # Sprint 57.97 (multi-model profile): pair the strong action client with a
-    # cheap tier. `chat_client` IS profile.action — the loop / compactor / prompt
-    # builder / subagents all run on it, unchanged. Only the verifier (below)
-    # routes to profile.cheap: a cheaper Azure deployment when
-    # AZURE_OPENAI_CHEAP_DEPLOYMENT_NAME is set, else the SAME strong client
-    # (byte-identical behavior). The cheap tier saves on the per-request llm_judge
-    # call (default-ON since 57.83) without touching the user-facing turn.
-    profile = build_azure_model_profile(chat_client)
+    # Sprint 57.104 (C1): build the per-tenant ModelProfile from the resolved policy.
+    # The router resolved it via resolve_tenant_model_policy BEFORE build_handler (the
+    # resolve_session_persona pattern), so this stays sync. `chat_client` IS
+    # profile.action — the tenant's strong tier — and the loop / compactor / prompt
+    # builder / subagents all run on it; only the verifier (below) routes to
+    # profile.cheap (the tenant's, or env, cheap deployment). A None / all-None policy
+    # is byte-identical to the Sprint 57.97 env-only path; the cheap tier saves on the
+    # per-request llm_judge call (default-ON since 57.83) without touching the turn.
+    profile = build_azure_model_profile(model_policy)
+    chat_client: ChatClient = profile.action
     parser = OutputParserImpl()  # built early — the Sprint 57.94 child-loop factory needs it
 
     # Sprint 57.64 Day 2: Cat 3 memory tools (REAL handlers, not placeholder) +
@@ -585,6 +586,7 @@ def build_handler(
     db: "AsyncSession | None" = None,
     session_id: "UUID | None" = None,
     tenant_id: "UUID | None" = None,
+    model_policy: "ModelPolicy | None" = None,
     user_id: "UUID | None" = None,
     system_prompt: str = DEMO_SYSTEM_PROMPT,
     tracer: "Tracer | None" = None,
@@ -623,6 +625,10 @@ def build_handler(
             db=db,
             session_id=session_id,
             tenant_id=tenant_id,
+            # Sprint 57.104 (C1): the router resolved the per-tenant model policy
+            # (resolve_tenant_model_policy) and threads it here → the per-tenant
+            # ModelProfile. None / echo path → env-only (byte-identical to 57.97).
+            model_policy=model_policy,
             user_id=user_id,
             system_prompt=system_prompt,
             # Sprint 57.71 (A-4 Tier 0): thread the router's real tracer through

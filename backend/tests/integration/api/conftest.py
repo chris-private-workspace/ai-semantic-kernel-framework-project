@@ -34,6 +34,7 @@ Description:
       handles dependent rows (memory_*, users, conversations, ...).
 
 Modification History (newest-first):
+    - 2026-06-11: Sprint 57.104 C1 — add MODELPOL_PUT_% LIKE sweep (PUT /model-policy tests)
     - 2026-06-02: Sprint 57.70 Stage-1b — add AGENT_PUT_% LIKE sweep (agent_catalog CRUD tests)
     - 2026-05-28: Sprint 57.59 — add RATE_LIMIT_CONFIG_% LIKE sweep (US-2 table re-point)
     - 2026-05-28: Sprint 57.58 — add RATE_LIMIT_USAGE_% LIKE sweep (Track C usage GET)
@@ -137,6 +138,8 @@ async def _clear_committed_test_tenants() -> None:
             # Sprint 57.70 Stage-1b — sweep uuid4-suffixed agent_catalog CRUD test tenants
             # (FK CASCADE from tenants drops their agent_catalog rows).
             await session.execute(text("DELETE FROM tenants WHERE code LIKE 'AGENT_PUT_%'"))
+            # Sprint 57.104 (C1) — sweep uuid4-suffixed PUT /model-policy test tenants
+            await session.execute(text("DELETE FROM tenants WHERE code LIKE 'MODELPOL_PUT_%'"))
             # Sprint 57.55 — sweep uuid4-suffixed feature_flags rows seeded by PUT tests
             # (feature_flags is a global no-RLS registry; rows persist past test
             # rollback once any PUT test commits to make the row visible to the

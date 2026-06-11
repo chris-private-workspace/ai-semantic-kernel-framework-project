@@ -16,6 +16,7 @@
  * Created: 2026-05-26 (Sprint 57.44 Day 2)
  *
  * Modification History (newest-first):
+ *   - 2026-06-11: Sprint 57.104 C1 — +Model Policy hook mocks + 7th-tab registration assertion
  *   - 2026-05-26: Initial creation (Sprint 57.44 Day 2) — tenant-settings mockup-fidelity rebuild Vitest coverage
  *
  * Related:
@@ -67,6 +68,29 @@ vi.mock("@/features/tenant-settings/hooks/useRateLimits", () => ({
   useRateLimits: vi.fn(),
   RATE_LIMITS_QUERY_KEY_BASE: ["tenant-settings", "rate-limits"],
 }));
+// Sprint 57.58/57.62 — Live usage + alerts poll hooks (consumed by QuotasTab)
+vi.mock("@/features/tenant-settings/hooks/useRateLimitsUsage", () => ({
+  useRateLimitsUsage: vi.fn(),
+  RATE_LIMITS_USAGE_QUERY_KEY_BASE: ["tenant-settings", "rate-limits-usage"],
+}));
+vi.mock("@/features/tenant-settings/hooks/useRateLimitsSave", () => ({
+  useRateLimitsSave: vi.fn(),
+}));
+vi.mock("@/features/tenant-settings/hooks/useRateLimitsAlerts", () => ({
+  useRateLimitsAlerts: vi.fn(),
+  RATE_LIMITS_ALERTS_QUERY_KEY_BASE: ["tenant-settings", "rate-limits-alerts"],
+}));
+vi.mock("@/features/tenant-settings/hooks/useQuotasSave", () => ({
+  useQuotasSave: vi.fn(),
+}));
+// Sprint 57.104 C1 — Model Policy hooks (consumed by ModelPolicyTab)
+vi.mock("@/features/tenant-settings/hooks/useModelPolicy", () => ({
+  useModelPolicy: vi.fn(),
+  MODEL_POLICY_QUERY_KEY_BASE: ["tenant-settings", "model-policy"],
+}));
+vi.mock("@/features/tenant-settings/hooks/useModelPolicySave", () => ({
+  useModelPolicySave: vi.fn(),
+}));
 // Sprint 57.50 — Identity hook (consumed by GeneralTab Identity & SSO card)
 vi.mock("@/features/tenant-settings/hooks/useTenantIdentity", () => ({
   useTenantIdentity: vi.fn(),
@@ -83,7 +107,13 @@ import { useTenantMembers } from "@/features/tenant-settings/hooks/useTenantMemb
 import { useHITLPolicies } from "@/features/tenant-settings/hooks/useHITLPolicies";
 import { useFeatureFlags } from "@/features/tenant-settings/hooks/useFeatureFlags";
 import { useQuotas } from "@/features/tenant-settings/hooks/useQuotas";
+import { useQuotasSave } from "@/features/tenant-settings/hooks/useQuotasSave";
 import { useRateLimits } from "@/features/tenant-settings/hooks/useRateLimits";
+import { useRateLimitsUsage } from "@/features/tenant-settings/hooks/useRateLimitsUsage";
+import { useRateLimitsSave } from "@/features/tenant-settings/hooks/useRateLimitsSave";
+import { useRateLimitsAlerts } from "@/features/tenant-settings/hooks/useRateLimitsAlerts";
+import { useModelPolicy } from "@/features/tenant-settings/hooks/useModelPolicy";
+import { useModelPolicySave } from "@/features/tenant-settings/hooks/useModelPolicySave";
 import { useTenantIdentity } from "@/features/tenant-settings/hooks/useTenantIdentity";
 import { useAuthStore } from "@/features/auth/store/authStore";
 
@@ -157,6 +187,49 @@ function setupHookLoaded(): void {
     isLoading: false,
     error: null,
   } as unknown as ReturnType<typeof useRateLimits>);
+  // Sprint 57.58/57.62 — QuotasTab Live usage + alerts + save hooks (default empty)
+  vi.mocked(useRateLimitsUsage).mockReturnValue({
+    data: { items: [] },
+    isLoading: false,
+    error: null,
+  } as unknown as ReturnType<typeof useRateLimitsUsage>);
+  vi.mocked(useRateLimitsAlerts).mockReturnValue({
+    data: { items: [] },
+    isLoading: false,
+    error: null,
+  } as unknown as ReturnType<typeof useRateLimitsAlerts>);
+  vi.mocked(useRateLimitsSave).mockReturnValue({
+    mutate: vi.fn(),
+    isPending: false,
+    isSuccess: false,
+    error: null,
+    reset: vi.fn(),
+  } as unknown as ReturnType<typeof useRateLimitsSave>);
+  vi.mocked(useQuotasSave).mockReturnValue({
+    mutate: vi.fn(),
+    isPending: false,
+    isSuccess: false,
+    error: null,
+    reset: vi.fn(),
+  } as unknown as ReturnType<typeof useQuotasSave>);
+  // Sprint 57.104 C1 — Model Policy read + save hooks (default sparse/empty)
+  vi.mocked(useModelPolicy).mockReturnValue({
+    data: {
+      actionDeployment: null,
+      actionModel: null,
+      cheapDeployment: null,
+      cheapModel: null,
+    },
+    isLoading: false,
+    error: null,
+  } as unknown as ReturnType<typeof useModelPolicy>);
+  vi.mocked(useModelPolicySave).mockReturnValue({
+    mutate: vi.fn(),
+    isPending: false,
+    isSuccess: false,
+    error: null,
+    reset: vi.fn(),
+  } as unknown as ReturnType<typeof useModelPolicySave>);
   // Sprint 57.50 — Identity hook (Default mock with 4 fields for GeneralTab Identity Card)
   vi.mocked(useTenantIdentity).mockReturnValue({
     data: {
@@ -185,14 +258,24 @@ describe("TenantSettingsView (Sprint 57.44)", () => {
     expect(screen.getByText("Tenant Settings")).toBeInTheDocument();
   });
 
-  it("renders all 6 tab labels", () => {
+  it("renders all 7 tab labels", () => {
     render(<TenantSettingsView />);
     expect(screen.getByRole("tab", { name: /General/ })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Feature Flags/ })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Quotas/ })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Model Policy/ })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /HITL Policies/ })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Members/ })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Danger Zone/ })).toBeInTheDocument();
+  });
+
+  it("clicking Model Policy tab reveals Model policy card (Sprint 57.104 C1 — 7th tab)", async () => {
+    const user = userEvent.setup();
+    render(<TenantSettingsView />);
+    await user.click(screen.getByRole("tab", { name: /Model Policy/ }));
+    expect(screen.getByText("Model policy")).toBeInTheDocument();
+    // Default sparse policy → all 4 fields render "System default"
+    expect(screen.getByTestId("model-policy-edit-btn")).toBeInTheDocument();
   });
 
   it("default tab 'general' renders General + Identity & SSO cards", () => {

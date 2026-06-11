@@ -21,6 +21,7 @@
  * Last Modified: 2026-05-26
  *
  * Modification History (newest-first):
+ *   - 2026-06-11: Sprint 57.104 C1 — +ModelPolicy read/write schemas (model-policy tab)
  *   - 2026-05-29: Sprint 57.62 US-3 — +RateLimitAlert{Item,Response} alerts read schemas
  *   - 2026-05-28: Sprint 57.58 Track D — +RateLimitsUsage{Item,Response} live usage read schemas
  *   - 2026-05-27: Sprint 57.57 Track B — +RateLimitsUpsert{Request,Response} write schemas
@@ -262,4 +263,42 @@ export interface RateLimitAlertItem {
 
 export interface RateLimitAlertsResponse {
   items: RateLimitAlertItem[];
+}
+
+/* === Sprint 57.104 C1 — Model policy read/write schemas ===
+ *
+ * Mirrors backend GET/PUT /admin/tenants/{id}/model-policy. The tenant's model
+ * policy selects which deployment/model the agent loop's "action" (primary) and
+ * "cheap" (e.g. verifier/judge) tiers use. The policy is SPARSE: any unset field
+ * is null on read; on write, an omitted/empty field is CLEARED (reverts to the
+ * system default). PUT is composite-replace: the body is the COMPLETE desired
+ * policy. 422 (with `detail` string) when a model is unknown/unpriced or an
+ * unknown field is sent (backend extra=forbid).
+ *
+ * FE convention: camelCase in the UI; the service maps to/from the snake_case
+ * API shape (see tenantSettingsService.ts get/putModelPolicy).
+ */
+
+/** Camelcase UI shape — sparse (null = system default). */
+export interface ModelPolicy {
+  actionDeployment: string | null;
+  actionModel: string | null;
+  cheapDeployment: string | null;
+  cheapModel: string | null;
+}
+
+/** Snake_case API read shape (GET response). */
+export interface ModelPolicyApiResponse {
+  action_deployment: string | null;
+  action_model: string | null;
+  cheap_deployment: string | null;
+  cheap_model: string | null;
+}
+
+/** Snake_case API write shape (PUT body) — all optional (omitted = cleared). */
+export interface ModelPolicyApiUpsertRequest {
+  action_deployment?: string;
+  action_model?: string;
+  cheap_deployment?: string;
+  cheap_model?: string;
 }

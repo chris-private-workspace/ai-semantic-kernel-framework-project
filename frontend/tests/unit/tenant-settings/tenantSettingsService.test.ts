@@ -7,6 +7,7 @@
  * Created: 2026-05-07 (Sprint 57.3 Day 3)
  *
  * Modification History (newest-first):
+ *   - 2026-06-11: Sprint 57.104 C1 — +getModelPolicy/putModelPolicy tests (snake↔camel + composite-replace)
  *   - 2026-05-28: Sprint 57.58 — +2 fetchRateLimitsUsage GET tests
  *   - 2026-05-27: Sprint 57.57 — +2 saveRateLimits PUT tests
  *   - 2026-05-27: Sprint 57.56 — +2 saveQuotaOverrides PUT tests
@@ -23,6 +24,8 @@ import {
   fetchTenantIdentity,
   fetchTenantMembers,
   fetchTenantSettings,
+  getModelPolicy,
+  putModelPolicy,
   saveFeatureFlagOverrides,
   saveHITLPolicies,
   saveQuotaOverrides,
@@ -398,6 +401,115 @@ describe("tenantSettingsService", () => {
         new Response(JSON.stringify({ detail: "tenant not found" }), { status: 404 }),
       );
       await expect(fetchRateLimitsUsage("tenant-x")).rejects.toThrow("tenant not found");
+    });
+  });
+
+  /* === Sprint 57.104 C1 — Model policy GET + PUT === */
+
+  describe("getModelPolicy (Sprint 57.104 C1)", () => {
+    it("builds correct URL + maps snake_case API → camelCase ModelPolicy", async () => {
+      const apiPayload = {
+        action_deployment: "gpt-5.2-prod",
+        action_model: "gpt-5.2",
+        cheap_deployment: null,
+        cheap_model: null,
+      };
+      fetchSpy.mockResolvedValueOnce(new Response(JSON.stringify(apiPayload), { status: 200 }));
+
+      const result = await getModelPolicy("tenant-x");
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "/api/v1/admin/tenants/tenant-x/model-policy",
+        expect.objectContaining({ method: "GET", credentials: "include" }),
+      );
+      expect(result).toEqual({
+        actionDeployment: "gpt-5.2-prod",
+        actionModel: "gpt-5.2",
+        cheapDeployment: null,
+        cheapModel: null,
+      });
+    });
+
+    it("throws Error with detail message on 404", async () => {
+      fetchSpy.mockResolvedValueOnce(
+        new Response(JSON.stringify({ detail: "tenant not found" }), { status: 404 }),
+      );
+      await expect(getModelPolicy("tenant-x")).rejects.toThrow("tenant not found");
+    });
+  });
+
+  describe("putModelPolicy (Sprint 57.104 C1)", () => {
+    it("sends PUT mapping camelCase → snake_case + maps response back to camelCase", async () => {
+      const apiResponse = {
+        action_deployment: "gpt-5.2-prod",
+        action_model: "gpt-5.2",
+        cheap_deployment: "gpt-5.2-mini-prod",
+        cheap_model: "gpt-5.2-mini",
+      };
+      fetchSpy.mockResolvedValueOnce(new Response(JSON.stringify(apiResponse), { status: 200 }));
+
+      const result = await putModelPolicy("tenant-x", {
+        actionDeployment: "gpt-5.2-prod",
+        actionModel: "gpt-5.2",
+        cheapDeployment: "gpt-5.2-mini-prod",
+        cheapModel: "gpt-5.2-mini",
+      });
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "/api/v1/admin/tenants/tenant-x/model-policy",
+        expect.objectContaining({
+          method: "PUT",
+          credentials: "include",
+          body: JSON.stringify({
+            action_deployment: "gpt-5.2-prod",
+            action_model: "gpt-5.2",
+            cheap_deployment: "gpt-5.2-mini-prod",
+            cheap_model: "gpt-5.2-mini",
+          }),
+        }),
+      );
+      expect(result).toEqual({
+        actionDeployment: "gpt-5.2-prod",
+        actionModel: "gpt-5.2",
+        cheapDeployment: "gpt-5.2-mini-prod",
+        cheapModel: "gpt-5.2-mini",
+      });
+    });
+
+    it("omits blank/null fields from PUT body (composite-replace → backend clears them)", async () => {
+      const apiResponse = {
+        action_deployment: "gpt-5.2-prod",
+        action_model: null,
+        cheap_deployment: null,
+        cheap_model: null,
+      };
+      fetchSpy.mockResolvedValueOnce(new Response(JSON.stringify(apiResponse), { status: 200 }));
+
+      await putModelPolicy("tenant-x", {
+        actionDeployment: "gpt-5.2-prod",
+        actionModel: "",
+        cheapDeployment: "   ", // whitespace-only → treated as blank
+        cheapModel: null,
+      });
+      // Only action_deployment survives; the rest are omitted (cleared server-side)
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "/api/v1/admin/tenants/tenant-x/model-policy",
+        expect.objectContaining({
+          body: JSON.stringify({ action_deployment: "gpt-5.2-prod" }),
+        }),
+      );
+    });
+
+    it("throws Error with detail message on 422 unknown/unpriced model", async () => {
+      fetchSpy.mockResolvedValueOnce(
+        new Response(JSON.stringify({ detail: "unknown model: gpt-99" }), { status: 422 }),
+      );
+      await expect(
+        putModelPolicy("tenant-x", {
+          actionDeployment: "x",
+          actionModel: "gpt-99",
+          cheapDeployment: null,
+          cheapModel: null,
+        }),
+      ).rejects.toThrow("unknown model");
     });
   });
 
