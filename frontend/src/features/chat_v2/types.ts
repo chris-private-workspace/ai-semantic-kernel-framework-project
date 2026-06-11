@@ -25,6 +25,7 @@
  * Last Modified: 2026-06-10
  *
  * Modification History:
+ *   - 2026-06-11: Sprint 57.101 B1 — UserTurn +injected? (mid-run message_injected render tag)
  *   - 2026-06-10: Sprint 57.100 — HITLTurn +kind (pause kind from the approval_requested wire)
  *   - 2026-06-02: Sprint 57.67 — event types now re-exported from generated/loopEvents.generated (A-5b codegen)
  *   - 2026-06-02: Sprint 57.66 — +4 diagnostic events + cache fields on llm_response/loop_end
@@ -125,6 +126,9 @@ export type UserTurn = {
   id: string;
   at: string;
   text: string;
+  // Sprint 57.101 B1: true when this is a mid-run injected instruction (rendered
+  // from a message_injected event on drain), so the timeline can tag it.
+  injected?: boolean;
 };
 
 export type AgentTurn = {

@@ -35,6 +35,7 @@
  * Last Modified: 2026-06-10
  *
  * Modification History:
+ *   - 2026-06-11: Sprint 57.101 B1 — message_injected → UserTurn(injected) (mid-run injection render)
  *   - 2026-06-10: Sprint 57.100 — HITLTurn carries kind from wire (verification reject UI branch)
  *   - 2026-06-09: Sprint 57.96 — +subagent_child case → SubagentNode.childEvents (Scope B turn-stream)
  *   - 2026-06-06: chat-v2 honest testing surface — default mode echo_demo→real_llm; +currentModel (from llm_request); reset() zeroes _turnCounter (CHANGE-054)
@@ -337,6 +338,27 @@ export const useChatStore = create<ChatStoreState>((set) => ({
             spanId: null,
           };
           return { ...s, rawEvents, turns: [...s.turns, newAgentTurn] };
+        }
+
+        case "message_injected": {
+          // Sprint 57.101 B1: a mid-run injected instruction was DRAINED into the
+          // loop at a turn boundary (the event fires on drain — proof it landed,
+          // not on the inject POST). Render it as a user turn tagged `injected` so
+          // the timeline shows it between the agent's turns.
+          return {
+            ...s,
+            rawEvents,
+            turns: [
+              ...s.turns,
+              {
+                role: "user",
+                id: nextTurnId(),
+                at: nowIso(),
+                text: ev.data.text,
+                injected: true,
+              },
+            ],
+          };
         }
 
         case "llm_request": {

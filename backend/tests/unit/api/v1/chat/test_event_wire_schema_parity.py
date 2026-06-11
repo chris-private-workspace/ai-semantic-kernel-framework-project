@@ -40,6 +40,7 @@ from agent_harness._contracts import (
     LoopStarted,
     LoopTerminated,
     MemoryAccessed,
+    MessageInjected,
     MetricRecorded,
     PromptBuilt,
     SpanEnded,
@@ -127,6 +128,8 @@ WIRED_EVENT_INSTANCES: list[LoopEvent] = [
         summary="prior turn note",
         time_scale="short_term",
     ),
+    # Sprint 57.101 B1 (Cat 1): a mid-run injected message drained at a turn boundary.
+    MessageInjected(text="also check the db pool"),
 ]
 
 # Cat 8/1/12 events with no serializer branch (must raise NotImplementedError).
@@ -138,8 +141,8 @@ UNWIRED_EVENT_INSTANCES: list[LoopEvent] = [
 
 
 class TestWireSchemaParity:
-    def test_wire_schema_has_23_entries(self) -> None:
-        assert len(WIRE_SCHEMA) == 23
+    def test_wire_schema_has_24_entries(self) -> None:
+        assert len(WIRE_SCHEMA) == 24
 
     def test_base_fields_only_trace_id(self) -> None:
         # trace_id is the universal field injected by serialize_loop_event;

@@ -15,6 +15,7 @@
  * Created: 2026-05-17 (Sprint 57.21 Day 1)
  *
  * Modification History:
+ *   - 2026-06-11: Sprint 57.101 B1 — message_injected → UserTurn(injected) coverage
  *   - 2026-06-03: Sprint 57.75 — span_started/span_ended/memory_accessed → spans + memoryOps slice coverage
  *   - 2026-06-02: Sprint 57.69 — agent_handoff pivot + handoffBanner / pivotSession / dismiss coverage
  *   - 2026-05-17: Initial creation (Sprint 57.21 Day 1 / US-B3)
@@ -184,6 +185,11 @@ const agentHandoff = (
   },
 });
 
+const messageInjected = (text: string): LoopEvent => ({
+  type: "message_injected",
+  data: { text },
+});
+
 const lastAgentTurn = (turns: Turn[]): AgentTurn => {
   for (let i = turns.length - 1; i >= 0; i--) {
     if (turns[i].role === "agent") return turns[i] as AgentTurn;
@@ -221,6 +227,19 @@ describe("chatStore.mergeEvent Turn block sequence (Sprint 57.21 Day 1)", () => 
     expect(t.tokensOut).toBeNull();
     expect(t.costUsd).toBeNull();
     expect(t.traceId).toBeNull();
+  });
+
+  test("message_injected appends a UserTurn tagged injected (Sprint 57.101 B1)", () => {
+    useChatStore.getState().mergeEvent(turnStart());
+    useChatStore.getState().mergeEvent(messageInjected("also check the db pool"));
+    const { turns } = useChatStore.getState();
+    expect(turns).toHaveLength(2);
+    const injected = turns[1];
+    expect(injected.role).toBe("user");
+    if (injected.role === "user") {
+      expect(injected.text).toBe("also check the db pool");
+      expect(injected.injected).toBe(true);
+    }
   });
 
   test("llm_request populates active AgentTurn tokensIn", () => {

@@ -59,6 +59,7 @@ from agent_harness._contracts.events import (
     LoopStarted,
     LoopTerminated,
     MemoryAccessed,
+    MessageInjected,
     MetricRecorded,
     PromptBuilt,
     SpanEnded,
@@ -83,6 +84,7 @@ from agent_harness._contracts.hitl import (
     HITLPolicy,
     RiskLevel,
 )
+from agent_harness._contracts.inbox import MessageInbox
 from agent_harness._contracts.memory import MemoryHint
 from agent_harness._contracts.observability import (
     MetricEvent,
@@ -172,9 +174,12 @@ __all__ = [
     "AgentHandoff",
     "ApprovalRequested",
     "ApprovalReceived",
+    "MessageInjected",
     "SpanStarted",
     "SpanEnded",
     "MetricRecorded",
+    # inbox (Cat 1 — between-turns injection)
+    "MessageInbox",
     # memory
     "MemoryHint",
     # prompt

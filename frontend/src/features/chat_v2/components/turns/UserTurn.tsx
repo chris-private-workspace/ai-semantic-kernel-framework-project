@@ -21,6 +21,7 @@
  * Created: 2026-05-17 (Sprint 57.21 Day 2 §2.1)
  *
  * Modification History:
+ *   - 2026-06-11: Sprint 57.101 B1 — tag injected mid-run user turns (.route-pill reuse, no new token)
  *   - 2026-05-23: Sprint 57.30 Day 3 §D1 — verbatim re-point Tailwind → mockup .turn/.turn-rail/.turn-marker/.turn-head/.role/.route-pill
  *   - 2026-05-17: Initial extract from mockup L165-176 + Tailwind convert
  *
@@ -41,12 +42,19 @@ export function UserTurn({ turn }: { turn: UserTurnType }): JSX.Element {
   const displayName = user?.display_name ?? user?.email ?? "You";
   const primaryRole = roles[0] ?? "operator";
   return (
-    <div className="turn" data-role="user">
+    <div className="turn" data-role="user" data-injected={turn.injected ? "true" : undefined}>
       <div className="turn-rail" />
       <div className="turn-marker" />
       <div className="turn-head">
         <span className="role">{displayName}</span>
         <span className="route-pill">{primaryRole}</span>
+        {/* Sprint 57.101 B1: tag a mid-run injected instruction. No mockup source
+            for this tag → reuse the existing .route-pill class (no new HEX/oklch). */}
+        {turn.injected && (
+          <span className="route-pill" data-testid="injected-tag">
+            injected mid-run
+          </span>
+        )}
         <span className="mono subtle">{turn.at}</span>
       </div>
       <div className="turn-body">{turn.text}</div>

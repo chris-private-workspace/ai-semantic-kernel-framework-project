@@ -108,6 +108,7 @@ WIRE_TYPE_TO_INTERFACE: dict[str, str] = {
     "span_started": "SpanStartedEvent",
     "span_ended": "SpanEndedEvent",
     "memory_accessed": "MemoryAccessedEvent",
+    "message_injected": "MessageInjectedEvent",
 }
 
 

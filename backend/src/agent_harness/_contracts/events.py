@@ -23,6 +23,7 @@ Created: 2026-04-29 (Sprint 49.1)
 Last Modified: 2026-06-03
 
 Modification History (newest-first):
+    - 2026-06-11: Sprint 57.101 — add MessageInjected (Cat 1 between-turns injection wire event)
     - 2026-06-10: Sprint 57.100 — ApprovalRequested +kind (pause kind on the wire; no new type)
     - 2026-06-09: Sprint 57.96 — add SubagentChildEvent wrapper (Cat 11 Scope B turn-stream)
     - 2026-06-03: Sprint 57.75 A-5c — Span* +span_type/parent_span_id, MemoryAccessed +summary
@@ -410,6 +411,21 @@ class ApprovalRequested(LoopEvent):
 class ApprovalReceived(LoopEvent):
     approval_request_id: UUID | None = None
     decision: str = ""  # APPROVED / REJECTED / ESCALATED
+
+
+# === Category 1: between-turns message injection (Sprint 57.101) ============
+
+
+@dataclass(frozen=True)
+class MessageInjected(LoopEvent):
+    """Sprint 57.101 B1: emitted by Cat 1 when a mid-run injected message is DRAINED
+    into the conversation at a turn boundary (the _run_turns top, before the
+    between-turns guardrail). Fired on drain (proof it landed in the loop), not when
+    the inject POST returns — so the chat-v2 timeline renders the injection only once
+    the agent has actually taken it. `text` is the injected user message content.
+    """
+
+    text: str = ""
 
 
 # === Category 12: Observability ============================================

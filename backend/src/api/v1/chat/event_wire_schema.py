@@ -27,7 +27,7 @@ Description:
     `frontend/src/features/chat_v2/types.ts` (reproduced verbatim).
 
 Key Components:
-    - WIRE_SCHEMA: 23 ordered wire-type → ordered {field: ts_type} entries.
+    - WIRE_SCHEMA: 24 ordered wire-type → ordered {field: ts_type} entries.
     - BASE_FIELDS: universal fields the wrapper adds to every frame (trace_id).
     - TOOL_CALL_ELEMENT_TYPE_NAME / TOOL_CALL_ELEMENT_FIELDS: the named
       `tool_calls` element TS type (mirrors types.ts `LLMToolCall`).
@@ -37,6 +37,7 @@ Created: 2026-06-02 (Sprint 57.67)
 Last Modified: 2026-06-10
 
 Modification History (newest-first):
+    - 2026-06-11: Sprint 57.101 — add message_injected wire-type (Cat 1 injection) 23→24
     - 2026-06-10: Sprint 57.100 — approval_requested +kind field (no new wire-type; 22 unchanged)
     - 2026-06-09: Sprint 57.96 — add subagent_child wire-type (Cat 11 Scope B turn-stream) 22→23
     - 2026-06-03: Sprint 57.75 A-5c — add span_started/span_ended/memory_accessed wire-types 19→22
@@ -74,7 +75,7 @@ TOOL_CALL_ELEMENT_FIELDS: dict[str, str] = {
 }
 
 
-# === WIRE_SCHEMA: 23 ordered wire-type entries ==============================
+# === WIRE_SCHEMA: 24 ordered wire-type entries ==============================
 # Why: single declarative source of truth for the SSE event contract. Insertion
 # order of the outer dict = generated interface declaration order; insertion
 # order of each inner dict = generated interface FIELD order. Field NAME/SET is
@@ -211,6 +212,10 @@ WIRE_SCHEMA: dict[str, dict[str, str]] = {
         "key": "string",
         "summary": "string",
         "time_scale": "string",
+    },
+    # Sprint 57.101 B1 (Cat 1): a mid-run injected message drained at a turn boundary.
+    "message_injected": {
+        "text": "string",
     },
 }
 

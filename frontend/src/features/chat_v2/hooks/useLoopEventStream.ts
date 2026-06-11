@@ -26,6 +26,7 @@
  * Last Modified: 2026-06-08
  *
  * Modification History:
+ *   - 2026-06-11: Sprint 57.101 B1 — +inject() for mid-run message injection (POST /inject)
  *   - 2026-06-08: Sprint 57.88 US-5 — +resume() for durable HITL pause-resume continuation
  *   - 2026-04-30: Initial creation (Sprint 50.2 Day 3.5)
  *
@@ -36,12 +37,13 @@
  */
 
 import { useCallback, useRef } from "react";
-import { resumeChat, streamChat } from "../services/chatService";
+import { injectMessage, resumeChat, streamChat } from "../services/chatService";
 import { useChatStore } from "../store/chatStore";
 
 export type UseLoopEventStream = {
   send: (message: string) => Promise<void>;
   resume: () => Promise<void>;
+  inject: (message: string) => Promise<void>;
   cancel: () => void;
   isRunning: boolean;
 };
@@ -119,10 +121,30 @@ export function useLoopEventStream(): UseLoopEventStream {
     if (finalStatus === "running") setStatus("completed");
   }, [mergeEvent, setStatus, setError]);
 
+  // Sprint 57.101 (B1): inject a supplementary instruction MID-RUN. Only valid
+  // while a run is live (status="running" + a sessionId); the loop drains it at
+  // the next turn boundary and the ALREADY-OPEN run stream (held by send()) merges
+  // the resulting message_injected event. Reads sessionId/status from the live
+  // store (not closure) to avoid a stale capture. An inject failure (e.g. 409 if
+  // the run just ended) surfaces via setError but does NOT change status — the run
+  // is unaffected, the injection simply did not land.
+  const inject = useCallback(
+    async (message: string) => {
+      const { sessionId: sid, status: st } = useChatStore.getState();
+      if (sid === null || st !== "running") return;
+      try {
+        await injectMessage(sid, message);
+      } catch (err) {
+        setError((err as Error).message);
+      }
+    },
+    [setError],
+  );
+
   const cancel = useCallback(() => {
     abortRef.current?.abort();
     setStatus("cancelled");
   }, [setStatus]);
 
-  return { send, resume, cancel, isRunning: status === "running" };
+  return { send, resume, inject, cancel, isRunning: status === "running" };
 }

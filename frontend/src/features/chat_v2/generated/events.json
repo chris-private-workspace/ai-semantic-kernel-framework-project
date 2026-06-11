@@ -10,6 +10,7 @@
     "loop_end",
     "loop_start",
     "memory_accessed",
+    "message_injected",
     "prompt_built",
     "span_ended",
     "span_started",
@@ -146,6 +147,9 @@
       "key": "string",
       "summary": "string",
       "time_scale": "string"
+    },
+    "message_injected": {
+      "text": "string"
     }
   }
 }
