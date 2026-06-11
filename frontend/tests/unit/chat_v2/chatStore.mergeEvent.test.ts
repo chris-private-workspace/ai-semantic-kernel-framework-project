@@ -395,6 +395,16 @@ describe("chatStore.mergeEvent Turn block sequence (Sprint 57.21 Day 1)", () => 
     expect(fork.agents[0].status).toBe("done");
   });
 
+  test("subagent_completed sets mode + tokensUsed on the fork block entry (Sprint 57.103 B2b)", () => {
+    useChatStore.getState().mergeEvent(turnStart());
+    useChatStore.getState().mergeEvent(subSpawned("sa-tok", "teammate"));
+    useChatStore.getState().mergeEvent(subCompleted("sa-tok"));
+    const t = lastAgentTurn(useChatStore.getState().turns);
+    const fork = t.blocks.find((b) => b.type === "subagent_fork") as SubagentForkBlock;
+    expect(fork.agents[0].mode).toBe("teammate");
+    expect(fork.agents[0].tokensUsed).toBe(42);
+  });
+
   // --- subagent_child (Sprint 57.96 Scope B turn-stream) -----------------
 
   test("subagent_child appends a projected ChildTurnEvent to the matching node", () => {
@@ -426,6 +436,20 @@ describe("chatStore.mergeEvent Turn block sequence (Sprint 57.21 Day 1)", () => 
     expect(node).toBeDefined();
     expect(node?.childEvents).toHaveLength(1);
     expect(node?.childEvents[0]).toMatchObject({ kind: "llm_response", text: "hi" });
+  });
+
+  test("subagent_child message_injected projects text from inner.text (Sprint 57.103 B2b)", () => {
+    useChatStore.getState().mergeEvent(turnStart());
+    useChatStore.getState().mergeEvent(subSpawned("sa-tm", "teammate"));
+    useChatStore
+      .getState()
+      .mergeEvent(subChild("sa-tm", "message_injected", { text: "also check the db pool" }));
+    const node = useChatStore.getState().subagents.find((n) => n.subagentId === "sa-tm");
+    expect(node?.childEvents).toHaveLength(1);
+    expect(node?.childEvents[0]).toMatchObject({
+      kind: "message_injected",
+      text: "also check the db pool",
+    });
   });
 
   // --- approval (HITL) ---------------------------------------------------

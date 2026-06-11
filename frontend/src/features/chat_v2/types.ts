@@ -66,7 +66,10 @@ export type SubagentEntry = {
   name: string;
   task: string;
   status: "running" | "done";
-  turns: number;
+  /** Sprint 57.103 B2b: spawn mode (fork / teammate / …) for the mode-aware inline label. */
+  mode: string;
+  /** Sprint 57.103 B2b: tokens once subagent_completed arrives (null while running). */
+  tokensUsed: number | null;
 };
 
 export type ThinkingBlock = {

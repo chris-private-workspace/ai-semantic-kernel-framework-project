@@ -25,18 +25,22 @@
  *   mockup's "· Nt" summary suffix stays deferred polish. The Depth summary still
  *   counts subagent nesting only (child-turn rows are not subagents).
  *
- *   Pure read; no side effects. Empty state when subagents slice is empty.
+ *   Mostly read; the Sprint 57.103 (B2b) inject-to-teammate control on a RUNNING
+ *   teammate node is the one side effect (POST /chat/{id}/subagents/{sid}/inject).
+ *   Empty state when subagents slice is empty.
  *
  * Key Components:
  *   - InspectorTree: tab component reading useChatStore((s) => s.subagents)
  *   - buildTree(): flat SubagentNode[] → RenderNode forest (parentId nesting, cycle-guarded)
  *   - NodeRow: one `.subagent-row` + recursive `.indent` children + childEvents rows
  *   - ChildTurnRow: one child-loop TAO event as a nested `.subagent-row` (Sprint 57.96)
+ *   - TeammateInjectControl: inject-to-teammate input on a running teammate node (Sprint 57.103 B2b)
  *
  * Created: 2026-06-03 (Sprint 57.72)
- * Last Modified: 2026-06-09
+ * Last Modified: 2026-06-11
  *
  * Modification History (newest-first):
+ *   - 2026-06-11: Sprint 57.103 B2b — inject-to-teammate control + message_injected child row
  *   - 2026-06-09: Sprint 57.96 — render childEvents as nested rows (Scope B turn-stream)
  *   - 2026-06-03: Initial creation (Sprint 57.72) — A-5c Tree tab verbatim re-point
  *
@@ -52,10 +56,15 @@
 /* eslint-disable no-restricted-syntax -- verbatim re-point: mockup page-chat.jsx L491
    (section header inline font-size/color/text-transform/letter-spacing/font-family),
    L494-497/L501-504/L513-517 (subagent-row inline name color + Badge marginLeft auto),
-   L524 (summary .col inline font-size/color). Colors via var(--*) tokens — not literals. */
+   L524 (summary .col inline font-size/color). Colors via var(--*) tokens — not literals.
+   Sprint 57.103 B2b: + the TeammateInjectControl input/button inline styles (mockup tokens
+   --bg-1/--border/--primary/--danger; the inject-to-teammate control has no mockup design). */
+
+import { useState } from "react";
 
 import { ChevronRight, GitFork, MessageSquare } from "lucide-react";
 
+import { injectToSubagent } from "../../services/chatService";
 import { useChatStore } from "../../store/chatStore";
 import type { ChildTurnEvent, SubagentNode } from "../../../subagent/types";
 
@@ -149,9 +158,93 @@ function childTurnLabel(ev: ChildTurnEvent): string {
       return ev.text
         ? `← ${ev.toolName ?? "tool"} · ${clip(ev.text)}`
         : `← ${ev.toolName ?? "tool"}`;
+    case "message_injected":
+      // Sprint 57.103 (B2b): a chat-user inject the teammate drained mid-run.
+      return ev.text ? `injected · ${clip(ev.text)}` : "injected mid-run";
     default:
       return ev.kind;
   }
+}
+
+/**
+ * Sprint 57.103 (B2b): inject a message into a RUNNING teammate from its Tree node.
+ * The teammate runs to completion while the parent turn blocks (await-completion), so
+ * this control is only shown while the node is running (a brief window); the message is
+ * drained at the teammate's next turn boundary and surfaces back as a `message_injected`
+ * child row. No mockup design exists for this control — it reuses the mockup token set.
+ */
+function TeammateInjectControl({
+  sessionId,
+  subagentId,
+}: {
+  sessionId: string;
+  subagentId: string;
+}): JSX.Element {
+  const [text, setText] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+
+  const send = async (): Promise<void> => {
+    const trimmed = text.trim();
+    if (!trimmed || sending) return;
+    setSending(true);
+    setError(null);
+    try {
+      await injectToSubagent(sessionId, subagentId, trimmed);
+      setText("");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="subagent-row" data-testid={`teammate-inject-${subagentId}`}>
+      <input
+        className="mono"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") void send();
+        }}
+        placeholder="message this teammate…"
+        disabled={sending}
+        data-testid={`teammate-inject-input-${subagentId}`}
+        style={{
+          flex: 1,
+          fontSize: 11,
+          padding: "2px 6px",
+          background: "var(--bg-1)",
+          border: "1px solid var(--border)",
+          borderRadius: 4,
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => void send()}
+        disabled={sending || text.trim().length === 0}
+        className="mono"
+        data-testid={`teammate-inject-send-${subagentId}`}
+        style={{
+          fontSize: 11,
+          padding: "2px 8px",
+          background: "transparent",
+          border: "1px solid var(--border)",
+          borderRadius: 4,
+          color: "var(--primary)",
+          cursor: "pointer",
+        }}
+      >
+        inject
+      </button>
+      {error != null && (
+        <span className="subtle" style={{ color: "var(--danger)" }}>
+          {error}
+        </span>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -171,7 +264,15 @@ function ChildTurnRow({ ev }: { ev: ChildTurnEvent }): JSX.Element {
   );
 }
 
-function NodeRow({ rn }: { rn: RenderNode }): JSX.Element {
+function NodeRow({
+  rn,
+  canInject,
+  sessionId,
+}: {
+  rn: RenderNode;
+  canInject: boolean;
+  sessionId: string | null;
+}): JSX.Element {
   const { node, children, depth } = rn;
   const isRoot = depth === 0;
   // Mockup L494 root icon = chat (MessageSquare); L513 child icon = chevron_right.
@@ -180,6 +281,9 @@ function NodeRow({ rn }: { rn: RenderNode }): JSX.Element {
   const nameColor = isRoot ? "var(--primary)" : "var(--info)";
   // Task text: live mode while running (mockup fork row shows mode), summary once completed.
   const task = node.status === "completed" ? node.summary : node.mode;
+  // Sprint 57.103 (B2b): a running teammate node gets an inject control (real_llm only).
+  const showInject =
+    canInject && sessionId != null && node.mode === "teammate" && node.status === "running";
 
   return (
     <>
@@ -203,8 +307,12 @@ function NodeRow({ rn }: { rn: RenderNode }): JSX.Element {
         )}
         <StatusBadge status={node.status} />
       </div>
-      {(node.childEvents.length > 0 || children.length > 0) && (
+      {(showInject || node.childEvents.length > 0 || children.length > 0) && (
         <div className="indent">
+          {/* Sprint 57.103 (B2b): the inject-to-teammate control on a running teammate. */}
+          {showInject && sessionId != null && (
+            <TeammateInjectControl sessionId={sessionId} subagentId={node.subagentId} />
+          )}
           {/* Sprint 57.96 (Scope B): the child loop's per-turn TAO events render
               as nested rows under the node (the node "expands"), before any
               nested subagents. */}
@@ -212,7 +320,12 @@ function NodeRow({ rn }: { rn: RenderNode }): JSX.Element {
             <ChildTurnRow key={`${node.subagentId}-ce-${i}`} ev={ce} />
           ))}
           {children.map((c) => (
-            <NodeRow key={c.node.subagentId} rn={c} />
+            <NodeRow
+              key={c.node.subagentId}
+              rn={c}
+              canInject={canInject}
+              sessionId={sessionId}
+            />
           ))}
         </div>
       )}
@@ -222,6 +335,11 @@ function NodeRow({ rn }: { rn: RenderNode }): JSX.Element {
 
 export function InspectorTree(): JSX.Element {
   const subagents = useChatStore((s) => s.subagents);
+  // Sprint 57.103 (B2b): the inject-to-teammate control needs the session id + run mode
+  // (gated to real_llm — echo runs spawn no real teammate). Hooks before the early return.
+  const sessionId = useChatStore((s) => s.sessionId);
+  const runMode = useChatStore((s) => s.mode);
+  const canInject = runMode === "real_llm";
 
   if (subagents.length === 0) {
     return (
@@ -270,7 +388,12 @@ export function InspectorTree(): JSX.Element {
 
       <div className="subagent-tree">
         {forest.map((rn) => (
-          <NodeRow key={rn.node.subagentId} rn={rn} />
+          <NodeRow
+            key={rn.node.subagentId}
+            rn={rn}
+            canInject={canInject}
+            sessionId={sessionId}
+          />
         ))}
       </div>
 

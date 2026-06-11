@@ -21,6 +21,7 @@
  * Created: 2026-05-10 (Sprint 57.12 Day 2 / US-3)
  *
  * Modification History (newest-first):
+ *   - 2026-06-11: Sprint 57.103 B2b — ChildTurnEvent.kind also carries 'message_injected'
  *   - 2026-06-09: Sprint 57.96 — add ChildTurnEvent + SubagentNode.childEvents (Scope B turn-stream)
  *   - 2026-05-10: Initial creation (Sprint 57.12 Day 2 / US-3)
  *
@@ -63,11 +64,14 @@ export type SubagentStatus = "running" | "completed";
  * row under the subagent node in the Inspector Tree (the node "expands").
  */
 export interface ChildTurnEvent {
-  /** inner wire type: turn_start / llm_response / tool_call_request / tool_call_result. */
+  /**
+   * inner wire type: turn_start / llm_response / tool_call_request / tool_call_result /
+   * message_injected (Sprint 57.103 B2b — a chat-user inject the teammate drained mid-run).
+   */
   kind: string;
   /** turn number (turn_start). */
   turn?: number;
-  /** assistant text (llm_response) or tool result/error (tool_call_result). */
+  /** assistant text (llm_response) / tool result (tool_call_result) / injected text (message_injected). */
   text?: string;
   /** tool name (tool_call_request / tool_call_result). */
   toolName?: string;

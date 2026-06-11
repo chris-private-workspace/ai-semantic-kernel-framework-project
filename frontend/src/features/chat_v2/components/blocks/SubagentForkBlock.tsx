@@ -25,9 +25,10 @@
  *   `<Badge tone={a.status === "done" ? "success" : "info"} dot>`.
  *
  * Created: 2026-05-17 (Sprint 57.21 Day 2 §2.2)
- * Last Modified: 2026-05-23
+ * Last Modified: 2026-06-11
  *
  * Modification History (newest-first):
+ *   - 2026-06-11: Sprint 57.103 B2b — mode-aware label/icon (Teammate vs Fork) + real tokens vs 0t
  *   - 2026-05-23: Sprint 57.30 Day 4 §D2 — verbatim re-point Tailwind → mockup .subagent-tree/.subagent-row/.badge family
  *   - 2026-05-17: Initial extract from mockup L245-264 + Tailwind convert
  *
@@ -42,7 +43,7 @@
    (header row inline padding/font/color), L256-260 (per-row inline color/flex/overflow)
    all use inline-style. Tokens via var(--*) — not literals. */
 
-import { ChevronRight, GitFork } from "lucide-react";
+import { ChevronRight, GitFork, Users } from "lucide-react";
 
 import type { SubagentForkBlock as SubagentForkBlockType } from "../../types";
 
@@ -52,15 +53,25 @@ const STATUS_BADGE_TONE: Record<"running" | "done", string> = {
 };
 
 export function SubagentForkBlock({ block }: { block: SubagentForkBlockType }): JSX.Element {
+  // Sprint 57.103 (B2b): the inline block was a verbatim mockup port that hardcoded
+  // "Fork · concurrent" + a per-row turn count — both wrong for a TEAMMATE spawn
+  // (a teammate is not a fork; the turn count was always 0). Render a mode-aware
+  // label/icon + the real token count (once the subagent completes) so the inline
+  // block agrees with the authoritative Inspector Tree. The mockup `.subagent-tree` /
+  // `.subagent-row` / `.badge` CSS vocabulary is unchanged — only the data-driven text.
+  const allTeammate =
+    block.agents.length > 0 && block.agents.every((a) => a.mode === "teammate");
+  const HeaderIcon = allTeammate ? Users : GitFork;
+  const headerLabel = allTeammate ? "Teammate · peer" : "Fork · concurrent";
   return (
     <div className="subagent-tree">
       <div
         className="row"
         style={{ padding: "4px 8px", fontSize: 11, color: "var(--fg-muted)" }}
       >
-        <GitFork size={12} />
+        <HeaderIcon size={12} />
         <span className="mono" style={{ color: "var(--primary)", fontWeight: 600 }}>
-          Fork · concurrent
+          {headerLabel}
         </span>
         <span className="mono subtle">
           spawned {block.agents.length} subagent{block.agents.length === 1 ? "" : "s"}
@@ -85,7 +96,9 @@ export function SubagentForkBlock({ block }: { block: SubagentForkBlockType }): 
           <span className={`badge ${STATUS_BADGE_TONE[a.status]} dot`}>
             {a.status}
           </span>
-          <span className="subtle">{a.turns}t</span>
+          <span className="subtle">
+            {a.tokensUsed != null ? `${a.tokensUsed.toLocaleString()} tok` : ""}
+          </span>
         </div>
       ))}
     </div>

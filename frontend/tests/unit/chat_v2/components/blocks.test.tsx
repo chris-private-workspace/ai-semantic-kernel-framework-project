@@ -118,8 +118,22 @@ describe("SubagentForkBlock (mockup L245-264)", () => {
         block={{
           type: "subagent_fork",
           agents: [
-            { id: "sa-1", name: "log-scanner", task: "tail logs", status: "running", turns: 1 },
-            { id: "sa-2", name: "dep-checker", task: "check deps", status: "done", turns: 2 },
+            {
+              id: "sa-1",
+              name: "log-scanner",
+              task: "tail logs",
+              status: "running",
+              mode: "fork",
+              tokensUsed: null,
+            },
+            {
+              id: "sa-2",
+              name: "dep-checker",
+              task: "check deps",
+              status: "done",
+              mode: "fork",
+              tokensUsed: 1500,
+            },
           ],
         }}
       />,
@@ -130,6 +144,7 @@ describe("SubagentForkBlock (mockup L245-264)", () => {
     expect(screen.getByText("dep-checker")).toBeInTheDocument();
     expect(screen.getByText("running")).toBeInTheDocument();
     expect(screen.getByText("done")).toBeInTheDocument();
+    expect(screen.getByText("1,500 tok")).toBeInTheDocument();
   });
 
   test("single agent uses singular 'subagent' label", () => {
@@ -137,11 +152,43 @@ describe("SubagentForkBlock (mockup L245-264)", () => {
       <SubagentForkBlock
         block={{
           type: "subagent_fork",
-          agents: [{ id: "sa-x", name: "metrics-pull", task: "pgbouncer", status: "done", turns: 1 }],
+          agents: [
+            {
+              id: "sa-x",
+              name: "metrics-pull",
+              task: "pgbouncer",
+              status: "done",
+              mode: "fork",
+              tokensUsed: 850,
+            },
+          ],
         }}
       />,
     );
     expect(screen.getByText(/spawned 1 subagent$/)).toBeInTheDocument();
+  });
+
+  test("teammate-mode agents render 'Teammate · peer' label + real tokens (B2b)", () => {
+    render(
+      <SubagentForkBlock
+        block={{
+          type: "subagent_fork",
+          agents: [
+            {
+              id: "tm-1",
+              name: "patrol-peer",
+              task: "scan servers",
+              status: "done",
+              mode: "teammate",
+              tokensUsed: 3684,
+            },
+          ],
+        }}
+      />,
+    );
+    expect(screen.getByText("Teammate · peer")).toBeInTheDocument();
+    expect(screen.queryByText("Fork · concurrent")).not.toBeInTheDocument();
+    expect(screen.getByText("3,684 tok")).toBeInTheDocument();
   });
 });
 
@@ -181,7 +228,9 @@ describe("BlockRender dispatcher", () => {
       <BlockRender
         block={{
           type: "subagent_fork",
-          agents: [{ id: "a", name: "n", task: "t", status: "running", turns: 0 }],
+          agents: [
+            { id: "a", name: "n", task: "t", status: "running", mode: "fork", tokensUsed: null },
+          ],
         }}
       />,
     );

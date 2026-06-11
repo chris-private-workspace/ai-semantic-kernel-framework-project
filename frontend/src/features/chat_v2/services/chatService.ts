@@ -31,9 +31,10 @@
  *   `consumeSSEStream` reader/parser (extracted to avoid duplication).
  *
  * Created: 2026-04-30 (Sprint 50.2 Day 3.4)
- * Last Modified: 2026-06-08
+ * Last Modified: 2026-06-11
  *
  * Modification History (newest-first):
+ *   - 2026-06-11: Sprint 57.103 B2b — +injectToSubagent (POST /chat/{id}/subagents/{sid}/inject)
  *   - 2026-06-11: Sprint 57.101 B1 — +injectMessage (POST /chat/{id}/inject; mid-run instruction)
  *   - 2026-06-08: Sprint 57.88 US-5 — +resumeChat (POST /chat/{id}/resume); extract consumeSSEStream
  *   - 2026-05-09: Sprint 57.8 D3 — swap raw fetch to fetchWithAuth (JWT injection)
@@ -145,6 +146,33 @@ export async function injectMessage(sessionId: string, message: string): Promise
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message }),
   });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`HTTP ${response.status}: ${text}`);
+  }
+}
+
+/**
+ * Sprint 57.103 (B2b): inject a supplementary instruction into a RUNNING teammate
+ * subagent. POST /api/v1/chat/{sessionId}/subagents/{subagentId}/inject with {message}
+ * (a plain POST, NOT an SSE stream — the parent's ALREADY-OPEN run stream delivers the
+ * resulting `subagent_child` (message_injected) event once the teammate drains it at its
+ * next turn boundary). A non-2xx (404 absent/cross-tenant parent, 409 parent-not-running
+ * or teammate-not-live, 422 empty) throws so the caller can surface it.
+ */
+export async function injectToSubagent(
+  sessionId: string,
+  subagentId: string,
+  message: string,
+): Promise<void> {
+  const response = await fetchWithAuth(
+    `/api/v1/chat/${sessionId}/subagents/${subagentId}/inject`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message }),
+    },
+  );
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`HTTP ${response.status}: ${text}`);

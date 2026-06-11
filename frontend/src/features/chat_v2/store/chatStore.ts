@@ -35,6 +35,7 @@
  * Last Modified: 2026-06-10
  *
  * Modification History:
+ *   - 2026-06-11: Sprint 57.103 B2b — SubagentEntry +mode +tokensUsed; child text += inner.text
  *   - 2026-06-11: Sprint 57.101 B1 — message_injected → UserTurn(injected) (mid-run injection render)
  *   - 2026-06-10: Sprint 57.100 — HITLTurn carries kind from wire (verification reject UI branch)
  *   - 2026-06-09: Sprint 57.96 — +subagent_child case → SubagentNode.childEvents (Scope B turn-stream)
@@ -692,7 +693,8 @@ export const useChatStore = create<ChatStoreState>((set) => ({
             name: sid,
             task: ev.data.mode,
             status: "running",
-            turns: 0,
+            mode: ev.data.mode,
+            tokensUsed: null,
           };
           const newTurns = updateLastAgentTurn(s.turns, (t) => {
             const forkIdx = t.blocks.findIndex((b) => b.type === "subagent_fork");
@@ -761,7 +763,9 @@ export const useChatStore = create<ChatStoreState>((set) => ({
             newBlocks[forkIdx] = {
               ...fork,
               agents: fork.agents.map((a) =>
-                a.id === sid ? { ...a, status: "done" } : a,
+                a.id === sid
+                  ? { ...a, status: "done", tokensUsed: ev.data.tokens_used }
+                  : a,
               ),
             };
             return { ...t, blocks: newBlocks };
@@ -790,7 +794,9 @@ export const useChatStore = create<ChatStoreState>((set) => ({
                 ? inner.content
                 : typeof inner.result === "string"
                   ? inner.result
-                  : undefined,
+                  : typeof inner.text === "string"
+                    ? inner.text
+                    : undefined,
             toolName: typeof inner.tool_name === "string" ? inner.tool_name : undefined,
             toolCallId: typeof inner.tool_call_id === "string" ? inner.tool_call_id : undefined,
           };
