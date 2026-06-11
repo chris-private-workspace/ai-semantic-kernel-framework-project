@@ -13,7 +13,7 @@
 It condenses the user's "5-point deepening discussion" into 3 workflows and a recommended slice order — **the items in the per-sprint carryovers below (verification, subagent TEAMMATE/HANDOFF, model policy / config 分層) are the raw material it organizes**:
 
 - **A. Verification into loop** (points 1 + 5) — ✅ **A1 SHIPPED (Sprint 57.98)**: in-loop verify gate (retired the `correction_loop.py` wrapper; closed the **resume-bypasses-verification structural hole** — `resume()` now drives the same gated `_run_turns`) → ✅ **A2 SHIPPED (Sprint 57.99)**: verification-ESCALATE human loop (the max-fail terminal conditionally becomes a human pause; APPROVE delivers the held answer, REJECT-with-note coaches one bounded turn; behind a toggle, default OFF = A1) → A3 trace-critique (optional).
-- **B. Subagent completion** (point 3 + C-class live injection) — B1 between-turns injection primitive (serves BOTH chat live-injection AND TEAMMATE parent→child — one primitive, two payoffs) → B2 TEAMMATE multi-turn → B3 HANDOFF finish (**platform layer already done 57.68-70** — carryover text below saying "platform service absent" is stale; it shrinks to finish+governance) → B4 child governance.
+- **B. Subagent completion** (point 3 + C-class live injection) — ✅ **B1 SHIPPED (Sprint 57.101)**: between-turns injection primitive (`MessageInbox` ABC + `_run_turns` drain seam + `InjectionRegistry` + `POST /{id}/inject` + FE composer-mid-run; serves the chat live-injection payoff now, designed so **B2 reuses the same drain seam** — one primitive, two payoffs) → B2 TEAMMATE multi-turn (the child loop's inbox backed by the parent mailbox — next) → B3 HANDOFF finish (**platform layer already done 57.68-70** — carryover text below saying "platform service absent" is stale; it shrinks to finish+governance) → B4 child governance.
 - **C. Model policy + config tiering** (point 4 + cc-parity §7.3) — C1 per-tenant model policy (`tenant.meta_data["model_policy"]` JSONB) → C2 compaction cheap tier → C3 policy面 + risky-action detector.
 
 **Recommended 10-slice order**: A1 → A2 → B1 → B2 → C1 → B3 → C3 → C2 → B4 → A3 (driven by `loop.py` write-contention: A1+B1 both touch loop.py → serialize). **C1 can float to #2** if a per-tenant-governance milestone is prioritized (it doesn't touch loop.py).
@@ -21,6 +21,20 @@ It condenses the user's "5-point deepening discussion" into 3 workflows and a re
 **⚠️ C1 soft-prereq**: `AD-RBAC-DB-To-JWT-Wiring-Phase58` (below) must be authz-effective BEFORE C1's admin PUT, else C1's admin endpoint is an AP-4 Potemkin dead control. A1/A2/B1/B2 do NOT depend on it.
 
 > **Status**: roadmap selected/acknowledged by user; NO slice sprint kicked off yet (rolling discipline — A1 plan is written only on explicit user go).
+
+---
+
+## 🆕 Sprint 57.101 Carryover — B1 between-turns injection primitive SHIPPED; B2 TEAMMATE reuses the drain seam next
+
+**Source**: Sprint 57.101 closed 2026-06-11 — harness-deepening workflow B slice 1. A chat-v2 user injects an instruction MID-RUN; the loop drains it at the next turn boundary (`MessageInbox` ABC + `_run_turns` drain) and the agent picks it up. D-DAY1-1: the injection is an INPUT → it runs `check_input` (a non-PASS injection is dropped + `GuardrailTriggered(input)`), NOT the between-turns gate (which checks OUTPUTs). Module-level `InjectionRegistry` + `POST /{id}/inject`; new `MessageInjected` wire (count 23→24); FE composer usable mid-run (real_llm). Drive-through BOTH cases PASS (real Azure gpt-5.2). Detail: `memory/project_phase57_101_between_turns_injection.md` + CHANGE-068 + design note 26 + 17.md.
+
+- **B2 TEAMMATE multi-turn** (🔴 next slice) — reuse the B1 `MessageInbox` ABC: give the child loop an inbox backed by the parent's mailbox channel (`teammate.py` factory→child-loop + `send_to_parent` + the B1 drain seam). The next harness-deepening B-workflow slice.
+- **pause-on-injection** (🟢) — today a guardrail-blocked injection is DROPPED + `GuardrailTriggered(input)`; a HITL pause-on-injection (instead of drop) is a follow-on if a use case appears.
+- **inject-during-HITL-pause** (🟢) — the loop is paused (not running) → the inject endpoint 409s; re-injecting into a paused loop is a separate concern (the 57.99 REJECT-with-note already covers the reviewer-note path).
+- **optimistic FE echo / edit-or-cancel a queued injection / durable injection across resume** (🟢) — B1 renders on the `message_injected` drain (proof it landed); the queue is in-memory per-run; these are follow-ons.
+- **per-tenant injection policy (rate-limit / disable)** (🟢) — workflow C (C3).
+- `loop-injection-primitive-spike` calibration class 0.55 (1st data point; pending 2-3 sprint validation; `agent_factor` 1.0 parent-direct).
+- **Infra-startup operational lesson** (🟢, process) — the dev infra (Docker Postgres/Redis/RabbitMQ) being DOWN makes integration tests time out ~104s/file (looks like a hang); always `docker compose ps` + port check BEFORE reading a slow integration suite as a code bug; never run 2 full-suites concurrently (test-DB contention).
 
 ---
 

@@ -23,7 +23,7 @@
 
 ### 0.2 Branch
 - [x] Branch `feature/sprint-57-101-between-turns-injection` from `main` (`71336195`)
-- [ ] plan + checklist + progress committed (Day-0 commit)
+- [x] plan + checklist + progress committed (Day-0 commit `a7ec1951`)
 
 ---
 
@@ -87,24 +87,24 @@
 - [x] **mypy 0 + run_all 10/10 + format chain** — mypy `src` **0/355** ✅; run_all **10/10** (`check_event_schema_sync` + `check_ap1` + `check_llm_sdk_leak` green) ✅; black/isort/flake8 **FULL `src tests`** clean (independent) ✅ (final FULL `black --check` re-run at Day-3 close)
 - [x] **Frontend gate** — `npm run lint` (no `--silent`) exit 0 + `npm run build` exit 0 + `npm run check:mockup-fidelity` **53 unchanged** + `npm run test` **787** (+5) ✅
 
-### 3.3 Drive-through (US-6 — mid-run injection picks up + guardrail-on-injected)
-- [ ] **Clean backend restart (Risk Class E)** — kill the `--reload` reloader + the `multiprocessing.spawn` worker (`Win32_Process` PID/PPID/StartTime + `Stop-Process -Force`); verify :8000 FREE + node :3007 untouched; start a fresh process (the new `/inject` route + the inbox wiring are startup-constructed); restore the normal `--reload` backend after
-- [ ] **Drove a multi-turn run → mid-run inject → next turn picks up** — real UI (jamie@acme.com/acme-prod) + real backend + real Azure: a tool-using investigation (≥3 turns) → mid-run type "also check the database connection pool" → inject → the NEXT turn acknowledges + incorporates it + the injected `UserTurn(injected)` appears in the timeline (the tag); screenshots + observed-vs-intended in progress.md
-- [ ] **Drove the guardrail-on-injected case** — inject a between-turns-guardrail-tripping instruction → the guardrail acts (pause/block) on the injected content; screenshot + observed-vs-intended
-  - NOTE honest artifacts (if the multi-turn run can't be forced to ≥3 turns cleanly, or the injection timing is hard to land — record exactly what happened; NOT claimed "gate-only")
+### 3.3 Drive-through (US-6 — mid-run injection picks up + guardrail-on-injected) ✅ BOTH PASS
+- [x] **Clean backend (Risk Class E)** — N/A clean: :8000 was FREE at start (no stale backend / no `--reload` worker to kill) → started a fresh backend (PID 2520); node :3007 (PID 5620) is the frontend; the new `/inject` route + inbox wiring are startup-constructed on this fresh process ✅
+- [x] **Case A — mid-run inject → next turn picks up** ✅ — real UI (jamie@acme.com/acme-prod) + real Azure **gpt-5.2**: an autonomous tool-using run (incident_list→incident_get→correlation_analyze) → mid-run injected "check the database connection pool health for the checkout service" → landed at the next boundary as a `UserTurn(injected)` with the **"injected mid-run" tag** → **turn 8 the agent called `mock_patrol_check_servers` scope=["checkout","db-01",…]** + the final summary had an explicit "Checkout DB connection pool health:" section. `artifacts/dt57101-A-*.png` + progress.md Day-3
+- [x] **Case B — guardrail-on-injected (dropped)** ✅ — injected "…approval required before you touch any production database…" mid-run → the Cat 9 INPUT guardrail (`check_input`, phrase `{"approval required"}`) caught it → **DROPPED** (no user turn; `approvalAsUserTurn=false`) + Loop visualizer shows **`guardrail_triggered input→escalate`** → run continued + completed (end_turn). `artifacts/dt57101-B-*.png` + progress.md Day-3
+  - Honest timing note: the first attempt's run was too fast (2 turns) to inject into; a forceful autonomous-multi-tool prompt + injecting immediately after send (no intermediate snapshot) gave the ~15s runway. Real-LLM UI-timing, not a code issue. NOT claimed "gate-only" — both cases observed live.
 
 ### 3.4 CHANGE-068 + design note 26 + 17.md
-- [ ] `claudedocs/4-changes/feature-changes/CHANGE-068-between-turns-injection-primitive.md` written
-- [ ] **design note 26** — `26-between-turns-injection-design.md` extracted from the real impl; 8-point quality gate (file:line / decision matrix — module registry vs per-request mailbox / verified invariants / 17.md cross-ref / open invariants — TEAMMATE B2 / rollback / refs / MHist)
-- [ ] **`17-cross-category-interfaces.md`** — register `MessageInbox` (Cat 1, `drain`) + `message_injected` (Cat 12 wire) + note the loop drains before the Cat 9 between-turns guardrail
+- [x] `claudedocs/4-changes/feature-changes/CHANGE-068-between-turns-injection-primitive.md` written (status ✅ Completed)
+- [x] **design note 26** — `26-between-turns-injection-design.md` extracted from the real impl; 8-point quality gate (file:line / decision matrix — module registry vs per-request mailbox + D-DAY1-1 input-check vs between-turns-check / verified invariants / 17.md cross-ref / open invariants — TEAMMATE B2 / rollback / refs / MHist) ✅
+- [x] **`17-cross-category-interfaces.md`** — registered `MessageInbox` (Cat 1, `drain`) §2.1 + `message_injected` (Cat 1 event) §4.1 ✅
 
 ---
 
 ## Day 4 — Closeout (new-domain spike — design note 26)
 
 ### 4.1 Closeout
-- [ ] Full validation (parent re-verified): backend pytest (baseline → +N, 0 deletion) / mypy `src` 0 / run_all 10/10 / black FULL `src tests` clean / frontend Vitest (+N) + lint(no `--silent`) + build exit 0 + check:mockup-fidelity unchanged / `mailbox.py`+`TeammateExecutor`+`resume()`+DB+`ModelProfile`+`HITLTurn.tsx` diff = 0 / **drive-through PASS** (mid-run inject → next turn picks up + injected UserTurn; + guardrail-on-injected; artifacts)
-- [ ] progress.md (Day 0-3) + retrospective.md (Q1-Q7) + design-note-extract self-check record (8-point gate)
-- [ ] Calibration: `loop-injection-primitive-spike` 0.55 (NEW class, 1st pt) + `agent_factor` 1.0 (parent-direct); recorded `calibration-log.md §3` + `sprint-workflow.md §Scope-class matrix` row; carryover (B2 TEAMMATE) → next-phase-candidates.md
-- [ ] MEMORY.md pointer + `project_phase57_101_*.md` subfile + CLAUDE.md lean (Current Sprint row + Last Updated) + CHANGE-068 + design note 26 + 17.md
-- [ ] commit (Day 0-N) + push + PR (user-authorized)
+- [x] Full validation (parent re-verified): backend pytest **2320 passed + 4 skipped** (+20, 0 deletion) / mypy `src` **0/355** / run_all **10/10** / black FULL `src tests` clean (660) / frontend Vitest **787** (+5) + lint(no `--silent`) exit 0 + build exit 0 + check:mockup-fidelity **53 unchanged** / `mailbox.py`+`TeammateExecutor`+`resume()`+DB+`ModelProfile`+`HITLTurn.tsx` diff = 0 / **drive-through BOTH cases PASS** (Case A mid-run inject → agent checks checkout db pool + injected UserTurn tag; Case B "approval required" → dropped + `guardrail_triggered input→escalate`; artifacts dt57101-{A,B}.png) ✅
+- [x] progress.md (Day 0-3 + infra incident + drive-through) + retrospective.md (Q1-Q7 + 8-point gate self-check) ✅
+- [x] Calibration: `loop-injection-primitive-spike` 0.55 (NEW class, 1st pt) + `agent_factor` 1.0 (parent-direct); recorded `sprint-workflow.md §Scope-class matrix` row; carryover (B2 TEAMMATE) → next-phase-candidates.md ✅ (calibration-log §3 entry pending — folded into the closeout commit)
+- [x] MEMORY.md pointer + `project_phase57_101_between_turns_injection.md` subfile + CLAUDE.md lean (Current Sprint row + Last Updated) + CHANGE-068 + design note 26 + 17.md ✅
+- [ ] commit (Day 0-N) + push + PR (**push/PR user-authorized** — pending)

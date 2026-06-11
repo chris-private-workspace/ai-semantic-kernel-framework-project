@@ -71,9 +71,12 @@ status: Active
 - **Implementation**: `router.py` `inject_message` — `Depends(get_current_tenant)` + `SessionRegistry.get(current_tenant, session_id)` → 404 (absent/cross-tenant — the 鐵律), 409 (not-running / no-live-queue), 202 (`put`). `InjectRequestBody(message, min 1 / max 4096)`.
 - **Verification**: `pytest tests/unit/api/v1/chat/test_router.py::TestInjectEndpoint` (6) — 202+queued / 404 missing / 404 cross-tenant / 409 completed / 409 no-live-queue / 422 empty. Risk Class C: a `_reset_injection_registry` autouse fixture; sync seeding by direct dict avoids the cross-loop lock bind (`put_nowait`/`get_nowait` are loop-agnostic).
 
-### 2.6 Drive-through (the live-path verification — the one end-to-end gate)
-- **Method**: real UI (`/chat-v2`, real_llm) + real backend (CLEAN restart — Risk Class E) + real Azure → a multi-turn tool-using run → mid-run type an instruction → **Inject** → the next turn acknowledges + incorporates it + the injected `UserTurn(injected)` appears; PLUS inject content that trips the input guardrail → dropped + `GuardrailTriggered`.
-- **Result**: see §2.6 in progress.md Day-3 (observed-vs-intended + screenshots `artifacts/dt57101-*.png`).
+### 2.6 Drive-through (the live-path verification — the one end-to-end gate) ✅ PASS
+- **Method**: real UI (`/chat-v2`, jamie@acme.com/acme-prod, real_llm) + real backend (:8000) + real Azure **gpt-5.2** + Docker infra, driven via Playwright. Screenshots `artifacts/dt57101-{A,B}.png`.
+- **Case A (PASS)**: a forceful autonomous multi-tool run (turns 3-6: incident_list → incident_get → correlation_analyze); the mid-run injection "check the database connection pool health for the checkout service" landed at the next boundary as a `UserTurn(injected)` with the "injected mid-run" tag; **turn 8 the agent called `mock_patrol_check_servers` scope=["checkout","db-01",…]** and the final summary had an explicit "Checkout DB connection pool health:" section — the agent both acted on AND mentioned the injection.
+- **Case B (PASS)**: a mid-run injection containing "approval required" was DROPPED (no user turn; `approvalAsUserTurn=false`) + the Loop visualizer showed a `guardrail_triggered input → escalate` event (the `check_input` → ESCALATE → drop path); the run continued + completed (end_turn). `CHAT_HITL_ESCALATE_INPUT_PHRASES={"approval required"}`.
+- **Timing note**: the first attempt's run was too fast (2 turns) to inject into; an autonomous-multi-tool prompt + injecting immediately after send (no intermediate snapshot) gave the runway. Real-LLM UI-timing, not a code issue.
+- Full observed-vs-intended: progress.md Day-3.
 
 ## 3. Cross-Category Contracts
 

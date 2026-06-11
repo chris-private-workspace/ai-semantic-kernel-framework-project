@@ -98,5 +98,27 @@ The plan/proposal assumed draining BEFORE the between-turns guardrail means the 
 - **Frontend**: `eventSchema.generated.test.ts` (24 + message_injected recognition); `chatStore.mergeEvent.test.ts` (message_injected → `UserTurn(injected)`); `InputBar.test.tsx` (NEW, 3 — idle→send / running-real_llm→inject + textarea enabled / running-echo→disabled + no Inject button).
 
 ### Gates (Day 1-cont + 2 + 3 partial)
-- Backend: mypy `src` **0/355** (+2 = inbox.py + injection_registry.py) · flake8 `src tests` clean · `run_all` **10/10** · targeted suites green (chat api + loop + inbox + registry + router = 199 + 12 + 19 passed earlier). Full suite NET delta → recorded on the background run's completion.
+- Backend: mypy `src` **0/355** (+2 = inbox.py + injection_registry.py) · flake8 `src tests` clean · `run_all` **10/10** · targeted suites green (chat api + loop + inbox + registry + router = 199 + 12 + 19 passed earlier).
+- **Full backend pytest** (after the infra fix below): **2320 passed + 4 skipped** (baseline 57.100 = 2300p+4s → **+20 passed, 0 deletions**); 98.9s clean.
 - Frontend: `npm run build` ✅ (tsc — `demoLoopEvents.ts` needed NO change since `message_injected` is a NEW type, not a required field) · Vitest **787 passed** (+5) · `check:mockup-fidelity` **53 unchanged** · `npm run lint` exit 0 (no `--silent`).
+
+### Day-3 infra incident (NOT a B1 issue — recorded honestly)
+The dev infra (Docker Postgres/Redis/RabbitMQ) was **DOWN at session start** (all ports :5432/:6379/:5672/:8000/:3007 free). The full-suite integration tests (admin_tenant_* etc.) therefore timed out ~104s/file on the dead DB — which initially LOOKED like a hang (two background full-runs I'd kicked off compounded the slowness via DB contention; both were every-integration-test-timing-out, not corruption). Root cause: infra not up, not a B1 regression — B1 unit tests were green throughout (218 passed in isolation). Fix: `docker compose -f docker-compose.dev.yml up -d postgres redis rabbitmq qdrant mock_services` → postgres healthy (44 tables) → `test_admin_tenant_patch.py` 104s+7fail → **1.5s+9pass**. The full suite then ran clean (2320 passed). Lesson: before reading a slow/failing integration suite as a code problem, verify the infra is actually up (`docker compose ps` + port check).
+
+---
+
+## Day 3 — Drive-through (US-6) — both DoD cases PASS (2026-06-11)
+
+Real UI (`/chat-v2`, jamie@acme.com / acme-prod, real_llm) + real backend (fresh PID 2520, :8000) + real Azure **gpt-5.2** + Docker infra. Driven via Playwright. Clean restart was N/A (no stale backend — :8000 was free at start; started fresh). Screenshots: `artifacts/dt57101-A-midrun-injection-picked-up.png` + `artifacts/dt57101-B-guardrail-tripping-injection-dropped.png`.
+
+### Case A — mid-run injection picked up (the primary payoff) ✅ PASS
+- **Intended**: start a multi-turn tool-using run; mid-run inject "also check the database connection pool health for the checkout service"; the injection lands at the next turn boundary, renders as a tagged user turn, and the agent acts on it.
+- **Observed**: an autonomous investigation ran turns 3-6 (`mock_incident_list` → `mock_incident_get` → `mock_correlation_analyze`); the injection (sent ~1.5s after the prompt, while running) landed **after turn 6** as a `UserTurn` with `data-injected="true"` + the **"injected mid-run"** tag (body = the db-pool instruction); **turn 8 the agent called `mock_patrol_check_servers` with scope `["payment-gateway","checkout","db-01",...]`** — directly acting on the injected instruction; the final summary (turn 9, end_turn) had an explicit **"Checkout DB connection pool health:"** section. The agent both ACTED on and EXPLICITLY MENTIONED the injection, exactly as requested.
+- Timing note (honest): the FIRST attempt's run was too fast (2 turns, ~6s) and completed before I could inject; switching to a forceful autonomous-multi-tool prompt + injecting IMMEDIATELY after send (no intermediate snapshot) gave the ~15s / 7-turn runway needed to land the injection mid-run. NOT a code issue — purely the real-LLM timing of a UI-driven mid-run action.
+
+### Case B — guardrail-tripping injection dropped (the safety case) ✅ PASS
+- **Intended**: mid-run inject content containing the input-guardrail trigger phrase "approval required"; the Cat 9 INPUT guardrail (`check_input`) catches it; the injection is DROPPED (no user turn) + a `GuardrailTriggered(input)` event; the run continues.
+- **Observed**: injected "Side note: approval required before you touch any production database…" mid-run (turns 3-7 tool-using); the injection **did NOT render as a user turn** (`approvalAsUserTurn=false`, `injectedTagsOnPage=0`); the Loop visualizer shows a **`guardrail_triggered` `input → escalate`** event (= my drain's `check_input` → ESCALATE → drop + `GuardrailTriggered(guardrail_type="input")`); the run **continued (turn 6) + completed (turn 7, end_turn)** — the blocked side-instruction did not kill the main task. (`CHAT_HITL_ESCALATE_INPUT_PHRASES = {"approval required"}` is the trigger; ESCALATE is non-PASS → my drain drops it, consistent with the unit test's BLOCK case.)
+- Side observation (not B1): the A1 verification gate (57.98) fired on turn 2's refusal — a `Verification (2)` with one ❌ (judge: "Refuses/deflects") — the loop self-corrected and proceeded; orthogonal to B1, but a nice confirmation the in-loop verify gate is live.
+
+**Verdict**: Drive-through PASS for both DoD cases. Not gate-only — real UI + real Azure gpt-5.2, the injection both landed-and-was-acted-on (Case A) and was-guardrail-dropped (Case B), observed in the live timeline + Loop visualizer.

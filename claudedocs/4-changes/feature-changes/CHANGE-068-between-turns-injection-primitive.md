@@ -4,7 +4,7 @@
 **Change Type**: New Feature
 **Sprint**: 57.101
 **Scope**: Cat 1 (Orchestrator) × Cat 12 (Observability/wire) × Cat 9 (Guardrails) × Frontend (chat-v2)
-**Status**: 🚧 In Progress (code + gates green; drive-through pending)
+**Status**: ✅ Completed (code + gates green; drive-through PASS both DoD cases)
 
 ## Change Summary
 
@@ -43,9 +43,9 @@ Backend (NEW): `_contracts/inbox.py`, `api/v1/chat/injection_registry.py`. Backe
 
 - [x] backend mypy `src` 0/355 + flake8 `src tests` clean + `run_all` 10/10 (check_event_schema_sync / check_ap1 / check_llm_sdk_leak green)
 - [x] backend new tests: inbox-drain (3) + injection-registry (9) + inject-endpoint (6) + sse + parity(24)
-- [ ] backend full pytest NET delta (pending background run)
+- [x] backend full pytest **2320 passed + 4 skipped** (+20, 0 deletions); 98.9s
 - [x] frontend build (tsc) + Vitest 787 (+5) + lint (no --silent) + check:mockup-fidelity 53 unchanged
-- [ ] **drive-through** (real UI + backend + Azure: multi-turn run → mid-run inject → next turn picks it up + injected UserTurn; + guardrail-on-injected) — PENDING
+- [x] **drive-through PASS** (real UI + Azure gpt-5.2): Case A mid-run inject → agent checks checkout db pool + mentions it (injected UserTurn tag visible); Case B "approval required" inject → dropped + `guardrail_triggered input→escalate`, run continues. artifacts/dt57101-{A,B}.png
 
 ## Related
 
