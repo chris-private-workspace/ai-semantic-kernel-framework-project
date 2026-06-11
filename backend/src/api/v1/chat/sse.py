@@ -37,6 +37,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.3)
 Last Modified: 2026-06-10
 
 Modification History (newest-first):
+    - 2026-06-11: Sprint 57.101 B1 — serialize MessageInjected → message_injected (between-turns)
     - 2026-06-10: Sprint 57.100 — approval_requested serializer +kind (pause kind on the wire)
     - 2026-06-09: Sprint 57.96 — serialize SubagentChildEvent → subagent_child (Cat 11 Scope B)
     - 2026-06-03: Sprint 57.75 A-5c — serialize SpanStarted/Ended + MemoryAccessed (3 wire types)

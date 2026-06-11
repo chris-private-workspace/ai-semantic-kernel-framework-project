@@ -66,4 +66,37 @@ New-domain spike (NEW Cat 1 `MessageInbox` + NEW `_run_turns` drain seam + NEW `
 
 ### Notes
 - The `events.py` header "22 subclasses" prose was already stale before 57.96 (which added `SubagentChildEvent`) — left untouched (Karpathy §3; the gating count is the parity test's `len(WIRE_SCHEMA) == 24`, which is correct). Added a 57.101 MHist line only.
-- No Day-1 drift beyond Day-0's D-DAY0-1 (count 23→24, already accounted).
+
+### D-DAY1-1 (the load-bearing drift — the "free between-turns guardrail check" claim was wrong)
+The plan/proposal assumed draining BEFORE the between-turns guardrail means the injected content is Cat 9-checked "for free". Reading the real code disproved it: `_cat9_between_turns_check` checks `content = self._latest_output_text(messages)` (`loop.py:1311`), and `_latest_output_text` (`:1283-1285`) returns the last **assistant/tool** message — it **skips `role="user"` messages**. So a `role="user"` injection is NOT what the between-turns gate inspects (that gate gates CONTINUATION on the just-completed turn's OUTPUT, not on a new input).
+- **Correct fix**: the injection is an INPUT → run the Cat 9 **INPUT** guardrail (`engine.check_input`) on each drained message. A non-PASS injection is **DROPPED** (not appended) + a `GuardrailTriggered(guardrail_type="input")` event tells the UI; the run continues without it (a bad side-instruction must not kill the main task). PASS → append + `MessageInjected`. NO pause-resume on a blocked injection (bounded — pause-on-injection is a follow-on).
+- This is more faithful to the proposal's intent ("注入內容自動受 Cat 9 檢查") AND realizes the DoD "guardrail-on-injected case" honestly. Scope unchanged (still a drain seam; the check is one `check_input` call + a drop branch). The loop drain comment now documents this.
+
+---
+
+## Day 1 (cont) + Day 2 — The injection channel + the FE composer (US-3/US-4/US-5) (2026-06-11)
+
+### Backend channel (US-3)
+- **`api/v1/chat/injection_registry.py`** (NEW) — `InjectionRegistry` (module singleton via `get_default_injection_registry()`, tenant-scoped `dict[tenant_id, dict[session_id, asyncio.Queue[Message]]]` — mirrors `SessionRegistry`; a per-request mailbox cannot bridge the SEPARATE inject-POST + run requests): `register`/`put` (put_nowait, False if no live queue)/`drain` (get_nowait loop)/`unregister` (prunes empty tenant). `QueueMessageInbox(MessageInbox)` binds `(registry, tenant, session)` → the loop's drain view.
+- **`router.py`** — at chat POST: register the injection queue (alongside the SessionRegistry register); in `_stream_loop_events`' `finally`: unregister (any exit path). NEW `POST /{session_id}/inject` (202): `Depends(get_current_tenant)` + active+owner gate via `SessionRegistry.get` (404 absent/cross-tenant — the 鐵律; 409 not-running; 409 if `put` finds no live queue) → `put(Message(role="user", content=body.message))`. `InjectRequestBody(message: str, min 1 / max 4096)` in `schemas.py`.
+- **`handler.py`** — `build_real_llm_handler` constructs `QueueMessageInbox(get_default_injection_registry(), tenant_id, session_id)` + passes `message_inbox=` to the loop ctor (real_llm path; echo_demo is a deterministic 2-turn mock → no inbox, no dead-control on the FE side via mode-gating).
+
+### Frontend (US-4/US-5)
+- **`chatService.ts`** — `injectMessage(sessionId, message)`: plain POST `/{id}/inject` (NOT an SSE stream — the ALREADY-OPEN run stream delivers `message_injected` on drain); throws on non-2xx.
+- **`useLoopEventStream.ts`** — `inject(text)`: only valid while `status==="running"` + a sessionId; `injectMessage(...)`; an inject failure surfaces via `setError` but does NOT change status (the run is unaffected).
+- **`InputBar.tsx`** — composer usable mid-run for **real_llm only** (`canInject = isRunning && mode==="real_llm"` — echo_demo is a scripted mock that can't act on a mid-run note → gating avoids a dead control per the Drive-Through rule): the textarea is enabled (`disabled={isRunning && !canInject}`), `onSend` routes a running send to `inject()` (else `send()`), and a clearly-labelled **Inject** button (`data-testid="inject-send"`) sits next to Stop. Placeholder switches to "Add an instruction for the running agent…" when injectable.
+- **`types.ts`** — `UserTurn` +`injected?: boolean`.
+- **`chatStore.ts`** — `message_injected` case → append a `UserTurn(injected: true)` (rendered on the drain event, not optimistically).
+- **`UserTurn.tsx`** — an "injected mid-run" tag (`data-testid="injected-tag"`) reusing the existing `.route-pill` class (no new HEX/oklch → `check:mockup-fidelity` baseline unchanged).
+
+### Tests (US-1..US-5)
+- **`test_inbox_drain.py`** (NEW, 3) — injection lands at the NEXT turn boundary (turn N+1's request, not N's) + `MessageInjected` fires; `message_inbox=None` → no-op; a `check_input`-BLOCKed injection is DROPPED + `GuardrailTriggered(input,block)` + never reaches the LLM + the run still completes.
+- **`test_injection_registry.py`** (NEW, 9) — register/put/drain/unregister + FIFO + cross-tenant put rejected + two-tenants-same-sid independence + empty-tenant prune + `QueueMessageInbox` delegation.
+- **`test_router.py` `TestInjectEndpoint`** (NEW, 6) — 202+queued / 404 missing / 404 cross-tenant / 409 completed / 409 no-live-queue / 422 empty; sync seeding by direct dict (avoids the cross-loop lock bind; `put_nowait`/`get_nowait` are loop-agnostic) + a `_reset_injection_registry` autouse fixture (Risk Class C).
+- **`test_sse.py`** +`test_message_injected` (the wire frame).
+- **`test_event_wire_schema_parity.py`** — count 24 + a `MessageInjected` instance.
+- **Frontend**: `eventSchema.generated.test.ts` (24 + message_injected recognition); `chatStore.mergeEvent.test.ts` (message_injected → `UserTurn(injected)`); `InputBar.test.tsx` (NEW, 3 — idle→send / running-real_llm→inject + textarea enabled / running-echo→disabled + no Inject button).
+
+### Gates (Day 1-cont + 2 + 3 partial)
+- Backend: mypy `src` **0/355** (+2 = inbox.py + injection_registry.py) · flake8 `src tests` clean · `run_all` **10/10** · targeted suites green (chat api + loop + inbox + registry + router = 199 + 12 + 19 passed earlier). Full suite NET delta → recorded on the background run's completion.
+- Frontend: `npm run build` ✅ (tsc — `demoLoopEvents.ts` needed NO change since `message_injected` is a NEW type, not a required field) · Vitest **787 passed** (+5) · `check:mockup-fidelity` **53 unchanged** · `npm run lint` exit 0 (no `--silent`).

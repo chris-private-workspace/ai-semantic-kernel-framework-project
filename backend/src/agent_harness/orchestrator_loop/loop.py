@@ -45,7 +45,7 @@ Created: 2026-04-30 (Sprint 50.1 Day 2.2)
 Last Modified: 2026-06-10
 
 Modification History (newest-first):
-    - 2026-06-11: Sprint 57.101 B1 — ctor +message_inbox; _run_turns drains it before the between-turns gate
+    - 2026-06-11: Sprint 57.101 B1 — +message_inbox; _run_turns drains before between-turns gate
     - 2026-06-10: Sprint 57.100 — 5 ApprovalRequested yields +kind= (pause kind on the wire)
     - 2026-06-10: Sprint 57.99 A2 — resume() verify-kind: APPROVE replays / REJECT 1 coached turn
     - 2026-06-10: Sprint 57.99 A2 — verification-ESCALATE pause swaps the max-fail terminal (toggle)
@@ -217,12 +217,11 @@ if TYPE_CHECKING:
     # the registry by duck-typing (get_all()/len()); the persistence helper is
     # lazy-imported inside the gate (also from the package) to keep the loop
     # module's import-time dependency on Cat 10 to zero.
-    from agent_harness.verification import VerifierRegistry
-
     # Sprint 57.101 B1: MessageInbox is a type-only annotation (the loop drains it
     # but never constructs it — the concrete backing is ctor-injected). Imported
     # from the PACKAGE per 17.md §1; TYPE_CHECKING keeps it a pure forward-ref.
     from agent_harness._contracts import MessageInbox
+    from agent_harness.verification import VerifierRegistry
 
 # Sprint 57.98 A1: stop-reason for LoopCompleted when the in-loop self-correction
 # budget is exhausted (mirrors the retired correction_loop.py wrapper constant).
@@ -2025,23 +2024,36 @@ class AgentLoopImpl(AgentLoop):
                 return
 
             # === Cat 1 between-turns injection drain (Sprint 57.101 B1) =
-            # Drain the optional message inbox at the loop TOP, BEFORE the
-            # between-turns guardrail below, so a mid-run injected message (a) joins
-            # the conversation at THIS turn boundary — it never interrupts an
-            # in-flight LLM/tool call (that would be a lie about what the loop can
-            # do) — and (b) is Cat 9-checked for free when the gate below runs over
-            # `messages`. MessageInjected fires on DRAIN (proof it landed in the
-            # loop), not when the inject POST returned. The drain runs every
-            # iteration (gated only on an inbox being present, NOT on turn_count), so
-            # an injection during turn N lands at the N→N+1 boundary. When no inbox
-            # is injected this is a no-op (byte-identical to pre-57.101).
+            # Drain the optional message inbox at the loop TOP so a mid-run injected
+            # message joins the conversation at THIS turn boundary — it never
+            # interrupts an in-flight LLM/tool call (that would be a lie about what
+            # the loop can do); an injection during turn N lands at the N→N+1
+            # boundary. Each injected message is an INPUT, so it runs the Cat 9 INPUT
+            # guardrail — NOT the between-turns gate below, which checks the
+            # just-completed turn's OUTPUT (_latest_output_text skips user messages;
+            # Sprint 57.101 D-DAY1-1). A non-PASS injection is DROPPED (not appended)
+            # + a GuardrailTriggered tells the UI, and the run continues without it
+            # (a bad side-instruction must not kill the main task). MessageInjected
+            # fires on DRAIN (proof it landed), not on the POST. No inbox → no-op
+            # (byte-identical to pre-57.101). The drain runs every iteration (gated
+            # only on an inbox being present, NOT on turn_count).
             if self._message_inbox is not None:
                 for injected in await self._message_inbox.drain():
+                    injected_text = injected.content if isinstance(injected.content, str) else ""
+                    if self._guardrail_engine is not None:
+                        inj_g = await self._guardrail_engine.check_input(
+                            injected_text, trace_context=ctx
+                        )
+                        if inj_g.action != GuardrailAction.PASS:
+                            yield GuardrailTriggered(
+                                guardrail_type="input",
+                                action=inj_g.action.value,
+                                reason=inj_g.reason or "blocked injected message",
+                                trace_context=ctx,
+                            )
+                            continue  # drop the blocked injection; the run continues
                     messages.append(injected)
-                    yield MessageInjected(
-                        text=injected.content if isinstance(injected.content, str) else "",
-                        trace_context=ctx,
-                    )
+                    yield MessageInjected(text=injected_text, trace_context=ctx)
 
             # === Cat 9 between-turns gate (Sprint 57.92, Slice 3 leg 2) =
             # After ≥1 completed turn (turn_count > 0), BEFORE the next LLM call,

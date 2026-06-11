@@ -30,6 +30,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.4)
 Last Modified: 2026-06-10
 
 Modification History (newest-first):
+    - 2026-06-11: Sprint 57.101 B1 — wire QueueMessageInbox (between-turns injection) into loop ctor
     - 2026-06-10: Sprint 57.99 A2 — thread chat_verification_escalate_on_max into loop ctor
     - 2026-06-10: Sprint 57.98 A1 US-5 — inject verifier_registry into loop ctor; return loop
     - 2026-06-09: Sprint 57.97 — ModelProfile{action,cheap}; verification on profile.cheap
@@ -96,6 +97,7 @@ from ._category_factories import (
     make_chat_subagent_dispatcher,
     make_chat_verifier_registry,
 )
+from .injection_registry import QueueMessageInbox, get_default_injection_registry
 from .schemas import ChatMode
 
 if TYPE_CHECKING:
@@ -459,6 +461,14 @@ def build_real_llm_handler(
             profile.cheap, settings.chat_verification_judge_template
         )
 
+    # Sprint 57.101 B1: wire the between-turns injection inbox over the module
+    # InjectionRegistry for this (tenant, session) so a mid-run POST /{id}/inject
+    # reaches the loop. Built only when both ids are present (the chat path always
+    # has them); None otherwise → the loop drain is a no-op (byte-identical to pre-57.101).
+    message_inbox: QueueMessageInbox | None = None
+    if session_id is not None and tenant_id is not None:
+        message_inbox = QueueMessageInbox(get_default_injection_registry(), tenant_id, session_id)
+
     loop = AgentLoopImpl(
         chat_client=chat_client,
         output_parser=parser,
@@ -472,6 +482,8 @@ def build_real_llm_handler(
         # retry on REJECT-with-note) instead of the A1 verification_failed terminal.
         # Effective only with a registry + hitl_manager; default False = A1.
         verification_escalate_on_max=settings.chat_verification_escalate_on_max,
+        # Sprint 57.101 B1: the between-turns injection inbox (None = no-op drain).
+        message_inbox=message_inbox,
         # Sprint 57.71 (A-4 Tier 0): inject the router's real OTelTracer so the
         # loop's root span + per-turn span tree run on a real tracer instead of
         # the NoOpTracer fallback. None preserves the pre-57.71 baseline (NoOp).

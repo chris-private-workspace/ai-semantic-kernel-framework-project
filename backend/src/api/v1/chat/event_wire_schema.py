@@ -37,7 +37,7 @@ Created: 2026-06-02 (Sprint 57.67)
 Last Modified: 2026-06-10
 
 Modification History (newest-first):
-    - 2026-06-11: Sprint 57.101 — add message_injected wire-type (Cat 1 between-turns injection) 23→24
+    - 2026-06-11: Sprint 57.101 — add message_injected wire-type (Cat 1 injection) 23→24
     - 2026-06-10: Sprint 57.100 — approval_requested +kind field (no new wire-type; 22 unchanged)
     - 2026-06-09: Sprint 57.96 — add subagent_child wire-type (Cat 11 Scope B turn-stream) 22→23
     - 2026-06-03: Sprint 57.75 A-5c — add span_started/span_ended/memory_accessed wire-types 19→22

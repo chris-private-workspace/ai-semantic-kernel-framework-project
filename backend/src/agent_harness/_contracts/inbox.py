@@ -1,6 +1,6 @@
 """
 File: backend/src/agent_harness/_contracts/inbox.py
-Purpose: MessageInbox — a provider-neutral between-turns message inbox the loop drains at each turn boundary.
+Purpose: MessageInbox — the between-turns message inbox the loop drains at each turn boundary.
 Category: 範疇 1 (Orchestrator Loop)
 Scope: Phase 57 / Sprint 57.101 (B1 — between-turns message injection primitive)
 

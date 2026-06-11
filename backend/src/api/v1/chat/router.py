@@ -38,6 +38,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.5)
 Last Modified: 2026-06-10
 
 Modification History (newest-first):
+    - 2026-06-11: Sprint 57.101 B1 — POST /{id}/inject + register/unregister the injection queue
     - 2026-06-10: Sprint 57.98 A1 US-5 — drop run_with_verification wrapper; gate is in-loop now
     - 2026-06-09: Sprint 57.95 — relay subagent SSE events (buffer drained by _stream_loop_events)
     - 2026-06-08: Sprint 57.88 US-4 — NEW POST /chat/{id}/resume (durable HITL pause-resume)
@@ -89,6 +90,7 @@ from agent_harness._contracts import (
     LoopCompleted,
     LoopEvent,
     LoopState,
+    Message,
     TraceContext,
 )
 from agent_harness._contracts.events import ToolCallExecuted
@@ -126,7 +128,8 @@ from platform_layer.tenant.quota import (
 )
 
 from .handler import build_handler, resolve_session_persona
-from .schemas import ChatRequest, ChatSessionResponse
+from .injection_registry import get_default_injection_registry
+from .schemas import ChatRequest, ChatSessionResponse, InjectRequestBody
 from .session_registry import SessionRegistry, get_default_registry
 from .sse import format_sse_message, serialize_loop_event
 
@@ -272,6 +275,12 @@ async def chat(
 
     registry = get_default_registry()
     await registry.register(current_tenant, session_id)
+
+    # Sprint 57.101 B1: register the between-turns injection queue so a mid-run
+    # POST /{id}/inject (a SEPARATE request) can reach this run's loop. The loop
+    # drains it at each turn boundary via the QueueMessageInbox wired in the
+    # handler. Unregistered in _stream_loop_events' finally (run end).
+    await get_default_injection_registry().register(current_tenant, session_id)
 
     # Sprint 57.7 US-R1 (closes AD-Reality-3a): persist sessions row at chat
     # start with real user_id from JWT claim.sub. Best-effort failure: DB
@@ -743,6 +752,9 @@ async def _stream_loop_events(
         if natural_completion:
             await registry.mark_completed(tenant_id, session_id)
         # else: leave status as-is (running / cancelled) — caller can poll GET.
+        # Sprint 57.101 B1: drop the injection queue on ANY exit path so a later
+        # /inject 409s (no live queue) instead of leaking an unbounded queue.
+        await get_default_injection_registry().unregister(tenant_id, session_id)
 
 
 @router.get("/sessions/{session_id}", response_model=ChatSessionResponse)
@@ -827,6 +839,43 @@ async def _stream_resume_events(
         if payload is None:
             continue
         yield format_sse_message(payload["type"], payload["data"])
+
+
+@router.post("/{session_id}/inject", status_code=status.HTTP_202_ACCEPTED)
+async def inject_message(
+    session_id: UUID,
+    body: InjectRequestBody,
+    current_tenant: UUID = Depends(get_current_tenant),
+) -> dict[str, str]:
+    """Inject a supplementary instruction into a RUNNING chat session (Sprint 57.101 B1).
+
+    The running loop drains it at the NEXT turn boundary (it cannot interrupt an
+    in-flight LLM/tool call) and the agent picks it up the next turn. 404 if the
+    session is absent or belongs to another tenant (multi-tenant 鐵律 — never reveal
+    cross-tenant existence); 409 if the session is registered but not running
+    (completed / cancelled / paused) — there is no live loop to drain it.
+    """
+    entry = await get_default_registry().get(current_tenant, session_id)
+    if entry is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No active session {session_id} found.",
+        )
+    if entry.status != "running":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Session {session_id} is not running ({entry.status}); cannot inject.",
+        )
+    queued = await get_default_injection_registry().put(
+        current_tenant, session_id, Message(role="user", content=body.message)
+    )
+    if not queued:
+        # The run ended between the status check and the put (race) — no live queue.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Session {session_id} run has ended; cannot inject.",
+        )
+    return {"status": "queued"}
 
 
 @router.post("/{session_id}/resume", status_code=status.HTTP_200_OK)

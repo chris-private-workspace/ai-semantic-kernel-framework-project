@@ -24,7 +24,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api.v1.chat import router as chat_router
-from api.v1.chat.session_registry import get_default_registry
+from api.v1.chat.injection_registry import get_default_injection_registry
+from api.v1.chat.session_registry import SessionEntry, get_default_registry
 from infrastructure.db.session import get_db_session
 from platform_layer.identity import get_current_tenant
 from platform_layer.identity.auth import get_current_user_id
@@ -84,6 +85,15 @@ def _reset_default_registry() -> Iterator[None]:
 
 
 @pytest.fixture(autouse=True)
+def _reset_injection_registry() -> Iterator[None]:
+    """Sprint 57.101 B1 (Risk Class C): empty the InjectionRegistry singleton."""
+    reg = get_default_injection_registry()
+    reg._tenants.clear()  # type: ignore[attr-defined]  # noqa: SLF001
+    yield
+    reg._tenants.clear()  # type: ignore[attr-defined]  # noqa: SLF001
+
+
+@pytest.fixture(autouse=True)
 def _disable_db_observers(monkeypatch: pytest.MonkeyPatch) -> None:
     """Sprint 57.7 US-R1: disable sessions/tool_calls/audit observers in unit
     tests since the test FastAPI app has no real DB session factory wired.
@@ -109,6 +119,71 @@ def _parse_sse(body: bytes) -> list[dict]:
             }
         )
     return out
+
+
+class TestInjectEndpoint:
+    """Sprint 57.101 B1: POST /{session_id}/inject — tenant-gated mid-run injection.
+
+    Seeds the registries by DIRECT synchronous dict manipulation (not the async
+    register, which would bind its asyncio.Lock to the test loop instead of the
+    TestClient's loop — Risk Class C). put_nowait/get_nowait are loop-agnostic, so
+    the endpoint's put (TestClient loop) + the assertion's get (test loop) round-trip
+    fine through the same queue object.
+    """
+
+    def _seed_session(
+        self, *, tenant: UUID, sid: UUID, status: str = "running", with_queue: bool = True
+    ) -> None:
+        import asyncio
+
+        entry = SessionEntry()
+        entry.status = status  # type: ignore[assignment]
+        get_default_registry()._tenants.setdefault(tenant, {})[sid] = entry  # noqa: SLF001
+        if with_queue:
+            get_default_injection_registry()._tenants.setdefault(tenant, {})[  # noqa: SLF001
+                sid
+            ] = asyncio.Queue()
+
+    def test_inject_into_running_session_returns_202_and_queues(self, client: TestClient) -> None:
+        sid = uuid4()
+        self._seed_session(tenant=DEFAULT_TENANT, sid=sid)
+        resp = client.post(f"/api/v1/chat/{sid}/inject", json={"message": "also check X"})
+        assert resp.status_code == 202
+        assert resp.json() == {"status": "queued"}
+        q = get_default_injection_registry()._tenants[DEFAULT_TENANT][sid]  # noqa: SLF001
+        msg = q.get_nowait()
+        assert msg.role == "user"
+        assert msg.content == "also check X"
+
+    def test_inject_missing_session_returns_404(self, client: TestClient) -> None:
+        resp = client.post(f"/api/v1/chat/{uuid4()}/inject", json={"message": "x"})
+        assert resp.status_code == 404
+
+    def test_inject_cross_tenant_returns_404(self, client: TestClient) -> None:
+        """A session registered under a DIFFERENT tenant must read as not-found."""
+        sid = uuid4()
+        self._seed_session(tenant=uuid4(), sid=sid)  # NOT DEFAULT_TENANT
+        resp = client.post(f"/api/v1/chat/{sid}/inject", json={"message": "x"})
+        assert resp.status_code == 404
+
+    def test_inject_into_completed_session_returns_409(self, client: TestClient) -> None:
+        sid = uuid4()
+        self._seed_session(tenant=DEFAULT_TENANT, sid=sid, status="completed")
+        resp = client.post(f"/api/v1/chat/{sid}/inject", json={"message": "x"})
+        assert resp.status_code == 409
+
+    def test_inject_running_but_no_live_queue_returns_409(self, client: TestClient) -> None:
+        """Status running but the queue was already unregistered (run ended) → 409."""
+        sid = uuid4()
+        self._seed_session(tenant=DEFAULT_TENANT, sid=sid, with_queue=False)
+        resp = client.post(f"/api/v1/chat/{sid}/inject", json={"message": "x"})
+        assert resp.status_code == 409
+
+    def test_inject_empty_message_returns_422(self, client: TestClient) -> None:
+        sid = uuid4()
+        self._seed_session(tenant=DEFAULT_TENANT, sid=sid)
+        resp = client.post(f"/api/v1/chat/{sid}/inject", json={"message": ""})
+        assert resp.status_code == 422  # InjectRequestBody.message min_length=1
 
 
 class TestPostChat:

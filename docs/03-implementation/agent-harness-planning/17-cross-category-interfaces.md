@@ -141,6 +141,7 @@ backend/src/agent_harness/_contracts/
 | `SubagentDispatcher` | `01-eleven-categories-spec.md` | 範疇 11 | `spawn()` / `handoff()` |
 | `ChildLoopFactory` | `_contracts/subagent.py` | 範疇 11 | `Callable[[SubagentBudget], AgentLoop]` — Sprint 57.94 FORK real child loop. **Composition detail, NOT a `SubagentDispatcher` ABC method** (ABC unchanged); built at `build_real_llm_handler`, injected → `ForkExecutor`. Cat 11→Cat 1 ref is TYPE_CHECKING-only. See `20-subagent-child-loop-design.md`. |
 | `SubagentEventEmitter` | `subagent/dispatcher.py` | 範疇 11 → 範疇 12 | `Callable[[LoopEvent], Awaitable[None]]` — Sprint 57.12 dispatcher slot; **Sprint 57.95 wired on the chat path** (`make_chat_subagent_dispatcher` ← a router-owned buffer drained by `_stream_loop_events`) so `SubagentSpawned`/`SubagentCompleted` reach the SSE stream (node-level relay; Inspector Tree). **Sprint 57.96 (Scope B)**: the same emitter (passed to `ForkExecutor` as `_emit_safely`) also forwards the child loop's TAO subset wrapped in `SubagentChildEvent` → the Tree node expands to the child's per-turn loop. Composition detail, ABC + type unchanged. See `CHANGE-062` / `CHANGE-063`. |
+| `MessageInbox` | `_contracts/inbox.py` | 範疇 1 | `async drain() -> list[Message]` — Sprint 57.101 B1 between-turns injection. Loop drains it at the `_run_turns` top; injected content runs the Cat 9 **INPUT** guardrail (a non-PASS injection is dropped + `GuardrailTriggered(input)`, run continues). Optional ctor dep; `None` = no-op. Chat backing = `QueueMessageInbox` over the module `InjectionRegistry` (`api/v1/chat/injection_registry.py`); B2 TEAMMATE will back it with the parent mailbox — same ABC. See `26-between-turns-injection-design.md`. |
 | `Tracer` | `01-eleven-categories-spec.md` | **範疇 12** | `start_span()` / `record_metric()` |
 | `HITLManager` | `01-eleven-categories-spec.md` | §HITL 中央化 | `request_approval()` / `wait()` / `decide()` |
 
@@ -238,6 +239,7 @@ def register_memory_tools(registry: ToolRegistry) -> None:
 | `LLMRequested` | 範疇 1 | LLM call 發出前（含 model 名 + best-effort tokens_in；Sprint 50.2 加） |
 | `LLMResponded` | 範疇 1 | LLM 回應收到（canonical SSE `llm_response` 載體：content + tool_calls + thinking；Sprint 50.2 加。Sprint 57.2 加 `provider` / `model` / `input_tokens` / `output_tokens` per-call metadata；**Sprint 57.65 A-2 Tier2 加 `cached_input_tokens`**（neutral `TokenUsage.cached_input_tokens` 來源，prompt-cache observability，LoopMetricsAccumulator 逐 event 累加）） |
 | `Thinking` | 範疇 1 | 模型 thinking text（50.1 backward-compat；50.2+ SSE 不發） |
+| `MessageInjected` | 範疇 1 | mid-run 注入訊息在 turn 邊界被 drain 進對話時（Sprint 57.101 B1；`_run_turns` 頂端 drain `MessageInbox`，fired on drain = 證明落地而非 POST 返回時；payload `text`）。注入是 INPUT → 經 Cat 9 `check_input`，非 PASS 則 drop + `GuardrailTriggered(input)`（run 續行）。wire type `message_injected`=`{text}`（count 23→24）。前端 `chatStore`→`UserTurn(injected)`。chat 唯一 producer；B2 TEAMMATE 將共用同一 drain seam。見 `CHANGE-068` / `26-between-turns-injection-design.md`。 |
 | `ToolCallRequested` | 範疇 6 | output parser 解析出 tool_calls |
 | `ToolCallExecuted` | 範疇 2 | Tool executor 完成 |
 | `ToolCallFailed` | 範疇 2 | Tool 拋錯 |

@@ -32,7 +32,7 @@
 ### 1.1 The contract + loop drain
 - [x] **`_contracts/inbox.py`** — NEW `MessageInbox(ABC)` (`async def drain(self) -> list[Message]`); imports only `Message`; file header; `check_llm_sdk_leak` 0 ✅; exported via `_contracts/__init__.py` (+ `MessageInjected`)
 - [x] **`loop.py` ctor** — +`message_inbox: "MessageInbox | None" = None` (after `verification_escalate_on_max`, LAST param `:430`); `self._message_inbox` assign; `MessageInbox` under TYPE_CHECKING (annotation-only, like `VerifierRegistry`); MHist 1-line ✅
-- [x] **`loop.py` `_run_turns` drain seam** — at the top of the `while` body (after the 3 termination checks, BEFORE the between-turns gate): `if self._message_inbox is not None: for injected in await self._message_inbox.drain(): messages.append(injected); yield MessageInjected(text=<str-coerced content>, trace_context=ctx)`; appended BEFORE `_cat9_between_turns_check` (free guardrail check); `message_inbox=None` byte-identical; MHist 1-line; mypy `src` **0/354** (+1 inbox.py) ✅
+- [x] **`loop.py` `_run_turns` drain seam** — at the top of the `while` body (after the 3 termination checks, BEFORE the between-turns gate); each drained message runs the Cat 9 **INPUT** guardrail (`engine.check_input`) — **D-DAY1-1 correction**: the between-turns gate checks turn OUTPUTS (`_latest_output_text` skips user msgs), so a user injection needs `check_input`, not the between-turns gate; a non-PASS injection is DROPPED + `GuardrailTriggered(input)` (run continues), PASS → `messages.append` + `yield MessageInjected(text, trace_context=ctx)`; `message_inbox=None` byte-identical; MHist 1-line; mypy `src` **0/355** ✅
 
 ### 1.2 The `MessageInjected` wire event + codegen
 - [x] **`_contracts/events.py`** — +`MessageInjected(LoopEvent)` (`text: str = ""`) in a Cat 1 mini-section; MHist ✅ (the "22 subclasses" header prose was already stale pre-57.96 — left, not chased per Karpathy §3)
@@ -48,43 +48,44 @@
 ## Day 2 — The injection channel + API + the FE composer-mid-run + render (US-3/US-4/US-5)
 
 ### 2.1 The InjectionRegistry + inject endpoint (US-3)
-- [ ] **`api/v1/chat/injection_registry.py`** — NEW `InjectionRegistry` (module singleton, `dict[UUID, asyncio.Queue[Message]]`): `register`/`put`/`drain`(get_nowait loop)/`unregister` + `get_default_injection_registry()`; `QueueMessageInbox(MessageInbox)` binds `(registry, session_id)`; file header; `check_llm_sdk_leak` 0
-- [ ] **`router.py` register/unregister** — at chat POST (alongside `:273-274` SessionRegistry register) `get_default_injection_registry().register(session_id)`; in the stream `finally` `unregister(session_id)`; MHist
-- [ ] **`router.py` `POST /{session_id}/inject`** — `InjectRequestBody(message: str, max 4096)`; `Depends(get_current_tenant)`; verify active + owned via SessionRegistry (404 cross-tenant / 409 not-running); `put(session_id, Message(role="user", content=body.message))`; 202 `{"status":"queued"}`; MHist
-- [ ] **`handler.py`** — construct `QueueMessageInbox(get_default_injection_registry(), session_id)` + pass `message_inbox=` to the loop (real_llm path); MHist; mypy `src` 0
+- [x] **`api/v1/chat/injection_registry.py`** — NEW `InjectionRegistry` (module singleton, **tenant-scoped** `dict[tenant, dict[session, asyncio.Queue[Message]]]` — mirrors SessionRegistry): `register`/`put`(put_nowait)/`drain`(get_nowait loop)/`unregister`(prune) + `get_default_injection_registry()`; `QueueMessageInbox(MessageInbox)` binds `(registry, tenant, session)`; file header; `check_llm_sdk_leak` 0 ✅
+- [x] **`router.py` register/unregister** — at chat POST (after `:273-274` SessionRegistry register) `get_default_injection_registry().register(current_tenant, session_id)`; in `_stream_loop_events` `finally` `unregister(...)` (any exit path); MHist ✅
+- [x] **`router.py` `POST /{session_id}/inject`** — `InjectRequestBody(message: str, min 1 / max 4096)` in schemas.py; `Depends(get_current_tenant)`; active+owner via `SessionRegistry.get` (404 absent/cross-tenant / 409 not-running / 409 no-live-queue); `put(current_tenant, session_id, Message(role="user", content=body.message))`; 202 `{"status":"queued"}`; MHist ✅
+- [x] **`handler.py`** — construct `QueueMessageInbox(get_default_injection_registry(), tenant_id, session_id)` + pass `message_inbox=` to the loop (real_llm path); MHist; mypy `src` 0/355 ✅
 
 ### 2.2 The composer usable mid-run + inject client (US-4)
-- [ ] **`chatService.ts`** — +`injectMessage(sessionId, message)` POST `/api/v1/chat/${sessionId}/inject` body `{message}`; MHist
-- [ ] **`useLoopEventStream.ts`** — +`inject(text)` → `injectMessage(sessionId, text)`; returned alongside `send`/`resume`/`cancel`/`isRunning`; MHist
-- [ ] **`InputBar.tsx`** — textarea enabled mid-run (drop the `disabled={isRunning}` on the textarea); the send path: `isRunning && trimmed` → `inject(trimmed)` + clear (NOT `send`); idle → `send` (unchanged); keep the Stop button; labelled inject affordance (`data-testid="inject-send"`, aria makes clear it's a note to the running agent); MHist
+- [x] **`chatService.ts`** — +`injectMessage(sessionId, message)` POST `/{id}/inject` body `{message}` (plain POST, not SSE; throws non-2xx); MHist ✅
+- [x] **`useLoopEventStream.ts`** — +`inject(text)` (only while running+sessionId; failure → setError, NOT status change) → `injectMessage`; returned alongside `send`/`resume`/`cancel`/`isRunning`; MHist ✅
+- [x] **`InputBar.tsx`** — composer usable mid-run for **real_llm only** (`canInject = isRunning && mode==="real_llm"` — echo_demo scripted mock → gating avoids a dead control); textarea `disabled={isRunning && !canInject}`; `onSend` routes running send → `inject()` else `send()`; labelled **Inject** button (`data-testid="inject-send"`) next to Stop; placeholder switches when injectable; MHist ✅
 
 ### 2.3 The injected message renders (US-5)
-- [ ] **`types.ts`** — `UserTurn` +`injected?: boolean`; MHist
-- [ ] **`chatStore.ts`** — +`message_injected` case → append `UserTurn {role:"user", id, at, text: ev.data.text, injected:true}`; MHist
-- [ ] **the `UserTurn` render** — when `turn.injected`, show an "injected" tag (mockup vocab + `var(--*)`, NO new HEX/oklch); MHist; `check:mockup-fidelity` baseline unchanged
+- [x] **`types.ts`** — `UserTurn` +`injected?: boolean`; MHist ✅
+- [x] **`chatStore.ts`** — +`message_injected` case → append `UserTurn {role:"user", id, at, text: ev.data.text, injected:true}` (on drain, not optimistic); MHist ✅
+- [x] **the `UserTurn` render** (`turns/UserTurn.tsx`) — when `turn.injected`, an "injected mid-run" tag (`data-testid="injected-tag"`) reusing `.route-pill` (NO new HEX/oklch); MHist; `check:mockup-fidelity` **53 unchanged** ✅
 
 ### 2.x Day-2 drift
-- (record any `tsc -b` / codegen / typing surprises here, e.g. a stale fixture constructing an event without the new field — the 57.100 D-DAY2-1 pattern)
+- **D-DAY1-1** (the load-bearing one — backend): the "free between-turns guardrail check" claim was wrong (`_latest_output_text` skips user msgs) → switched to `check_input` + drop-on-not-PASS (progress.md Day-1). No FE/scope shift.
+- **D-DAY2-1**: NO stale-fixture `tsc` break — `message_injected` is a NEW event type (not a required field on an existing one, unlike 57.100's `kind`), so `demoLoopEvents.ts` + other `LoopEvent[]` fixtures need NO change; `npm run build` green first try.
 
 ---
 
 ## Day 3 — Tests + full regression + drive-through (US-6) + CHANGE-068 + design note 26
 
 ### 3.1 Tests (US-1..US-5)
-- [ ] **backend inbox-drain** — `test_inbox_drain.py`: a stub `MessageInbox` returns a message on the 2nd drain → appears in `messages` before turn 2's LLM call + a `MessageInjected` event yielded + the between-turns guardrail saw it; `message_inbox=None` → no change (existing loop tests green)
-- [ ] **backend injection-registry** — `test_injection_registry.py`: register/put/drain/unregister; `put` on an unregistered session rejected; autouse reset fixture (Risk Class C)
-- [ ] **backend inject-endpoint** — `test_inject_endpoint.py` (or extend router tests): 202 active+owned; 404 cross-tenant; 409 not-running
-- [ ] **backend parity** — `test_event_wire_schema_parity.py` (count 24 + `MessageInjected` instance) passes
-- [ ] **backend sse** — `MessageInjected(text="x")` → `{"type":"message_injected","data":{"text":"x"}}`
-- [ ] **frontend parity** — `eventSchema.generated.test.ts` green (regenerated; count 24)
-- [ ] **frontend chatStore** — `chatStore.mergeEvent.test.ts` +`message_injected` → `UserTurn(injected:true, text)`
-- [ ] **frontend InputBar** — NEW: mid-run send → `inject` called (not `send`); idle send → `send`; textarea interactable during a run
-- [ ] **existing chat-v2 contracts** — run/resume/approval flows preserved (inject is additive)
+- [x] **backend inbox-drain** — `test_inbox_drain.py` (3): injection lands at the NEXT boundary (turn N+1's request) + `MessageInjected`; `message_inbox=None` → no-op; a `check_input`-BLOCKed injection DROPPED + `GuardrailTriggered(input,block)` + never reaches the LLM + run completes ✅
+- [x] **backend injection-registry** — `test_injection_registry.py` (9): register/put/drain/unregister + FIFO + cross-tenant put rejected + 2-tenants-same-sid + prune + `QueueMessageInbox` delegation ✅
+- [x] **backend inject-endpoint** — `test_router.py::TestInjectEndpoint` (6): 202+queued / 404 missing / 404 cross-tenant / 409 completed / 409 no-live-queue / 422 empty; `_reset_injection_registry` autouse (Risk Class C) ✅
+- [x] **backend parity** — `test_event_wire_schema_parity.py` count 24 + `MessageInjected` instance (33 passed) ✅
+- [x] **backend sse** — `test_sse.py::test_message_injected` → `{"type":"message_injected","data":{"text":...}}` ✅
+- [x] **frontend parity** — `eventSchema.generated.test.ts` (24 + message_injected recognition) ✅
+- [x] **frontend chatStore** — `chatStore.mergeEvent.test.ts` +`message_injected` → `UserTurn(injected:true, text)` ✅
+- [x] **frontend InputBar** — `InputBar.test.tsx` (NEW, 3): idle→`send` / running-real_llm→`inject` + textarea enabled / running-echo→disabled + no Inject button ✅
+- [x] **existing chat-v2 contracts** — run/resume/approval flows preserved (inject additive; Vitest 787 all green) ✅
 
 ### 3.2 Full gate sweep
-- [ ] **Full backend pytest green (NET delta documented)** — `-m "not real_llm"`; baseline → +N (0 deletions)
-- [ ] **mypy 0 + run_all 10/10 + format chain** — mypy `src` 0; run_all 10/10 (`check_event_schema_sync` + `check_ap1` + `check_llm_sdk_leak` green); black/isort/flake8 **FULL `src tests`** clean — run INDEPENDENTLY (the 57.98 lesson — full-scope `black --check`)
-- [ ] **Frontend gate** — `npm run lint` (no `--silent`) clean + `npm run build` exit 0 + `npm run check:mockup-fidelity` baseline unchanged + `npm run test` (Vitest +N)
+- [x] **Full backend pytest green (NET delta documented)** — `-m "not real_llm"`: **2320 passed + 4 skipped** (baseline 57.100 = 2300p+4s → **+20 passed, 0 deletions**: inbox-drain 3 + injection-registry 9 + inject-endpoint 6 + sse 1 + parity 1); 98.9s clean. **Infra note**: the dev infra (Docker Postgres/Redis/RabbitMQ) was DOWN at session start (all ports free) → integration tests timed out ~104s/file on the dead DB (looked like a hang); `docker compose -f docker-compose.dev.yml up -d` restored it (postgres healthy, 44 tables) → admin_tenant_patch 104s+7fail → 1.5s+9pass; B1 unit tests were green throughout (218 passed in isolation). ✅
+- [x] **mypy 0 + run_all 10/10 + format chain** — mypy `src` **0/355** ✅; run_all **10/10** (`check_event_schema_sync` + `check_ap1` + `check_llm_sdk_leak` green) ✅; black/isort/flake8 **FULL `src tests`** clean (independent) ✅ (final FULL `black --check` re-run at Day-3 close)
+- [x] **Frontend gate** — `npm run lint` (no `--silent`) exit 0 + `npm run build` exit 0 + `npm run check:mockup-fidelity` **53 unchanged** + `npm run test` **787** (+5) ✅
 
 ### 3.3 Drive-through (US-6 — mid-run injection picks up + guardrail-on-injected)
 - [ ] **Clean backend restart (Risk Class E)** — kill the `--reload` reloader + the `multiprocessing.spawn` worker (`Win32_Process` PID/PPID/StartTime + `Stop-Process -Force`); verify :8000 FREE + node :3007 untouched; start a fresh process (the new `/inject` route + the inbox wiring are startup-constructed); restore the normal `--reload` backend after

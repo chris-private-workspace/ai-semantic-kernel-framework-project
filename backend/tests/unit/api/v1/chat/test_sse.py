@@ -178,6 +178,16 @@ class TestSerializeLoopEvent:
         assert out is not None
         assert out["data"]["kind"] == "verification"
 
+    def test_message_injected(self) -> None:
+        """Sprint 57.101 B1: MessageInjected → message_injected wire frame."""
+        from agent_harness._contracts import MessageInjected
+
+        ev = MessageInjected(text="also check the db pool")
+        out = serialize_loop_event(ev)
+        assert out is not None
+        assert out["type"] == "message_injected"
+        assert out["data"]["text"] == "also check the db pool"
+
     def test_approval_received_approved(self) -> None:
         """Sprint 53.5 US-2: wait_for_decision returns → ApprovalReceived → SSE."""
         from agent_harness._contracts import ApprovalReceived

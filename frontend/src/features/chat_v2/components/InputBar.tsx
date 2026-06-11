@@ -30,6 +30,7 @@
  * Last Modified: 2026-05-23
  *
  * Modification History (newest-first):
+ *   - 2026-06-11: Sprint 57.101 B1 — composer usable mid-run (real_llm) → Inject button routes to inject()
  *   - 2026-06-06: chat-v2 honest surface — mode-button tooltips + echo_demo "echoes input" note; +useTranslation (CHANGE-054)
  *   - 2026-05-23: Sprint 57.30 Day 2 US-C2 — verbatim re-point to mockup composer shell (.composer / .composer-inner / .composer-input / .btn primary / .btn danger / .btn ghost)
  *   - 2026-05-17: Sprint 57.20 Day 3 US-D1 — token migration text-muted-foreground→text-fg-muted; bg-muted-foreground→bg-fg-muted (disabled Send) for new shell mockup consistency
@@ -72,11 +73,21 @@ export default function InputBar(): JSX.Element {
   const mode = useChatStore((s) => s.mode);
   const setMode = useChatStore((s) => s.setMode);
   const errorMessage = useChatStore((s) => s.errorMessage);
-  const { send, cancel, isRunning } = useLoopEventStream();
+  const { send, cancel, inject, isRunning } = useLoopEventStream();
+  // Sprint 57.101 (B1): mid-run injection is a real_llm capability — the echo_demo
+  // mock is scripted + completes in ms, so it cannot act on a mid-run note (gating
+  // it here avoids a dead control in echo mode per the Drive-Through rule).
+  const canInject = isRunning && mode === "real_llm";
 
   const onSend = (): void => {
     const trimmed = text.trim();
-    if (!trimmed || isRunning) return;
+    if (!trimmed) return;
+    if (isRunning) {
+      if (!canInject) return; // echo_demo running: textarea is disabled anyway
+      setText("");
+      void inject(trimmed); // mid-run: send a supplementary instruction (next turn)
+      return;
+    }
     setText("");
     void send(trimmed);
   };
@@ -164,16 +175,36 @@ export default function InputBar(): JSX.Element {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKey}
-          placeholder="Ask the agent…  (Enter to send, Shift+Enter for newline)"
+          placeholder={
+            canInject
+              ? "Add an instruction for the running agent…  (it picks it up next turn)"
+              : "Ask the agent…  (Enter to send, Shift+Enter for newline)"
+          }
           rows={2}
-          disabled={isRunning}
+          disabled={isRunning && !canInject}
         />
         <div className="composer-tools">
           <div className="grow" />
           {isRunning ? (
-            <button type="button" className="btn danger" data-size="sm" onClick={cancel}>
-              Stop
-            </button>
+            <>
+              {canInject && (
+                <button
+                  type="button"
+                  className="btn primary"
+                  data-size="sm"
+                  data-testid="inject-send"
+                  onClick={onSend}
+                  disabled={sendDisabled}
+                  style={sendDisabled ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+                  title="Send a supplementary instruction to the running agent (it acts on it next turn)"
+                >
+                  Inject
+                </button>
+              )}
+              <button type="button" className="btn danger" data-size="sm" onClick={cancel}>
+                Stop
+              </button>
+            </>
           ) : (
             <button
               type="button"

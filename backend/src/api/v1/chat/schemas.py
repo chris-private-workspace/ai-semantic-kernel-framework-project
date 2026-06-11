@@ -46,6 +46,15 @@ class ChatRequest(BaseModel):
     mode: ChatMode = "echo_demo"
 
 
+class InjectRequestBody(BaseModel):
+    """Inbound POST /api/v1/chat/{session_id}/inject body (Sprint 57.101 B1).
+
+    A supplementary instruction the running loop drains at the next turn boundary.
+    """
+
+    message: str = Field(..., min_length=1, max_length=4096)
+
+
 SessionStatus = Literal["running", "completed", "cancelled"]
 
 

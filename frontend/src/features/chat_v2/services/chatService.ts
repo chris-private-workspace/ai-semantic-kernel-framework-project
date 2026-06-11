@@ -34,6 +34,7 @@
  * Last Modified: 2026-06-08
  *
  * Modification History (newest-first):
+ *   - 2026-06-11: Sprint 57.101 B1 — +injectMessage (POST /chat/{id}/inject; mid-run instruction)
  *   - 2026-06-08: Sprint 57.88 US-5 — +resumeChat (POST /chat/{id}/resume); extract consumeSSEStream
  *   - 2026-05-09: Sprint 57.8 D3 — swap raw fetch to fetchWithAuth (JWT injection)
  *   - 2026-04-30: Initial creation (Sprint 50.2 Day 3.4)
@@ -128,6 +129,26 @@ export async function resumeChat(
   }
 
   await consumeSSEStream(response, opts);
+}
+
+/**
+ * Sprint 57.101 (B1): inject a supplementary instruction into a RUNNING chat
+ * session. POST /api/v1/chat/{sessionId}/inject with {message} (a plain POST, NOT
+ * an SSE stream — the ALREADY-OPEN run stream delivers the resulting
+ * `message_injected` event once the loop drains it at the next turn boundary). A
+ * non-2xx (404 absent/cross-tenant, 409 not-running, 422 empty) throws so the
+ * caller can surface it.
+ */
+export async function injectMessage(sessionId: string, message: string): Promise<void> {
+  const response = await fetchWithAuth(`/api/v1/chat/${sessionId}/inject`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`HTTP ${response.status}: ${text}`);
+  }
 }
 
 /**
