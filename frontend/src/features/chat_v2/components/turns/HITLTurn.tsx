@@ -47,6 +47,7 @@
  * Created: 2026-05-17 (Sprint 57.21 Day 2 §2.1)
  *
  * Modification History (newest-first):
+ *   - 2026-06-10: Sprint 57.100 — verification reject-with-note (coaching input + resume); kind-aware meta row
  *   - 2026-05-23: Sprint 57.30 Day 3 §D1 — verbatim re-point Tailwind → mockup .turn/.hitl-card/.btn + preserve SEVERITY_BADGE_LITERAL_HEX e2e contract
  *   - 2026-05-18: Sprint 57.21 Day 4 CI-FIX — render approval_id + SEVERITY_BADGE_LITERAL hex + hide buttons when decided (preserves approval-card.spec.ts L70+L108+L131/152 contracts)
  *   - 2026-05-17: Sprint 57.21 Day 4 D-DAY3-3 — add role="region" + aria-label="HITL approval" for e2e contract preservation (approval-card.spec.ts selector compatibility post-TurnList swap)
@@ -99,16 +100,22 @@ const SEVERITY_BADGE_TONE: Record<RiskSeverity, string> = {
 
 export function HITLTurn({ turn }: { turn: HITLTurnType }): JSX.Element {
   const [submitting, setSubmitting] = useState<"approve" | "reject" | null>(null);
+  // Sprint 57.100: a verification-ESCALATE reject reveals a coaching-note input
+  // (the backend coaches exactly one human-guided turn — A2). Other kinds reject
+  // immediately (terminate — the tool never runs).
+  const [showNoteInput, setShowNoteInput] = useState(false);
+  const [rejectNote, setRejectNote] = useState("");
+  const isVerification = turn.kind === "verification";
   const mergeEvent = useChatStore((s) => s.mergeEvent);
   // Sprint 57.88 (US-5): resume the deferred-paused loop after an approve.
   const { resume } = useLoopEventStream();
 
   const submitDecision = useCallback(
-    async (decision: "approved" | "rejected") => {
+    async (decision: "approved" | "rejected", note?: string) => {
       if (turn.decision !== null) return;
       setSubmitting(decision === "approved" ? "approve" : "reject");
       try {
-        await governanceService.decide(turn.approvalRequestId, decision);
+        await governanceService.decide(turn.approvalRequestId, decision, note);
         // Optimistic update: chatStore.mergeEvent will overwrite when
         // ApprovalReceived SSE arrives. Force-set uppercase form here
         // (backend canonical wire format) so UI reflects immediately
@@ -125,10 +132,13 @@ export function HITLTurn({ turn }: { turn: HITLTurnType }): JSX.Element {
         // already closed) needs a client-driven resume; the legacy BLOCKING
         // HITL flow (Sprint 53.5/53.6) continues server-side on the SAME open
         // stream, so it must NOT be resumed here (guarded on stopReason).
-        // Reject leaves the loop terminated (the tool never runs) — no
-        // continuation to render, so we do not resume on reject.
+        // Sprint 57.100: APPROVE always resumes; a verification REJECT ALSO
+        // resumes (the backend coaches one human-guided turn — A2). Other kinds'
+        // reject leaves the loop terminated (the tool never runs).
+        const shouldResume =
+          decision === "approved" || (decision === "rejected" && isVerification);
         if (
-          decision === "approved" &&
+          shouldResume &&
           useChatStore.getState().stopReason === "awaiting_approval"
         ) {
           await resume();
@@ -137,7 +147,7 @@ export function HITLTurn({ turn }: { turn: HITLTurnType }): JSX.Element {
         setSubmitting(null);
       }
     },
-    [turn.approvalRequestId, turn.decision, mergeEvent, resume],
+    [turn.approvalRequestId, turn.decision, mergeEvent, resume, isVerification],
   );
 
   const decided = turn.decision !== null;
@@ -184,7 +194,10 @@ export function HITLTurn({ turn }: { turn: HITLTurnType }): JSX.Element {
               </span>
             </span>
             <span className="row" style={{ gap: 5 }}>
-              tool: <span className="mono" style={{ color: "var(--tool)" }}>{turn.tool}</span>
+              {isVerification ? "kind:" : "tool:"}{" "}
+              <span className="mono" style={{ color: "var(--tool)" }}>
+                {isVerification ? "verification" : turn.tool}
+              </span>
             </span>
             <span className="row" style={{ gap: 5 }}>
               policy: <span className="badge">always_ask</span>
@@ -198,43 +211,94 @@ export function HITLTurn({ turn }: { turn: HITLTurnType }): JSX.Element {
           )}
           {turn.payload !== "—" && <div className="hitl-payload">{turn.payload}</div>}
           {!decided && (
-            <div className="hitl-actions">
-              <button
-                type="button"
-                aria-label="Approve"
-                disabled={submitting !== null}
-                onClick={() => submitDecision("approved")}
-                className="btn success"
-                data-size="sm"
-                data-testid="approve-btn"
-              >
-                <Check size={12} />
-                Approve &amp; continue
-              </button>
-              <button
-                type="button"
-                aria-label="Reject"
-                disabled={submitting !== null}
-                onClick={() => submitDecision("rejected")}
-                className="btn danger"
-                data-size="sm"
-                data-testid="reject-btn"
-              >
-                <X size={12} />
-                Reject
-              </button>
-              {/* "Approve with edits" + "Escalate to L2" 4-action UX deferred to
-                  Phase-2 AD-ChatV2-HITL-FourAction-Phase2 — backend needs APPROVED_WITH_EDITS
-                  variant + payload editor + escalate routing. Phase-1 ships canonical
-                  2-action subset (matches Sprint 53.5 baseline + e2e contract). */}
-              <span
-                className="row subtle"
-                style={{ marginLeft: "auto", fontSize: 11, gap: 5 }}
-              >
-                <FileText size={12} />
-                <span className="mono">audit_id: —</span>
-              </span>
-            </div>
+            <>
+              <div className="hitl-actions">
+                <button
+                  type="button"
+                  aria-label="Approve"
+                  disabled={submitting !== null}
+                  onClick={() => submitDecision("approved")}
+                  className="btn success"
+                  data-size="sm"
+                  data-testid="approve-btn"
+                >
+                  <Check size={12} />
+                  Approve &amp; continue
+                </button>
+                <button
+                  type="button"
+                  aria-label="Reject"
+                  disabled={submitting !== null}
+                  // Sprint 57.100: a verification reject reveals the coaching-note
+                  // input (the backend coaches one human-guided turn — A2);
+                  // every other kind rejects immediately (terminate).
+                  onClick={() =>
+                    isVerification ? setShowNoteInput(true) : submitDecision("rejected")
+                  }
+                  className="btn danger"
+                  data-size="sm"
+                  data-testid="reject-btn"
+                >
+                  <X size={12} />
+                  Reject
+                </button>
+                {/* "Approve with edits" + "Escalate to L2" 4-action UX deferred to
+                    Phase-2 AD-ChatV2-HITL-FourAction-Phase2 — backend needs APPROVED_WITH_EDITS
+                    variant + payload editor + escalate routing. Phase-1 ships canonical
+                    2-action subset (matches Sprint 53.5 baseline + e2e contract). */}
+                <span
+                  className="row subtle"
+                  style={{ marginLeft: "auto", fontSize: 11, gap: 5 }}
+                >
+                  <FileText size={12} />
+                  <span className="mono">audit_id: —</span>
+                </span>
+              </div>
+              {/* Sprint 57.100: verification-ESCALATE coaching note. No mockup
+                  source for this element (page-chat.jsx L270-313 has no HITL note
+                  input) → design-system vocab only (var(--*) tokens, no new
+                  HEX/oklch). The note rides ApprovalDecision.reason → the backend
+                  re-injects it as a user correction for one human-coached turn. */}
+              {isVerification && showNoteInput && (
+                <div style={{ marginTop: 8 }}>
+                  <textarea
+                    aria-label="Coaching note"
+                    data-testid="reject-note"
+                    value={rejectNote}
+                    onChange={(e) => setRejectNote(e.target.value)}
+                    placeholder="Coaching note for the agent (optional)…"
+                    rows={2}
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      fontFamily: "inherit",
+                      fontSize: 12.5,
+                      padding: "6px 8px",
+                      borderRadius: "var(--radius-sm)",
+                      border: "1px solid var(--border)",
+                      background: "var(--bg-1)",
+                      color: "var(--fg)",
+                      resize: "vertical",
+                      marginBottom: 6,
+                    }}
+                  />
+                  <div className="hitl-actions">
+                    <button
+                      type="button"
+                      aria-label="Reject with note"
+                      disabled={submitting !== null}
+                      onClick={() => submitDecision("rejected", rejectNote)}
+                      className="btn danger"
+                      data-size="sm"
+                      data-testid="reject-confirm-btn"
+                    >
+                      <X size={12} />
+                      Reject &amp; coach
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
           {/* approval_id always visible (e2e contract approval-card.spec.ts L70). */}
           <div

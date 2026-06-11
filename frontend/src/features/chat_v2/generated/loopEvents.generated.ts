@@ -82,6 +82,7 @@ export interface ApprovalRequestedEvent {
     trace_id?: string | null;
     approval_request_id: string | null;
     risk_level: string;
+    kind: string;
   };
 }
 

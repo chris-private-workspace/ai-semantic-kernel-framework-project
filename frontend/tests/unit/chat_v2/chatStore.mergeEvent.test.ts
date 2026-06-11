@@ -110,9 +110,9 @@ const subChild = (
   data: { subagent_id: id, inner_type: innerType, inner },
 });
 
-const approvalRequested = (id: string, level = "HIGH"): LoopEvent => ({
+const approvalRequested = (id: string, level = "HIGH", kind = "tool"): LoopEvent => ({
   type: "approval_requested",
-  data: { approval_request_id: id, risk_level: level },
+  data: { approval_request_id: id, risk_level: level, kind },
 });
 
 const approvalReceived = (id: string, decision = "APPROVED"): LoopEvent => ({
@@ -420,6 +420,21 @@ describe("chatStore.mergeEvent Turn block sequence (Sprint 57.21 Day 1)", () => 
     expect(hitl.decision).toBeNull();
     expect(state.approvals["ap-1"]).toBeDefined();
     expect(state.approvals["ap-1"].decision).toBeNull();
+  });
+
+  test("approval_requested carries the pause kind onto the HITLTurn (Sprint 57.100)", () => {
+    useChatStore.getState().mergeEvent(approvalRequested("ap-v", "HIGH", "verification"));
+    const hitl = useChatStore.getState().turns.find((t) => t.role === "hitl") as HITLTurn;
+    expect(hitl.kind).toBe("verification");
+  });
+
+  test("approval_requested with no kind on the wire falls back to '' (Sprint 57.100)", () => {
+    useChatStore.getState().mergeEvent({
+      type: "approval_requested",
+      data: { approval_request_id: "ap-nok", risk_level: "HIGH" },
+    } as unknown as LoopEvent);
+    const hitl = useChatStore.getState().turns.find((t) => t.role === "hitl") as HITLTurn;
+    expect(hitl.kind).toBe("");
   });
 
   test("approval_received dual-emit: HITLTurn decision + approvals dict update", () => {

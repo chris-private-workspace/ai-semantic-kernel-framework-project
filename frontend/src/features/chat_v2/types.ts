@@ -22,9 +22,10 @@
  *   Message removed — replaced by Turn. tsc compile gate surfaces consumer updates.
  *
  * Created: 2026-04-30 (Sprint 50.2 Day 3.2)
- * Last Modified: 2026-06-02
+ * Last Modified: 2026-06-10
  *
  * Modification History:
+ *   - 2026-06-10: Sprint 57.100 — HITLTurn +kind (pause kind from the approval_requested wire)
  *   - 2026-06-02: Sprint 57.67 — event types now re-exported from generated/loopEvents.generated (A-5b codegen)
  *   - 2026-06-02: Sprint 57.66 — +4 diagnostic events + cache fields on llm_response/loop_end
  *   - 2026-05-17: Sprint 57.21 Day 1 — Turn/Block/Session unions; remove Message
@@ -150,6 +151,10 @@ export type HITLTurn = {
   title: string;
   severity: RiskSeverity;
   tool: string;
+  // Sprint 57.100: the pause kind from the approval_requested wire
+  // (tool/input/between_turns/output/verification) — the HITL card branches
+  // REJECT on kind === "verification" (coach-one-turn vs terminate).
+  kind: string;
   payload: string;
   rationale: string;
   approvalRequestId: string;

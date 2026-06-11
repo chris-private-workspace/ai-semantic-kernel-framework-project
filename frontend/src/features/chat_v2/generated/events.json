@@ -62,7 +62,8 @@
     },
     "approval_requested": {
       "approval_request_id": "string | null",
-      "risk_level": "string"
+      "risk_level": "string",
+      "kind": "string"
     },
     "approval_received": {
       "approval_request_id": "string | null",

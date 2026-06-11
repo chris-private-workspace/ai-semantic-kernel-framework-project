@@ -167,6 +167,16 @@ class TestSerializeLoopEvent:
         assert out["type"] == "approval_requested"
         assert out["data"]["approval_request_id"] == str(rid)
         assert out["data"]["risk_level"] == "HIGH"
+        assert out["data"]["kind"] == ""  # Sprint 57.100: default kind on the wire
+
+    def test_approval_requested_carries_kind(self) -> None:
+        """Sprint 57.100: the pause kind rides the approval_requested wire."""
+        from agent_harness._contracts import ApprovalRequested
+
+        ev = ApprovalRequested(approval_request_id=uuid4(), risk_level="HIGH", kind="verification")
+        out = serialize_loop_event(ev)
+        assert out is not None
+        assert out["data"]["kind"] == "verification"
 
     def test_approval_received_approved(self) -> None:
         """Sprint 53.5 US-2: wait_for_decision returns → ApprovalReceived → SSE."""

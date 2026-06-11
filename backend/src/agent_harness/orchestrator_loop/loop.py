@@ -45,6 +45,7 @@ Created: 2026-04-30 (Sprint 50.1 Day 2.2)
 Last Modified: 2026-06-10
 
 Modification History (newest-first):
+    - 2026-06-10: Sprint 57.100 — 5 ApprovalRequested yields +kind= (pause kind on the wire)
     - 2026-06-10: Sprint 57.99 A2 — resume() verify-kind: APPROVE replays / REJECT 1 coached turn
     - 2026-06-10: Sprint 57.99 A2 — verification-ESCALATE pause swaps the max-fail terminal (toggle)
     - 2026-06-10: Sprint 57.98 A1 US-3 — durable verification_attempts via checkpoint metadata
@@ -814,6 +815,7 @@ class AgentLoopImpl(AgentLoop):
         yield ApprovalRequested(
             approval_request_id=request_id,
             risk_level=risk_level.value,
+            kind="input",
             trace_context=ctx,
         )
 
@@ -1030,6 +1032,7 @@ class AgentLoopImpl(AgentLoop):
         yield ApprovalRequested(
             approval_request_id=request_id,
             risk_level=risk_level.value,
+            kind="tool",
             trace_context=ctx,
         )
 
@@ -1433,6 +1436,7 @@ class AgentLoopImpl(AgentLoop):
         yield ApprovalRequested(
             approval_request_id=request_id,
             risk_level=risk_level.value,
+            kind="between_turns",
             trace_context=ctx,
         )
 
@@ -1596,6 +1600,7 @@ class AgentLoopImpl(AgentLoop):
         yield ApprovalRequested(
             approval_request_id=request_id,
             risk_level=risk_level.value,
+            kind="output",
             trace_context=ctx,
         )
 
@@ -1812,6 +1817,7 @@ class AgentLoopImpl(AgentLoop):
         yield ApprovalRequested(
             approval_request_id=request_id,
             risk_level=risk_level.value,
+            kind="verification",
             trace_context=ctx,
         )
 

@@ -23,6 +23,7 @@ Created: 2026-04-29 (Sprint 49.1)
 Last Modified: 2026-06-03
 
 Modification History (newest-first):
+    - 2026-06-10: Sprint 57.100 — ApprovalRequested +kind (pause kind on the wire; no new type)
     - 2026-06-09: Sprint 57.96 — add SubagentChildEvent wrapper (Cat 11 Scope B turn-stream)
     - 2026-06-03: Sprint 57.75 A-5c — Span* +span_type/parent_span_id, MemoryAccessed +summary
     - 2026-06-02: Sprint 57.69 A-3b — add LoopCompleted.handoff_context (in-process carry)
@@ -400,6 +401,9 @@ class AgentHandoff(LoopEvent):
 class ApprovalRequested(LoopEvent):
     approval_request_id: UUID | None = None
     risk_level: str = ""
+    # Sprint 57.100: the pause kind (tool/input/between_turns/output/verification)
+    # so the chat-v2 HITL UI can branch — verification reject coaches one turn.
+    kind: str = ""
 
 
 @dataclass(frozen=True)

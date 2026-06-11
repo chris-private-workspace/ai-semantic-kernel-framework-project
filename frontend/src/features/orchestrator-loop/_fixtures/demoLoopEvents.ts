@@ -152,7 +152,7 @@ export const DEMO_LOOP_EVENTS: LoopEvent[] = [
   },
   {
     type: "approval_requested",
-    data: { approval_request_id: "a8f3.k2p1", risk_level: "high" },
+    data: { approval_request_id: "a8f3.k2p1", risk_level: "high", kind: "tool" },
   },
   {
     type: "loop_end",
