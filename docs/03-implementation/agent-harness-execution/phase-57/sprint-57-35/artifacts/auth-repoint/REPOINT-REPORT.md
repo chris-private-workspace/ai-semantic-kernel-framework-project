@@ -169,7 +169,7 @@ NEW:
   docs/03-implementation/agent-harness-execution/phase-57/sprint-57-35/
     progress.md
     retrospective.md
-  claudedocs/4-changes/sprint-57-35-auth-repoint/
+  docs/03-implementation/agent-harness-execution/phase-57/sprint-57-35/artifacts/auth-repoint/
     REPOINT-REPORT.md
     screenshots/{before,after}/*.png  (44 PNGs)
   memory/project_phase57_35_auth_repoint.md

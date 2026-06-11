@@ -233,7 +233,7 @@ Comparable to Sprint 57.43 (22 IDENTICAL + 1 INTENDED + 2 noise + 0 unintended).
 
 | Artifact | Path | Size |
 |----------|------|------|
-| BEFORE | `claudedocs/4-changes/sprint-57-44-tenant-settings-rebuild/before-after/01-BEFORE-tenant-settings.png` | 80,435 bytes |
+| BEFORE | `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-44/artifacts/tenant-settings-rebuild/before-after/01-BEFORE-tenant-settings.png` | 80,435 bytes |
 | AFTER | same dir / `02-AFTER-tenant-settings.png` | 115,255 bytes |
 | MOCKUP | (deferred per Option C; carryover AD-MockupCapture-04) | n/a |
 

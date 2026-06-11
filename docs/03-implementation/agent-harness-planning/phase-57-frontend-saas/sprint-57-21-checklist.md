@@ -20,7 +20,7 @@
 - [x] Pull latest `main` — fast-forwarded `1a55e314..ebc0dc60` (2 files changed: CLAUDE.md + SITUATION-V2-SESSION-START.md)
 - [x] Create feature branch `feature/sprint-57-21-chatv2-mockup-fidelity-phase-1` from main `ebc0dc60`
 - [x] Create `progress.md` at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-21/progress.md` (Day 0 entry + 4 D-PRE findings + Playwright captures table)
-- [x] Create `claudedocs/4-changes/sprint-57-21-chatv2-fidelity-phase-1/{screenshots/{mockup-chat-v2, prod-chat-v2-pre, blocks, sessions-sidebar, inspector-turn}/, DRIFT-REPORT-PHASE1.md}` skeleton
+- [x] Create `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-21/artifacts/chatv2-fidelity-phase-1/{screenshots/{mockup-chat-v2, prod-chat-v2-pre, blocks, sessions-sidebar, inspector-turn}/, DRIFT-REPORT-PHASE1.md}` skeleton
 
 ### 0.3 Day 0 三-prong scope verify (per sprint-workflow.md §Step 2.5)
 - [x] **Prong 1 (Path verify)** — confirm each plan §File Change List entry:
@@ -285,7 +285,7 @@
   - Next Phase 候選 row update (Sprint 57.22+ candidates: AD-ChatV2-Full-Mockup-Fidelity Phase-2+ / AD-Mockup-Direct-Port-Round-2 / Backend wire bundle)
 - [ ] Update SITUATION-V2-SESSION-START.md §第八部分 (recent sprints + Phase 57.21 carryovers)
 - [ ] Update `claudedocs/CLAUDE.md` index if needed
-- [ ] Update `claudedocs/4-changes/sprint-57-21-chatv2-fidelity-phase-1/DRIFT-REPORT-PHASE1.md` (Phase 58+ epic gap catalogue: 6+ NEW carryover ADs)
+- [ ] Update `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-21/artifacts/chatv2-fidelity-phase-1/DRIFT-REPORT-PHASE1.md` (Phase 58+ epic gap catalogue: 6+ NEW carryover ADs)
 
 ### 4.5 PR + closeout
 - [ ] PR: `feat(frontend, sprint-57-21): AD-ChatV2-Full-Mockup-Fidelity Phase-1 — Turn Block Model + SessionList + Inspector Turn Tab (Frontend-Only Spike)`

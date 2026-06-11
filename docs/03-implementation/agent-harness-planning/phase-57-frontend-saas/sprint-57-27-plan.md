@@ -218,7 +218,7 @@ Page-wrapper: `p-[18px]` + per-row `mb-[14px]` (mockup uses marginBottom not gap
 11. `frontend/src/features/overview/__fixtures__/errorTrend.ts`
 12. `frontend/src/features/overview/__fixtures__/costBurn.ts`
 13. `frontend/src/features/overview/__fixtures__/kpiSparklines.ts` (2 spark arrays: cost / sla)
-14. (DRIFT-REPORT) `claudedocs/4-changes/sprint-57-27-overview-rebuild/DRIFT-REPORT.md`
+14. (DRIFT-REPORT) `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-27/artifacts/overview-rebuild/DRIFT-REPORT.md`
 
 ### NEW spec files (7)
 
@@ -269,7 +269,7 @@ None — OverviewPage.tsx rewritten in place; inline primitives are deleted as c
 ## Deliverables
 
 - [ ] Plan + checklist drafted (this sprint Day 0)
-- [ ] DRIFT-REPORT skeleton at `claudedocs/4-changes/sprint-57-27-overview-rebuild/DRIFT-REPORT.md` with D1-D16 list
+- [ ] DRIFT-REPORT skeleton at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-27/artifacts/overview-rebuild/DRIFT-REPORT.md` with D1-D16 list
 - [ ] AD-Overview-Backend-Extensions-Phase58 carryover added to `next-phase-candidates.md` (Day 3 closeout)
 - [ ] 7 NEW feature-scoped widget components
 - [ ] 6 NEW fixtures (hitlQueue / providers / incidents / errorTrend / costBurn / kpiSparklines)

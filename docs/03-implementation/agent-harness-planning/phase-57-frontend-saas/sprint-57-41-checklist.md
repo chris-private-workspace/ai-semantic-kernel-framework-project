@@ -51,7 +51,7 @@
 ### 0.7 Capture before baseline (route-sweep)
 - [ ] **Re-point `frontend/scripts/route-sweep.mjs` OUT_DIR** to `sprint-57-41-verification-full-rebuild` (1-line edit + MHist entry; mirror Sprint 57.40 D-DAY0 pattern)
 - [ ] **Dev server check on port 3007** — if not running, start `cd frontend && npm run dev -- --port 3007` (do not stop any node.js process per session guidance)
-- [ ] **Run sweep before**: `node frontend/scripts/route-sweep.mjs before` → 24 PNGs in `claudedocs/4-changes/sprint-57-41-verification-full-rebuild/screenshots/before/`
+- [ ] **Run sweep before**: `node frontend/scripts/route-sweep.mjs before` → 24 PNGs in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-41/artifacts/verification-full-rebuild/screenshots/before/`
 - [ ] **Verify**: 24 files in before/ + no new failed routes (8 PUBLIC + 16 AppShellV2 per FIX-018 auto-derive)
 
 ### 0.8 Pre-Day-1 baseline checks
@@ -163,7 +163,7 @@
 ### 2.5.4 Side-by-side mockup compare (re-use mockup-sweep.mjs)
 - [ ] **Mockup re-shoot** — `node frontend/scripts/mockup-sweep.mjs` regenerate `claudedocs/5-status/drift-audit-2026-05-25/screenshots/mockup/verification.png` (or reuse existing if static)
 - [ ] **Visual compare**: production `after/verification.png` vs mockup → verdict
-- [ ] **Evidence saved**: 3-way pair (BEFORE day0 / AFTER day1 / MOCKUP reference) in `claudedocs/4-changes/sprint-57-41-verification-full-rebuild/before-after/`
+- [ ] **Evidence saved**: 3-way pair (BEFORE day0 / AFTER day1 / MOCKUP reference) in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-41/artifacts/verification-full-rebuild/before-after/`
 
 ### 2.5.5 Day 2.5 drift + commit
 - [ ] **progress.md Day 2.5 entry** — full sweep summary + verdict + evidence stage

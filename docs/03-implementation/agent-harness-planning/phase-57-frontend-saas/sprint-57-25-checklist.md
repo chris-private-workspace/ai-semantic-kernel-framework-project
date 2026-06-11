@@ -21,7 +21,7 @@
 - [x] **Branch creation** from main `345f74a3`
   - DoD: `git checkout -b feature/sprint-57-25-sla-dashboard-rebuild`
   - Verify: `git branch --show-current` → `feature/sprint-57-25-sla-dashboard-rebuild`
-- [x] **DRIFT-REPORT skeleton** at `claudedocs/4-changes/sprint-57-25-sla-dashboard-rebuild/DRIFT-REPORT.md`
+- [x] **DRIFT-REPORT skeleton** at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-25/artifacts/sla-dashboard-rebuild/DRIFT-REPORT.md`
   - DoD: file with mockup ref `page-admin.jsx:31-199` resolution + 6-widget-group table skeleton
   - Verify: file exists
 - [x] **progress.md Day 0** at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-25/progress.md`
@@ -44,7 +44,7 @@
 ### 0.3 Day 0 Prong 5 audit cross-ref (per AD #38)
 - [x] **Prong 5 audit cross-ref**: Sprint 57.22 AUDIT-REPORT-COMPREHENSIVE.md classification for sla-dashboard
   - DoD: confirmed Unit 9 = P0 full rebuild (same FUNCTIONAL pattern as Unit 8 cost-dashboard); 15% mockup-fidelity baseline; 4-5 hr audit estimate aligned with this plan's ~5.7 hr bottom-up
-  - Verify: `grep -B2 -A5 "Unit 9.*sla-dashboard" claudedocs/4-changes/sprint-57-22-mockup-fidelity-audit/AUDIT-REPORT-COMPREHENSIVE.md`
+  - Verify: `grep -B2 -A5 "Unit 9.*sla-dashboard" docs/03-implementation/agent-harness-execution/phase-57/sprint-57-22/artifacts/mockup-fidelity-audit/AUDIT-REPORT-COMPREHENSIVE.md`
 - [x] **No Prong 5 conflict** with #32 carryover spec
   - DoD: #32 spec scope (6 widget groups; reuses 7 primitives; 3rd app data point) aligns with audit P0 finding + Sprint 57.24 v2 retro Q4 carryover
   - Implication: rebuild scope = full strict; NO Tier 1 cosmetic-retrofit miscarriage like Sprint 57.24 v1

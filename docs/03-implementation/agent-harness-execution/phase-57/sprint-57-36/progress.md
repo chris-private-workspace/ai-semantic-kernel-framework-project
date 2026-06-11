@@ -45,7 +45,7 @@
 ### Day 0.6 — Capture before baseline ✅
 
 - **route-sweep.mjs OUT_DIR re-pointed** to `sprint-57-36-loop-debug-repoint` (+ MHist 1-line entry)
-- **`node scripts/route-sweep.mjs before`** ran in ~30s; **22/22 PNG captured** in `claudedocs/4-changes/sprint-57-36-loop-debug-repoint/screenshots/before/`
+- **`node scripts/route-sweep.mjs before`** ran in ~30s; **22/22 PNG captured** in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-36/artifacts/loop-debug-repoint/screenshots/before/`
 - All routes render OK (zero broken/blank) including `/loop-debug` + `/chat-v2` (dual-mount baseline)
 
 ### Day 0 wall-clock ~55 min

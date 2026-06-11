@@ -314,7 +314,7 @@ Bottom-up estimate ~3.0 hr. Actual wall-clock ~50 min (mostly Vitest writes + ve
 ### 2.5.5 — Evidence staged
 
 ```
-claudedocs/4-changes/sprint-57-40-governance-full-rebuild/before-after/
+docs/03-implementation/agent-harness-execution/phase-57/sprint-57-40/artifacts/governance-full-rebuild/before-after/
 ├── governance-BEFORE-day0.png         (79,999 bytes — simple 2-tab + sweep-mock red banner)
 ├── governance-AFTER-day1-rebuild.png  (115,832 bytes — 5 NEW components rendering empty fixtures)
 └── governance-MOCKUP-reference.png    (210,672 bytes — canonical reference)

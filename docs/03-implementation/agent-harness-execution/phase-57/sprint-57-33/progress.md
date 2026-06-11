@@ -16,7 +16,7 @@
   - **Prong 1 path-verify**: 5 modified-file paths confirmed via Glob/PowerShell directory listing. All 5 exist.
   - **Prong 2 content-verify**: Re-grep `\.length` in 5 files; 10 offending sites confirmed (1 in SubagentsPage / 3 in MemoryRecentList / 2 in MemoryByScopeBrowser / 3 in VerificationList / 1 in CorrectionTraceView). Exact line numbers match plan §Offending sites table.
   - **Prong 3 schema-verify**: N/A — no DB schema touched (frontend-only crash fix).
-- **Before-baseline 22-route sweep**: `node scripts/route-sweep.mjs before` → `claudedocs/4-changes/sprint-57-33-page-bug-fix/screenshots/before/` 22 PNGs. **Visual sampling confirmed `/subagents` shows error boundary text "Cannot read properties of undefined (reading 'length')"** — exact match with AD-Overview-PreExisting-Route-Crashes. 3 ⚪ baseline matched.
+- **Before-baseline 22-route sweep**: `node scripts/route-sweep.mjs before` → `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-33/artifacts/page-bug-fix/screenshots/before/` 22 PNGs. **Visual sampling confirmed `/subagents` shows error boundary text "Cannot read properties of undefined (reading 'length')"** — exact match with AD-Overview-PreExisting-Route-Crashes. 3 ⚪ baseline matched.
 - **Day-0 commit pending**: plan + checklist + this progress.md + sweep screenshots all staged for single Day 0 commit.
 
 ### Drift findings (Day 0 三-prong catalog)
@@ -35,7 +35,7 @@
 ### Notes
 
 - The Day 0 三-prong was effectively done in two passes: (a) pre-investigation grep during plan drafting to know which file:line to write into the plan; (b) Day 0 formal prong as confirmation. Both halves total ~5 min beyond the pre-investigation; the overall efficiency is good.
-- `Get-ChildItem` 顯示 `screenshots/` directory inside `frontend/` doesn't exist as a sibling — sweep OUT_DIR resolves to `../claudedocs/4-changes/sprint-57-33-page-bug-fix/screenshots/` (per script line 49-51). Output goes there.
+- `Get-ChildItem` 顯示 `screenshots/` directory inside `frontend/` doesn't exist as a sibling — sweep OUT_DIR resolves to `../docs/03-implementation/agent-harness-execution/phase-57/sprint-57-33/artifacts/page-bug-fix/screenshots/` (per script line 49-51). Output goes there.
 
 ### Remaining for Day 1
 
@@ -114,7 +114,7 @@
 
 ### Accomplishments
 
-- **US-E1**: After-baseline 22-route sweep via `node scripts/route-sweep.mjs after` → `claudedocs/4-changes/sprint-57-33-page-bug-fix/screenshots/after/` 22 PNGs. Manual sampling confirmed all 3 ⚪ routes flipped to ✅:
+- **US-E1**: After-baseline 22-route sweep via `node scripts/route-sweep.mjs after` → `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-33/artifacts/page-bug-fix/screenshots/after/` 22 PNGs. Manual sampling confirmed all 3 ⚪ routes flipped to ✅:
   - `/subagents` → full Subagents Registry (4 KPI cards + Registry table + detail card)
   - `/memory` → Recent + By Scope tabs + Layer dropdown + empty state
   - `/verification` → Recent + Correction Trace tabs + filter form (Session ID + Verifier Type + Passed) + empty state

@@ -54,7 +54,7 @@
 
 ### Before-baseline screenshots
 
-- ✅ 22 AppShellV2 + AuthShell + Home route screenshots via `route-sweep.mjs before` (after OUT_DIR re-point to sprint-57-32-* dir) — 22/22 ✓, captured to `claudedocs/4-changes/sprint-57-32-sla-dashboard-repoint/screenshots/before/`
+- ✅ 22 AppShellV2 + AuthShell + Home route screenshots via `route-sweep.mjs before` (after OUT_DIR re-point to sprint-57-32-* dir) — 22/22 ✓, captured to `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-32/artifacts/sla-dashboard-repoint/screenshots/before/`
 - /sla-dashboard extras (24h time-range tab active state) — **skipped**: regular sweep capture of `/sla-dashboard` at default state suffices for fidelity baseline (no additional state-change UI like cost-dashboard MonthPicker open / table anomaly row needed; SLA dashboard has no equivalent stateful UI requiring separate snapshots). Day 4 fidelity verify will use the regular sweep capture as the reference baseline.
 
 ### Open items / blockers

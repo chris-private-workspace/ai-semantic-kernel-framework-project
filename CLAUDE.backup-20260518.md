@@ -187,7 +187,7 @@ V2 嚴格按以下範疇組織代碼，**禁止跨範疇雜湊**：
 
 ### 既有 8 ship pages drift 狀態（2026-05-17 baseline）
 
-`/cost-dashboard` (57.1) / `/sla-dashboard` (57.1) / `/admin/tenants` list (57.4) / `/admin/tenants/settings` (57.3) / `/auth/login` (57.7) / `/auth/callback` (57.7) / `/chat-v2` (57.8) / `/governance/*` 3 pages (57.9) / `/verification` (57.11) / `/memory` (57.12) — **全部 drift 等待 Sprint 57.19 US-F1 audit + Sprint 57.20 retrofit**。詳見 `claudedocs/4-changes/sprint-57-19-existing-pages-drift-audit/DRIFT-REPORT.md`（Sprint 57.19 Day 5 產出）。
+`/cost-dashboard` (57.1) / `/sla-dashboard` (57.1) / `/admin/tenants` list (57.4) / `/admin/tenants/settings` (57.3) / `/auth/login` (57.7) / `/auth/callback` (57.7) / `/chat-v2` (57.8) / `/governance/*` 3 pages (57.9) / `/verification` (57.11) / `/memory` (57.12) — **全部 drift 等待 Sprint 57.19 US-F1 audit + Sprint 57.20 retrofit**。詳見 `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-19/artifacts/existing-pages-drift-audit/DRIFT-REPORT.md`（Sprint 57.19 Day 5 產出）。
 
 ---
 

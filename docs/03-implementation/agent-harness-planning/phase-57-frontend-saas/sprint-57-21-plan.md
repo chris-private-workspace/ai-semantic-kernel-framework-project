@@ -264,7 +264,7 @@ Per Sprint 57.20 retrospective DRIFT-REPORT-ROUND-2 (16 R2 findings using "write
 - **REWRITE in-place** (visual only, behavior preserved): ApprovalCard.tsx
 - **MARKED FOR REMOVAL** (or thin compat re-export): MessageList.tsx + ToolCallCard.tsx
 - **EDIT**: ~6-10 files (InputBar.tsx wrap + i18n × 2 + existing chat-v2 Vitest specs ~3-4 + Playwright e2e ~2)
-- **NEW docs**: progress.md + retrospective.md + `claudedocs/4-changes/sprint-57-21-chatv2-fidelity-phase-1/{screenshots/, DRIFT-REPORT-PHASE1.md}` (~3 files + artifacts)
+- **NEW docs**: progress.md + retrospective.md + `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-21/artifacts/chatv2-fidelity-phase-1/{screenshots/, DRIFT-REPORT-PHASE1.md}` (~3 files + artifacts)
 - **EDIT docs**: CLAUDE.md (Phase 17/N→18/N + Latest/Prev Sprint shift + main HEAD + Next Phase 候選) + MEMORY.md (+1 line) + sprint-workflow.md calibration matrix (+1 row 2nd app) + SITUATION §第八部分 (~4 files)
 
 Sprint total: ~25-30 file touches.
@@ -309,7 +309,7 @@ Sprint total: ~25-30 file touches.
 | R4 | Vitest 277 baseline regression from selector changes in existing chat-v2 specs | High | Low | Day 1+2+3: each new component ships with selector update commits in same PR; CI must hit 277+ before Day 4 closeout |
 | R5 | chat-v2 Playwright e2e 10/10 regression | Medium | High | Day 3 EOD: full Playwright chat-v2 suite must pass; preserve behavioral assertions (SSE / HITL / error retry) — selector adapt only |
 | R6 | Inspector Turn tab data aggregation requires per-turn metadata not currently in chatStore (e.g., tokens_thinking + cost + trace_id + span_id) | Medium | Medium | Day 1 mergeEvent must thread these from LLMRequest/LLMResponse events into Turn metadata; if Cat 12 trace_id not in SSE → display "—" placeholder; document AD-Cat12-SSE-Trace-Id-Phase2 |
-| R7 | AP-4 violation (rewriting JSX without real fidelity gain) | Low | High | Each new component ships with Playwright MCP pair-verify artifact at `claudedocs/4-changes/sprint-57-21-chatv2-fidelity-phase-1/screenshots/` + DRIFT verdict (parity / cosmetic / structural) in progress.md |
+| R7 | AP-4 violation (rewriting JSX without real fidelity gain) | Low | High | Each new component ships with Playwright MCP pair-verify artifact at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-21/artifacts/chatv2-fidelity-phase-1/screenshots/` + DRIFT verdict (parity / cosmetic / structural) in progress.md |
 | R8 | InputBar.tsx state machine logic extraction into Composer.tsx introduces subtle state coupling bugs | Medium | High | Day 4 first action = run InputBar state machine Vitest cases (existing ~10 cases) against Composer.tsx; if fail → keep InputBar.tsx as-is + render Composer skeleton beside it; document AD-Composer-StateMachine-Migration-Phase2 |
 | R9 | Module-level chatStore singleton across Vitest tests causes "store leaked between tests" | Medium | Medium | Verify `conftest.ts` (or Vitest setup) `beforeEach` resets chatStore — Common Risk Class C pattern from sprint-workflow.md |
 

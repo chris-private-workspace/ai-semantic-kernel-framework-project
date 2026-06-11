@@ -44,7 +44,7 @@
 ### 0.6 Capture before baseline (route-sweep)
 - [ ] **Re-point `frontend/scripts/route-sweep.mjs` OUT_DIR** to `sprint-57-39-governance-multipage-phase2` (1-line edit + MHist entry; mirror Sprint 57.38 D-DAY0 pattern)
 - [ ] **Start dev server** `npm run dev` (port 3007) in background
-- [ ] **Run sweep before**: `node frontend/scripts/route-sweep.mjs before` → 22 PNGs in `claudedocs/4-changes/sprint-57-39-governance-multipage-phase2/screenshots/before/`
+- [ ] **Run sweep before**: `node frontend/scripts/route-sweep.mjs before` → 22 PNGs in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-39/artifacts/governance-multipage-phase2/screenshots/before/`
 - [ ] **Verify**: 22 files in before/ + no failed routes
 
 ### 0.7 Pre-Day-1 baseline checks

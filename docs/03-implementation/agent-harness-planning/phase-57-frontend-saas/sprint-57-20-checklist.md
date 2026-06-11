@@ -18,7 +18,7 @@
 ### 0.2 Branch + initial doc files
 - [x] Confirm branch `feature/sprint-57-20-mockup-existing-pages-retrofit` checked out
 - [x] Create / update `progress.md` at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-20/progress.md` (Day 0 entry: aborted Option Y → pivoted Option W + Day 0 三-prong findings; 12 D-PRE findings catalogued)
-- [x] Create `claudedocs/4-changes/sprint-57-20-direct-port-foundation/{screenshots/{shell, overview, chat-v2, sprint-57-19-inheritance}/}`
+- [x] Create `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-20/artifacts/direct-port-foundation/{screenshots/{shell, overview, chat-v2, sprint-57-19-inheritance}/}`
 
 ### 0.3 Day 0 三-prong scope verify (per sprint-workflow §Step 2.5)
 - [x] **Prong 1 (Path verify)** — D-PRE-1 through D-PRE-5 catalogued in progress.md:
@@ -179,7 +179,7 @@
   - `screenshots/sprint-57-19-inheritance/{overview-already-day2, orchestrator, subagents, state-inspector}-post.png`
   - `screenshots/sprint-57-19-inheritance/{command-palette, notifications-panel, user-menu}-post.png` (trigger via ⌘K / bell click / avatar click)
 - [ ] Pair-verify each vs `reference/design-mockups/` mockup target
-- [ ] Catalogue page-level cosmetic gaps in NEW DRIFT-REPORT-ROUND-2.md at `claudedocs/4-changes/sprint-57-20-direct-port-foundation/DRIFT-REPORT-ROUND-2.md`
+- [ ] Catalogue page-level cosmetic gaps in NEW DRIFT-REPORT-ROUND-2.md at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-20/artifacts/direct-port-foundation/DRIFT-REPORT-ROUND-2.md`
 - [ ] Each gap → Sprint 57.21+ AD-Mockup-Direct-Port-Round-2 candidate
 
 ### 4.2 Test + build sanity

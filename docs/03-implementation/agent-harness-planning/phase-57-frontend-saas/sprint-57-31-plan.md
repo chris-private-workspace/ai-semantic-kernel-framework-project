@@ -176,9 +176,9 @@ After Day 4 closeout, compute `actual / committed` ratio:
 
 ### NEW files (0 — all components already exist)
 
-- `claudedocs/4-changes/sprint-57-31-cost-dashboard-repoint/screenshots/before/*.png` (NEW; 22 routes + 1-2 extras)
-- `claudedocs/4-changes/sprint-57-31-cost-dashboard-repoint/screenshots/after/*.png` (NEW; matching pairs)
-- `claudedocs/4-changes/sprint-57-31-cost-dashboard-repoint/REPOINT-REPORT.md` (NEW; final REPOINT-REPORT)
+- `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-31/artifacts/cost-dashboard-repoint/screenshots/before/*.png` (NEW; 22 routes + 1-2 extras)
+- `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-31/artifacts/cost-dashboard-repoint/screenshots/after/*.png` (NEW; matching pairs)
+- `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-31/artifacts/cost-dashboard-repoint/REPOINT-REPORT.md` (NEW; final REPOINT-REPORT)
 
 ### MODIFIED files (~9-10)
 

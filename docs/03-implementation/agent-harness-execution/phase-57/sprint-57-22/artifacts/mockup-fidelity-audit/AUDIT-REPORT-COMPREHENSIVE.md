@@ -1279,7 +1279,7 @@ Inferred AuditLogViewer state (Sprint 57.9 US-4 not read in this audit pass):
 - **6 tabs** with counts: Config / System Prompt / Tools(18) / Subagents(6) / Budgets / Policies
 - Each tab is a substantial sub-page (OrchestratorConfig/Prompt/Tools/Subagents/Budgets/Policies — 5-50 lines each in mockup, more in implementation)
 
-**Production**: Sprint 57.19 mockup-port baseline at 644 lines; expected to render page-head + 4-KPI + 6-tab nav + tab panels. Sprint 57.19 DRIFT-REPORT (`claudedocs/4-changes/sprint-57-19-existing-pages-drift-audit/DRIFT-REPORT.md` per CLAUDE.md ref) documents page-level drift findings — NOT reread in this Day 2 audit pass (delegated to Sprint 57.23+ retrofit execution).
+**Production**: Sprint 57.19 mockup-port baseline at 644 lines; expected to render page-head + 4-KPI + 6-tab nav + tab panels. Sprint 57.19 DRIFT-REPORT (`docs/03-implementation/agent-harness-execution/phase-57/sprint-57-19/artifacts/existing-pages-drift-audit/DRIFT-REPORT.md` per CLAUDE.md ref) documents page-level drift findings — NOT reread in this Day 2 audit pass (delegated to Sprint 57.23+ retrofit execution).
 
 **Diff matrix** (inferred from Sprint 57.19 mockup-port baseline):
 

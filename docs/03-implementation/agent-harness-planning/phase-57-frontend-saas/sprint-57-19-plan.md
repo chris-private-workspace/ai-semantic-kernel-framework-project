@@ -223,7 +223,7 @@ Post-merge: CLAUDE.md Phase 57.20+ 候選 row should re-promote `AD-Mockup-Page-
 
 ### Group F — Existing Pages Drift Audit (US-F1) — NEW per user 2026-05-17 directive
 
-- **US-F1 (Existing pages mockup-fidelity drift audit)**: As a brand owner, I want a comprehensive drift audit of the 8 existing ship pages developed in Sprint 57.1-57.12 (before mockup entered production design reference) — `/cost-dashboard` (57.1) + `/sla-dashboard` (57.1) + `/admin/tenants` list (57.4) + `/admin/tenants/settings` (57.3) + `/auth/login` + `/auth/callback` (57.7) + `/chat-v2` (57.8) + `/governance/*` 3 pages (57.9) + `/verification` (57.11) + `/memory` (57.12) — comparing each against its mockup canonical source in `reference/design-mockups/` along 3 axes (visual + functional flow + i18n copy) so Sprint 57.20+ can plan a `mockup-fidelity-retrofit` sprint with accurate ground-truth scope. Output: `claudedocs/4-changes/sprint-57-19-existing-pages-drift-audit/DRIFT-REPORT.md` with per-page severity classification (cosmetic / structural / functional). **Audit-only — NO retrofit code changes in this sprint** (per Rolling Planning 紀律: surface the data, defer the fix). Closes the gap between user 2026-05-17 directive「完全按照 mockup」and current state.
+- **US-F1 (Existing pages mockup-fidelity drift audit)**: As a brand owner, I want a comprehensive drift audit of the 8 existing ship pages developed in Sprint 57.1-57.12 (before mockup entered production design reference) — `/cost-dashboard` (57.1) + `/sla-dashboard` (57.1) + `/admin/tenants` list (57.4) + `/admin/tenants/settings` (57.3) + `/auth/login` + `/auth/callback` (57.7) + `/chat-v2` (57.8) + `/governance/*` 3 pages (57.9) + `/verification` (57.11) + `/memory` (57.12) — comparing each against its mockup canonical source in `reference/design-mockups/` along 3 axes (visual + functional flow + i18n copy) so Sprint 57.20+ can plan a `mockup-fidelity-retrofit` sprint with accurate ground-truth scope. Output: `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-19/artifacts/existing-pages-drift-audit/DRIFT-REPORT.md` with per-page severity classification (cosmetic / structural / functional). **Audit-only — NO retrofit code changes in this sprint** (per Rolling Planning 紀律: surface the data, defer the fix). Closes the gap between user 2026-05-17 directive「完全按照 mockup」and current state.
 
 ### Group E — Closeout (US-E1)
 
@@ -397,7 +397,7 @@ Per existing-page ground-truth process:
 4. **Functional flow axis**: click-through key flow (e.g. cost-dashboard: month-picker → filter → export); compare with mockup's documented `onNav` / interaction patterns; flag any missing user actions or behaviorally different ones
 5. **i18n axis**: extract all visible text in production page; compare with mockup's `i18n.jsx` `en` + `zh-TW` translations; flag mismatched copy / missing translations / extra strings
 6. **Drift severity matrix per page**: cosmetic (Tailwind class tweaks, ~30 min each) / structural (re-layout components, ~2-3 hr each) / functional (refactor behavior, ~3-5 hr each)
-7. **Output**: `claudedocs/4-changes/sprint-57-19-existing-pages-drift-audit/DRIFT-REPORT.md` — per-page table with all 3 axes + severity + Sprint 57.20 retrofit-effort estimate per page
+7. **Output**: `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-19/artifacts/existing-pages-drift-audit/DRIFT-REPORT.md` — per-page table with all 3 axes + severity + Sprint 57.20 retrofit-effort estimate per page
 8. **Sprint 57.20 input**: drift report becomes the `mockup-fidelity-retrofit` sprint plan §Workload + §Acceptance Criteria source (drafted at Sprint 57.19 closeout, NOT now per Rolling Planning)
 
 8 pages × ~25 min audit each = ~3.5 hr bottom-up
@@ -531,7 +531,7 @@ Day distribution (6-day sprint, Day 0-5 = 6 actual days incl Day 0 setup):
 - `.claude/rules/sprint-workflow.md` — Calibration matrix +1 row (`mockup-page-port-with-backend-pairing-and-audit` 0.60 1st app, HYBRID weighted blend documented)
 - `docs/03-implementation/agent-harness-planning/17-cross-category-interfaces.md` — REST surface section +4 endpoints (Cat 1 / Cat 3 ext / Cat 7 / Cat 11)
 - `design/operator-portal/INTEGRATION-LOG.md` — 4 → 11 SHIPPED rows (overview / orchestrator / subagents / state-inspector / command-palette / notifications-panel / user-menu transitions)
-- `claudedocs/4-changes/sprint-57-19-existing-pages-drift-audit/DRIFT-REPORT.md` — NEW per-page drift analysis (8 existing ship pages × Visual + Functional + i18n axes; per US-F1)
+- `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-19/artifacts/existing-pages-drift-audit/DRIFT-REPORT.md` — NEW per-page drift analysis (8 existing ship pages × Visual + Functional + i18n axes; per US-F1)
 
 ### Doc syncs (deferred post-merge via `chore/closeout-57-19` PR)
 

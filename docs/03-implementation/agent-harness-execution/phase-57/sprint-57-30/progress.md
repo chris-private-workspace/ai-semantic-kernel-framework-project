@@ -92,7 +92,7 @@
 
 ### Visual fix verification
 
-Day 1 verify shots in `claudedocs/4-changes/sprint-57-30-chatv2-shell-repoint/screenshots/day1-verify/`:
+Day 1 verify shots in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-30/artifacts/chatv2-shell-repoint/screenshots/day1-verify/`:
 - `day1-usermenu-trigger-26.png` — trigger visibly smaller (26 vs Day-0's 36)
 - `day1-usermenu-flush.png` — dropdown top edge flush against topbar bottom edge (the user-reported gap is gone)
 
@@ -215,7 +215,7 @@ Side-by-side comparison vs Day-0 `extra-usermenu-open-overview.png` shows both b
 
 ### Visual fix verification
 
-Day 4 verify shots in `claudedocs/4-changes/sprint-57-30-chatv2-shell-repoint/screenshots/day4-verify/`:
+Day 4 verify shots in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-30/artifacts/chatv2-shell-repoint/screenshots/day4-verify/`:
 - `day4-chatv2-inspector-overview.png` — **Inspector 4-tab chrome now properly visible** as separate `.tab` buttons (Turn / Trace / Memory / Tree) with active-tab highlight. Day 0 baseline showed all 4 words as a single heading "Turn Trace Memory Tree" — now correctly split into clickable tab navigator per mockup canonical.
 - `day4-chatv2-inspector-state.png` — Memory tab activates ComingSoonInspectorTab placeholder with mockup vocabulary
 - `day4-chatv2-coming-soon-tab.png` — Trace tab same ComingSoonInspectorTab pattern

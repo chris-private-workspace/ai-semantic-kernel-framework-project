@@ -27,7 +27,7 @@
 ### 0.3 before-baseline sweep + REPOINT-REPORT skeleton
 - [x] **Before-baseline sweep** — 22 routes at 1440×900 via `route-sweep.mjs before` → `screenshots/before/` (22 PNGs); `route-sweep.mjs` `OUT_DIR` re-pointed 57.28→57.29 + header MHist
   - Verify: `screenshots/before/` has 22 PNGs
-- [x] **REPOINT-REPORT skeleton** at `claudedocs/4-changes/sprint-57-29-overview-shell-repoint/REPOINT-REPORT.md` — re-point method summary + 22-route before/after matrix skeleton + `/overview` fidelity-verdict section + D-PRE catalogue
+- [x] **REPOINT-REPORT skeleton** at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-29/artifacts/overview-shell-repoint/REPOINT-REPORT.md` — re-point method summary + 22-route before/after matrix skeleton + `/overview` fidelity-verdict section + D-PRE catalogue
 - [x] **progress.md Day 0** at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-29/progress.md` — Day 0 entry + Prong 1/2/4 results + D-PRE findings
 
 ### 0.4 Day 0 commit

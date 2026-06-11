@@ -21,7 +21,7 @@
 - [x] **Branch creation** from main `fb27df73`
   - DoD: `git checkout -b feature/sprint-57-27-overview-rebuild`
   - Verify: `git branch --show-current` → `feature/sprint-57-27-overview-rebuild`
-- [x] **DRIFT-REPORT skeleton** at `claudedocs/4-changes/sprint-57-27-overview-rebuild/DRIFT-REPORT.md`
+- [x] **DRIFT-REPORT skeleton** at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-27/artifacts/overview-rebuild/DRIFT-REPORT.md`
   - DoD: D1-D16 drift list table + 9-widget mockup-vs-production matrix skeleton + mockup ref resolution (`page-overview.jsx:74-379`)
   - Verify: file exists
 - [x] **progress.md Day 0** at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-27/progress.md` → 8 D-PRE findings catalogued

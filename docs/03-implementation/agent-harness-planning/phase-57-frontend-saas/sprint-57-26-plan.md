@@ -14,7 +14,7 @@ related:
   - reference/design-mockups/styles.css:1-210 (canonical foundation tokens — :root + .app + body)
   - .claude/rules/sprint-workflow.md §Scope-class multiplier matrix
   - .claude/rules/sprint-workflow.md §Step 2.5 (Day-0 verify three-prong)
-  - claudedocs/4-changes/sprint-57-25-sla-dashboard-rebuild/compare-overview-{prod,mockup}.png (drift evidence captured 2026-05-20)
+  - docs/03-implementation/agent-harness-execution/phase-57/sprint-57-25/artifacts/sla-dashboard-rebuild/compare-overview-{prod,mockup}.png (drift evidence captured 2026-05-20)
 ---
 
 # Sprint 57.26 — AD-Foundation-Fidelity-Token-Correction
@@ -32,7 +32,7 @@ Align the **global foundation tokens** (root font-size baseline, shell layout di
 
 ### Why Sprint 57.26 (this sprint)
 
-After Sprint 57.25 (`/sla-dashboard` rebuild) merged (PR #158 → main `08f762fa`), the user compared production routes against the `:8080` mockup server and reported visual drift on `/overview` and `/auth/login`: font type/size/colour mismatch + main-content positioning mismatch. A standalone Playwright probe (`claudedocs/4-changes/sprint-57-25-sla-dashboard-rebuild/compare-overview-{prod,mockup}.png`) confirmed the "not centered / not full-screen" report was browser-cache staleness (production code correct) — but **objectively measured 4 real foundation drifts**:
+After Sprint 57.25 (`/sla-dashboard` rebuild) merged (PR #158 → main `08f762fa`), the user compared production routes against the `:8080` mockup server and reported visual drift on `/overview` and `/auth/login`: font type/size/colour mismatch + main-content positioning mismatch. A standalone Playwright probe (`docs/03-implementation/agent-harness-execution/phase-57/sprint-57-25/artifacts/sla-dashboard-rebuild/compare-overview-{prod,mockup}.png`) confirmed the "not centered / not full-screen" report was browser-cache staleness (production code correct) — but **objectively measured 4 real foundation drifts**:
 
 | # | Foundation token | Production (current) | Mockup `styles.css` | Visual consequence |
 |---|------------------|----------------------|---------------------|--------------------|
@@ -173,8 +173,8 @@ Default **Option B**: change `p-6` to the measured mockup page-gutter class; doc
 ### NEW files (~2-3)
 
 1. `frontend/scripts/route-sweep.mjs` — standalone Playwright 1440×900 sweep harness (mocked auth) screenshotting all ~22 routes; reused Day 0 (before) + Day 2 (after); placed in `frontend/scripts/` per V2 file-organization (NOT repo root); supersedes the temporary `frontend/diagnose-render.mjs` which is deleted
-2. `claudedocs/4-changes/sprint-57-26-foundation-fidelity/FOUNDATION-DRIFT-REPORT.md` — Day 0 skeleton → Day 2 before/after + vs-mockup matrix → Day 3 final verdict
-3. `claudedocs/4-changes/sprint-57-26-foundation-fidelity/screenshots/` — before/ + after/ + mockup/ route captures
+2. `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-26/artifacts/foundation-fidelity/FOUNDATION-DRIFT-REPORT.md` — Day 0 skeleton → Day 2 before/after + vs-mockup matrix → Day 3 final verdict
+3. `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-26/artifacts/foundation-fidelity/screenshots/` — before/ + after/ + mockup/ route captures
 
 ### DELETED files (1)
 

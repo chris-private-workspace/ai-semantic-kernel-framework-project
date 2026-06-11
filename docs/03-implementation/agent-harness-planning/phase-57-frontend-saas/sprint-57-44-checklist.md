@@ -63,7 +63,7 @@
 
 ### 0.7 Before-sweep + baselines
 - [ ] **Capture 24-route BEFORE screenshots**
-  - DoD: `cd frontend && node scripts/route-sweep.mjs --before --slug sprint-57-44-tenant-settings-rebuild` produces 24 PNGs in `claudedocs/4-changes/sprint-57-44-tenant-settings-rebuild/screenshots/before/`
+  - DoD: `cd frontend && node scripts/route-sweep.mjs --before --slug sprint-57-44-tenant-settings-rebuild` produces 24 PNGs in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-44/artifacts/tenant-settings-rebuild/screenshots/before/`
   - Verify: 24 PNG files generated; sha256 manifest captured
 - [ ] **Record HEX_OKLCH_BASELINE pre-sprint baseline**
   - DoD: `node frontend/scripts/check-mockup-fidelity.mjs` reports current HEX_OKLCH_BASELINE count (expected 46 per Sprint 57.43 closeout); recorded in progress.md
@@ -214,7 +214,7 @@
   - Verify: Diff results documented in progress.md
 
 ### 2.5.3 3-way evidence pair staging
-- [ ] **Stage BEFORE + AFTER + MOCKUP screenshots in `claudedocs/4-changes/sprint-57-44-tenant-settings-rebuild/before-after/`**
+- [ ] **Stage BEFORE + AFTER + MOCKUP screenshots in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-44/artifacts/tenant-settings-rebuild/before-after/`**
   - DoD: `/tenant-settings` BEFORE + AFTER PNGs copied + 6 MOCKUP screenshots (one per tab from `python -m http.server`+Playwright OR Sprint 57.43 byte-proxy estimation if blocked)
   - Verify: At least BEFORE + AFTER present; MOCKUP captured if feasible, else byte-proxy estimate documented
 - [ ] **Verify AFTER ≥ 75% of MOCKUP byte size (structural fidelity threshold)**
@@ -224,7 +224,7 @@
 ### 2.5.4 Day 2.5 closeout commit
 - [ ] **Commit Day 2.5 (after-sweep + 3-way evidence + progress.md update)**
   - DoD: `git log --oneline -1` shows commit subject `chore(frontend, sprint-57-44): Day 2.5 — 24-route after sweep + 3-way evidence pair`
-  - Verify: PNGs committed under `claudedocs/4-changes/sprint-57-44-tenant-settings-rebuild/`
+  - Verify: PNGs committed under `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-44/artifacts/tenant-settings-rebuild/`
 
 ---
 

@@ -127,7 +127,7 @@ docs/03-implementation/agent-harness-planning/phase-57-frontend-saas/
   sprint-57-34-plan.md                            (NEW)
   sprint-57-34-checklist.md                       (NEW)
 
-claudedocs/4-changes/sprint-57-34-orchestrator-repoint/
+docs/03-implementation/agent-harness-execution/phase-57/sprint-57-34/artifacts/orchestrator-repoint/
   REPOINT-REPORT.md                               (NEW — this file)
   screenshots/{before,after}/*.png                (44 PNGs)
 

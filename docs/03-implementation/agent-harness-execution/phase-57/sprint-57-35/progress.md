@@ -19,7 +19,7 @@
     - Production className grep on `/auth/login/index.tsx`: 0 mockup verbatim CSS classes across 18 className occurrences (all Tailwind translations). **Confirms Sprint 57.23 vintage HSL-translation drift**.
     - User-reported drift (2026-05-24): SSO buttons unstyled / Continue button no fill / `dev-login` orange missing — matches Sprint 57.23 vintage state.
   - **Prong 3 schema-verify**: N/A (frontend-only).
-- **Before-baseline 22-route sweep**: 22 PNGs captured to `claudedocs/4-changes/sprint-57-35-auth-repoint/screenshots/before/`. All 7 auth routes in Sprint 57.23 vintage drift state.
+- **Before-baseline 22-route sweep**: 22 PNGs captured to `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-35/artifacts/auth-repoint/screenshots/before/`. All 7 auth routes in Sprint 57.23 vintage drift state.
 
 ### Drift findings (Day 0 三-prong catalog)
 

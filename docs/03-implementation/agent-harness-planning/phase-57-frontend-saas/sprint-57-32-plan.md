@@ -180,9 +180,9 @@ After Day 4 closeout, compute `actual / committed` ratio:
 
 ### NEW files (3)
 
-- `claudedocs/4-changes/sprint-57-32-sla-dashboard-repoint/screenshots/before/*.png` (NEW; 22 routes + 1-2 extras)
-- `claudedocs/4-changes/sprint-57-32-sla-dashboard-repoint/screenshots/after/*.png` (NEW; matching pairs)
-- `claudedocs/4-changes/sprint-57-32-sla-dashboard-repoint/REPOINT-REPORT.md` (NEW; final REPOINT-REPORT)
+- `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-32/artifacts/sla-dashboard-repoint/screenshots/before/*.png` (NEW; 22 routes + 1-2 extras)
+- `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-32/artifacts/sla-dashboard-repoint/screenshots/after/*.png` (NEW; matching pairs)
+- `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-32/artifacts/sla-dashboard-repoint/REPOINT-REPORT.md` (NEW; final REPOINT-REPORT)
 
 ### MODIFIED files (~8-9)
 

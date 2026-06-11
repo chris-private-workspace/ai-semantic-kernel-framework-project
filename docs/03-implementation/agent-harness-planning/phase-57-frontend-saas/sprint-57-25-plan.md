@@ -389,7 +389,7 @@ const ERROR_RATES = [
 ## Deliverables
 
 - [ ] Plan + checklist drafted (this sprint Day 0)
-- [ ] DRIFT-REPORT skeleton at `claudedocs/4-changes/sprint-57-25-sla-dashboard-rebuild/DRIFT-REPORT.md` with mockup ref resolution
+- [ ] DRIFT-REPORT skeleton at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-25/artifacts/sla-dashboard-rebuild/DRIFT-REPORT.md` with mockup ref resolution
 - [ ] AD-SLA-Dashboard-Backend-Extensions-Phase58 carryover added to `next-phase-candidates.md` (Day 3 closeout) — parallel to AD #36 cost-dashboard backend extensions
 - [ ] 1 NEW LatencyChart feature-scoped primitive (inline; not extracted)
 - [ ] 4 NEW widget components (SLOStatusCard / TopSlowOpsTable / ErrorRateByServiceCard / TimeRangeTabs) + 2 small button stubs (Refresh / Export)
@@ -459,7 +459,7 @@ Day 3 retrospective Q2: verify actual / committed ratio; expected range [0.85, 1
 - [ ] Branch creation from main `345f74a3` (post-Sprint 57.24 v2 squash merge)
 - [ ] Day 0 三-prong (Prong 1 path verify + Prong 2 content verify on useSLAReport response shape + Prong 4 test selector verify on existing SLAOverview.test.tsx + SLAMetricsCard.test.tsx + visual-regression.spec.ts 6-route snapshot list)
 - [ ] Day 0 Prong 5 audit cross-ref (per AD #38): grep Sprint 57.22 AUDIT-REPORT for sla-dashboard P0 status → confirmed Unit 9 P0 full rebuild
-- [ ] DRIFT-REPORT skeleton at `claudedocs/4-changes/sprint-57-25-sla-dashboard-rebuild/DRIFT-REPORT.md` with mockup ref resolution
+- [ ] DRIFT-REPORT skeleton at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-25/artifacts/sla-dashboard-rebuild/DRIFT-REPORT.md` with mockup ref resolution
 - [ ] D-PRE-1 through D-PRE-4 catalogued in progress.md Day 0
 
 ### Day 1 — Group B (page-head + 4-stat + LatencyChart)

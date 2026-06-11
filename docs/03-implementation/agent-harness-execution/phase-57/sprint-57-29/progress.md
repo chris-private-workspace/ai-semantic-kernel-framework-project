@@ -16,7 +16,7 @@
 - **Plan + checklist drafted** — mirror Sprint 57.28 structure; user-approved 2026-05-22. Scope = Option B + overlays (AskUserQuestion ×2): `/overview` content + full shell + 3 topbar overlays. Day count 6 (Day 0-5).
 - **Day-0 三-prong** complete — Prong 1 path verify (0 drift), Prong 2 content/testid enumeration, Prong 4 test-selector verify. See Drift findings below.
 - **Before-baseline sweep** — `route-sweep.mjs` `OUT_DIR` re-pointed 57.28→57.29 + MHist; `node scripts/route-sweep.mjs before` → 22/22 routes captured at 1440×900 (`screenshots/before/`, kept local — not committed per Sprint 57.26/57.28 pattern).
-- **REPOINT-REPORT skeleton** at `claudedocs/4-changes/sprint-57-29-overview-shell-repoint/REPOINT-REPORT.md`.
+- **REPOINT-REPORT skeleton** at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-29/artifacts/overview-shell-repoint/REPOINT-REPORT.md`.
 
 ### Drift findings (Day-0 三-prong)
 

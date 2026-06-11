@@ -15,7 +15,7 @@
 - **Feature branch cut** — `feature/sprint-57-28-mockup-fidelity-foundation` from updated main `d4461141`.
 - **Day 0 三-prong** complete (Prong 1 path + Prong 2 content/collision-enumeration + Prong 4 test-selector) — see Drift findings below; 0 path drift, 6 D-PRE findings catalogued.
 - **`route-sweep.mjs` re-pointed** — OUT_DIR `sprint-57-26-foundation-fidelity` → `sprint-57-28-mockup-fidelity-foundation` + header MHist (reused harness, minor tweak per plan).
-- **Before-baseline sweep** — 22 routes captured 1440×900 → `claudedocs/4-changes/sprint-57-28-mockup-fidelity-foundation/screenshots/before/` (22 PNGs; all ✓).
+- **Before-baseline sweep** — 22 routes captured 1440×900 → `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-28/artifacts/mockup-fidelity-foundation/screenshots/before/` (22 PNGs; all ✓).
 - **FOUNDATION-SWITCH-REPORT skeleton** written — 4-layer summary + token-collision table (filled) + 22-route matrix skeleton + D-PRE catalogue.
 
 ### Drift findings (Day 0 三-prong — per sprint-workflow §Step 2.5)

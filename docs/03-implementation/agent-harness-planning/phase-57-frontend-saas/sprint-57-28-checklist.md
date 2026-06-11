@@ -29,7 +29,7 @@
 
 ### 0.4 Day 0 sweep before-baseline + report skeleton
 - [x] **Before-baseline sweep** — 22 routes at 1440×900 via `route-sweep.mjs before` → `screenshots/before/` (22 PNGs; all ✓). `route-sweep.mjs` OUT_DIR re-pointed 57.26→57.28 + header MHist
-- [x] **FOUNDATION-SWITCH-REPORT skeleton** at `claudedocs/4-changes/sprint-57-28-mockup-fidelity-foundation/FOUNDATION-SWITCH-REPORT.md` — 4-layer summary + filled token-collision table + 22-route matrix skeleton + D-PRE catalogue
+- [x] **FOUNDATION-SWITCH-REPORT skeleton** at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-28/artifacts/mockup-fidelity-foundation/FOUNDATION-SWITCH-REPORT.md` — 4-layer summary + filled token-collision table + 22-route matrix skeleton + D-PRE catalogue
 - [x] **progress.md Day 0** at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-28/progress.md` — Day 0 entry + 6 D-PRE findings + decisions
 
 ### 0.5 Day 0 commit

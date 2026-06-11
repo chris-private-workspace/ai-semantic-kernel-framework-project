@@ -59,11 +59,11 @@
 
 ### 0.7 Before-sweep + baselines
 - [ ] **Update route-sweep.mjs OUT_DIR to sprint slug**
-  - DoD: `route-sweep.mjs` OUT_DIR re-points to `claudedocs/4-changes/sprint-57-43-admin-tenants-rebuild/screenshots/{before,after}/`
+  - DoD: `route-sweep.mjs` OUT_DIR re-points to `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-43/artifacts/admin-tenants-rebuild/screenshots/{before,after}/`
   - Verify: `Grep "sprint-57-4" frontend/scripts/route-sweep.mjs` shows `sprint-57-43-admin-tenants-rebuild`
 - [ ] **Run 24-route before-sweep (24 PNGs to before/)**
-  - DoD: 24 PNG files exist at `claudedocs/4-changes/sprint-57-43-admin-tenants-rebuild/screenshots/before/`
-  - Verify: `Glob claudedocs/4-changes/sprint-57-43-admin-tenants-rebuild/screenshots/before/*.png` returns 24
+  - DoD: 24 PNG files exist at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-43/artifacts/admin-tenants-rebuild/screenshots/before/`
+  - Verify: `Glob docs/03-implementation/agent-harness-execution/phase-57/sprint-57-43/artifacts/admin-tenants-rebuild/screenshots/before/*.png` returns 24
 - [ ] **Baseline records**
   - DoD: Day 0 progress.md notes Vitest baseline (486 passing), HEX_OKLCH_BASELINE current value, mockup-fidelity guard exit 0, route-sweep before-shape baseline
   - Verify: `(cd frontend && npm run test --silent 2>&1 | tail -5)` shows passing count 486
@@ -167,8 +167,8 @@
 
 ### 2.5.1 After-sweep run
 - [ ] **Run 24-route after-sweep**
-  - DoD: 24 PNG files at `claudedocs/4-changes/sprint-57-43-admin-tenants-rebuild/screenshots/after/`
-  - Verify: `Glob claudedocs/4-changes/sprint-57-43-admin-tenants-rebuild/screenshots/after/*.png` returns 24
+  - DoD: 24 PNG files at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-43/artifacts/admin-tenants-rebuild/screenshots/after/`
+  - Verify: `Glob docs/03-implementation/agent-harness-execution/phase-57/sprint-57-43/artifacts/admin-tenants-rebuild/screenshots/after/*.png` returns 24
 
 ### 2.5.2 sha256 diff vs before
 - [ ] **Compute before/after sha256 diff per route**
@@ -178,7 +178,7 @@
 ### 2.5.3 3-way evidence pair staging
 - [ ] **Stage BEFORE / AFTER / MOCKUP screenshots at `before-after/` subfolder**
   - DoD: 3 PNG files (admin-tenants-before.png / admin-tenants-after.png / admin-tenants-mockup.png) staged for retrospective evidence
-  - Verify: `Glob claudedocs/4-changes/sprint-57-43-admin-tenants-rebuild/before-after/*.png` returns 3
+  - Verify: `Glob docs/03-implementation/agent-harness-execution/phase-57/sprint-57-43/artifacts/admin-tenants-rebuild/before-after/*.png` returns 3
 - [ ] **AFTER / MOCKUP byte ratio**
   - DoD: AFTER bytes ≥ 75% of MOCKUP bytes (structural PARITY threshold per Sprint 57.40-42 pattern; Sprint 57.42 achieved 92%)
   - Verify: progress.md Day 2.5 entry records BEFORE / AFTER / MOCKUP KB sizes + ratio

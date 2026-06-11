@@ -139,7 +139,7 @@ docs/03-implementation/agent-harness-planning/phase-57-frontend-saas/
   sprint-57-33-plan.md                            (NEW)
   sprint-57-33-checklist.md                       (NEW)
 
-claudedocs/4-changes/sprint-57-33-page-bug-fix/
+docs/03-implementation/agent-harness-execution/phase-57/sprint-57-33/artifacts/page-bug-fix/
   FIX-REPORT.md                                   (NEW — this file)
   screenshots/{before,after}/*.png                (44 PNGs)
 

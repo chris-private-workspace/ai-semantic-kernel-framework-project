@@ -51,7 +51,7 @@
 ### 0.7 Capture before baseline (route-sweep)
 - [ ] **Re-point `frontend/scripts/route-sweep.mjs` OUT_DIR** to `sprint-57-40-governance-full-rebuild` (1-line edit + MHist entry; mirror Sprint 57.39 D-DAY0 pattern)
 - [ ] **Dev server already running on port 3007** (confirmed Day 0 audit work; reuse)
-- [ ] **Run sweep before**: `node frontend/scripts/route-sweep.mjs before` → 24 PNGs in `claudedocs/4-changes/sprint-57-40-governance-full-rebuild/screenshots/before/`
+- [ ] **Run sweep before**: `node frontend/scripts/route-sweep.mjs before` → 24 PNGs in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-40/artifacts/governance-full-rebuild/screenshots/before/`
 - [ ] **Verify**: 24 files in before/ + no failed routes (16 AppShellV2 + 8 PUBLIC per FIX-018 auto-derive)
 
 ### 0.8 Pre-Day-1 baseline checks
@@ -171,7 +171,7 @@
 ### 2.5.4 Side-by-side mockup compare (re-use mockup-sweep.mjs from drift audit)
 - [x] **Mockup re-shoot** — SKIPPED (mockup file static since 2026-05-25 audit; re-shoot would regenerate same bytes); reused existing `claudedocs/5-status/drift-audit-2026-05-25/screenshots/mockup/governance.png`
 - [x] **Visual compare**: production `after/governance.png` vs mockup → ✅ PARITY (data-driven population would yield byte-identical render; differences are mock-empty-list vs hardcoded 4-row APPROVALS, AP-2 honesty addition, preserved outer 2-tab)
-- [x] **Evidence saved**: 3-way pair (BEFORE day0 / AFTER day1 / MOCKUP reference) in `claudedocs/4-changes/sprint-57-40-governance-full-rebuild/before-after/`
+- [x] **Evidence saved**: 3-way pair (BEFORE day0 / AFTER day1 / MOCKUP reference) in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-40/artifacts/governance-full-rebuild/before-after/`
 
 ### 2.5.5 Day 2.5 drift + commit
 - [x] **progress.md Day 2.5 entry** — full sweep summary + verdict + evidence stage

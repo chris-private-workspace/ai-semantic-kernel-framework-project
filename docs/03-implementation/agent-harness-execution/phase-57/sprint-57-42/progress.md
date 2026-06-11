@@ -79,7 +79,7 @@ Per `.claude/rules/sprint-workflow.md §Step 2.5` decision rule:
 ### Day 0 §0.7 — Capture before baseline (route-sweep) ✅
 
 - `frontend/scripts/route-sweep.mjs` OUT_DIR re-pointed `sprint-57-41-verification-full-rebuild` → `sprint-57-42-memory-matrix-rebuild` + MHist entry on top (Sprint 57.41 entry preserved below per newest-first convention).
-- `node frontend/scripts/route-sweep.mjs before` exit 0; **24 PNGs** written to `claudedocs/4-changes/sprint-57-42-memory-matrix-rebuild/screenshots/before/` (8 PUBLIC + 16 AppShellV2 routes per FIX-018 auto-derive from `routes.config.ts`).
+- `node frontend/scripts/route-sweep.mjs before` exit 0; **24 PNGs** written to `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-42/artifacts/memory-matrix-rebuild/screenshots/before/` (8 PUBLIC + 16 AppShellV2 routes per FIX-018 auto-derive from `routes.config.ts`).
 - Last 3 routes captured cleanly: `admin-tenants` / `tenant-settings` / `prop-stub-compaction` — confirms FIX-018 auto-derive intact + the 3 CATASTROPHIC remaining targets all sweep without crash.
 
 ### Day 0 §0.8 — Pre-Day-1 baseline checks ✅
@@ -369,7 +369,7 @@ Structural checklist confirmed in AFTER PNG (173,931 B):
 
 ### §2.5.4 Side-by-side mockup compare — 3-way evidence pair ✅
 
-Staged in `claudedocs/4-changes/sprint-57-42-memory-matrix-rebuild/before-after/`:
+Staged in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-42/artifacts/memory-matrix-rebuild/before-after/`:
 
 | Stage | File | Size | Description |
 |-------|------|:----:|-------------|

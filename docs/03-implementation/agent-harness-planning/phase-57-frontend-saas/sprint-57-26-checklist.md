@@ -21,7 +21,7 @@
 - [x] **Branch creation** from main `08f762fa`
   - DoD: `git checkout -b feature/sprint-57-26-foundation-fidelity`
   - Verify: `git branch --show-current` → `feature/sprint-57-26-foundation-fidelity`
-- [x] **FOUNDATION-DRIFT-REPORT skeleton** at `claudedocs/4-changes/sprint-57-26-foundation-fidelity/FOUNDATION-DRIFT-REPORT.md`
+- [x] **FOUNDATION-DRIFT-REPORT skeleton** at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-26/artifacts/foundation-fidelity/FOUNDATION-DRIFT-REPORT.md`
   - DoD: file with 5-foundation-drift table + ~22-route before/after matrix skeleton
   - Verify: file exists
 - [x] **progress.md Day 0** at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-26/progress.md`
@@ -47,7 +47,7 @@
   - DoD: placed in `frontend/scripts/` per V2 file-organization (NOT repo root)
   - Verify: `node scripts/route-sweep.mjs before` produces ~22 PNGs in `screenshots/before/`
 - [x] **Before-baseline sweep** — all ~22 routes captured
-  - DoD: `claudedocs/4-changes/sprint-57-26-foundation-fidelity/screenshots/before/` has ~22 PNGs
+  - DoD: `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-26/artifacts/foundation-fidelity/screenshots/before/` has ~22 PNGs
   - Verify: directory listing count ≈ 22
 
 ### 0.4 Day 0 commit

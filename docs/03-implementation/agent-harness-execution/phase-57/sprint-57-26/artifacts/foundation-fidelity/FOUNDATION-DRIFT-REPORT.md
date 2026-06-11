@@ -15,7 +15,7 @@
 
 ## 1. The 5 Foundation Drifts (measured 2026-05-20)
 
-Source evidence: standalone Playwright probe `claudedocs/4-changes/sprint-57-25-sla-dashboard-rebuild/compare-overview-{prod,mockup}.png` + `index.css` / `AppShellV2.tsx` / mockup `styles.css` read.
+Source evidence: standalone Playwright probe `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-25/artifacts/sla-dashboard-rebuild/compare-overview-{prod,mockup}.png` + `index.css` / `AppShellV2.tsx` / mockup `styles.css` read.
 
 | # | Foundation token | Production (before) | Mockup `styles.css` | Fix applied (Day 1) |
 |---|------------------|---------------------|---------------------|---------------------|
@@ -117,6 +117,6 @@ Every shipped route now inherits a mockup-faithful foundation baseline. The user
 
 This sprint corrected the **foundation baseline only**. Per-route **content** drift (widget layout / spacing / copy fidelity vs mockup) remains and is the scope of the `frontend-mockup-strict-rebuild` epic.
 
-The authoritative per-route content-drift backlog is the Sprint 57.22 `claudedocs/4-changes/sprint-57-22-mockup-fidelity-audit/AUDIT-REPORT-COMPREHENSIVE.md` 41-route priority matrix. Routes already rebuilt: `/auth/*` (57.23) · `/cost-dashboard` (57.24) · `/sla-dashboard` (57.25). Remaining P0/P1 routes per that audit continue the epic.
+The authoritative per-route content-drift backlog is the Sprint 57.22 `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-22/artifacts/mockup-fidelity-audit/AUDIT-REPORT-COMPREHENSIVE.md` 41-route priority matrix. Routes already rebuilt: `/auth/*` (57.23) · `/cost-dashboard` (57.24) · `/sla-dashboard` (57.25). Remaining P0/P1 routes per that audit continue the epic.
 
 This foundation correction does NOT change that backlog's contents — it ensures every future rebuild sprint starts from a mockup-faithful baseline. The 3 `FOUNDATION-APPLIED` routes (memory / subagents / verification) will have their foundation parity visually confirmed when their rebuild sprint runs with a real backend or correct fixture.

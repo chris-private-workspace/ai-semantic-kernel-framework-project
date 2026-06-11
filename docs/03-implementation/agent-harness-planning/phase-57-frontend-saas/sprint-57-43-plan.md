@@ -199,7 +199,7 @@ Estimate +4-8 NEW spec files (consistent with Sprint 57.40 +15 / 57.41 +9 / 57.4
 - **AC2**: `/admin-tenants` drift audit verdict 🔴 → ✅ PARITY (audit-report.md row 21 update); summary 19→20 PARITY / 2→1 CATASTROPHIC remaining.
 - **AC3**: Vitest 486 → ≥ 490 (+4 minimum, +8 target — within 57.40-42 cohort range +9 to +15). All GREEN.
 - **AC4**: 24-route sweep 0 unintended regressions; only `/admin-tenants` intentional CHANGED; ≤ 3 sub-300-byte noise (consistent with Sprint 57.40-42 envelope).
-- **AC5**: 3-way evidence pair (BEFORE / AFTER / MOCKUP) staged in `claudedocs/4-changes/sprint-57-43-admin-tenants-rebuild/before-after/`. AFTER ≥ 75% of MOCKUP size (structural fidelity threshold per Sprint 57.40-42 pattern).
+- **AC5**: 3-way evidence pair (BEFORE / AFTER / MOCKUP) staged in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-43/artifacts/admin-tenants-rebuild/before-after/`. AFTER ≥ 75% of MOCKUP size (structural fidelity threshold per Sprint 57.40-42 pattern).
 - **AC6**: Karpathy §3 orphan delete completed (3 Sprint 57.4 vintage components + associated specs + e2e if exists).
 - **AC7**: Backend GET wire (Option B §1.4) verified — `useTenantList()` consumed by `<AdminTenantsView>` (OR fallback Option A fixture-first if Day 0 Schema verify reveals mismatch + Phase 58+ AD opened).
 - **AC8**: Sprint plan §Workload retro records `agent-delegated: yes` + `actual/committed-with-agent-factor` ratio as 1st validation data point under newly ACTIVATED `agent_factor = 0.55` per `.claude/rules/sprint-workflow.md §Active Agent Delegation Factor Modifier`.

@@ -15,7 +15,7 @@
 
 ```js
 const OUT_DIR = path.resolve(
-  `../claudedocs/4-changes/sprint-57-39-governance-multipage-phase2/screenshots/${MODE}`,
+  `../docs/03-implementation/agent-harness-execution/phase-57/sprint-57-39/artifacts/governance-multipage-phase2/screenshots/${MODE}`,
 );
 ```
 
@@ -62,9 +62,9 @@ This is a textbook Node.js ESM foot-gun: the script "works" in the obvious case 
 
 ```diff
  const OUT_DIR = path.resolve(
--  `../claudedocs/4-changes/sprint-57-39-governance-multipage-phase2/screenshots/${MODE}`,
+-  `../docs/03-implementation/agent-harness-execution/phase-57/sprint-57-39/artifacts/governance-multipage-phase2/screenshots/${MODE}`,
 +  __dirname,
-+  `../../claudedocs/4-changes/sprint-57-39-governance-multipage-phase2/screenshots/${MODE}`,
++  `../../docs/03-implementation/agent-harness-execution/phase-57/sprint-57-39/artifacts/governance-multipage-phase2/screenshots/${MODE}`,
  );
 ```
 
@@ -93,11 +93,11 @@ Smoke test invoked from `C:\Users\Chris` (intentionally a cwd that's neither `<p
 $ node -e "import('url').then(({fileURLToPath}) => import('path').then(({default:path}) => {
     const d = path.dirname(fileURLToPath('file:///c:/Users/Chris/Downloads/ai-semantic-kernel-framework-project/frontend/scripts/route-sweep.mjs'));
     console.log('__dirname:', d);
-    console.log('OUT_DIR:', path.resolve(d, '../../claudedocs/4-changes/sprint-57-39-governance-multipage-phase2/screenshots/before'));
+    console.log('OUT_DIR:', path.resolve(d, '../../docs/03-implementation/agent-harness-execution/phase-57/sprint-57-39/artifacts/governance-multipage-phase2/screenshots/before'));
   }))"
 
 __dirname: c:\Users\Chris\Downloads\ai-semantic-kernel-framework-project\frontend\scripts
-OUT_DIR (before): c:\Users\Chris\Downloads\ai-semantic-kernel-framework-project\claudedocs\4-changes\sprint-57-39-governance-multipage-phase2\screenshots\before
+OUT_DIR (before): c:\Users\Chris\Downloads\ai-semantic-kernel-framework-project\docs\03-implementation\agent-harness-execution\phase-57\sprint-57-39\artifacts\governance-multipage-phase2\screenshots\before
 ```
 
 ✅ OUT_DIR resolves to the **intended** `<project>/claudedocs/4-changes/...` location regardless of caller cwd. Sprint 57.39 D4 foot-gun is structurally fixed.

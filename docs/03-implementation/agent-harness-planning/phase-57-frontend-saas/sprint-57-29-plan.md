@@ -7,7 +7,7 @@ duration_days: 6 (Day 0 plan + 三-prong + before-baseline / Day 1 shell primiti
 related:
   - docs/rules-on-demand/frontend-mockup-fidelity.md (authoritative verbatim-CSS method + 4-layer protocol + DoD — this sprint executes Phase 2 per-page re-point)
   - claudedocs/5-status/v2-investigation-20260522/03-mockup-consistency-rootcause.md §5 Phase 2 (per-page re-point — this sprint is the 1st)
-  - claudedocs/4-changes/sprint-57-28-mockup-fidelity-foundation/FOUNDATION-SWITCH-REPORT.md (Phase 1 foundation; §5 Phase-2 backlog lists /overview as transition-drift)
+  - docs/03-implementation/agent-harness-execution/phase-57/sprint-57-28/artifacts/mockup-fidelity-foundation/FOUNDATION-SWITCH-REPORT.md (Phase 1 foundation; §5 Phase-2 backlog lists /overview as transition-drift)
   - investigation/mockup-fidelity-poc branch (commit 53ca61fc — proven /overview content re-point; pages/overview-poc/index.tsx + components.tsx — the content-layer template)
   - Sprint 57.28 plan + checklist (frontend-verbatim-css-foundation 0.55; closest prior class; route-sweep.mjs + 三-prong + before/after-sweep model reused)
   - Sprint 57.27 plan (the /overview structural rebuild — 215-line clean assembly this sprint re-points)
@@ -205,8 +205,8 @@ Reuse `frontend/scripts/route-sweep.mjs` (Sprint 57.26/57.28). Day 0 `before` �
 ### NEW files (~2 + screenshots)
 
 1. `frontend/src/components/mockup-ui.tsx` — verbatim-TSX port of mockup `ui.jsx` primitives
-2. `claudedocs/4-changes/sprint-57-29-overview-shell-repoint/REPOINT-REPORT.md` — Day 0 skeleton → Day 5 sweep matrix + `/overview` parity verdict + re-point method template
-   + `claudedocs/4-changes/sprint-57-29-overview-shell-repoint/screenshots/` — before/ + after/ + `/overview` mockup-vs-prod captures (local evidence, NOT committed — per Sprint 57.26/57.28 pattern)
+2. `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-29/artifacts/overview-shell-repoint/REPOINT-REPORT.md` — Day 0 skeleton → Day 5 sweep matrix + `/overview` parity verdict + re-point method template
+   + `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-29/artifacts/overview-shell-repoint/screenshots/` — before/ + after/ + `/overview` mockup-vs-prod captures (local evidence, NOT committed — per Sprint 57.26/57.28 pattern)
 
 ### MODIFIED files (~16-17)
 

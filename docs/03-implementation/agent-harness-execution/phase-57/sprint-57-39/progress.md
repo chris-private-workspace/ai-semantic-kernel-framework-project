@@ -21,7 +21,7 @@
 - ✅ **Draft sprint-57-39-checklist.md** mirror 57.38 (Day 0/1/2/2.5/3, ~158 lines)
 - ✅ **User scope confirmation (Option α)**: 4-domain scope `/governance + /verification + /redaction + /error-policy`; `/audit-log` deferred (needs Cat 9 backend pair); workload ~9.5 hr commit accepted
 - ✅ **§0.6 OUT_DIR re-point**: `frontend/scripts/route-sweep.mjs` OUT_DIR + MHist entry → `sprint-57-39-governance-multipage-phase2`
-- ✅ **§0.5 dirs created**: `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-39/` + `claudedocs/4-changes/sprint-57-39-governance-multipage-phase2/screenshots/{before,after}/`
+- ✅ **§0.5 dirs created**: `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-39/` + `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-39/artifacts/governance-multipage-phase2/screenshots/{before,after}/`
 
 ### Drift findings (Day 0)
 
@@ -44,8 +44,8 @@
 
 **D4 — route-sweep cwd-relative OUT_DIR foot-gun (process drift; recovered)**
 
-- `frontend/scripts/route-sweep.mjs` line 55-57: `OUT_DIR = path.resolve('../claudedocs/4-changes/...')` is **cwd-relative**, not script-relative. Running `node frontend/scripts/route-sweep.mjs before` from the project root resolved `..` to `C:\Users\Chris\Downloads\` (parent of project root) → PNGs landed at `C:\Users\Chris\Downloads\claudedocs\4-changes\sprint-57-39-governance-multipage-phase2\screenshots\before\` outside the repository.
-- Recovery: `Move-Item` 22 PNGs to correct path `c:\Users\Chris\Downloads\ai-semantic-kernel-framework-project\claudedocs\4-changes\sprint-57-39-governance-multipage-phase2\screenshots\before\` + `Remove-Item -Recurse` the orphan parent.
+- `frontend/scripts/route-sweep.mjs` line 55-57: `OUT_DIR = path.resolve('../claudedocs/4-changes/...')` is **cwd-relative**, not script-relative. Running `node frontend/scripts/route-sweep.mjs before` from the project root resolved `..` to `C:\Users\Chris\Downloads\` (parent of project root) → PNGs landed at `C:\Users\Chris\Downloads\docs\03-implementation\agent-harness-execution\phase-57\sprint-57-39\artifacts\governance-multipage-phase2\screenshots\before\` outside the repository.
+- Recovery: `Move-Item` 22 PNGs to correct path `c:\Users\Chris\Downloads\ai-semantic-kernel-framework-project\docs\03-implementation\agent-harness-execution\phase-57\sprint-57-39\artifacts\governance-multipage-phase2\screenshots\before\` + `Remove-Item -Recurse` the orphan parent.
 - Correct invocation: `cd frontend; node scripts/route-sweep.mjs before` (cwd = frontend → `..` = project root → claudedocs path inside repo).
 - Implication: future Day 0/2.5 sweep invocations must `cd frontend` first OR a sprint-meta carryover AD candidate to fix script to use `__dirname`-relative path (small 3-line change; closes recurring foot-gun risk; deferred to a separate sprint-meta sprint).
 - AD candidate logged for next-phase-candidates.md Day 3 closeout: `AD-RouteSweep-Cwd-Relative-OUT_DIR-Foot-Gun-Fix`.
@@ -214,7 +214,7 @@ Both fixed in agent's commits 2eefffcd + 3d5b442e (NOT separate carryover ADs; i
 
 ### Today's Accomplishments
 
-- ✅ **§2.5.1**: Captured after baseline 22 PNGs at `claudedocs/4-changes/sprint-57-39-governance-multipage-phase2/screenshots/after/` (cwd=frontend per D4 lesson; clean execution)
+- ✅ **§2.5.1**: Captured after baseline 22 PNGs at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-39/artifacts/governance-multipage-phase2/screenshots/after/` (cwd=frontend per D4 lesson; clean execution)
 - ✅ **§2.5.2**: Byte-hash diff review across 22 route pairs — **13 CHANGED / 9 IDENTICAL / 0 MISSING / 0 FAILED**
 - ✅ **§2.5.3**: 4-domain fidelity verdicts recorded (see below)
 - ✅ **§2.5.4**: Day 2.5 progress.md entry + commit pending

@@ -173,9 +173,9 @@ Estimated total report length: ~800-1000 lines.
 **NEW (Sprint 57.22 deliverables)**:
 - `docs/03-implementation/agent-harness-planning/phase-57-frontend-saas/sprint-57-22-plan.md` (this file)
 - `docs/03-implementation/agent-harness-planning/phase-57-frontend-saas/sprint-57-22-checklist.md`
-- `claudedocs/4-changes/sprint-57-22-mockup-fidelity-audit/AUDIT-REPORT-COMPREHENSIVE.md` (~800-1000 lines)
-- `claudedocs/4-changes/sprint-57-22-mockup-fidelity-audit/screenshots/mockup/*.png` (~27 files)
-- `claudedocs/4-changes/sprint-57-22-mockup-fidelity-audit/screenshots/prod/*.png` (~27 files)
+- `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-22/artifacts/mockup-fidelity-audit/AUDIT-REPORT-COMPREHENSIVE.md` (~800-1000 lines)
+- `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-22/artifacts/mockup-fidelity-audit/screenshots/mockup/*.png` (~27 files)
+- `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-22/artifacts/mockup-fidelity-audit/screenshots/prod/*.png` (~27 files)
 - `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-22/progress.md`
 - `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-22/retrospective.md`
 - `memory/project_phase57_22_mockup_fidelity_audit.md`
@@ -276,8 +276,8 @@ Bottom-up est ~25-30 hr → calibrated commit ~22-25 hr (multiplier 0.85) — Da
 
 Sprint 57.22 is complete when:
 
-1. AUDIT-REPORT-COMPREHENSIVE.md ≥ 800 lines exists at `claudedocs/4-changes/sprint-57-22-mockup-fidelity-audit/AUDIT-REPORT-COMPREHENSIVE.md`
-2. ~27 mockup screenshots + ~27 production screenshots saved at `claudedocs/4-changes/sprint-57-22-mockup-fidelity-audit/screenshots/`
+1. AUDIT-REPORT-COMPREHENSIVE.md ≥ 800 lines exists at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-22/artifacts/mockup-fidelity-audit/AUDIT-REPORT-COMPREHENSIVE.md`
+2. ~27 mockup screenshots + ~27 production screenshots saved at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-22/artifacts/mockup-fidelity-audit/screenshots/`
 3. Priority matrix covers all 4 user-selected page groups (Auth + Operations + Governance + Chat-v2 Phase-2)
 4. Sprint 57.23+ first-execution-sprint scope-class proposal documented
 5. ZERO production code change verified via `git diff --stat main..HEAD`

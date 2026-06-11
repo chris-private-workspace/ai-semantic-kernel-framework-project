@@ -80,7 +80,7 @@ Ready to present plan + checklist summary to user; wait for green-light before D
 - ✅ mockup-fidelity guard PASS (baseline 46 / Layer-2 byte-identical)
 - ✅ route-sweep.mjs OUT_DIR re-pointed → `sprint-57-41-verification-full-rebuild` + MHist entry
 - ✅ Dev server confirmed running on port 3007 (Vite previous instance still serving)
-- ✅ `node scripts/route-sweep.mjs before` → **24/24 PNGs** in `claudedocs/4-changes/sprint-57-41-verification-full-rebuild/screenshots/before/` (8 PUBLIC + 16 AppShellV2 per FIX-018 auto-derive; 0 failed routes)
+- ✅ `node scripts/route-sweep.mjs before` → **24/24 PNGs** in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-41/artifacts/verification-full-rebuild/screenshots/before/` (8 PUBLIC + 16 AppShellV2 per FIX-018 auto-derive; 0 failed routes)
 
 ---
 
@@ -211,7 +211,7 @@ All under `frontend/tests/unit/verification/`:
 
 ### §2.5.1 — Capture after baseline (route-sweep)
 
-- ✅ `node frontend/scripts/route-sweep.mjs after` → **24/24 PNGs** in `claudedocs/4-changes/sprint-57-41-verification-full-rebuild/screenshots/after/` (8 PUBLIC + 16 AppShellV2; 0 failed routes; FIX-018 auto-derive correct)
+- ✅ `node frontend/scripts/route-sweep.mjs after` → **24/24 PNGs** in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-41/artifacts/verification-full-rebuild/screenshots/after/` (8 PUBLIC + 16 AppShellV2; 0 failed routes; FIX-018 auto-derive correct)
 
 ### §2.5.2 — Before/after SHA256 diff review
 
@@ -241,7 +241,7 @@ Outer 2-tab shell + `/timeline` CorrectionTraceView preserved (manual click test
 
 ### §2.5.4 — 3-way evidence pair
 
-Staged at `claudedocs/4-changes/sprint-57-41-verification-full-rebuild/before-after/`:
+Staged at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-41/artifacts/verification-full-rebuild/before-after/`:
 
 | Stage | File | Size | State |
 |-------|------|------|-------|

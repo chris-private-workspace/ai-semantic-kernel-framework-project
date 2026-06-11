@@ -1884,7 +1884,7 @@ Before drafting Tier-N retrofit/rebuild plan, grep AUDIT-REPORT(s) for each targ
 ```bash
 # Example for Sprint 57.24 v1
 for target in cost-dashboard sla-dashboard verification admin/tenants tenant-settings; do
-  grep -l "Unit.*$target" claudedocs/4-changes/sprint-57-*-audit/AUDIT-REPORT*.md
+  grep -l "Unit.*$target" docs/03-implementation/agent-harness-execution/phase-57/sprint-57-*/artifacts/*audit*/AUDIT-REPORT*.md
 done
 ```
 If any target is already audit-classified as P0 / structural-rebuild → lift conflicting entries into structural-rebuild scope before drafting cosmetic-retrofit batch.

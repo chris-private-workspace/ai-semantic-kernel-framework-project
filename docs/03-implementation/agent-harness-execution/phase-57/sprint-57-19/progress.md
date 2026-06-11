@@ -169,7 +169,7 @@ Add to plan §Risks (in subsequent commit or progress.md inline):
   - `/chat-v2` "echo_demo" mode pill: indigo ✅
   - Send button: grey (disabled state — no input typed; will be indigo when enabled per `bg-primary`)
   - Sidebar "Chat (V2)" active highlight: visually subtle (`bg-accent` resolves to indigo but may need opacity modifier per mockup `bg-accent/16` pattern — logged D-DAY1-1)
-  - Screenshots: `claudedocs/4-changes/sprint-57-19-day-1-post-brand-screenshots/{01-auth-login,02-chat-v2-redirect,03-chat-v2-authed}.png`
+  - Screenshots: `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-19/artifacts/day-1-post-brand-screenshots/{01-auth-login,02-chat-v2-redirect,03-chat-v2-authed}.png`
   - **NEW**: dev-login flow now scripted via Playwright MCP `browser_click` on "Dev Login" button — fixture usable for US-F1 Day 5 audit
 
 - ✅ **US-A1 axe a11y scan PASS** (`npm run e2e -- a11y/a11y-scan.spec.ts`):
@@ -534,7 +534,7 @@ Branch `feature/sprint-57-19-mockup-operations-port` now **13 commits ahead of m
 
 ### Day 5.4 — US-F1 9-page drift audit ✅
 
-- **NEW DRIFT-REPORT.md** ~330 lines at `claudedocs/4-changes/sprint-57-19-existing-pages-drift-audit/`
+- **NEW DRIFT-REPORT.md** ~330 lines at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-19/artifacts/existing-pages-drift-audit/`
 - 9 ship pages cross-referenced against mockup analogs
 - Per-page 3-axis findings + severity classification + retrofit hours
 - Tier 1 ~10.5 hr (cost-dashboard / chat-v2 / memory / verification / governance) → Sprint 57.20 TOP candidate

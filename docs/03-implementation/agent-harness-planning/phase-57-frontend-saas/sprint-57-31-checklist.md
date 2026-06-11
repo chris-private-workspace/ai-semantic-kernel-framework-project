@@ -35,7 +35,7 @@
 
 - [ ] **22 AppShellV2 route screenshots** via `route-sweep.mjs before` mode
   - Sub: update `route-sweep.mjs` OUT_DIR + MHist entry to point to sprint-57-31-* dir
-  - DoD: 22 PNG in `claudedocs/4-changes/sprint-57-31-cost-dashboard-repoint/screenshots/before/`
+  - DoD: 22 PNG in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-31/artifacts/cost-dashboard-repoint/screenshots/before/`
 - [ ] **cost-dashboard extras** (Playwright via `sprint-57-31-day0-extras.mjs` modeled after 57.30 day0-extras)
   - Sub: `/cost-dashboard` default state (MonthPicker closed, table without sort/filter)
   - Sub: `/cost-dashboard` table-with-anomaly-row visible (mockup shows `wonka-apac` + `tenant_3kp9` anomaly badges)

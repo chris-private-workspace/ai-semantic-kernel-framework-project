@@ -70,7 +70,7 @@
 
 ### Playwright MCP reference captures (US-A1 complete)
 
-All 6 baseline captures at 1440×900 viewport saved to `claudedocs/4-changes/sprint-57-20-direct-port-foundation/screenshots/`:
+All 6 baseline captures at 1440×900 viewport saved to `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-20/artifacts/direct-port-foundation/screenshots/`:
 
 | File | Size | Purpose |
 |------|------|---------|

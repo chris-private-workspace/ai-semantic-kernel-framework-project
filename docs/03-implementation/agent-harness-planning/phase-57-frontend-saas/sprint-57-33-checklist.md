@@ -23,7 +23,7 @@
 
 ### 0.3 Before-baseline 22-route sweep
 
-- [x] **Run `route-sweep.mjs before`** — `claudedocs/4-changes/sprint-57-33-page-bug-fix/screenshots/before/` 22 PNGs captured
+- [x] **Run `route-sweep.mjs before`** — `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-33/artifacts/page-bug-fix/screenshots/before/` 22 PNGs captured
 - [x] **Manual confirmation** — `/subagents` screenshot sampled; error boundary text "Cannot read properties of undefined (reading 'length')" matches AD baseline exactly
 
 ### 0.4 Day 0 commit
@@ -97,7 +97,7 @@
 
 ### 4.1 US-E1 — 22-route sweep after
 
-- [x] **Run `route-sweep.mjs after`** — 22 PNGs captured to `claudedocs/4-changes/sprint-57-33-page-bug-fix/screenshots/after/`
+- [x] **Run `route-sweep.mjs after`** — 22 PNGs captured to `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-33/artifacts/page-bug-fix/screenshots/after/`
 - [x] **Sweep delta analysis** — 3 ⚪ → ✅ flip confirmed (subagents = full Registry; memory = empty state; verification = filter form + empty state); 0 regressions on 19 other routes; FIX-REPORT.md documents per-route delta
 
 ### 4.2 US-E2 — Manual smoke navigation
@@ -116,7 +116,7 @@
 
 ### 4.4 US-E4 — Docs sync
 
-- [x] **FIX-REPORT.md** — `claudedocs/4-changes/sprint-57-33-page-bug-fix/FIX-REPORT.md` (3 ⚪ → ✅ delta + 11 sites fixed across 5 files + 4 NEW Vitest specs + drift catalog D1-D4 + calibration; renamed from REPOINT-REPORT.md since this is a bug-fix not re-point sprint)
+- [x] **FIX-REPORT.md** — `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-33/artifacts/page-bug-fix/FIX-REPORT.md` (3 ⚪ → ✅ delta + 11 sites fixed across 5 files + 4 NEW Vitest specs + drift catalog D1-D4 + calibration; renamed from REPOINT-REPORT.md since this is a bug-fix not re-point sprint)
 - [x] **progress.md Day 0-4** — daily entries with task-level estimate vs actual
 - [x] **retrospective.md Q1-Q7** — Q2 calibration ratio 1.24 top edge of band + 1st-data-point KEEP 0.45
 - [x] **`sprint-workflow.md §Matrix`** — NEW `frontend-page-bug-fix` 0.45 row added + MHist entry

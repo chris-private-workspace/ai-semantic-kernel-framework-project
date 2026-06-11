@@ -17,7 +17,7 @@
 ### 0.2 Branch + initial doc files
 - [ ] **Create feature branch**: `git checkout -b feature/sprint-57-20-mockup-existing-pages-retrofit`
 - [ ] **Create progress.md skeleton** at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-20/progress.md` (Day 0 entry + Sprint 57.19 carryover notes from Q4)
-- [ ] **Create screenshot artifact dir** at `claudedocs/4-changes/sprint-57-20-tier-1-retrofit/screenshots/{existing-pages,sprint-57-19-verification}/`
+- [ ] **Create screenshot artifact dir** at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-20/artifacts/tier-1-retrofit/screenshots/{existing-pages,sprint-57-19-verification}/`
 
 ### 0.3 Day 0 三-prong scope verify (per sprint-workflow §Step 2.5)
 - [ ] **Prong 1 (Path verify)**: confirm 5 Tier 1 page files exist at expected paths:
@@ -149,7 +149,7 @@
 - [ ] **Pair-by-pair diff vs mockup target** (already captured Day 0):
   - For each output: classify diff as **parity** / **minor cosmetic** / **structural remaining** / **functional drift**
   - Record per-output verdict + diff details
-- [ ] **FIDELITY-REPORT.md write-up** at `claudedocs/4-changes/sprint-57-20-tier-1-retrofit/FIDELITY-REPORT.md`:
+- [ ] **FIDELITY-REPORT.md write-up** at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-20/artifacts/tier-1-retrofit/FIDELITY-REPORT.md`:
   - Header: scope (5 retrofit pages + 7 Sprint 57.19 outputs) + methodology + Sprint 57.20 US-C1 verdict
   - Part A: 5 retrofit pages pair-by-pair (PRE-retrofit code-level state from Day 0 三-prong + POST-retrofit screenshot + mockup target + diff verdict + remaining-drift list)
   - Part B: 7 Sprint 57.19 outputs pair-by-pair (POST-Sprint-57.19 screenshot + mockup target + diff verdict + remaining-drift list)

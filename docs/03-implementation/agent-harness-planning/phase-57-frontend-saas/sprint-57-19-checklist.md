@@ -101,10 +101,10 @@ Related:
 - [ ] **Capture pre-change visual baseline** (for US-A1 brand comparison) — Playwright MCP screenshot:
   - `/auth/login` (current dark-slate WorkOS button + dev-login)
   - `/chat-v2` (current dark-slate sidebar active-route highlight + send button)
-  - Store screenshots in `claudedocs/4-changes/sprint-57-19-day-0-pre-brand-baseline/`
+  - Store screenshots in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-19/artifacts/day-0-pre-brand-baseline/`
 - [ ] **Mockup server probe (NEW 7 ports targets)** — `cd reference/design-mockups && python -m http.server 8080 &` (background); open `http://localhost:8080/` in browser; confirm overview page + orchestrator + subagents + state-inspector pages render correctly with indigo theme
   - Capture matching viewport Playwright MCP screenshots — these are the **target parity** images for Day 3-5 mockup-vs-production verification
-  - Store in `claudedocs/4-changes/sprint-57-19-day-0-mockup-targets/new-ports/`
+  - Store in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-19/artifacts/day-0-mockup-targets/new-ports/`
 - [ ] **Mockup target capture for US-F1 (existing 8 pages)** — same mockup server running; capture mockup target images for the 8 existing ship pages:
   - `page-platform.jsx` cost-burn widget → cost-dashboard target (Sprint 57.1 produced this page)
   - `page-platform.jsx` SLA / error sections → sla-dashboard target
@@ -115,8 +115,8 @@ Related:
   - `page-governance.jsx` → governance pages targets (Sprint 57.9)
   - `page-platform.jsx` verification section → verification target (Sprint 57.11); if absent, note "no mockup analog"
   - `page-platform.jsx` memory section → memory target (Sprint 57.12)
-  - Store in `claudedocs/4-changes/sprint-57-19-day-0-mockup-targets/existing-pages/`
-- [ ] **Existing 8 pages PRE-brand baseline capture** — production frontend `npm run dev` running; Playwright MCP at 1440×900 navigate to each of the 8 existing routes; capture current state (PRE US-A1 brand change); store in `claudedocs/4-changes/sprint-57-19-day-0-pre-brand-baseline/existing-pages/`
+  - Store in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-19/artifacts/day-0-mockup-targets/existing-pages/`
+- [ ] **Existing 8 pages PRE-brand baseline capture** — production frontend `npm run dev` running; Playwright MCP at 1440×900 navigate to each of the 8 existing routes; capture current state (PRE US-A1 brand change); store in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-19/artifacts/day-0-pre-brand-baseline/existing-pages/`
 - [ ] `cd frontend && npm run build` → record main JS bundle + CSS size byte-counts
 - [ ] `npm run test` (vitest) → 236 / 236 pass sanity
 - [ ] `npm run lint` → silent
@@ -403,7 +403,7 @@ Related:
 
 - [x] 🚧 **Production POST-brand-change capture** — **DEFERRED to Sprint 57.20 Day 0** (rationale documented in DRIFT-REPORT.md §Visual Screenshot Capture — Deferred): runtime visual capture belongs in EXECUTION sprint not SCOPE-ESTIMATION sprint per Sprint 57.5 dual-scoring framework; spin-up cost (dev + mockup http.server) ~30-45 min better amortized when retrofit work begins. Code-level audit serves Sprint 57.20 scope estimation.
 - [x] **Per-page 3-axis drift comparison** for each of 9 pages — done via code-level audit (source vocabulary + sprint heritage + mockup file cross-ref)
-- [x] **NEW file `claudedocs/4-changes/sprint-57-19-existing-pages-drift-audit/DRIFT-REPORT.md`** — 9 per-page sections + summary table + Tier 1/2/3 prioritization + NEW class candidate `mockup-fidelity-retrofit` 0.55 + Sprint 57.20 scope recommendation (~10.5 hr Tier 1)
+- [x] **NEW file `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-19/artifacts/existing-pages-drift-audit/DRIFT-REPORT.md`** — 9 per-page sections + summary table + Tier 1/2/3 prioritization + NEW class candidate `mockup-fidelity-retrofit` 0.55 + Sprint 57.20 scope recommendation (~10.5 hr Tier 1)
 - [x] **Sprint 57.20 candidate informed**: report identifies Tier 1 ~10.5 hr (≈ 5.8 hr calibrated commit at 0.55 HYBRID multiplier) — feeds Sprint 57.20 plan §Workload when drafted post-Sprint 57.19 closeout per Rolling Planning
 - [x] DoD: DRIFT-REPORT.md exists with 9 per-page sections + summary + Tier prioritization + Sprint 57.20 retrofit scope estimated in hours
 
@@ -424,7 +424,7 @@ Related:
 - [x] **Edit `.claude/rules/sprint-workflow.md`** — Calibration matrix +1 row `mockup-page-port-with-backend-pairing-and-audit` 0.60 HYBRID weighted blend; ratio 0.56 BELOW band by 0.29 recorded; MHist +1 line
 - [x] 🚧 **Edit `docs/03-implementation/agent-harness-planning/17-cross-category-interfaces.md`** — **DEFERRED to `chore/closeout-57-19` PR** (4 endpoints US-B1-B4 documentation; same closeout pattern as 16.md)
 - [x] **Edit `design/operator-portal/INTEGRATION-LOG.md`** — 7 rows PROP → SHIPPED (overview / orchestrator / subagents / state-inspector + topbar CommandPalette / NotificationsPanel / UserMenu); Status section updated with Sprint 57.19 entry
-- [x] **Confirm `claudedocs/4-changes/sprint-57-19-existing-pages-drift-audit/DRIFT-REPORT.md`** — created in §5.4 (~330 lines); cross-link via CLAUDE.md Phase 57.20+ 候選 will be added in closeout PR
+- [x] **Confirm `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-19/artifacts/existing-pages-drift-audit/DRIFT-REPORT.md`** — created in §5.4 (~330 lines); cross-link via CLAUDE.md Phase 57.20+ 候選 will be added in closeout PR
 
 ### 5.7 Closeout commits + retrospective + memory
 - [x] **Day 5 commit A** `feat(frontend-port, sprint-57-19): topbar overlays CommandPalette + NotificationsPanel + UserMenu extension (US-D1+D2+D3)` — commit `<sha-pending-commit-D>` (US-D landed)
@@ -447,7 +447,7 @@ Related:
 
 ### 🔴 AD-Mockup-Existing-Pages-Retrofit (NEW Sprint 57.19 US-F1 audit-informed; HIGH PRIORITY per user 2026-05-17 directive)
 
-- Per-page retrofit informed by `claudedocs/4-changes/sprint-57-19-existing-pages-drift-audit/DRIFT-REPORT.md` (US-F1 output)
+- Per-page retrofit informed by `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-19/artifacts/existing-pages-drift-audit/DRIFT-REPORT.md` (US-F1 output)
 - Scope: 8 ship pages (57.1-57.12) brought to mockup-fidelity 1:1
 - Estimated effort: depends on US-F1 audit findings (~total sum of per-page severity hours from drift report)
 - Class candidate: `frontend-refactor-mechanical` 0.80 (3rd+ application per AD-Sprint-Plan-13) for cosmetic-heavy retrofit; OR new `mockup-fidelity-retrofit` class if mostly structural

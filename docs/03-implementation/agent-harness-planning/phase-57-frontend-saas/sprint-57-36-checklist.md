@@ -58,8 +58,8 @@
   - DoD: edit `OUT_DIR` const path + add Modification History 1-line entry
   - Verify: `grep -n "sprint-57-36" frontend/scripts/route-sweep.mjs`
 - [ ] **Run `node scripts/route-sweep.mjs before`** from `frontend/`
-  - DoD: 22 PNG files in `claudedocs/4-changes/sprint-57-36-loop-debug-repoint/screenshots/before/`
-  - Verify: `ls claudedocs/4-changes/sprint-57-36-loop-debug-repoint/screenshots/before/ | wc -l` → 22
+  - DoD: 22 PNG files in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-36/artifacts/loop-debug-repoint/screenshots/before/`
+  - Verify: `ls docs/03-implementation/agent-harness-execution/phase-57/sprint-57-36/artifacts/loop-debug-repoint/screenshots/before/ | wc -l` → 22
 - [ ] **Manual review of before screenshots** confirms 0 broken routes (≤1 expected pre-existing fails)
   - DoD: `/loop-debug` + `/chat-v2` both render without 404 / 500 / blank screen
 
@@ -146,8 +146,8 @@
 
 ### 3.1 Capture after baseline (route-sweep)
 - [ ] **Run `node scripts/route-sweep.mjs after`** from `frontend/`
-  - DoD: 22 PNG files in `claudedocs/4-changes/sprint-57-36-loop-debug-repoint/screenshots/after/`
-  - Verify: `ls claudedocs/4-changes/sprint-57-36-loop-debug-repoint/screenshots/after/ | wc -l` → 22
+  - DoD: 22 PNG files in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-36/artifacts/loop-debug-repoint/screenshots/after/`
+  - Verify: `ls docs/03-implementation/agent-harness-execution/phase-57/sprint-57-36/artifacts/loop-debug-repoint/screenshots/after/ | wc -l` → 22
 
 ### 3.2 Before/after diff review
 - [ ] **`/loop-debug` route**: structural / visual delta as expected (verbatim re-point + AP-2 banner)

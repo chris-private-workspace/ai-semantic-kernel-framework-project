@@ -19,7 +19,7 @@
 - [x] **Branch creation from main `13663c8c`**
   - DoD: `git branch --show-current` → `feature/sprint-57-24-mockup-fidelity-retrofit-tier-1`
 - [x] **DRIFT-REPORT skeleton** (5-page table; repurposed cost-dashboard-only Day 1)
-  - DoD: `claudedocs/4-changes/sprint-57-24-mockup-fidelity-retrofit-tier-1/DRIFT-REPORT-RETROFIT-TIER-1.md` exists
+  - DoD: `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-24/artifacts/mockup-fidelity-retrofit-tier-1/DRIFT-REPORT-RETROFIT-TIER-1.md` exists
 - [x] **next-phase-candidates.md +1 entry #31** (AD-Memory-Structural-Rebuild-Phase58 carryover)
 
 ### 0.2 Day 0 三-prong (Path + Test Selector)

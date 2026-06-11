@@ -23,7 +23,7 @@
   - `reference/design-mockups/page-*.jsx` files exist (12 files expected: auth-extras / overview / chat / platform / platform2 / governance / tools / agents / models / sse / admin / extras)
   - `reference/design-mockups/shell.jsx` + `topbar-overlays.jsx` + `styles.css` + `index.html` exist
   - `frontend/src/pages/` dirs match production routes (29 dirs expected)
-  - `claudedocs/4-changes/sprint-57-22-mockup-fidelity-audit/` directory does NOT exist yet (will create Day 1)
+  - `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-22/artifacts/mockup-fidelity-audit/` directory does NOT exist yet (will create Day 1)
 - [ ] **Prong 2 Content Verify**:
   - mockup `page-auth-extras.jsx` contains LoginPage + RegisterPage + InvitePage + MfaPage + ExpiredPage components (or routes)
   - mockup `page-extras.jsx` contains CostDashboard + SlaDashboard + Memory + Verification + Incidents components
@@ -50,9 +50,9 @@
 ## Day 1 — Auth + Operations Audit (9 sub-units)
 
 ### 1.1 Audit Infrastructure Setup
-- [ ] **NEW dir**: `claudedocs/4-changes/sprint-57-22-mockup-fidelity-audit/`
-- [ ] **NEW dir**: `claudedocs/4-changes/sprint-57-22-mockup-fidelity-audit/screenshots/mockup/`
-- [ ] **NEW dir**: `claudedocs/4-changes/sprint-57-22-mockup-fidelity-audit/screenshots/prod/`
+- [ ] **NEW dir**: `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-22/artifacts/mockup-fidelity-audit/`
+- [ ] **NEW dir**: `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-22/artifacts/mockup-fidelity-audit/screenshots/mockup/`
+- [ ] **NEW dir**: `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-22/artifacts/mockup-fidelity-audit/screenshots/prod/`
 - [ ] **NEW file**: `AUDIT-REPORT-COMPREHENSIVE.md` skeleton with:
   - Header (methodology + scope + bar definition)
   - Section per group: Auth (5) / Operations (9) / Governance (4) / Chat-v2 Phase-2 (1+N) / Remaining (9)

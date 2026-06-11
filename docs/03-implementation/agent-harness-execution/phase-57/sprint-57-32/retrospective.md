@@ -4,7 +4,7 @@
 >
 > Checklist: [`../../../agent-harness-planning/phase-57-frontend-saas/sprint-57-32-checklist.md`](../../../agent-harness-planning/phase-57-frontend-saas/sprint-57-32-checklist.md)
 >
-> REPOINT-REPORT: [`../../../../claudedocs/4-changes/sprint-57-32-sla-dashboard-repoint/REPOINT-REPORT.md`](../../../../claudedocs/4-changes/sprint-57-32-sla-dashboard-repoint/REPOINT-REPORT.md)
+> REPOINT-REPORT: [`../../../../docs/03-implementation/agent-harness-execution/phase-57/sprint-57-32/artifacts/sla-dashboard-repoint/REPOINT-REPORT.md`](../../../../docs/03-implementation/agent-harness-execution/phase-57/sprint-57-32/artifacts/sla-dashboard-repoint/REPOINT-REPORT.md)
 >
 > Branch: `feature/sprint-57-32-sla-dashboard-repoint`
 > Base SHA: `6c9f25cf` (main; Sprint 57.31 squash-merge — PR #165)

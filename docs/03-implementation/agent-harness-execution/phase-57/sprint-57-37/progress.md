@@ -16,7 +16,7 @@
 - **Checklist written**: `sprint-57-37-checklist.md` (Day 0-4, 2-domain task allocation)
 - **Day 0 三-prong** (Prong 1 path + Prong 2 content + Prong 3 N/A no schema)
 - **route-sweep.mjs OUT_DIR re-pointed** to `sprint-57-37-loop-debug-state-inspector`
-- **Before sweep**: 22/22 PNG captured in `claudedocs/4-changes/sprint-57-37-loop-debug-state-inspector/screenshots/before/`
+- **Before sweep**: 22/22 PNG captured in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-37/artifacts/loop-debug-state-inspector/screenshots/before/`
 - **Baselines**: Vitest **456/456** (94 files; 13.07s) + mockup-fidelity **41/41 baseline preserved**
 
 ### Drift findings catalogued

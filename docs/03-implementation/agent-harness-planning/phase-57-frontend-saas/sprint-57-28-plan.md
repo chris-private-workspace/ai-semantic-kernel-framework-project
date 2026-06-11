@@ -194,8 +194,8 @@ Reuse `frontend/scripts/route-sweep.mjs` (Sprint 57.26). Day 0 = before-baseline
 
 1. `frontend/src/styles-mockup.css` — Layer 2; byte-identical copy of `reference/design-mockups/styles.css`
 2. `frontend/scripts/check-mockup-fidelity.mjs` — CI diff guard + grep guard
-3. `claudedocs/4-changes/sprint-57-28-mockup-fidelity-foundation/FOUNDATION-SWITCH-REPORT.md` — Day 0 skeleton → Day 3 before/after + vs-mockup matrix → Day 4 final verdict + Phase-2 backlog
-   + `claudedocs/4-changes/sprint-57-28-mockup-fidelity-foundation/screenshots/` — before/ + after/ captures (local evidence, not committed — per Sprint 57.26 pattern)
+3. `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-28/artifacts/mockup-fidelity-foundation/FOUNDATION-SWITCH-REPORT.md` — Day 0 skeleton → Day 3 before/after + vs-mockup matrix → Day 4 final verdict + Phase-2 backlog
+   + `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-28/artifacts/mockup-fidelity-foundation/screenshots/` — before/ + after/ captures (local evidence, not committed — per Sprint 57.26 pattern)
 
 ### MODIFIED files (~6-7)
 

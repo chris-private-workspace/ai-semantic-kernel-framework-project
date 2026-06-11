@@ -50,7 +50,7 @@
 - [ ] **Re-point `route-sweep.mjs` OUT_DIR** to `sprint-57-37-loop-debug-state-inspector`
   - DoD: edit `OUT_DIR` const path + add Modification History 1-line entry
 - [ ] **Run `node scripts/route-sweep.mjs before`** from `frontend/`
-  - DoD: 22 PNG files in `claudedocs/4-changes/sprint-57-37-loop-debug-state-inspector/screenshots/before/`
+  - DoD: 22 PNG files in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-37/artifacts/loop-debug-state-inspector/screenshots/before/`
 - [ ] **Manual review of before screenshots** confirms 0 broken routes
   - DoD: `/loop-debug` (empty-state baseline) + `/state-inspector` (Sprint 57.19 vintage baseline) + `/chat-v2` (inline LoopVisualizer mount baseline)
 

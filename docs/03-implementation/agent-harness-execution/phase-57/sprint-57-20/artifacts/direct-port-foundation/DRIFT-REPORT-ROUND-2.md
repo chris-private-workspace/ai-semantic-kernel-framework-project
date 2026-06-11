@@ -82,7 +82,7 @@ All 7 Sprint 57.19 outputs **auto-inherit** the new Sprint 57.20 shell (dark the
 
 ## References
 
-- `claudedocs/4-changes/sprint-57-19-existing-pages-drift-audit/DRIFT-REPORT.md` (Sprint 57.19 US-F1; predecessor; ~330 lines)
+- `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-19/artifacts/existing-pages-drift-audit/DRIFT-REPORT.md` (Sprint 57.19 US-F1; predecessor; ~330 lines)
 - `reference/design-mockups/` (canonical visual source)
 - Sprint 57.20 progress.md (D-DAY1-1 through D-DAY3-3)
 - `.claude/rules/sprint-workflow.md` calibration matrix

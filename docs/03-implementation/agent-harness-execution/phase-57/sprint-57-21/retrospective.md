@@ -218,7 +218,7 @@ Status: deferred to separate sub-step before §4.5 PR. Targets:
 - `mockup-chat-v2/mockup-chat-v2-1440x900.png` (already captured Day 0; canonical visual target)
 - `inspector-turn/prod-chat-v2-day4.png` (POST-Day-4 production at 1440×900)
 - Sub-zooms: SessionList rail (280px) / ChatHeader top bar / Inspector Turn tab populated / Inspector Trace tab coming-soon
-- DRIFT verdict consolidated in `claudedocs/4-changes/sprint-57-21-chatv2-fidelity-phase-1/DRIFT-REPORT-PHASE1.md`
+- DRIFT verdict consolidated in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-21/artifacts/chatv2-fidelity-phase-1/DRIFT-REPORT-PHASE1.md`
 
 **Closing note**: Sprint 57.20 captured runtime in execution sprint; Sprint 57.21 defers capture to dedicated sub-step. Both patterns honour the reality-check framework — the distinction is whether the runtime capture itself materially affects scope (Sprint 57.20: yes, drove Round-2 plan; Sprint 57.21: no, code-level shipped already; capture serves AP-4 verification only).
 

@@ -24,7 +24,7 @@
 
 ### 0.3 Before-baseline screenshot capture
 
-- [x] **22 AppShellV2 + AuthShell + Home route screenshots** via `route-sweep.mjs before` mode — 22/22 ✓ captured to `claudedocs/4-changes/sprint-57-32-sla-dashboard-repoint/screenshots/before/`; route-sweep.mjs OUT_DIR re-pointed + MHist entry added
+- [x] **22 AppShellV2 + AuthShell + Home route screenshots** via `route-sweep.mjs before` mode — 22/22 ✓ captured to `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-32/artifacts/sla-dashboard-repoint/screenshots/before/`; route-sweep.mjs OUT_DIR re-pointed + MHist entry added
 - [x] **sla-dashboard extras** — **skipped**: regular sweep capture suffices (no additional stateful UI requiring separate snapshots like cost-dashboard MonthPicker / table anomaly)
 - [x] **Day 0 commit** — `acab0292` on `feature/sprint-57-32-sla-dashboard-repoint` (includes 57.31 checklist closeout cosmetic catchup as housekeeping)
 

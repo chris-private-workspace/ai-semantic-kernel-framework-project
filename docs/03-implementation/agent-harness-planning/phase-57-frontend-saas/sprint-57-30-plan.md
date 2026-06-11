@@ -258,9 +258,9 @@ Reuse the same harness from Sprint 57.26-57.29 (`scripts/visual/route-sweep.mjs`
 ### NEW files (~1 + screenshots)
 
 - `frontend/src/hooks/useDismiss.ts` (NEW) — only if extracted from `UserMenu.tsx` for reuse; if not extracted, the hook lives inside `UserMenu.tsx` and this entry drops.
-- `claudedocs/4-changes/sprint-57-30-chatv2-shell-repoint/screenshots/before/*.png` (NEW; 22 routes + 5-6 UserMenu states + chat-v2 inspector states).
-- `claudedocs/4-changes/sprint-57-30-chatv2-shell-repoint/screenshots/after/*.png` (NEW; matching pairs).
-- `claudedocs/4-changes/sprint-57-30-chatv2-shell-repoint/REPOINT-REPORT.md` (NEW; final REPOINT-REPORT mirroring Sprint 57.29 format).
+- `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-30/artifacts/chatv2-shell-repoint/screenshots/before/*.png` (NEW; 22 routes + 5-6 UserMenu states + chat-v2 inspector states).
+- `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-30/artifacts/chatv2-shell-repoint/screenshots/after/*.png` (NEW; matching pairs).
+- `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-30/artifacts/chatv2-shell-repoint/REPOINT-REPORT.md` (NEW; final REPOINT-REPORT mirroring Sprint 57.29 format).
 
 ### MODIFIED files (~22-23)
 

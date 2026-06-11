@@ -16,7 +16,7 @@
   - **Prong 1 path-verify**: 3 modified-file paths confirmed (`OrchestratorPage.tsx` 598 lines / `page-agents.jsx` 418 lines / `mockup-ui.tsx` 8 current exports). Prior crash routes (`/subagents`, `/memory`, `/verification`) confirmed all rendering correctly post-Sprint 57.33.
   - **Prong 2 content-verify**: Mockup source `page-agents.jsx:1-340` has `Orchestrator` main + 6 sub-components (Config L65 / Prompt L116 / Tools L175 / Subagents L207 / Budgets L239 / Policies L274). mockup-ui.tsx currently exports Icon/Button/Badge/Card/Stat/Spark/SevDot/RiskBadge — **Tabs/Field/Switch absent** (decision: promote to mockup-ui in Day 1-3). **Critical drift finding D1**: production OrchestratorPage.tsx uses **0 mockup verbatim CSS classes** despite 113 total className occurrences — all are Tailwind translations (Sprint 57.19 vintage 1:1 Tailwind translation pattern). Confirms full Phase-2 re-point scope.
   - **Prong 3 schema-verify**: N/A (frontend-only re-point; no DB schema).
-- **Before-baseline 22-route sweep**: `node scripts/route-sweep.mjs before` → `claudedocs/4-changes/sprint-57-34-orchestrator-repoint/screenshots/before/` 22 PNGs. Visual sampling of `/orchestrator` confirmed Sprint 57.19 vintage state — full page-head + 4-stat row + 6-tab bar + Config tab content rendering, but bone structure uses Tailwind translation throughout (per Prong 2 grep finding D1).
+- **Before-baseline 22-route sweep**: `node scripts/route-sweep.mjs before` → `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-34/artifacts/orchestrator-repoint/screenshots/before/` 22 PNGs. Visual sampling of `/orchestrator` confirmed Sprint 57.19 vintage state — full page-head + 4-stat row + 6-tab bar + Config tab content rendering, but bone structure uses Tailwind translation throughout (per Prong 2 grep finding D1).
 
 ### Drift findings (Day 0 三-prong catalog)
 
@@ -90,7 +90,7 @@ Day 1-3 executed via `code-implementer` agent (per CLAUDE.md "Tool Optimization 
 
 ### Accomplishments
 
-- **US-E1**: After-baseline 22-route sweep via `route-sweep.mjs after` → `claudedocs/4-changes/sprint-57-34-orchestrator-repoint/screenshots/after/` 22 PNGs. Visual sampling of `/orchestrator` confirmed PARITY vs mockup:
+- **US-E1**: After-baseline 22-route sweep via `route-sweep.mjs after` → `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-34/artifacts/orchestrator-repoint/screenshots/after/` 22 PNGs. Visual sampling of `/orchestrator` confirmed PARITY vs mockup:
   - Tabs spacing ✅ proper `.tabs` layout with active underline + count badges (vs squished before)
   - Brand-mark ✅ 32px verbatim per mockup
   - grid-stats ✅ verbatim mockup layout

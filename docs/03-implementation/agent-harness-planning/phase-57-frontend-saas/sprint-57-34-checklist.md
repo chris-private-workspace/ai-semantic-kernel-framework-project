@@ -21,7 +21,7 @@
 
 ### 0.3 Before-baseline 22-route sweep
 
-- [x] **Run `route-sweep.mjs before`** — `claudedocs/4-changes/sprint-57-34-orchestrator-repoint/screenshots/before/` 22 PNGs
+- [x] **Run `route-sweep.mjs before`** — `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-34/artifacts/orchestrator-repoint/screenshots/before/` 22 PNGs
 - [x] **Sample `/orchestrator` before** — Sprint 57.19 vintage state confirmed: page renders + structure correct but Tabs squished + Tailwind class translations throughout
 
 ### 0.4 Day 0 commit
@@ -136,7 +136,7 @@
 
 ### 4.1 US-E1 — 22-route sweep after
 
-- [x] **Run `route-sweep.mjs after`** — 22 PNGs captured to `claudedocs/4-changes/sprint-57-34-orchestrator-repoint/screenshots/after/`
+- [x] **Run `route-sweep.mjs after`** — 22 PNGs captured to `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-34/artifacts/orchestrator-repoint/screenshots/after/`
 - [x] **Sweep delta analysis** — `/orchestrator` flipped Sprint 57.19 Tailwind → ✅ PARITY (Tabs spacing + brand-mark 32px + grid-stats verbatim + Memory access clean + Field/Switch mockup-ui); 0 regressions on other 21 routes (Sprint 57.33's 3 fixed routes maintain ✅)
 - [x] **Per-tab sample** — `/orchestrator` after-baseline captured; Config tab visible (sample sufficient)
 
@@ -149,7 +149,7 @@
 
 ### 4.3 US-E4 — Docs sync
 
-- [x] **REPOINT-REPORT.md** — `claudedocs/4-changes/sprint-57-34-orchestrator-repoint/REPOINT-REPORT.md` (visual delta + code changes + primitive promotions + 5-gate + calibration + ADs)
+- [x] **REPOINT-REPORT.md** — `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-34/artifacts/orchestrator-repoint/REPOINT-REPORT.md` (visual delta + code changes + primitive promotions + 5-gate + calibration + ADs)
 - [x] **progress.md Day 0-4** — daily entries with actual vs est per task
 - [x] **retrospective.md Q1-Q7** — Q2 calibration ratio ≈0.95-1.05 in band middle + bimodal-by-shape signal + KEEP 0.50 baseline
 - [x] **`sprint-workflow.md §Matrix`** — `frontend-verbatim-css-repoint` 5th data point cell updated + MHist entry + bimodal-by-shape evaluation outcome

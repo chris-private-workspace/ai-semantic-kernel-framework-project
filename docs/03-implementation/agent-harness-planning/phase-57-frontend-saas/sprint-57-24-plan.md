@@ -26,7 +26,7 @@ This is **Sprint 57.24 plan v2** — scope was pivoted on Day 1 from the v1 scop
 
 **v1 scope** (drafted 2026-05-19 Day 0, ABORTED Day 1): retrofit 5 ship pages (cost-dashboard / sla-dashboard / verification / admin/tenants list / admin/tenants/settings) for mockup-fidelity cosmetic alignment under class `mockup-fidelity-retrofit` 0.55.
 
-**v1 abort cause** (catalogued in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-24/progress.md` Day 1 + `claudedocs/4-changes/sprint-57-24-mockup-fidelity-retrofit-tier-1/DRIFT-REPORT-RETROFIT-TIER-1.md` Day 1): Day 1 code-level inventory found 5/6 mockup widget groups absent on cost-dashboard + sla-dashboard production renders; tenant-settings already known structural per Sprint 57.22 Unit 31. Pattern is STRUCTURAL widget absence, not cosmetic Tailwind drift. Per §Step 2.5 «Findings shift scope by > 50% → abort sprint; redraft plan with reality baseline».
+**v1 abort cause** (catalogued in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-24/progress.md` Day 1 + `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-24/artifacts/mockup-fidelity-retrofit-tier-1/DRIFT-REPORT-RETROFIT-TIER-1.md` Day 1): Day 1 code-level inventory found 5/6 mockup widget groups absent on cost-dashboard + sla-dashboard production renders; tenant-settings already known structural per Sprint 57.22 Unit 31. Pattern is STRUCTURAL widget absence, not cosmetic Tailwind drift. Per §Step 2.5 «Findings shift scope by > 50% → abort sprint; redraft plan with reality baseline».
 
 **v2 scope** (this plan, drafted Day 1 post-abort): rebuild ONLY `/cost-dashboard` to 1:1 mockup fidelity per `reference/design-mockups/page-admin.jsx:200-321`. Class pivots to `frontend-mockup-strict-rebuild` 0.60 (2nd application of NEW class introduced Sprint 57.23). Remaining 4 pages (sla-dashboard / verification / admin/tenants / tenant-settings) defer to Sprint 57.25-57.28 as separate rebuild sprints.
 
@@ -327,7 +327,7 @@ Used in: `<AreaChart>` (30d history pending) / `<TenantTopTable>` (cross-tenant 
 - [ ] Admin scope gate wired (PLATFORM_ADMIN_ROLES)
 - [ ] Vitest ≥369+15 passing; Playwright e2e + a11y-scan + visual-regression baseline current
 - [ ] i18n EN + zh-TW +~25 keys
-- [ ] Playwright MCP pair-verify artifacts (mockup + production screenshots at 1440×900) saved to `claudedocs/4-changes/sprint-57-24-mockup-fidelity-retrofit-tier-1/screenshots/`
+- [ ] Playwright MCP pair-verify artifacts (mockup + production screenshots at 1440×900) saved to `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-24/artifacts/mockup-fidelity-retrofit-tier-1/screenshots/`
 - [ ] Retrospective Q1-Q7 + memory snapshot + MEMORY.md +1 + sprint-workflow calibration matrix +1 row (2nd app of frontend-mockup-strict-rebuild 0.60 class) + CLAUDE.md Current Sprint row + Last Updated footer
 - [ ] PR opened + CI green + merge + post-merge cleanup
 

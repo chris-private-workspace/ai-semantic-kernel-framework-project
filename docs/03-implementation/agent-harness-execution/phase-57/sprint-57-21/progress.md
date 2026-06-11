@@ -66,7 +66,7 @@ Decision at Day 2 time — preference (a) for reusability if governance/Approval
 
 | Artifact | Path |
 |----------|------|
-| ✅ **Mockup chat 1440×900 (CRITICAL)** | `claudedocs/4-changes/sprint-57-21-chatv2-fidelity-phase-1/screenshots/mockup-chat-v2/mockup-chat-v2-1440x900.png` |
+| ✅ **Mockup chat 1440×900 (CRITICAL)** | `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-21/artifacts/chatv2-fidelity-phase-1/screenshots/mockup-chat-v2/mockup-chat-v2-1440x900.png` |
 | ⚠️ Prod-pre attempt 1 (redirect to login) | `screenshots/prod-chat-v2-pre/prod-chat-v2-pre-attempt1-redirect-to-login.png` |
 | ⚠️ Prod-pre attempt 2 (redirect to login after dev-login) | `screenshots/prod-chat-v2-pre/prod-chat-v2-pre-attempt2-redirect-to-login.png` |
 | ✅ Prod root post-dev-login (authenticated home page baseline) | `screenshots/prod-chat-v2-pre/prod-root-post-dev-login.png` |
@@ -330,6 +330,6 @@ Mockup http server (port 8080) + dev server (port 3007) both still running. Play
 - production `/chat-v2` at 1440×900 (full SessionList + ChatHeader + TurnList placeholder + Inspector 4-tab + InputBar) — auth race D-PRE-4 mitigated via `/auth/dev-login` fallback
 - Sub-zooms: SessionList left rail / ChatHeader top bar / Inspector Turn tab populated / Inspector Trace tab coming-soon
 
-DRIFT verdict + cosmetic gaps logged in `claudedocs/4-changes/sprint-57-21-chatv2-fidelity-phase-1/DRIFT-REPORT-PHASE1.md` (file scaffold from Day 0; to be populated at §4.4).
+DRIFT verdict + cosmetic gaps logged in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-21/artifacts/chatv2-fidelity-phase-1/DRIFT-REPORT-PHASE1.md` (file scaffold from Day 0; to be populated at §4.4).
 
 ## §4.4 — _pending — retrospective + memory + doc syncs_

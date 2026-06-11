@@ -6,7 +6,7 @@ class: mockup-fidelity-retrofit (NEW 0.55 1st application; HYBRID weighted blend
 duration_days: 4-5 (Day 0 setup + Day 1-3 retrofit + Day 4 verification + closeout)
 related:
   - Sprint 57.19 retrospective Q4 (10 NEW carryover ADs; TOP = AD-Mockup-Existing-Pages-Retrofit per user 2026-05-17 directive)
-  - claudedocs/4-changes/sprint-57-19-existing-pages-drift-audit/DRIFT-REPORT.md (Tier 1 ~10.5 hr ground truth)
+  - docs/03-implementation/agent-harness-execution/phase-57/sprint-57-19/artifacts/existing-pages-drift-audit/DRIFT-REPORT.md (Tier 1 ~10.5 hr ground truth)
   - CLAUDE.md §Frontend Mockup-Fidelity Hard Constraint (2026-05-17 directive)
   - .claude/rules/sprint-workflow.md calibration matrix
 ---
@@ -17,7 +17,7 @@ related:
 
 Close two related fidelity gaps for Phase 57+ Frontend SaaS in one focused sprint:
 
-1. **Retrofit 5 Tier 1 existing ship pages** (cost-dashboard / chat-v2 / memory / verification / governance) to mockup parity per `claudedocs/4-changes/sprint-57-19-existing-pages-drift-audit/DRIFT-REPORT.md` Tier 1 prioritization (~10.5 hr bottom-up).
+1. **Retrofit 5 Tier 1 existing ship pages** (cost-dashboard / chat-v2 / memory / verification / governance) to mockup parity per `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-19/artifacts/existing-pages-drift-audit/DRIFT-REPORT.md` Tier 1 prioritization (~10.5 hr bottom-up).
 
 2. **Verify Sprint 57.19's 7 mockup-port outputs (4 Operations pages + 3 Topbar overlays) at runtime** via Playwright MCP screenshot pair capture against mockup target — closing the L3 verification gap deferred from Sprint 57.19 per Sprint 57.5 dual-scoring framework.
 
@@ -109,7 +109,7 @@ cd reference/design-mockups && python -m http.server 8080 &
 # Capture pipeline (driven via Playwright MCP tool):
 # - viewport: 1440×900
 # - format: PNG full-page
-# - artifact dir: claudedocs/4-changes/sprint-57-20-tier-1-retrofit/screenshots/
+# - artifact dir: docs/03-implementation/agent-harness-execution/phase-57/sprint-57-20/artifacts/tier-1-retrofit/screenshots/
 #   - existing-pages/{cost-dashboard,chat-v2,memory,verification,governance}-{pre,post,mockup}.png
 #   - sprint-57-19-verification/{overview,orchestrator,subagents,state-inspector,command-palette,notifications-panel,user-menu}-{post,mockup}.png
 ```
@@ -181,9 +181,9 @@ Differs from `frontend-refactor-mechanical` 0.50/0.80 because retrofit requires 
 - `tests/unit/pages/governance/*.test.tsx` (extend existing)
 
 ### NEW Audit artifacts
-- `claudedocs/4-changes/sprint-57-20-tier-1-retrofit/screenshots/existing-pages/*.png` (5 POST + 5 mockup pairs)
-- `claudedocs/4-changes/sprint-57-20-tier-1-retrofit/screenshots/sprint-57-19-verification/*.png` (7 POST + 7 mockup pairs)
-- `claudedocs/4-changes/sprint-57-20-tier-1-retrofit/FIDELITY-REPORT.md` (final pair-by-pair fidelity verdict + diff classification + remaining-drift list for Sprint 57.21+)
+- `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-20/artifacts/tier-1-retrofit/screenshots/existing-pages/*.png` (5 POST + 5 mockup pairs)
+- `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-20/artifacts/tier-1-retrofit/screenshots/sprint-57-19-verification/*.png` (7 POST + 7 mockup pairs)
+- `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-20/artifacts/tier-1-retrofit/FIDELITY-REPORT.md` (final pair-by-pair fidelity verdict + diff classification + remaining-drift list for Sprint 57.21+)
 
 ### NOT touched (intentional scope hold)
 - Backend (`backend/`) — pure frontend sprint; backend baseline preserved
@@ -193,7 +193,7 @@ Differs from `frontend-refactor-mechanical` 0.50/0.80 because retrofit requires 
 - Backend wire ADs (10 NEW Sprint 57.19 carryover) — orthogonal; Sprint 57.21+
 
 ### Doc syncs (in-sprint)
-- `claudedocs/4-changes/sprint-57-20-tier-1-retrofit/FIDELITY-REPORT.md` (NEW)
+- `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-20/artifacts/tier-1-retrofit/FIDELITY-REPORT.md` (NEW)
 - `.claude/rules/sprint-workflow.md` calibration matrix +1 row `mockup-fidelity-retrofit` 0.55 1st app + MHist
 - `design/operator-portal/INTEGRATION-LOG.md` 5 rows Status update (existing pages retrofit complete)
 

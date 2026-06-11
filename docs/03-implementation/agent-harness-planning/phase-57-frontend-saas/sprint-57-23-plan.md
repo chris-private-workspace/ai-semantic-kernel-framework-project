@@ -99,7 +99,7 @@ Sprint 57.22 AUDIT-REPORT-COMPREHENSIVE.md classified Auth as **Tier 1 P0** with
 
 ### Group A — Day 0 setup + 三-prong + Playwright MCP reference captures
 
-**US-A1**: As a Sprint 57.23 owner, I want plan/checklist landed + feature branch created + Day 0 三-prong (Prong 1 path + Prong 2 content + Prong 3 schema N/A) drift findings catalogued in `progress.md` + Playwright MCP screenshot pipeline ready for both mockup (port 8080) + production (port 3007) at 1440×900 + 6 mockup reference captures saved to `claudedocs/4-changes/sprint-57-23-auth-page-full-rebuild-round-2/screenshots/mockup/` so that Day 1+ work has visual ground truth artifacts.
+**US-A1**: As a Sprint 57.23 owner, I want plan/checklist landed + feature branch created + Day 0 三-prong (Prong 1 path + Prong 2 content + Prong 3 schema N/A) drift findings catalogued in `progress.md` + Playwright MCP screenshot pipeline ready for both mockup (port 8080) + production (port 3007) at 1440×900 + 6 mockup reference captures saved to `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-23/artifacts/auth-page-full-rebuild-round-2/screenshots/mockup/` so that Day 1+ work has visual ground truth artifacts.
 
 ### Group B — AuthShell + Login + Dev (Day 1)
 
@@ -254,8 +254,8 @@ Carryover ADs for backend wire:
 - `frontend/src/pages/auth/mfa/index.tsx` (~200 lines; mockup AuthMFA with TOTP + WebAuthn tabs)
 - `frontend/src/pages/auth/expired/index.tsx` (~90 lines; mockup AuthExpired)
 - `frontend/src/pages/auth/dev/index.tsx` (~120 lines; extracted DevLoginSection + mockup AuthDev wrapper)
-- `claudedocs/4-changes/sprint-57-23-auth-page-full-rebuild-round-2/screenshots/{mockup,prod}/*.png` (~12 files Playwright MCP captures)
-- `claudedocs/4-changes/sprint-57-23-auth-page-full-rebuild-round-2/DRIFT-REPORT-AUTH-ROUND-2.md` (Day 4 closeout output)
+- `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-23/artifacts/auth-page-full-rebuild-round-2/screenshots/{mockup,prod}/*.png` (~12 files Playwright MCP captures)
+- `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-23/artifacts/auth-page-full-rebuild-round-2/DRIFT-REPORT-AUTH-ROUND-2.md` (Day 4 closeout output)
 
 **REWRITE files** (in-place behavior preserve):
 - `frontend/src/components/AuthShell.tsx` (rewrite — full-screen centered + gradient + brand mark + footer slot)

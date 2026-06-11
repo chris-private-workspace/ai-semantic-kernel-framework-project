@@ -19,7 +19,7 @@
 - [x] Switch from `main` (working tree should be clean after Sprint 57.22 closeout)
 - [x] Create feature branch `feature/sprint-57-23-auth-page-full-rebuild-round-2` from main `1840cb27`
 - [x] Create `progress.md` at `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-23/progress.md` (Day 0 entry + 5 D-PRE findings + Playwright captures table)
-- [x] Create `claudedocs/4-changes/sprint-57-23-auth-page-full-rebuild-round-2/{screenshots/{mockup,prod,post-rebuild}/, DRIFT-REPORT-AUTH-ROUND-2.md}` skeleton
+- [x] Create `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-23/artifacts/auth-page-full-rebuild-round-2/{screenshots/{mockup,prod,post-rebuild}/, DRIFT-REPORT-AUTH-ROUND-2.md}` skeleton
 
 ### 0.3 Day 0 三-prong scope verify (per sprint-workflow.md §Step 2.5)
 - [x] **Prong 1 (Path verify)** — confirm each plan §File Change List entry:

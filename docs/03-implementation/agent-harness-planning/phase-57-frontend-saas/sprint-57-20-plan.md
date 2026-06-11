@@ -69,7 +69,7 @@ DRIFT-REPORT.md Tier 1 ~10.5 hr (cosmetic/structural patching of 5 pages) addres
 - **約束 2 主流量驗證**: `/overview` + `/chat-v2` 在 UnifiedChat-V2 主流量; runtime Playwright MCP pair-verify required at Day 2 + Day 3 closeout
 - **約束 3 LLM Provider Neutrality**: frontend 0 SDK import; preserved
 - **約束 4 Anti-Pattern checklist**: AP-2 (no Potemkin — new pages must consume real data via reused hooks, NOT mocked fixtures shipped) + AP-4 (rename-only refactors prohibited; full presentation rewrite is the explicit goal); AP-3 (cross-directory scattering — new shell stays in `components/layout/`)
-- **約束 5 測試優先**: Vitest baseline 277 preserved; new pages adapt existing tests (struct preserved, selectors updated); Playwright MCP fidelity pair-verify recorded as audit artifact in `claudedocs/4-changes/sprint-57-20-direct-port-foundation/screenshots/`
+- **約束 5 測試優先**: Vitest baseline 277 preserved; new pages adapt existing tests (struct preserved, selectors updated); Playwright MCP fidelity pair-verify recorded as audit artifact in `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-20/artifacts/direct-port-foundation/screenshots/`
 
 ## User Stories
 
@@ -135,7 +135,7 @@ Every NEW or REWRITTEN file requires standard Python/TypeScript header per `.cla
 - **NEW**: `components/layout/Topbar.tsx` (1 file)
 - **REWRITE**: `components/AppShellV2.tsx` + `components/Sidebar.tsx` + `pages/overview/index.tsx` + `pages/chat-v2/index.tsx` + relevant `features/chat_v2/components/*.tsx` (~5-7 files)
 - **EDIT**: `index.css` + `tailwind.config.ts` + `main.tsx` + `i18n/{en,zh-TW}/common.json` + existing chat-v2 + overview vitest/playwright specs (~6-10 files)
-- **NEW docs**: `progress.md` + `retrospective.md` + `claudedocs/4-changes/sprint-57-20-direct-port-foundation/` (~3 files + screenshot artifacts)
+- **NEW docs**: `progress.md` + `retrospective.md` + `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-20/artifacts/direct-port-foundation/` (~3 files + screenshot artifacts)
 - **EDIT docs**: CLAUDE.md (Phase 16/N→17/N + Latest/Prev Sprint shift + Next Phase 候選) + MEMORY.md (+1 line) + sprint-workflow.md calibration matrix (+1 row) + SITUATION §第八部分 (~4 files)
 
 Sprint total: ~20-25 file touches.

@@ -21,7 +21,7 @@
 
 ### 0.3 Before-baseline 22-route sweep
 
-- [x] **Run `route-sweep.mjs before`** — 22 PNGs captured to `claudedocs/4-changes/sprint-57-35-auth-repoint/screenshots/before/`
+- [x] **Run `route-sweep.mjs before`** — 22 PNGs captured to `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-35/artifacts/auth-repoint/screenshots/before/`
 - [x] **Sample auth routes before** — user-reported drift (SSO unstyled / Continue no fill / dev-login orange missing) confirmed in screenshot baseline
 
 ### 0.4 Day 0 commit

@@ -29,7 +29,7 @@
    - Plan: `docs/03-implementation/agent-harness-planning/phase-57-frontend-saas/sprint-57-22-plan.md`
    - Checklist: 同目錄 `sprint-57-22-checklist.md`
    - Progress: `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-22/progress.md`
-8. **Audit 主文件**：`claudedocs/4-changes/sprint-57-22-mockup-fidelity-audit/AUDIT-REPORT-COMPREHENSIVE.md`（~600L，Day 1 12 units 已 populated）
+8. **Audit 主文件**：`docs/03-implementation/agent-harness-execution/phase-57/sprint-57-22/artifacts/mockup-fidelity-audit/AUDIT-REPORT-COMPREHENSIVE.md`（~600L，Day 1 12 units 已 populated）
 
 ---
 
