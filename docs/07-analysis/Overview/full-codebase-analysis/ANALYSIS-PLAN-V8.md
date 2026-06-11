@@ -47,8 +47,8 @@
 ### Sprint 規劃文件
 | 路徑 | 預估檔案數 | 分析策略 |
 |------|-----------|----------|
-| docs/03-implementation/sprint-planning/ (34 phases) | ~140+ | 2 Agents 分批讀取 |
-| docs/03-implementation/sprint-execution/ | ~100+ | 1 Agent 讀取關鍵 sprint |
+| archived/docs-v1/03-implementation/sprint-planning/ (34 phases) | ~140+ | 2 Agents 分批讀取 |
+| archived/docs-v1/03-implementation/sprint-execution/ | ~100+ | 1 Agent 讀取關鍵 sprint |
 
 ---
 

@@ -334,7 +334,7 @@
 ### A. 調查來源
 
 1. **V2 架構文件**: `docs/07-analysis/MAF-Features-Architecture-Mapping-V2.md`, `MAF-Claude-Hybrid-Architecture-V2.md`
-2. **PRD 文件**: `docs/01-planning/prd/prd-main.md` 及相關
+2. **PRD 文件**: `archived/docs-v1/01-planning/prd/prd-main.md` 及相關
 3. **代碼審計**: `backend/src/` 全面掃描
 4. **配置審查**: `config.py`, `Dockerfile`, `docker-compose.yml`
 
@@ -357,7 +357,7 @@
 ### C. 相關文件
 
 - 主架構文件: `docs/02-architecture/technical-architecture.md`
-- PRD: `docs/01-planning/prd/prd-main.md`
+- PRD: `archived/docs-v1/01-planning/prd/prd-main.md`
 - V2 分析: `docs/07-analysis/MAF-*-V2.md`
 
 ---

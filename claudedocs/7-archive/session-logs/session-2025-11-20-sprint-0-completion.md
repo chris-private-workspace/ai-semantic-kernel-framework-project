@@ -145,7 +145,7 @@ docs/03-implementation/
 ├── S0-8-monitoring-summary.md (新增, ~430 行)
 └── S0-9-logging-summary.md (新增, ~430 行)
 
-docs/04-usage/
+archived/docs-v1/04-usage/
 ├── monitoring-guide.md (新增, ~420 行)
 ├── logging-queries.md (新增, ~500 行)
 └── logging-best-practices.md (新增, ~400 行)
@@ -433,9 +433,9 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 - [Monitoring Design](../../docs/03-implementation/monitoring-design.md)
 - [S0-8 Monitoring Summary](../../docs/03-implementation/S0-8-monitoring-summary.md)
 - [S0-9 Logging Summary](../../docs/03-implementation/S0-9-logging-summary.md)
-- [Monitoring Usage Guide](../../docs/04-usage/monitoring-guide.md)
-- [Logging Queries](../../docs/04-usage/logging-queries.md)
-- [Logging Best Practices](../../docs/04-usage/logging-best-practices.md)
+- [Monitoring Usage Guide](../../archived/docs-v1/04-usage/monitoring-guide.md)
+- [Logging Queries](../../archived/docs-v1/04-usage/logging-queries.md)
+- [Logging Best Practices](../../archived/docs-v1/04-usage/logging-best-practices.md)
 - [Sprint 0 Completion Report](../sprint-reports/sprint-0-completion-report.md)
 
 ### 更新文檔

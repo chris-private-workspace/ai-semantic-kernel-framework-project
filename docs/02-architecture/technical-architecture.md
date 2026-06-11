@@ -1182,4 +1182,4 @@ SESSION_MEMORY_TTL=604800
                         └──────────────────┘
 ```
 
-**詳細配置指南**: 參見 `docs/04-usage/memory-configuration.md`
+**詳細配置指南**: 參見 `archived/docs-v1/04-usage/memory-configuration.md`

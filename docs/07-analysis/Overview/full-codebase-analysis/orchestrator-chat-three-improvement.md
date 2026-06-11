@@ -450,8 +450,8 @@
 
   新建的檔案（2 個 Sprint 文件）
 
-  - docs/03-implementation/sprint-planning/phase-47/sprint-167-plan.md
-  - docs/03-implementation/sprint-planning/phase-47/sprint-167-checklist.md
+  - archived/docs-v1/03-implementation/sprint-planning/phase-47/sprint-167-plan.md
+  - archived/docs-v1/03-implementation/sprint-planning/phase-47/sprint-167-checklist.md
 
   ---
   你想現在繼續做 Worktree 2 (Intent Classifier) 嗎？還是先 commit Worktree 3 的變更？

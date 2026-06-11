@@ -71,8 +71,8 @@
 
 ```yaml
 讀取 PRD:
-  - docs/01-planning/prd/prd-main.md
-  - docs/01-planning/prd/features/*.md
+  - archived/docs-v1/01-planning/prd/prd-main.md
+  - archived/docs-v1/01-planning/prd/features/*.md
 
 檢查覆蓋度:
   - 所有功能需求是否有對應架構設計
@@ -337,7 +337,7 @@
 ## 📚 參考文檔
 
 - [技術架構](../../docs/02-architecture/technical-architecture.md)
-- [PRD 文檔](../../docs/01-planning/prd/prd-main.md)
+- [PRD 文檔](../../archived/docs-v1/01-planning/prd/prd-main.md)
 - [Gate Check](../../docs/02-architecture/gate-check/solutioning-gate-check.md)
 
 ---
@@ -393,7 +393,7 @@ AI 執行:
 
 - [AI Assistant Instructions](../AI-ASSISTANT-INSTRUCTIONS.md)
 - [Technical Architecture](../../docs/02-architecture/technical-architecture.md)
-- [PRD](../../docs/01-planning/prd/prd-main.md)
+- [PRD](../../archived/docs-v1/01-planning/prd/prd-main.md)
 
 ---
 

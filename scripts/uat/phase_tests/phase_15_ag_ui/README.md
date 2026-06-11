@@ -108,4 +108,4 @@ pytest phase_15_ag_ui_test.py -v
 
 - [UAT 測試規格](../../../../claudedocs/5-status/phase-15-agui/uat-test-spec.md)
 - [詳細測試場景](../../../../claudedocs/5-status/phase-15-agui/uat-test-scenarios.md)
-- [AG-UI API 參考](../../../../docs/api/ag-ui-api-reference.md)
+- [AG-UI API 參考](../../../../archived/docs-v1/api/ag-ui-api-reference.md)

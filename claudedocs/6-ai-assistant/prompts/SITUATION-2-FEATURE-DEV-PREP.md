@@ -45,7 +45,7 @@
 ```bash
 # 讀取相關文檔
 Read: docs/bmm-workflow-status.yaml
-Read: docs/03-implementation/sprint-execution/sprint-XX/story-XX.md (如果是 Sprint 任務)
+Read: archived/docs-v1/03-implementation/sprint-execution/sprint-XX/story-XX.md (如果是 Sprint 任務)
 Read: claudedocs/3-progress/weekly/最新.md (如有)
 
 # 檢查 Git 狀態

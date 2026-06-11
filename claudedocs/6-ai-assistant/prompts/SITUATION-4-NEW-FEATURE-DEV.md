@@ -23,7 +23,7 @@
    - 建立 04-progress.md (進度追蹤)
 
 2. 確認規劃文檔
-   - 閱讀 docs/03-implementation/sprint-execution/[相關 Sprint]
+   - 閱讀 archived/docs-v1/03-implementation/sprint-execution/[相關 Sprint]
    - 確認驗收標準
 
 3. 系統化開發

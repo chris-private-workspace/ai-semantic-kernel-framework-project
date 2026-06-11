@@ -64,13 +64,13 @@ Bash: curl http://localhost:8000/api/v1/
 
 ```bash
 # 1. 閱讀相關 Sprint 文檔
-Read: docs/03-implementation/sprint-execution/sprint-XX/
+Read: archived/docs-v1/03-implementation/sprint-execution/sprint-XX/
 
 # 2. 閱讀相關 Phase 文檔
-Read: docs/03-implementation/sprint-planning/phase-XX/
+Read: archived/docs-v1/03-implementation/sprint-planning/phase-XX/
 
 # 3. 了解功能規格
-Read: docs/01-planning/prd/features/[相關功能].md (如有)
+Read: archived/docs-v1/01-planning/prd/features/[相關功能].md (如有)
 ```
 
 ### Step 3: 執行測試場景 (主要時間)
@@ -253,7 +253,7 @@ AI 助手完成 UAT 後應提供：
 
 ### 測試資源
 - `scripts/uat/` - UAT 測試腳本
-- `docs/03-implementation/sprint-execution/` - Sprint 執行記錄
+- `archived/docs-v1/03-implementation/sprint-execution/` - Sprint 執行記錄
 
 ---
 

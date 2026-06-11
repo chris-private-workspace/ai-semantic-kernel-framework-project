@@ -709,9 +709,9 @@ chore(deps): upgrade FastAPI to 0.104.0
 ### C. 相關文檔鏈接
 
 - [BMAD Workflow 文檔](../docs/bmm-workflow-status.yaml)
-- [計劃文檔](../docs/03-implementation/sprint-planning/)
+- [計劃文檔](../archived/docs-v1/03-implementation/sprint-planning/)
 - [技術架構文檔](../docs/02-architecture/technical-architecture.md)
-- [PRD 文檔](../docs/01-planning/prd/prd-main.md)
+- [PRD 文檔](../archived/docs-v1/01-planning/prd/prd-main.md)
 - [專案主文檔](../CLAUDE.md)
 
 ---

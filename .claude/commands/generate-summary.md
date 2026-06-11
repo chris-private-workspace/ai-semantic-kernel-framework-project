@@ -19,7 +19,7 @@
 
 ### 2. 讀取 Sprint 規劃獲取驗收標準
 
-從 `docs/03-implementation/sprint-planning/` 讀取對應的 Sprint 規劃文件，找到該 Story 的驗收標準。
+從 `archived/docs-v1/03-implementation/sprint-planning/` 讀取對應的 Sprint 規劃文件，找到該 Story 的驗收標準。
 
 ### 3. 生成摘要文件
 

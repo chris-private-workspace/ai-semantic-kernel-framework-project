@@ -246,8 +246,8 @@ phase_13_14_e2e_integration/
 
 ## Related Documentation
 
-- [Phase 13 Sprint Planning](../../../../docs/03-implementation/sprint-planning/phase-13/README.md)
-- [Phase 14 Sprint Planning](../../../../docs/03-implementation/sprint-planning/phase-14/README.md)
+- [Phase 13 Sprint Planning](../../../../archived/docs-v1/03-implementation/sprint-planning/phase-13/README.md)
+- [Phase 14 Sprint Planning](../../../../archived/docs-v1/03-implementation/sprint-planning/phase-14/README.md)
 - [Phase 13 UAT Results](../phase_13_hybrid_maf_claude_integration/)
 - [Phase 14 UAT Results](../phase_14_hitl_approval/)
 

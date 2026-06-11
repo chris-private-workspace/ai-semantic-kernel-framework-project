@@ -3,9 +3,9 @@
 > **用途**: 作為 Phase 3 源代碼全文閱讀的對照基準
 > **來源**: 3 個 Agent 全文讀取 34 個 Phase 的 README.md + 關鍵計劃文件
 > **詳細資料**:
->   - Phase 1-12: `docs/03-implementation/sprint-planning/PHASE-1-TO-12-PLANNING-SUMMARY.md`
+>   - Phase 1-12: `archived/docs-v1/03-implementation/sprint-planning/PHASE-1-TO-12-PLANNING-SUMMARY.md`
 >   - Phase 13-23: `claudedocs/phase-13-to-23-planning-summary.md`
->   - Phase 24-34: `docs/03-implementation/sprint-planning/PHASE-24-34-PLANNING-SUMMARY.md`
+>   - Phase 24-34: `archived/docs-v1/03-implementation/sprint-planning/PHASE-24-34-PLANNING-SUMMARY.md`
 
 ---
 

@@ -141,7 +141,7 @@ V2 嚴格按以下 11 範疇 + 範疇 12 (Observability cross-cutting) 組織：
 | `docs/07-analysis/V9/` | 完整保留 | V2 baseline 知識 |
 | `docs/07-analysis/claude-code-study/` | 完整保留 | V2 設計藍本 |
 | `claudedocs/` | 完整保留 | V2 持續使用 |
-| `docs/03-implementation/sprint-planning/` | 完整保留（凍結） | V2 改用 `agent-harness-planning/` |
+| `archived/docs-v1/03-implementation/sprint-planning/` | 完整保留（凍結） | V2 改用 `agent-harness-planning/` |
 
 ---
 

@@ -120,7 +120,7 @@ backend/tests/
 ### 文檔
 
 ```
-docs/03-implementation/sprint-planning/phase-28/
+archived/docs-v1/03-implementation/sprint-planning/phase-28/
 ├── README.md              Phase 28 總覽
 ├── ARCHITECTURE.md        架構文檔 (522 行)
 └── sprint-91-99-plan.md   各 Sprint 規劃 (9 檔案)

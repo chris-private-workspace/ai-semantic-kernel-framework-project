@@ -147,8 +147,8 @@ Phase 15 實現與設計文檔**高度一致**。所有 7 個 AG-UI 功能均已
 |----------|------|----------|
 | E2E 測試 | ✅ | `tests/e2e/ag_ui/` |
 | 效能測試 | ✅ | `tests/performance/ag_ui/` |
-| API 文檔 | ✅ | `docs/api/ag-ui-api-reference.md` |
-| 整合指南 | ✅ | `docs/guides/ag-ui-integration-guide.md` |
+| API 文檔 | ✅ | `archived/docs-v1/api/ag-ui-api-reference.md` |
+| 整合指南 | ✅ | `archived/docs-v1/guides/ag-ui-integration-guide.md` |
 
 ---
 

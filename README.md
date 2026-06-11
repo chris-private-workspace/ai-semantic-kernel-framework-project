@@ -337,19 +337,19 @@ docker-compose logs -f     # View logs
 |----------|-------------|
 | [CLAUDE.md](./CLAUDE.md) | AI assistant instructions |
 | [Technical Architecture](./docs/02-architecture/technical-architecture.md) | System architecture |
-| [PRD](./docs/01-planning/prd/prd-main.md) | Product requirements |
-| [MVP Summary](./docs/03-implementation/MVP-COMPLETION-SUMMARY.md) | MVP completion report |
+| [PRD](./archived/docs-v1/01-planning/prd/prd-main.md) | Product requirements |
+| [MVP Summary](./archived/docs-v1/03-implementation/MVP-COMPLETION-SUMMARY.md) | MVP completion report |
 
 ### Sprint Documentation
 
 All sprint planning and execution documentation is available in:
-- `docs/03-implementation/sprint-planning/` - Sprint plans and checklists
-- `docs/03-implementation/sprint-execution/` - Progress and decisions
+- `archived/docs-v1/03-implementation/sprint-planning/` - Sprint plans and checklists
+- `archived/docs-v1/03-implementation/sprint-execution/` - Progress and decisions
 
 ### User Guides
 
-- [User Guide](./docs/user-guide/) - End user documentation
-- [Admin Guide](./docs/admin-guide/) - Administrator documentation
+- [User Guide](./archived/docs-v1/user-guide/) - End user documentation
+- [Admin Guide](./archived/docs-v1/admin-guide/) - Administrator documentation
 
 ---
 

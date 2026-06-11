@@ -151,7 +151,7 @@ Based on chosen vendor WorkOS:
 - WorkOS Pricing: https://workos.com/pricing
 - Clerk Pricing 2026: https://clerk.com/pricing + WorkOS comparison https://workos.com/blog/clerk-pricing
 - Auth0 Pricing 2026: https://auth0.com/pricing + B2B Essentials/Professional comparison
-- Supabase SSO docs: https://supabase.com/docs/guides/auth/enterprise-sso/auth-sso-saml + pricing https://supabase.com/pricing
+- Supabase SSO docs: https://supabase.com/archived/docs-v1/guides/auth/enterprise-sso/auth-sso-saml + pricing https://supabase.com/pricing
 - WorkOS B2B Enterprise readiness checklist: https://workos.com/blog/enterprise-readiness-checklist-2026
 - Gap analysis §1.2 + §5: `claudedocs/1-planning/enterprise-saas-gap-analysis-20260508.md`
 

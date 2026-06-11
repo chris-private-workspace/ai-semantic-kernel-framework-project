@@ -197,13 +197,13 @@
 
 ```bash
 # 1. 讀取 Sprint 規劃
-open docs/03-implementation/sprint-planning/sprint-1-core-services.md
+open archived/docs-v1/03-implementation/sprint-planning/sprint-1-core-services.md
 
 # 2. 檢查 Sprint Status
 open docs/03-implementation/sprint-status.yaml
 
 # 3. 參考相關架構設計
-open docs/03-implementation/architecture-designs/
+open archived/docs-v1/03-implementation/architecture-designs/
 ```
 
 ### 情境 2: 開發特定功能

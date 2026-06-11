@@ -172,7 +172,7 @@ Phase 2 將專注於進階 Agent 功能:
 
 - [專案 README](../../../README.md)
 - [技術架構](../../../docs/02-architecture/technical-architecture.md)
-- [Sprint 計劃文檔](../../../docs/03-implementation/sprint-planning/)
+- [Sprint 計劃文檔](../../../archived/docs-v1/03-implementation/sprint-planning/)
 
 ---
 

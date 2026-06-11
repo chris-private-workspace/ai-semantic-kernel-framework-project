@@ -101,7 +101,7 @@ Write: claudedocs/3-progress/weekly/2025-WXX.md
 TodoWrite: [更新所有任務狀態]
 
 # 3. 如果有 Sprint checklist，更新
-Edit: docs/03-implementation/sprint-execution/sprint-XX/checklist.md
+Edit: archived/docs-v1/03-implementation/sprint-execution/sprint-XX/checklist.md
 ```
 
 ### Step 3: 檢查代碼品質 (3 分鐘)

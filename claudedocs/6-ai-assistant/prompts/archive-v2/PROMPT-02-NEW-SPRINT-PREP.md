@@ -29,8 +29,8 @@
 
 ```yaml
 讀取相關文檔:
-  - docs/03-implementation/sprint-planning/README.md (功能總覽)
-  - docs/01-planning/prd/prd-main.md (產品需求)
+  - archived/docs-v1/03-implementation/sprint-planning/README.md (功能總覽)
+  - archived/docs-v1/01-planning/prd/prd-main.md (產品需求)
   - CLAUDE.md (開發指南)
 
 確定任務類型:
@@ -148,8 +148,8 @@
 
 ### 技術參考文檔
 - [技術架構](../../docs/02-architecture/technical-architecture.md)
-- [Sprint 計劃總覽](../../docs/03-implementation/sprint-planning/README.md)
-- [PRD 功能規格](../../docs/01-planning/prd/prd-main.md)
+- [Sprint 計劃總覽](../../archived/docs-v1/03-implementation/sprint-planning/README.md)
+- [PRD 功能規格](../../archived/docs-v1/01-planning/prd/prd-main.md)
 
 ---
 
@@ -246,7 +246,7 @@ AI 執行:
 
 - [AI Assistant Instructions](../AI-ASSISTANT-INSTRUCTIONS.md)
 - [PROMPT-04: Development](./PROMPT-04-SPRINT-DEVELOPMENT.md)
-- [Sprint Planning README](../../docs/03-implementation/sprint-planning/README.md)
+- [Sprint Planning README](../../archived/docs-v1/03-implementation/sprint-planning/README.md)
 
 ---
 

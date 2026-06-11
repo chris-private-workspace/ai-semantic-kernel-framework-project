@@ -37,12 +37,12 @@
      - 工作流程狀態
      - 歷史重大事件
 
-  3. docs/03-implementation/sprint-planning/README.md
+  3. archived/docs-v1/03-implementation/sprint-planning/README.md
      - Sprint 計劃總覽
      - 14 個 MVP 功能概述
      - 技術架構摘要
 
-  4. docs/01-planning/prd/prd-main.md
+  4. archived/docs-v1/01-planning/prd/prd-main.md
      - 產品需求文檔
      - 核心功能列表
 
@@ -461,8 +461,8 @@ curl http://localhost:8000/health  # 後端健康檢查
 |------|------|------|
 | 專案指南 | `CLAUDE.md` | AI 助手快速參考 |
 | 工作流程狀態 | `docs/bmm-workflow-status.yaml` | 階段追蹤 |
-| Sprint 計劃總覽 | `docs/03-implementation/sprint-planning/README.md` | Sprint 規劃 |
-| PRD | `docs/01-planning/prd/prd-main.md` | 產品需求 |
+| Sprint 計劃總覽 | `archived/docs-v1/03-implementation/sprint-planning/README.md` | Sprint 規劃 |
+| PRD | `archived/docs-v1/01-planning/prd/prd-main.md` | 產品需求 |
 | 技術架構 | `docs/02-architecture/technical-architecture.md` | 架構設計 |
 | AI 指令 | `claudedocs/AI-ASSISTANT-INSTRUCTIONS.md` | 助手指令 |
 | Prompts 庫 | `claudedocs/prompts/` | Prompt 文件 |

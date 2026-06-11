@@ -74,7 +74,7 @@ DB:
 ├── docs/07-analysis/V9/                    # V9 codebase 分析（極寶貴）
 ├── docs/07-analysis/claude-code-study/     # CC 30 wave 研究
 ├── docs/08-development-log/                # 5 年開發日誌
-├── docs/01-planning/, 02-architecture/...  # 設計文件
+├── archived/docs-v1/01-planning/, 02-architecture/...  # 設計文件
 ├── claudedocs/                             # AI 協作紀錄
 ├── reference/                              # MAF + CC 源碼
 ├── graphify-out/                           # 知識圖譜

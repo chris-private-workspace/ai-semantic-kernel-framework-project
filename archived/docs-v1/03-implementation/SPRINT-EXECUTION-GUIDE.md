@@ -39,7 +39,7 @@ architecture-designs/*.md (技術設計)
 cat docs/03-implementation/sprint-status.yaml | grep "status: \"in-progress\""
 
 # 讀取對應的規劃文檔
-open docs/03-implementation/sprint-planning/sprint-1-core-services.md
+open archived/docs-v1/03-implementation/sprint-planning/sprint-1-core-services.md
 ```
 
 **檢查內容**:
@@ -53,7 +53,7 @@ open docs/03-implementation/sprint-planning/sprint-1-core-services.md
 
 ```bash
 # 檢查相關的架構設計是否完整
-ls docs/03-implementation/architecture-designs/
+ls archived/docs-v1/03-implementation/architecture-designs/
 ```
 
 **確認**:
@@ -473,7 +473,7 @@ grep -A 10 "id: \"$STORY_ID\"" docs/03-implementation/sprint-status.yaml
 
 # 檢查 sprint-planning 文檔
 echo "\n2. Sprint Planning:"
-grep -A 20 "$STORY_ID" docs/03-implementation/sprint-planning/sprint-*.md
+grep -A 20 "$STORY_ID" archived/docs-v1/03-implementation/sprint-planning/sprint-*.md
 
 # 檢查是否有對應的 Summary
 echo "\n3. Story Summary:"
@@ -529,10 +529,10 @@ echo "  [ ] 記錄問題"
 
 ```bash
 # 1. 讀取規劃
-open docs/03-implementation/sprint-planning/sprint-1-core-services.md
+open archived/docs-v1/03-implementation/sprint-planning/sprint-1-core-services.md
 
 # 2. 檢查架構
-ls docs/03-implementation/architecture-designs/
+ls archived/docs-v1/03-implementation/architecture-designs/
 
 # 3. 更新狀態
 # Edit sprint-status.yaml: status: "in-progress"

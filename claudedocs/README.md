@@ -172,7 +172,7 @@ claudedocs/
 ### 核心文檔
 - [CLAUDE.md](./CLAUDE.md) - ClaudeDocs 目錄索引（詳細）
 - [專案 CLAUDE.md](../CLAUDE.md) - 根目錄專案總指南
-- [Sprint Planning](../docs/03-implementation/sprint-planning/README.md) - Sprint 規劃總覽
+- [Sprint Planning](../archived/docs-v1/03-implementation/sprint-planning/README.md) - Sprint 規劃總覽
 
 ### 規則文件
 - [後端 Python 規範](../.claude/rules/backend-python.md)

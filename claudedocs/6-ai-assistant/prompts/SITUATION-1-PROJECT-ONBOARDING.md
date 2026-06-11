@@ -159,14 +159,14 @@ AI 助手應該能回答以下問題:
 
 ### 新開發者 (Day 2-3)
 1. docs/02-architecture/ - 技術架構
-2. docs/01-planning/prd/ - 產品需求
+2. archived/docs-v1/01-planning/prd/ - 產品需求
 3. backend/src/api/v1/ - API 結構
 
 ### 新開發者 (Week 2)
 1. backend/src/domain/ - 業務邏輯
 2. backend/src/integrations/agent_framework/ - Agent Framework
 3. backend/src/integrations/claude_sdk/ - Claude Agent SDK (Phase 12)
-4. docs/03-implementation/sprint-planning/phase-12/ - Phase 12 規劃
+4. archived/docs-v1/03-implementation/sprint-planning/phase-12/ - Phase 12 規劃
 5. claudedocs/4-changes/ - 變更歷史
 
 ---

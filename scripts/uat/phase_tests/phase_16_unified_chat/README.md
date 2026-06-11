@@ -223,9 +223,9 @@ python phase_16_unified_chat_test.py --use-real-api
 
 ## 相關文檔
 
-- [Phase 16 規劃文檔](../../../../docs/03-implementation/sprint-planning/phase-16/README.md)
-- [AG-UI API 參考](../../../../docs/api/ag-ui-api-reference.md)
-- [AG-UI 整合指南](../../../../docs/guides/ag-ui-integration-guide.md)
+- [Phase 16 規劃文檔](../../../../archived/docs-v1/03-implementation/sprint-planning/phase-16/README.md)
+- [AG-UI API 參考](../../../../archived/docs-v1/api/ag-ui-api-reference.md)
+- [AG-UI 整合指南](../../../../archived/docs-v1/guides/ag-ui-integration-guide.md)
 
 ---
 
