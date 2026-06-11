@@ -27,9 +27,10 @@ Key Components:
     - build_handler(mode: ChatMode, message: str) -> AgentLoopImpl  (dispatcher)
 
 Created: 2026-04-30 (Sprint 50.2 Day 1.4)
-Last Modified: 2026-06-10
+Last Modified: 2026-06-11
 
 Modification History (newest-first):
+    - 2026-06-11: Sprint 57.103 B2b — teammate inbox_factory → inbox_scope (register child queue)
     - 2026-06-11: Sprint 57.102 B2a — wire teammate child-loop factory + inbox_factory
     - 2026-06-11: Sprint 57.101 B1 — wire QueueMessageInbox (between-turns injection) into loop ctor
     - 2026-06-10: Sprint 57.99 A2 — thread chat_verification_escalate_on_max into loop ctor
@@ -99,7 +100,11 @@ from ._category_factories import (
     make_chat_subagent_dispatcher,
     make_chat_verifier_registry,
 )
-from .injection_registry import QueueMessageInbox, get_default_injection_registry
+from .injection_registry import (
+    QueueMessageInbox,
+    get_default_injection_registry,
+    make_teammate_inbox_scope,
+)
 from .schemas import ChatMode
 
 if TYPE_CHECKING:
@@ -107,7 +112,7 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from agent_harness._contracts import MessageInbox, SubagentBudget
+    from agent_harness._contracts import MessageInbox, SubagentBudget, TeammateInboxScope
     from agent_harness.hitl import HITLManager
     from agent_harness.observability import Tracer
     from agent_harness.orchestrator_loop._abc import AgentLoop
@@ -354,11 +359,11 @@ def build_real_llm_handler(
         # FORK) but with a send_to_parent tool + the B1 MessageInbox. ONE shared per-
         # request MailboxStore is threaded to the dispatcher (the executor's drain) AND
         # to the teammate child executor's send_to_parent tool (via teammate_mailbox) so
-        # both use the SAME instance. The inbox_factory binds the child's MessageInbox to
-        # the B1 InjectionRegistry keyed by the child's subagent_id; in B2a no queue is
-        # registered at spawn (drain of an unregistered key = [] = no-op) — the live
-        # producer (chat-user inject-to-teammate) is B2b. inbox_factory is None without a
-        # tenant (the InjectionRegistry is tenant-scoped).
+        # both use the SAME instance. Sprint 57.103 (B2b): the inbox_scope (below) binds +
+        # registers the child's MessageInbox queue (B1 InjectionRegistry, keyed by
+        # subagent_id) for the child's lifetime so a chat-user inject reaches a LIVE
+        # teammate; the scope is None without a tenant (the InjectionRegistry is
+        # tenant-scoped).
         teammate_mailbox = MailboxStore()
         teammate_registry, teammate_executor = make_default_executor(
             factory_provider=business_factory_provider,
@@ -385,14 +390,11 @@ def build_real_llm_handler(
                 message_inbox=inbox,
             )
 
-        teammate_inbox_factory: "Callable[[UUID], MessageInbox] | None" = None
+        teammate_inbox_scope: "TeammateInboxScope | None" = None
         if tenant_id is not None:
-            _teammate_tenant_id = tenant_id  # narrow for the closure (mypy)
-
-            def _make_teammate_inbox(sid: UUID) -> "MessageInbox":
-                return QueueMessageInbox(get_default_injection_registry(), _teammate_tenant_id, sid)
-
-            teammate_inbox_factory = _make_teammate_inbox
+            teammate_inbox_scope = make_teammate_inbox_scope(
+                get_default_injection_registry(), tenant_id
+            )
 
         subagent_dispatcher = make_chat_subagent_dispatcher(
             chat_client,
@@ -403,7 +405,7 @@ def build_real_llm_handler(
             event_emitter=subagent_event_emitter,
             # Sprint 57.102 (B2a): TEAMMATE real child loop + B1 inbox + shared mailbox.
             teammate_child_loop_factory=_make_teammate_child_loop,
-            inbox_factory=teammate_inbox_factory,
+            inbox_scope=teammate_inbox_scope,
             mailbox=teammate_mailbox,
         )
     else:

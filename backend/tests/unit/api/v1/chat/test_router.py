@@ -186,6 +186,80 @@ class TestInjectEndpoint:
         assert resp.status_code == 422  # InjectRequestBody.message min_length=1
 
 
+class TestInjectToSubagentEndpoint:
+    """Sprint 57.103 B2b: POST /{session_id}/subagents/{subagent_id}/inject.
+
+    Same seeding discipline as TestInjectEndpoint (Risk Class C — direct dict seeding so
+    the asyncio.Lock binds to no loop). The parent SESSION entry is keyed by session_id
+    (auth + liveness of the owning run); the teammate's injection QUEUE is keyed by
+    subagent_id (the queue make_teammate_inbox_scope registers while the teammate runs).
+    """
+
+    def _seed(
+        self,
+        *,
+        tenant: UUID,
+        session_id: UUID,
+        subagent_id: UUID,
+        status: str = "running",
+        with_queue: bool = True,
+    ) -> None:
+        import asyncio
+
+        entry = SessionEntry()
+        entry.status = status  # type: ignore[assignment]
+        get_default_registry()._tenants.setdefault(tenant, {})[session_id] = entry  # noqa: SLF001
+        if with_queue:
+            get_default_injection_registry()._tenants.setdefault(tenant, {})[  # noqa: SLF001
+                subagent_id
+            ] = asyncio.Queue()
+
+    def test_inject_into_running_teammate_returns_202_and_queues(self, client: TestClient) -> None:
+        sid, said = uuid4(), uuid4()
+        self._seed(tenant=DEFAULT_TENANT, session_id=sid, subagent_id=said)
+        resp = client.post(
+            f"/api/v1/chat/{sid}/subagents/{said}/inject", json={"message": "check the pool"}
+        )
+        assert resp.status_code == 202
+        assert resp.json() == {"status": "queued"}
+        q = get_default_injection_registry()._tenants[DEFAULT_TENANT][said]  # noqa: SLF001
+        msg = q.get_nowait()
+        assert msg.role == "user"
+        assert msg.content == "check the pool"
+
+    def test_inject_missing_parent_session_returns_404(self, client: TestClient) -> None:
+        resp = client.post(
+            f"/api/v1/chat/{uuid4()}/subagents/{uuid4()}/inject", json={"message": "x"}
+        )
+        assert resp.status_code == 404
+
+    def test_inject_cross_tenant_parent_returns_404(self, client: TestClient) -> None:
+        """A parent session under a DIFFERENT tenant must read as not-found."""
+        sid, said = uuid4(), uuid4()
+        self._seed(tenant=uuid4(), session_id=sid, subagent_id=said)  # NOT DEFAULT_TENANT
+        resp = client.post(f"/api/v1/chat/{sid}/subagents/{said}/inject", json={"message": "x"})
+        assert resp.status_code == 404
+
+    def test_inject_parent_not_running_returns_409(self, client: TestClient) -> None:
+        sid, said = uuid4(), uuid4()
+        self._seed(tenant=DEFAULT_TENANT, session_id=sid, subagent_id=said, status="completed")
+        resp = client.post(f"/api/v1/chat/{sid}/subagents/{said}/inject", json={"message": "x"})
+        assert resp.status_code == 409
+
+    def test_inject_teammate_no_live_queue_returns_409(self, client: TestClient) -> None:
+        """Parent running but the teammate has no live queue (never spawned / already finished)."""
+        sid, said = uuid4(), uuid4()
+        self._seed(tenant=DEFAULT_TENANT, session_id=sid, subagent_id=said, with_queue=False)
+        resp = client.post(f"/api/v1/chat/{sid}/subagents/{said}/inject", json={"message": "x"})
+        assert resp.status_code == 409
+
+    def test_inject_empty_message_returns_422(self, client: TestClient) -> None:
+        sid, said = uuid4(), uuid4()
+        self._seed(tenant=DEFAULT_TENANT, session_id=sid, subagent_id=said)
+        resp = client.post(f"/api/v1/chat/{sid}/subagents/{said}/inject", json={"message": ""})
+        assert resp.status_code == 422  # InjectRequestBody.message min_length=1
+
+
 class TestPostChat:
     def test_echo_demo_streams_loop_events(self, client: TestClient) -> None:
         with client.stream(

@@ -37,6 +37,7 @@ Created: 2026-05-04 (Sprint 54.2)
 Last Modified: 2026-06-09
 
 Modification History:
+    - 2026-06-11: Sprint 57.103 (B2b) — add MessageInjected to the relayed TAO subset
     - 2026-06-09: Sprint 57.96 — forward child TAO events (SubagentChildEvent) via emitter
     - 2026-06-09: Real child loop via ChildLoopFactory + LoopEvent drain (Sprint 57.94)
     - 2026-05-04: Initial creation (Sprint 54.2 US-2)
@@ -60,6 +61,7 @@ from agent_harness._contracts import (
     LLMResponded,
     LoopCompleted,
     LoopEvent,
+    MessageInjected,
     SubagentBudget,
     SubagentChildEvent,
     SubagentMode,
@@ -77,12 +79,16 @@ from agent_harness.subagent.budget import BudgetEnforcer
 # expands to the child's per-turn loop. Deliberately EXCLUDES low-signal events
 # (LLMRequested / PromptBuilt / MemoryAccessed / Span* / Metric* / Checkpoint /
 # ContextCompacted) to keep the Tree high-signal (locked scope 2026-06-09).
+# Sprint 57.103 (B2b): MessageInjected joins the subset — a chat-user inject landing
+# on a running TEAMMATE child is HIGH-signal (the whole point of B2b is SEEING it land
+# on the Tree node). FORK children carry no inbox, so they never fire it (harmless).
 _TAO_CHILD_EVENT_TYPES: tuple[type[LoopEvent], ...] = (
     TurnStarted,
     LLMResponded,
     ToolCallRequested,
     ToolCallExecuted,
     ToolCallFailed,
+    MessageInjected,
 )
 
 

@@ -20,6 +20,7 @@ Created: 2026-04-29 (Sprint 49.1)
 Last Modified: 2026-06-11
 
 Modification History:
+    - 2026-06-11: Add TeammateInboxScope (Sprint 57.103 B2b) — lifecycle-scoped teammate inbox
     - 2026-06-11: Add TeammateChildLoopFactory (Sprint 57.102 B2a) — TEAMMATE child loop + B1 inbox
     - 2026-06-09: Add ChildLoopFactory type (Sprint 57.94) — FORK real child loop
     - 2026-05-04: Add AgentSpec dataclass (Sprint 54.2 US-2; needed by AsToolWrapper
@@ -41,6 +42,8 @@ from uuid import UUID
 if TYPE_CHECKING:
     # Type-only reference to the Cat 1 loop ABC for ChildLoopFactory. Guarded so
     # there is NO runtime Cat 11 -> Cat 1 import (loop.py imports these contracts).
+    from contextlib import AbstractAsyncContextManager
+
     from agent_harness._contracts.inbox import MessageInbox
     from agent_harness.orchestrator_loop._abc import AgentLoop
 
@@ -109,3 +112,14 @@ ChildLoopFactory = Callable[[SubagentBudget], "AgentLoop"]
 # live producer = B2b). A SEPARATE alias (not an extended ChildLoopFactory) so FORK's
 # ChildLoopFactory + every FORK call site stay byte-identical.
 TeammateChildLoopFactory = Callable[[SubagentBudget, "MessageInbox | None"], "AgentLoop"]
+
+
+# Sprint 57.103 (B2b): the lifecycle-scoped teammate inbox. Replaces the B2a sync
+# inbox_factory with an async context manager keyed by subagent_id that REGISTERS the
+# child's InjectionRegistry queue on enter (so a concurrent chat-user inject POST can
+# reach it) and UNREGISTERS it on exit (success / timeout / exception) — so put() can
+# tell a live teammate from a finished one (no Potemkin dead queue). The concrete CM
+# lives in the api layer (handler builds it over the InjectionRegistry); Cat 11 only
+# needs the type to annotate the executor, so AbstractAsyncContextManager + MessageInbox
+# are TYPE_CHECKING-only (no runtime Cat 11 -> api / Cat 1 import).
+TeammateInboxScope = Callable[[UUID], "AbstractAsyncContextManager[MessageInbox | None]"]

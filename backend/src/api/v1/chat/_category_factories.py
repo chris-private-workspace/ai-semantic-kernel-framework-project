@@ -29,6 +29,7 @@ Created: 2026-05-31 (Sprint 57.63 Day 1)
 Last Modified: 2026-06-11
 
 Modification History (newest-first):
+    - 2026-06-11: Sprint 57.103 (B2b) — inbox_factory → inbox_scope (register child queue)
     - 2026-06-11: Sprint 57.102 (B2a) — thread teammate factory + inbox_factory + mailbox
     - 2026-06-09: Sprint 57.95 — make_chat_subagent_dispatcher threads event_emitter (SSE relay)
     - 2026-06-05: Sprint 57.81 — error budget store via maybe_get_budget_store (B-7 wiring)
@@ -46,7 +47,7 @@ Related:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from agent_harness.context_mgmt import Compactor
@@ -85,8 +86,8 @@ if TYPE_CHECKING:
     from adapters._base.chat_client import ChatClient
     from agent_harness._contracts import (
         ChildLoopFactory,
-        MessageInbox,
         TeammateChildLoopFactory,
+        TeammateInboxScope,
     )
     from agent_harness.subagent import MailboxStore
     from agent_harness.subagent.dispatcher import SubagentEventEmitter
@@ -208,7 +209,7 @@ def make_chat_subagent_dispatcher(
     child_loop_factory: ChildLoopFactory | None = None,
     event_emitter: SubagentEventEmitter | None = None,
     teammate_child_loop_factory: TeammateChildLoopFactory | None = None,
-    inbox_factory: Callable[[UUID], MessageInbox] | None = None,
+    inbox_scope: TeammateInboxScope | None = None,
     mailbox: MailboxStore | None = None,
 ) -> DefaultSubagentDispatcher:
     """Cat 11 (A-3a): the DefaultSubagentDispatcher for the chat path.
@@ -242,11 +243,12 @@ def make_chat_subagent_dispatcher(
         child_loop_factory=child_loop_factory,
         event_emitter=event_emitter,
         # Sprint 57.102 (B2a): TEAMMATE now runs a real child loop (mirror FORK) +
-        # carries the B1 inbox (inbox_factory, keyed by subagent_id; producer = B2b)
+        # carries the B1 inbox (Sprint 57.103 B2b: inbox_scope registers the child's
+        # queue while it runs, keyed by subagent_id; the chat-user inject is the producer)
         # + a send_to_parent tool; the shared per-request mailbox is threaded so the
         # tool delivery + the executor drain use the SAME instance.
         teammate_child_loop_factory=teammate_child_loop_factory,
-        inbox_factory=inbox_factory,
+        inbox_scope=inbox_scope,
         mailbox=mailbox,
     )
 

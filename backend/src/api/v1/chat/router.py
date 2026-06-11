@@ -35,9 +35,10 @@ Description:
     actual loop run lives in the worker.
 
 Created: 2026-04-30 (Sprint 50.2 Day 1.5)
-Last Modified: 2026-06-10
+Last Modified: 2026-06-11
 
 Modification History (newest-first):
+    - 2026-06-11: Sprint 57.103 B2b — POST /{id}/subagents/{sid}/inject (into a live teammate)
     - 2026-06-11: Sprint 57.101 B1 — POST /{id}/inject + register/unregister the injection queue
     - 2026-06-10: Sprint 57.98 A1 US-5 — drop run_with_verification wrapper; gate is in-loop now
     - 2026-06-09: Sprint 57.95 — relay subagent SSE events (buffer drained by _stream_loop_events)
@@ -874,6 +875,52 @@ async def inject_message(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Session {session_id} run has ended; cannot inject.",
+        )
+    return {"status": "queued"}
+
+
+@router.post(
+    "/{session_id}/subagents/{subagent_id}/inject",
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def inject_to_subagent(
+    session_id: UUID,
+    subagent_id: UUID,
+    body: InjectRequestBody,
+    current_tenant: UUID = Depends(get_current_tenant),
+) -> dict[str, str]:
+    """Inject a supplementary instruction into a RUNNING teammate subagent (Sprint 57.103 B2b).
+
+    The parent chat session's loop spawned + awaits the teammate; the teammate's child
+    loop drains the message at its NEXT turn boundary (the producer the B2a inbox was
+    wired for). 404 if the parent session is absent or belongs to another tenant
+    (multi-tenant 鐵律 — never reveal cross-tenant existence); 409 if the parent session
+    is not running, or if the teammate has no live queue (never spawned under this id /
+    already finished). The teammate's queue is registered ONLY while it runs
+    (handler._make_teammate_inbox_scope), so a put() onto a finished teammate returns
+    False → 409 (no Potemkin dead inbox). The queue is keyed by subagent_id; the parent
+    session_id gates auth + liveness of the owning run.
+    """
+    entry = await get_default_registry().get(current_tenant, session_id)
+    if entry is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No active session {session_id} found.",
+        )
+    if entry.status != "running":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Session {session_id} is not running ({entry.status}); cannot inject.",
+        )
+    queued = await get_default_injection_registry().put(
+        current_tenant, subagent_id, Message(role="user", content=body.message)
+    )
+    if not queued:
+        # The teammate has no live queue — never spawned under this id, or it already
+        # finished (the inbox scope unregistered the queue on the child's exit).
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Teammate {subagent_id} is not running; cannot inject.",
         )
     return {"status": "queued"}
 

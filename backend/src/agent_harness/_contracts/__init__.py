@@ -105,6 +105,7 @@ from agent_harness._contracts.subagent import (
     SubagentMode,
     SubagentResult,
     TeammateChildLoopFactory,
+    TeammateInboxScope,
 )
 from agent_harness._contracts.tools import (
     ConcurrencyPolicy,
@@ -194,6 +195,7 @@ __all__ = [
     "AgentSpec",
     "ChildLoopFactory",
     "TeammateChildLoopFactory",
+    "TeammateInboxScope",
     # observability
     "TraceContext",
     "MetricEvent",

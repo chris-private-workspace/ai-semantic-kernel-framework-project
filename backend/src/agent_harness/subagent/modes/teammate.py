@@ -42,6 +42,8 @@ Created: 2026-05-04 (Sprint 54.2)
 Last Modified: 2026-06-11
 
 Modification History:
+    - 2026-06-11: Sprint 57.103 (B2b) — inbox_factory → inbox_scope (register/unregister the
+      child's queue around the child run so a chat-user inject reaches a LIVE teammate)
     - 2026-06-11: Sprint 57.102 (B2a) — single-shot → real child loop (mirror 57.94 FORK)
       + send_to_parent report fold + B1 inbox wiring + TAO forward
     - 2026-05-04: Initial creation (Sprint 54.2 US-3)
@@ -77,7 +79,11 @@ from agent_harness.subagent.mailbox import MailboxStore
 from agent_harness.subagent.modes.fork import _TAO_CHILD_EVENT_TYPES
 
 if TYPE_CHECKING:
-    from agent_harness._contracts import MessageInbox, TeammateChildLoopFactory
+    from agent_harness._contracts import (
+        MessageInbox,
+        TeammateChildLoopFactory,
+        TeammateInboxScope,
+    )
 
 
 class TeammateExecutor:
@@ -95,7 +101,7 @@ class TeammateExecutor:
         mailbox: MailboxStore,
         enforcer: BudgetEnforcer | None = None,
         event_emitter: Callable[[LoopEvent], Awaitable[None]] | None = None,
-        inbox_factory: Callable[[UUID], "MessageInbox"] | None = None,
+        inbox_scope: "TeammateInboxScope | None" = None,
     ) -> None:
         self._child_loop_factory = teammate_child_loop_factory
         self._mailbox = mailbox
@@ -103,11 +109,12 @@ class TeammateExecutor:
         # Sprint 57.96 relay: forward the child's TAO events (best-effort; the
         # dispatcher passes its own _emit_safely so a forward never breaks the loop).
         self._event_emitter = event_emitter
-        # Sprint 57.102 (B2a): builds the child loop's MessageInbox bound to this
-        # subagent_id (the B1 InjectionRegistry/QueueMessageInbox keyed by subagent_id).
-        # None = no inbox. The live producer (chat-user inject-to-teammate) is B2b;
-        # here the inbox is wired + unit-proven, inert in production until B2b.
-        self._inbox_factory = inbox_factory
+        # Sprint 57.103 (B2b): a lifecycle-scoped inbox. An async CM keyed by
+        # subagent_id that REGISTERS the child's InjectionRegistry queue on enter
+        # (so a concurrent chat-user inject POST can reach it) + yields the child's
+        # MessageInbox + UNREGISTERS on exit. None = no inbox (byte-identical to the
+        # pre-B2b no-inbox path). The concrete CM lives in the api layer (handler).
+        self._inbox_scope = inbox_scope
 
     async def execute(
         self,
@@ -134,12 +141,11 @@ class TeammateExecutor:
                 error="teammate_child_loop_factory_unavailable",
             )
 
-        inbox = self._inbox_factory(subagent_id) if self._inbox_factory is not None else None
         final_answer = ""
         tokens_used = 0
         emitter = self._event_emitter
 
-        async def _drive() -> None:
+        async def _drive(inbox: "MessageInbox | None") -> None:
             nonlocal final_answer, tokens_used
             child = factory(budget, inbox)  # fresh child loop instance per spawn
             child_session_id = uuid4()
@@ -149,8 +155,9 @@ class TeammateExecutor:
                 trace_context=trace_context,
             ):
                 # Sprint 57.96 relay: forward the child's per-turn TAO events tagged
-                # with THIS subagent_id (incl. the send_to_parent ToolCall) so the
-                # frontend routes them to the Tree node the spawn created.
+                # with THIS subagent_id (incl. the send_to_parent ToolCall + the B2b
+                # MessageInjected) so the frontend routes them to the Tree node the
+                # spawn created.
                 if emitter is not None and isinstance(ev, _TAO_CHILD_EVENT_TYPES):
                     await emitter(SubagentChildEvent(subagent_id=subagent_id, inner=ev))
                 if isinstance(ev, LLMResponded) and ev.content:
@@ -158,8 +165,18 @@ class TeammateExecutor:
                 elif isinstance(ev, LoopCompleted):
                     tokens_used = ev.total_tokens
 
+        # Sprint 57.103 (B2b): bracket the child drive in the inbox scope so the
+        # child's InjectionRegistry queue is registered ONLY while the teammate runs
+        # (a concurrent chat-user inject POST reaches it via the module registry) and
+        # unregistered on EVERY exit (success / timeout / exception via async-with).
+        # None scope = no inbox (byte-identical to the pre-B2b no-inbox path).
+        scope = self._inbox_scope
         try:
-            await asyncio.wait_for(_drive(), timeout=budget.max_duration_s)
+            if scope is not None:
+                async with scope(subagent_id) as inbox:
+                    await asyncio.wait_for(_drive(inbox), timeout=budget.max_duration_s)
+            else:
+                await asyncio.wait_for(_drive(None), timeout=budget.max_duration_s)
         except asyncio.TimeoutError:
             return SubagentResult(
                 subagent_id=subagent_id,

@@ -28,12 +28,14 @@ Description:
 Key Components:
     - InjectionRegistry: register / put / drain / unregister, keyed by (tenant, session)
     - QueueMessageInbox: a MessageInbox (Cat 1 contract) view over one session's queue
+    - make_teammate_inbox_scope(): the TEAMMATE child's lifecycle-scoped inbox (Sprint 57.103 B2b)
     - get_default_injection_registry(): the module singleton (tests reset it — Risk Class C)
 
 Created: 2026-06-11 (Sprint 57.101)
 Last Modified: 2026-06-11
 
 Modification History (newest-first):
+    - 2026-06-11: Sprint 57.103 (B2b) — add make_teammate_inbox_scope (lifecycle-scoped inbox)
     - 2026-06-11: Initial creation (Sprint 57.101) — injection channel + QueueMessageInbox
 
 Related:
@@ -47,9 +49,16 @@ Related:
 from __future__ import annotations
 
 import asyncio
+from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from agent_harness._contracts import Message, MessageInbox
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
+    from agent_harness._contracts import TeammateInboxScope
 
 
 # === InjectionRegistry: cross-request mid-run message channel ================
@@ -122,6 +131,29 @@ class QueueMessageInbox(MessageInbox):
 
     async def drain(self) -> list[Message]:
         return await self._registry.drain(self._tenant_id, self._session_id)
+
+
+# === make_teammate_inbox_scope: the TEAMMATE child's lifecycle-scoped inbox ====
+# Why: a TEAMMATE child loop (Sprint 57.102 B2a) carries a MessageInbox, but its
+# InjectionRegistry queue must exist ONLY while the child runs — so a chat-user inject
+# (POST /chat/{id}/subagents/{sid}/inject) reaches a LIVE teammate (put succeeds) and a
+# put onto a finished teammate returns False → 409 (no Potemkin dead inbox). This builds
+# the Cat 11 TeammateInboxScope (an async CM keyed by subagent_id) the TeammateExecutor
+# brackets the child drive in: register on enter, yield the inbox, unregister on exit
+# (success / timeout / exception). The concrete CM stays here in the api layer; the
+# executor depends only on the MessageInbox ABC + the TeammateInboxScope callable.
+def make_teammate_inbox_scope(registry: InjectionRegistry, tenant_id: UUID) -> "TeammateInboxScope":
+    """Build the lifecycle-scoped teammate inbox over `registry` for `tenant_id` (Sprint 57.103 B2b)."""
+
+    @asynccontextmanager
+    async def _scope(subagent_id: UUID) -> "AsyncIterator[MessageInbox | None]":
+        await registry.register(tenant_id, subagent_id)
+        try:
+            yield QueueMessageInbox(registry, tenant_id, subagent_id)
+        finally:
+            await registry.unregister(tenant_id, subagent_id)
+
+    return _scope
 
 
 # Module-level singleton — shared across router handlers within a single FastAPI
