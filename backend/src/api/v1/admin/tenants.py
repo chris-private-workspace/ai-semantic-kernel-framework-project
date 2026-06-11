@@ -98,6 +98,8 @@ from infrastructure.db.models.feature_flag import FeatureFlag
 from infrastructure.db.models.identity import Tenant, TenantPlan, TenantState, User
 from infrastructure.db.models.sessions import Session
 from infrastructure.db.session import get_db_session
+from platform_layer.billing.model_policy import invalidate_tenant_model_policy
+from platform_layer.billing.pricing import maybe_get_pricing_loader
 from platform_layer.governance.hitl.policy_store import DBHITLPolicyStore
 from platform_layer.identity.auth import (
     require_admin_platform_role,
@@ -1456,6 +1458,151 @@ async def upsert_tenant_quota_overrides(
         saved_overrides=new_overrides,
         items=items,
     )
+
+
+# =====================================================================
+# Sprint 57.104 (C1) — per-tenant model policy admin write/read
+# =====================================================================
+# Stores the tenant's {action, cheap} model overrides in
+# tenant.meta_data["model_policy"] (JSONB; the quota_overrides precedent). On write
+# each *_model is validated against config/llm_pricing.yml so the cost ledger can
+# never meet an unpriced model (governance invariant). The PUT invalidates the
+# resolver's TTL cache (platform_layer/billing/model_policy.py) so the change takes
+# effect on the next chat request.
+
+
+class ModelPolicyUpsertRequest(BaseModel):
+    """Per-tenant {action, cheap} model policy (composite-replace semantics).
+
+    Every field optional; the payload is the COMPLETE desired override state — a
+    field omitted (or null) is CLEARED (reverts to the system env default).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    action_deployment: str | None = None
+    action_model: str | None = None
+    cheap_deployment: str | None = None
+    cheap_model: str | None = None
+
+
+class ModelPolicyResponse(BaseModel):
+    """A tenant's stored model-policy overrides (sparse; absent field = env default)."""
+
+    action_deployment: str | None = None
+    action_model: str | None = None
+    cheap_deployment: str | None = None
+    cheap_model: str | None = None
+
+
+def _validate_model_policy_pricing(payload: ModelPolicyUpsertRequest) -> None:
+    """Reject (422) any *_model not priced in config/llm_pricing.yml.
+
+    Governance invariant: a tenant must not route to a model the cost ledger can't
+    price. Uses the SAME billing helper that prices the ledger (get_llm_pricing) so
+    write-validation == ledger-pricing (no drift). When the pricing loader is not
+    installed (lean / misconfigured runtime) validation is skipped — the loader is
+    always present in prod (set at app startup).
+    """
+    loader = maybe_get_pricing_loader()
+    if loader is None:
+        return
+    for model in (payload.action_model, payload.cheap_model):
+        if model and loader.get_llm_pricing("azure_openai", model) is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Unknown/unpriced model: {model!r} (not in config/llm_pricing.yml)",
+            )
+
+
+def _project_model_policy(stored: dict[str, str]) -> ModelPolicyResponse:
+    """Project a stored model_policy dict into the response model (sparse)."""
+    return ModelPolicyResponse(
+        action_deployment=stored.get("action_deployment"),
+        action_model=stored.get("action_model"),
+        cheap_deployment=stored.get("cheap_deployment"),
+        cheap_model=stored.get("cheap_model"),
+    )
+
+
+@router.put("/{tenant_id}/model-policy", response_model=ModelPolicyResponse)
+async def upsert_tenant_model_policy(
+    tenant_id: UUID,
+    payload: ModelPolicyUpsertRequest,
+    db: AsyncSession = Depends(get_db_session),
+    admin_user_id: UUID = Depends(require_admin_platform_role),
+) -> ModelPolicyResponse:
+    """Upsert per-tenant model policy into tenant.meta_data["model_policy"].
+
+    Composite-replace: payload is the COMPLETE desired policy; omitted/null fields
+    are cleared (revert to env default).
+
+    - 401/403 via require_admin_platform_role
+    - 404 via _load_tenant_or_404 (cross-tenant → 404, never 403)
+    - 422 via extra="forbid" (unknown field) OR an unpriced *_model
+    - 200 with the saved (sparse) policy
+    - Audit via direct append_audit (Sprint 57.56/57.57 no-canonical-service
+      precedent); invalidates the resolver TTL cache so the change is instant on
+      the next chat request.
+    """
+    _validate_model_policy_pricing(payload)
+    tenant = await _load_tenant_or_404(db, tenant_id)
+
+    # Sparse storage: drop None fields (an absent field → env default at resolve).
+    saved = {
+        key: value
+        for key, value in {
+            "action_deployment": payload.action_deployment,
+            "action_model": payload.action_model,
+            "cheap_deployment": payload.cheap_deployment,
+            "cheap_model": payload.cheap_model,
+        }.items()
+        if value
+    }
+
+    # Compose new meta_data dict (identity swap — ORM JSONB change detection).
+    new_meta = dict(tenant.meta_data or {})
+    if saved:
+        new_meta["model_policy"] = saved
+    else:
+        new_meta.pop("model_policy", None)  # all-None → clear the override entirely
+    tenant.meta_data = new_meta
+
+    await db.flush()  # Bump updated_at via SQLAlchemy onupdate.
+
+    await append_audit(
+        db,
+        tenant_id=tenant_id,
+        operation="tenant_model_policy_upsert",
+        resource_type="tenant",
+        resource_id=str(tenant_id),
+        operation_data={"tenant_id": str(tenant_id), "policy": saved},
+        user_id=admin_user_id,
+        operation_result="success",
+    )
+
+    await db.commit()
+    await db.refresh(tenant)
+
+    # Invalidate the resolver cache so the next chat request resolves fresh.
+    invalidate_tenant_model_policy(tenant_id)
+
+    return _project_model_policy(saved)
+
+
+@router.get("/{tenant_id}/model-policy", response_model=ModelPolicyResponse)
+async def get_tenant_model_policy(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db_session),
+    admin_user_id: UUID = Depends(require_admin_platform_role),
+) -> ModelPolicyResponse:
+    """Return a tenant's stored model-policy overrides (sparse; absent = env default).
+
+    Read-only (no audit — GET precedent). 404 via _load_tenant_or_404.
+    """
+    tenant = await _load_tenant_or_404(db, tenant_id)
+    raw = (tenant.meta_data or {}).get("model_policy")
+    stored = raw if isinstance(raw, dict) else {}
+    return _project_model_policy(stored)
 
 
 # =====================================================================
