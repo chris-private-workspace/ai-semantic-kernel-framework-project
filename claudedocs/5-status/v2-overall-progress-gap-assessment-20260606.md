@@ -79,7 +79,7 @@
 | 11 | Subagent (4 模式,無 worktree) | ✅ | ✅ | 🟡 FORK/TEAMMATE/AS_TOOL 真,HANDOFF 半 | **L3-L4** | handoff tool 刻意未註冊 + child-loop executor 是 hollow stub |
 | 12 | Observability / Tracing | ✅ | ✅ | ✅ 真 OTelTracer 穿進 loop(57.71) | **L4** | root+TURN+LLM+TOOL+PROMPT+COMPACTION spans 在真 tracer 跑 |
 
-> **重要修正**:`agent-harness-11-categories-audit-20260423.md`(平均 L1.5 / 27% / 8 cats L0-2 / 5 Potemkin / 「Cat 1 根本不是 loop」/「Cat 4 5%」/「Cat 5 無 PromptBuilder」)**已對當前 code 完全失準**,Phase 50-57 已建好並接通整套。請勿再引用該 doc 的 level 表。
+> **重要修正**:`agent-harness-11-categories-audit-20260423.md`(V1 末期審計,已歸檔至 `archived/claudedocs-v1/5-status/`;平均 L1.5 / 27% / 8 cats L0-2 / 5 Potemkin / 「Cat 1 根本不是 loop」/「Cat 4 5%」/「Cat 5 無 PromptBuilder」)**已對當前 code 完全失準**,Phase 50-57 已建好並接通整套。請勿再引用該 doc 的 level 表。
 
 **對抗式驗證 CLAIM B 的精確切分**(避免過度宣稱):
 - **每個 real_llm request 必跑**:Cat 1 / 2 / 4 / 5 / 6 / 7 / 9 / 10 / 12。
