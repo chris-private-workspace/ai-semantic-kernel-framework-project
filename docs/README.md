@@ -1,142 +1,47 @@
-# Project Documentation Structure
+# docs/ — Project Documentation Index (V2)
 
-This project follows the **BMAD Method (Build-Measure-Analyze-Deploy)** workflow for structured product development.
+**Purpose**: Navigation for `docs/` in the V2 era (Phase 49+, agent harness rebuild).
+**Created**: 2025-11-14 (V1 BMAD) / rewritten 2026-06-12 (V2)
+**Last Modified**: 2026-06-12
+**Status**: Active
 
-## 📁 Directory Structure
-
-### Phase 0: Discovery 🔍
-**Location:** `00-discovery/`
-
-Initial exploration and ideation phase to understand the problem space and define the product vision.
-
-- **`brainstorming/`** - Brainstorming session outputs
-  - Session results and detailed exploration documents
-  - Multiple brainstorming techniques (Mind Mapping, What-If, First Principles, SCAMPER)
-  
-- **`product-brief/`** - Strategic product planning
-  - Product vision and positioning
-  - Market analysis and competitive landscape
-  - High-level requirements and success criteria
-
-**Key Deliverables:**
-- ✅ Brainstorming Session Results (2025-11-14)
-- ⏭️ Product Brief
+> **Modification History**
+> - 2026-06-12: Full V2 rewrite (REFACTOR-007 docs-reorg) — V1 BMAD-phase content superseded; V1 dirs archived to `archived/docs-v1/`
+> - 2025-11-14: V1 initial (BMAD Method, historical)
 
 ---
 
-### Phase 1: Planning 📋
-**Location:** `01-planning/`
+## Authority Order
 
-Detailed planning and requirements definition phase.
+1. Root `CLAUDE.md` — project navigation
+2. `03-implementation/agent-harness-planning/` — **V2 design authority** (21 planning docs + spike design notes 21+)
+3. Everything else below
 
-- **`prd/`** - Product Requirements Document
-  - Detailed feature specifications
-  - User stories and acceptance criteria
-  - Technical requirements
-  - Success metrics and KPIs
-  
-- **`design/`** - UX/UI Design (if applicable)
-  - User flows and wireframes
-  - UI mockups and prototypes
-  - Design system guidelines
+## Directory Map
 
-**Key Deliverables:**
-- ⏭️ PRD (Product Requirements Document)
-- ⏭️ Design Documents (conditional)
+| Directory | Role | Era |
+|-----------|------|-----|
+| **`03-implementation/agent-harness-planning/`** | ⭐ V2 規劃權威：21 docs（00-vision … 17-cross-category-interfaces …）+ spike design notes + per-phase sprint plan/checklist | V2 active |
+| **`03-implementation/agent-harness-execution/`** | ⭐ V2 執行紀錄：phase-49~57 per-sprint progress.md / retrospective.md / artifacts/ | V2 active |
+| `rules-on-demand/` | 11 條 on-demand 開發規則（trigger 表見 `.claude/rules/README.md`）| V2 active |
+| `08-development-log/` | Phase 57+ 開發日誌 | V2 active |
+| `09-git-worktree-working-folder/` | Worktree 工作筆記 | V2 |
+| `02-architecture/` | 架構參考 | shared |
+| `06-skills/` | Skill 定義 | shared |
+| `00-discovery/` | 2025-11 需求發現（brainstorming / product brief）| V1 reference |
+| `07-analysis/` | **V1 歷史研究資產（刻意保留）**：V9 codebase analysis / claude-code-study (30 waves) / claude-agent-study / poc-agent-team | V1 reference |
+| `03-implementation/` root files | `azure-service-principal-setup.md` + `local-development-guide.md`（仍有用的 ops setup）| shared |
 
----
+## Root Files
 
-### Phase 2: Solutioning 🏗️
-**Location:** `02-solutioning/`
+| File | Role |
+|------|------|
+| `LOCAL-DEV-SETUP.md` | Local dev environment setup |
+| `bmm-workflow-status.yaml` | BMAD workflow status tracking（root CLAUDE.md §Important Notes 沿用）|
 
-Architecture and technical design phase.
+## Archived (V1, Phase 1-48)
 
-- **`architecture/`** - System Architecture
-  - Architecture Decision Records (ADRs)
-  - System design diagrams
-  - Technology stack decisions
-  - Integration patterns
-  
-- **`test-design/`** - Test Strategy (recommended)
-  - Test plan and strategy
-  - Test cases and scenarios
-  - Quality assurance approach
+V1-era content was moved to **`archived/docs-v1/`** on 2026-06-12 (REFACTOR-007):
+`01-planning/`(PRD) · `phase-2/` · `admin-guide/` · `api/` · `guides/` · `user-guide/` · `06-user-guide/` · `04-review/` · `04-usage/` · `05-reference/` · `migration/` · `AGENT-FRAMEWORK-AUDIT.md` · `03-implementation/{sprint-planning, sprint-execution, archive, architecture-designs, implementation-guides, legacy, migration, feature-summary, V1 root guides}`
 
-**Key Deliverables:**
-- ⏭️ Architecture Document
-- ⏭️ Test Design (recommended)
-- ⏭️ Solutioning Gate Check
-
----
-
-### Phase 3: Implementation 🚀
-**Location:** `03-implementation/`
-
-Agile implementation phase with sprint-based execution.
-
-- **`sprints/`** - Sprint Planning and Tracking
-  - Sprint plans and goals
-  - Sprint retrospectives
-  - Implementation progress tracking
-
-**Key Deliverables:**
-- ⏭️ Sprint Plans
-- ⏭️ Implementation Artifacts
-
----
-
-## 📄 Root Documentation Files
-
-- **`bmm-workflow-status.yaml`** - Tracks progress through BMAD workflow phases
-- **`sprint-artifacts/`** - Sprint-specific deliverables and artifacts
-
----
-
-## 🔄 Workflow Progression
-
-```
-Discovery (Phase 0)
-  └─ Brainstorm → Product Brief
-       ↓
-Planning (Phase 1)
-  └─ PRD → Design (if needed)
-       ↓
-Solutioning (Phase 2)
-  └─ Architecture → Test Design → Gate Check
-       ↓
-Implementation (Phase 3)
-  └─ Sprint Planning → Development
-```
-
----
-
-## 📌 Current Status
-
-**Project:** Enterprise AI Agent Framework  
-**Track:** BMAD Method (Greenfield)  
-**Current Phase:** Phase 0 - Discovery  
-**Last Updated:** 2025-11-14
-
-### Completed
-- ✅ Workflow Initialization
-- ✅ Brainstorming Session (Progressive Flow: 4 techniques)
-
-### In Progress
-- 🔄 Document Restructuring
-
-### Next Steps
-- ⏭️ Product Brief Creation
-- ⏭️ PRD Development
-
----
-
-## 🔗 Quick Links
-
-- [Workflow Status](./bmm-workflow-status.yaml)
-- [Brainstorming Results](./00-discovery/brainstorming/README.md)
-- [Product Brief](./00-discovery/product-brief/) (Coming soon)
-
----
-
-**Generated:** 2025-11-14  
-**Method:** BMAD Method v6.0.0-alpha.9
+The full V1 codebase lives in `archived/v1-phase1-48/`; V1 CLAUDE.md in `CLAUDE.backup.md`.

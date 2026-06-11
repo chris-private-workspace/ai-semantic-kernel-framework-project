@@ -580,13 +580,13 @@ tests/e2e/
 
 ## 10. Audit Carryover
 
-**來源**：`claudedocs/5-status/V2-AUDIT-WEEK3-SUMMARY.md`（2026-05-01）+ W3-0-CARRYOVER.md / W3-2-PHASE50-2.md / W1+W2 SUMMARY
+**來源**：`claudedocs/5-status/v2-audit-2026-04/V2-AUDIT-WEEK3-SUMMARY.md`（2026-05-01）+ W3-0-CARRYOVER.md / W3-2-PHASE50-2.md / W1+W2 SUMMARY
 
 > **Process drift 警告**（per W3-0）：W1+W2 P1 8 項中 7 項在後續 5 sprint dropped（0% 進入 sprint planning）。W1-2 #2 JWT carryover 5 sprint dropped 直接導致 W3-2 chat router 重複違反同一 multi-tenant 鐵律。為避免重蹈，本 plan 加 §10 Audit Carryover 必填段落（per audit prompt §6 template）。
 
 ### 10.1 Cleanup Sprint P0 排程（52.2 不耦合；獨立 session 並行執行）
 
-> **詳細 sprint plan template**：[`claudedocs/5-status/V2-AUDIT-CLEANUP-SPRINT-TEMPLATE.md`](../../../../claudedocs/5-status/V2-AUDIT-CLEANUP-SPRINT-TEMPLATE.md)（593 行；Part 1 plan + Part 2 7-day checklist + Part 3 客製檢查清單）
+> **詳細 sprint plan template**：[`claudedocs/5-status/v2-audit-2026-04/V2-AUDIT-CLEANUP-SPRINT-TEMPLATE.md`](../../../../claudedocs/5-status/v2-audit-2026-04/V2-AUDIT-CLEANUP-SPRINT-TEMPLATE.md)（593 行；Part 1 plan + Part 2 7-day checklist + Part 3 客製檢查清單）
 
 Cleanup 由獨立 session 採用此 template 執行（user 安排 cleanup session）。本 sprint（52.2）**不阻塞於 cleanup 進度**，但：
 - 52.2 retrospective **必答**「P0 進度」段落（per process fix #2 / plan §10.3）

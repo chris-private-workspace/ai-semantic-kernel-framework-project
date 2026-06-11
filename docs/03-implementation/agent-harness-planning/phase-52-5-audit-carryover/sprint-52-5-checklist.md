@@ -496,4 +496,4 @@ Before each commit, verify:
 ---
 
 **Plan link**: [sprint-52-5-plan.md](./sprint-52-5-plan.md)
-**Audit真相 index**: [V2-AUDIT-OPEN-ISSUES-20260501.md](../../../../claudedocs/5-status/V2-AUDIT-OPEN-ISSUES-20260501.md)
+**Audit真相 index**: [V2-AUDIT-OPEN-ISSUES-20260501.md](../../../../claudedocs/5-status/v2-audit-2026-04/V2-AUDIT-OPEN-ISSUES-20260501.md)

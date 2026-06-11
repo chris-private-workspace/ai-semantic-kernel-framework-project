@@ -1,0 +1,87 @@
+# 5-status — 狀態報告 / 分析快照總索引
+
+**Purpose**: `claudedocs/5-status/` 全部文件的總索引（每檔 1 行主題 + 狀態），解決「靠檔名認不出主題」問題。
+**Category / Scope**: Status index (cross-cutting)
+**Created**: 2026-06-12
+**Last Modified**: 2026-06-12
+**Status**: Active
+
+> **Modification History**
+> - 2026-06-12: Initial creation (docs-reorg REFACTOR-007) — 7 主題群索引 + 命名規則
+
+---
+
+## 使用規則
+
+1. **命名**：新分析檔一律 `<主題前綴>-<內容>-YYYYMMDD.md`（例：`c11-real-llm-e2e-analysis-20260601.md`）。
+2. **登記**：新增檔案時在本索引對應群組加 1 行（主題 + 狀態）。
+3. **完結批次**：一個審計/調查批次全部完結後，整批移入日期命名子目錄（例：`v2-audit-2026-04/`）。
+4. **V1 時期文件**：一律歸檔到 `archived/claudedocs-v1/5-status/`，不留在本目錄。
+5. **Sprint 工件**（截圖/DRIFT/REPOINT 報告）**不放這裡**，放 `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-XX/artifacts/`。
+
+---
+
+## 群組 1｜Integration-gap ABC 系列（2026-05-31 ~ 06-04）
+
+> 「主流量接線之外」15 項缺口的系統盤點。Area A 🎉 全閉（57.78）、Area B code 層全閉、Area C 部分進行。入口：`README-integration-gap-abc.md`。
+
+| 檔案 | 主題 | 狀態 |
+|------|------|------|
+| `README-integration-gap-abc.md` | A+B+C 15 項缺口總索引（16 份核心文件導覽）| ⭐ 入口 |
+| `integration-gap-capstone-abc-20260601.md` | Capstone：15 項收斂成兩條鑰匙鏈（real-LLM 束 + billing 正確性束）| ✅ 兩束均閉 |
+| `integration-progress-20260531.md` | 15 項整體盤點 / 進度底稿 | 歷史快照 |
+| `area-a-integration-sequencing-capstone-20260531.md` | Area-A 專屬排序 capstone（依賴圖）| ✅ |
+| `area-a-program-closeout-20260604.md` | Area-A program 收尾報告 | ✅ 57.78 |
+| `cat3-memory-loop-injection-analysis-20260531.md` | A-1 Cat 3 Memory loop 注入 | ✅ 57.64/65 |
+| `cat5-promptbuilder-loop-injection-analysis-20260531.md` | A-2 Cat 5 PromptBuilder（拱心石）| ✅ 57.64/65 |
+| `cat11-handoff-loop-injection-analysis-20260531.md` | A-3 Cat 11 Subagent / HANDOFF | ✅ 57.64/68-70 |
+| `cat12-loop-tracer-analysis-20260531.md` | A-4 Cat 12 Loop Tracer | ✅ 57.71（Tier 2 Jaeger → C-15）|
+| `cat-events-to-sse-analysis-20260531.md` | A-5 Events → SSE 管道 | ✅ 57.66-75 |
+| `frontend-real-data-wiring-analysis-20260531.md` | A-6 前端真資料 wiring | ✅ 57.73-77 |
+| `cat8-errorbudget-redis-wiring-analysis-20260531.md` | B-7 ErrorBudget Redis wiring | ✅ 57.81 |
+| `cat10-verification-default-enable-analysis-20260601.md` | B-8 verification 預設開啟評估 | ✅ 57.82-83 |
+| `b9-mockup-repoint-status-analysis-20260601.md` | B-9 mockup re-point 真實狀態 | ✅ 22/22 PARITY（剩 4 二階債）|
+| `cat10-verifier-factory-disposition-analysis-20260531.md` | B-10 verifier_factory 去留 | ✅ 已刪（REFACTOR-006）|
+| `c11-real-llm-e2e-analysis-20260601.md` | C-11 real-LLM e2e 驗證 | 🟡 剩 CI 排程（待 Azure secrets）|
+| `c12-iam-block-bc-analysis-20260601.md` | C-12 IAM Block B/C | 🟡 invites/password/register ✅；MFA/recovery 待 |
+| `c13-agents-workflows-pages-analysis-20260601.md` | C-13 缺核心頁 agents / workflows | 🟡 workflows 全缺 |
+| `c14-compliance-axis-analysis-20260601.md` | C-14 企業合規軸（SOC2/PDPA/CRA/AI Act）| ❌ 0% code（外部阻擋）|
+| `c15-devops-data-platform-analysis-20260601.md` | C-15 DevOps IaC/DR + Data platform | 🟡 billing leg ✅；DR/IaC 外部阻擋 |
+
+## 群組 2｜Agent Harness 對標 / 進度評估（2026-05-30 ~ 06-08）
+
+> harness-deepening roadmap（`../1-planning/harness-deepening-proposal-20260610.md`）的上游證據鏈。
+
+| 檔案 | 主題 | 狀態 |
+|------|------|------|
+| `v2-overall-progress-gap-assessment-20260606.md` | 11+1 範疇整體進度 gap 評估 | Active |
+| `agent-harness-cc-parity-20260607.md` | CC v2.1.88 部件級對照（核心 loop 達標 + C 類 5 缺口）| Active（local，未 commit）|
+| `cc-source-blueprint-pause-resume-phases-20260608.md` | CC 源碼證偽：非 6-phase、無 durable resume | Active（local，未 commit）|
+| `v2-architecture-flow-visualization-20260607.md` | V2 架構 / 流程視覺化 | Active（local，未 commit）|
+| `runtime-verification-20260530.md` | V2 runtime 實證驗證（實驗證據）| 快照 |
+
+## 群組 3｜Cat 10 Verification 量測
+
+| 檔案 | 主題 | 狀態 |
+|------|------|------|
+| `cat10-verification-real-llm-measurement-20260605.md` | real-Azure verification 量測（B-8 flip 的數據依據）| ✅ |
+
+## 群組 4｜V2 起點回顧（2026-04-28 過渡期）
+
+| 檔案 | 主題 |
+|------|------|
+| `v2-eleven-categories-and-philosophy-review-20260428.md` | 11 範疇 + 哲學 review（V1→V2 過渡）|
+| `v2-phase-roadmap-pm-review-20260428.md` | V2 初始 22-sprint 路線圖 PM review |
+
+## 群組 5｜審計批次子目錄
+
+| 子目錄 | 檔數 | 主題 | 狀態 |
+|--------|-----|------|------|
+| `v2-audit-2026-04/` | 22 | Phase 49-51 分週驗證審計（BASELINE + W1-W4P + WEEK summaries + open issues）| 已完結（歷史）|
+| `v2-investigation-20260522/` | 13 | V2 重構狀態 + 前端狀態 + mockup drift 根因（根 CLAUDE.md 引用中）| ⭐ Active 引用 |
+| `drift-audit-2026-05-25/` | 48 | 全頁 drift 審計批次 | 已完結 |
+| `drive-through-20260606/` | 44 | 35 頁 drive-through audit + deep-audit-15-fullimpl + 截圖 | ⭐ carryover 來源 |
+
+## 歸檔出口
+
+V1 時期文件（MAF 審計、phase-15 AG-UI、sprint-0/3 報告等）→ [`archived/claudedocs-v1/5-status/`](../../archived/claudedocs-v1/5-status/)

@@ -313,7 +313,7 @@
   - `git checkout main && git pull && git branch -d feature/sprint-53-3-guardrails`
 - [ ] **Delete remote feature branch (if not auto-deleted)**
   - `git push origin --delete feature/sprint-53-3-guardrails`
-- [ ] **Update `claudedocs/5-status/V2-AUDIT-OPEN-ISSUES-*` if applicable**
+- [ ] **Update `claudedocs/5-status/v2-audit-2026-04/V2-AUDIT-OPEN-ISSUES-*` if applicable**
   - Mark AD-Cat8-1 + AD-Cat8-3 closed by 53.3
   - DoD: status doc updated（如有對應 entry）
 

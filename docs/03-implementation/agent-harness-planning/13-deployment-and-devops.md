@@ -1234,7 +1234,7 @@ Webhook 載荷範例：
 
 | Tenant | 原因 | Source |
 |--------|------|--------|
-| `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa4444` | W1-3 audit 留下的 forgery rows id=36-39（驗證 verifier 確能偵測） | `claudedocs/5-status/V2-AUDIT-W1-AUDIT-HASH.md` |
+| `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa4444` | W1-3 audit 留下的 forgery rows id=36-39（驗證 verifier 確能偵測） | `claudedocs/5-status/v2-audit-2026-04/V2-AUDIT-W1-AUDIT-HASH.md` |
 
 部署到 staging / prod 之前需 DBA cleanup（`DELETE FROM audit_log WHERE tenant_id='aaaa...4444'`
 + 紀錄到 retrospective），或繼續用 `--ignore-tenant` 略過。
@@ -1255,4 +1255,4 @@ Webhook 載荷範例：
 - backend/src/infrastructure/db/audit_helper.py（canonical hash compute）
 - backend/scripts/verify_audit_chain.py
 - docker/audit-verifier/{Dockerfile, crontab}
-- claudedocs/5-status/V2-AUDIT-W1-AUDIT-HASH.md（audit source）
+- claudedocs/5-status/v2-audit-2026-04/V2-AUDIT-W1-AUDIT-HASH.md（audit source）

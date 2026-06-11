@@ -374,7 +374,7 @@
   - DoD: branch removed local
 - [ ] **Delete remote feature branch（if not auto-deleted）**
   - `git push origin --delete feature/sprint-52-6-ci-restoration`
-- [ ] **Update `claudedocs/5-status/V2-AUDIT-OPEN-ISSUES-20260501.md` §AD-5**
+- [ ] **Update `claudedocs/5-status/v2-audit-2026-04/V2-AUDIT-OPEN-ISSUES-20260501.md` §AD-5**
   - Mark AD-5 ✅ Closed by Sprint 52.6（commit hash + PR url）
   - DoD: §10 table updated
 

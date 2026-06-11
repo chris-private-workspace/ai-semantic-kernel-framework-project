@@ -342,7 +342,7 @@
 - [ ] **Delete remote `docs/sprint-53-1-closeout-bookkeeping` branch**
   - `git push origin --delete docs/sprint-53-1-closeout-bookkeeping`
   - DoD: 53.1 closeout branch 已 cleanup（內容已 bundle 進 main）
-- [ ] **Update `claudedocs/5-status/V2-AUDIT-OPEN-ISSUES-20260501.md` if applicable**
+- [ ] **Update `claudedocs/5-status/v2-audit-2026-04/V2-AUDIT-OPEN-ISSUES-20260501.md` if applicable**
   - Mark AD-Cat7-2 + AD-CI-1 closed by 53.2
   - DoD: §10 table updated（如有對應 entry）
 

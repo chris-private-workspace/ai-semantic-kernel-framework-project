@@ -33,9 +33,9 @@ V2 Verification Audit（2026-04-29 ~ 2026-05-01 evening）發現累積 8 個 P0 
 **根因**：(1) audit findings 缺乏 ticket 機制（已修：GitHub issues #11-18）;（2) sprint plan template 缺 carryover section（已修）;（3) **跨 sprint 主流量整合驗收**這個維度根本沒有 sprint 負責。本 sprint 同時清債 + 落地 process 修補。
 
 詳見：
-- `claudedocs/5-status/V2-AUDIT-OPEN-ISSUES-20260501.md` — 真相 index
-- `claudedocs/5-status/V2-AUDIT-WEEK3-SUMMARY.md` — W1+W2+W3 雙層問題決策報告
-- `claudedocs/5-status/V2-AUDIT-MINI-W4-PRE-SUMMARY.md` — 系統性 AP-4 pattern + 8 P0 + Process fix #6 proposal
+- `claudedocs/5-status/v2-audit-2026-04/V2-AUDIT-OPEN-ISSUES-20260501.md` — 真相 index
+- `claudedocs/5-status/v2-audit-2026-04/V2-AUDIT-WEEK3-SUMMARY.md` — W1+W2+W3 雙層問題決策報告
+- `claudedocs/5-status/v2-audit-2026-04/V2-AUDIT-MINI-W4-PRE-SUMMARY.md` — 系統性 AP-4 pattern + 8 P0 + Process fix #6 proposal
 
 ---
 

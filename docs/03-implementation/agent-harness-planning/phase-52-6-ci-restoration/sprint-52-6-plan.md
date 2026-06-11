@@ -44,7 +44,7 @@ V2 Verification Audit（2026-05-01 closeout）在 §10 §AD-5 記錄：
 - 本 sprint 必須 + Phase 53 啟動前修，否則 53.1 + 53.2 + ... 將繼續 admin-merge
 
 詳見：
-- `claudedocs/5-status/V2-AUDIT-OPEN-ISSUES-20260501.md` §AD-5（真相 entry）
+- `claudedocs/5-status/v2-audit-2026-04/V2-AUDIT-OPEN-ISSUES-20260501.md` §AD-5（真相 entry）
 - `docs/03-implementation/agent-harness-execution/phase-52-5/sprint-52-5-audit-carryover/retrospective.md` §Q5 §AD-2（admin-merge precedent）
 - `docs/03-implementation/agent-harness-execution/phase-52/sprint-52-2/retrospective.md` §AI-15（branch protection rule TODO）
 

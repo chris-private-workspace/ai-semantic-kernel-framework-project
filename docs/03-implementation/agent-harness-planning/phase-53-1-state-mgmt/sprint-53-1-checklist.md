@@ -463,7 +463,7 @@
   - DoD: branch removed local
 - [x] **Delete remote feature branch (if not auto-deleted)** _(auto-deleted by gh pr merge --delete-branch; verify `git push --delete` returns "remote ref does not exist")_
   - `git push origin --delete feature/sprint-53-1-state-mgmt`
-- [x] **Update `claudedocs/5-status/V2-AUDIT-OPEN-ISSUES-20260501.md` if applicable** _(no V2-AUDIT-OPEN-ISSUES entries blocked Sprint 53.1; new Audit Debt AD-Cat7-1~4 + #38 captured in retrospective.md)_
+- [x] **Update `claudedocs/5-status/v2-audit-2026-04/V2-AUDIT-OPEN-ISSUES-20260501.md` if applicable** _(no V2-AUDIT-OPEN-ISSUES entries blocked Sprint 53.1; new Audit Debt AD-Cat7-1~4 + #38 captured in retrospective.md)_
   - Mark relevant audit debt items closed by 53.1
   - DoD: §10 table updated（如有對應 entry）
 
