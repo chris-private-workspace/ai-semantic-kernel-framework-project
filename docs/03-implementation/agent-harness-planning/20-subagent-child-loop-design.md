@@ -7,6 +7,7 @@
 **Source**: Sprint 57.94 implementation (`sprint-57-94-plan.md` + retrospective). Authority: this note describes WHAT WAS BUILT + VERIFIED; the live code is the source of truth.
 
 > **Modification History**
+> - 2026-06-13: Sprint 57.110 (B4) — §5 child-governance + failure-policy rows RESOLVED. See `CHANGE-077`.
 > - 2026-06-11: Sprint 57.103 (B2b) — teammate inbox producer endpoint + `TeammateInboxScope` lifecycle + MessageInjected relay shipped; live inject UI deferred to §2.5 (buffered-relay finding). See `CHANGE-070`.
 > - 2026-06-11: Sprint 57.102 (B2a) — TEAMMATE now also a real child loop (§5 row updated); pattern reused via `TeammateChildLoopFactory` + `send_to_parent` + B1 inbox. See `CHANGE-069`.
 > - 2026-06-09: Initial creation — FORK real child-loop spike extract (Sprint 57.94)
@@ -59,8 +60,8 @@ The 地基 A lifecycle (durable pause-resume + re-enterable `_run_turns`, Sprint
 | Child LOOP-span nesting under parent | `AD-Subagent-Child-Span-Nesting` | the `task_spawn` handler passes `trace_context=None` to `spawn` → the child span is not explicitly parented (best-effort via ambient tracer); the parent trace shows only the wrapping `task_spawn` TOOL_EXEC span |
 | Recursion depth > 1 / nested spawning | (future) | child has no `task_spawn` (bounded at 1) |
 | parentUuid transcript chain / child checkpoint | `AD-Subagent-Transcript-Isolation` | child is ephemeral (no checkpointer) |
-| Child-internal governance (Cat 9/10 in the child) | `AD-Subagent-Child-Governance` | lean child this slice (no guardrail/verifier) |
-| Failure policies (FAIL_FAST/SOFT/PARTIAL) | (future) | `SubagentBudget` has no `failure_policy` |
+| ~~Child-internal governance (Cat 9 in the child)~~ → **RESOLVED Sprint 57.110 (B4)** | CHANGE-077 | Both child factories inject the parent's COMPOSED tenant-resolved engine (late-bound closure; `loop.py` diff 0 — ESCALATE-in-child fail-closes to BLOCK by the existing invariant); `GuardrailTriggered` joined the relay subset (Tree shows the fire); truthful `child_guardrail_blocked` label. dt-proven (the inherited C3 RiskyActionDetector blocked a child's `subprocess`/`os.popen` sandbox calls). The Cat 10 half (child verifier) stays open → `AD-Subagent-Child-Verification` (judge cost per child; demand-gated). |
+| ~~Failure policies (FAIL_FAST/SOFT/PARTIAL)~~ → **RESOLVED Sprint 57.110 (B4)** | CHANGE-077 | `SubagentFailurePolicy` rides `SubagentBudget` (default `fail_soft` byte-identical); `fail_fast` raises `SubagentFailureEscalation` (Cat 8 FATAL — `LoopTerminated`, exactly one spawn); `fail_partial` salvages partial child output. Per-tenant via `HarnessPolicy.subagent_failure_policy` (admin PUT literal 422). AS_TOOL fail_fast deferred (`AD-Subagent-AsTool-FailFast` — ABC method). |
 
 ## 6. Rollback / Fallback
 

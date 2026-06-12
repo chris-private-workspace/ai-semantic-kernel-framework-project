@@ -66,7 +66,7 @@
 ## Day 4 — Closeout
 
 ### 4.1 Closeout
-- [ ] retrospective.md Q1-Q7 + calibration (NEW `subagent-child-governance` 0.55 1st data point; agent-delegated: no) + progress.md final
-- [ ] Design note 20 §5 edit: `AD-Subagent-Child-Governance` + failure-policies rows → RESOLVED (depth>1 + child verifier stay open); MHist 1-line
-- [ ] Navigators: CLAUDE.md Current-Sprint row + Last-Updated; MEMORY.md quality pointer + memory subfile; next-phase-candidates (closes proposal §2.5 B4; B-family 4/4 done; remaining slice = optional A3); sprint-workflow matrix NEW row
+- [x] retrospective.md Q1-Q7 + calibration (NEW `subagent-child-governance` 0.55 1st data point, ratio ≈1.1-1.2 IN band upper edge; agent-delegated: no) + progress.md final
+- [x] Design note 20 §5 edit: `AD-Subagent-Child-Governance` + failure-policies rows → RESOLVED (depth>1 + child verifier stay open as `AD-Subagent-Child-Verification`); MHist 1-line
+- [x] Navigators: CLAUDE.md Current-Sprint row + Last-Updated; MEMORY.md quality pointer + memory subfile `project_phase57_110_subagent_child_governance.md`; next-phase-candidates 57.110 block + roadmap B-line (B-family 4/4 — mandatory set COMPLETE; remaining = optional A3); sprint-workflow matrix NEW row
 - [ ] PR (push + open on user authorization)
