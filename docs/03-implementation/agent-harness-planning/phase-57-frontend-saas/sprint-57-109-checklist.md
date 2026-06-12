@@ -74,4 +74,4 @@
 - [x] retrospective.md Q1-Q7 + calibration (`multi-model-profile-spike` 0.55 2nd data point, ratio ≈1.1-1.2 IN band upper edge; agent-delegated: no) + progress.md final
 - [x] Design note 24 edit: "compaction cheap tier" invariant → RESOLVED (extraction half stays open); MHist 1-line
 - [x] Navigators: CLAUDE.md Current-Sprint row + Last-Updated; MEMORY.md quality pointer + memory subfile; next-phase-candidates (closes proposal §3.4 C2; C-family 3/3 done; next slice B4 per interleave); sprint-workflow matrix row (2nd data point)
-- [ ] PR (push + open on user authorization)
+- [x] PR (push + open on user authorization — authorized 2026-06-12; **PR #284**)
