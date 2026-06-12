@@ -34,9 +34,10 @@ Key Components:
     - format_sse_message(event_type, data) -> bytes
 
 Created: 2026-04-30 (Sprint 50.2 Day 1.3)
-Last Modified: 2026-06-10
+Last Modified: 2026-06-12
 
 Modification History (newest-first):
+    - 2026-06-12: Sprint 57.108 — approval +tool_name/reason; llm_response +input/output tokens
     - 2026-06-11: Sprint 57.101 B1 — serialize MessageInjected → message_injected (between-turns)
     - 2026-06-10: Sprint 57.100 — approval_requested serializer +kind (pause kind on the wire)
     - 2026-06-09: Sprint 57.96 — serialize SubagentChildEvent → subagent_child (Cat 11 Scope B)
@@ -172,6 +173,10 @@ def _serialize_inner(event: LoopEvent) -> dict[str, Any] | None:
                 "thinking": event.thinking,
                 # Sprint 57.65 A-2 Tier2 cache field (carried to client).
                 "cached_input_tokens": event.cached_input_tokens,
+                # Sprint 57.108: per-call actuals so the Inspector turn pane can
+                # render tokens.in (overwrite the llm_request estimate) + tokens.out.
+                "input_tokens": event.input_tokens,
+                "output_tokens": event.output_tokens,
             },
         }
 
@@ -247,6 +252,10 @@ def _serialize_inner(event: LoopEvent) -> dict[str, Any] | None:
                 ),
                 "risk_level": event.risk_level,
                 "kind": event.kind,
+                # Sprint 57.108: real approval context for the HITL card —
+                # tool_name only for kind="tool"; reason at all 5 escalate sites.
+                "tool_name": event.tool_name,
+                "reason": event.reason,
             },
         }
 

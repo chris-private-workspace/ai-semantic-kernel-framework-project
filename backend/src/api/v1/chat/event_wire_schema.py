@@ -34,9 +34,10 @@ Key Components:
     - validate_ts_type(spec): pragmatic TS-type-string sanity check.
 
 Created: 2026-06-02 (Sprint 57.67)
-Last Modified: 2026-06-10
+Last Modified: 2026-06-12
 
 Modification History (newest-first):
+    - 2026-06-12: Sprint 57.108 — approval_requested +tool_name/reason; llm_response +in/out tokens
     - 2026-06-11: Sprint 57.101 — add message_injected wire-type (Cat 1 injection) 23→24
     - 2026-06-10: Sprint 57.100 — approval_requested +kind field (no new wire-type; 22 unchanged)
     - 2026-06-09: Sprint 57.96 — add subagent_child wire-type (Cat 11 Scope B turn-stream) 22→23
@@ -99,6 +100,8 @@ WIRE_SCHEMA: dict[str, dict[str, str]] = {
         "tool_calls": "LLMToolCall[]",
         "thinking": "string | null",
         "cached_input_tokens": "number",
+        "input_tokens": "number",
+        "output_tokens": "number",
     },
     "tool_call_request": {
         "tool_call_id": "string",
@@ -122,6 +125,8 @@ WIRE_SCHEMA: dict[str, dict[str, str]] = {
         "approval_request_id": "string | null",
         "risk_level": "string",
         "kind": "string",
+        "tool_name": "string | null",
+        "reason": "string",
     },
     "approval_received": {
         "approval_request_id": "string | null",

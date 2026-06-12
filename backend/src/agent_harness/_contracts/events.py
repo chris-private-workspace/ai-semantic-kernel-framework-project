@@ -20,9 +20,10 @@ Owner: 01-eleven-categories-spec.md §範疇 1
 Single-source: 17.md §4.1
 
 Created: 2026-04-29 (Sprint 49.1)
-Last Modified: 2026-06-03
+Last Modified: 2026-06-12
 
 Modification History (newest-first):
+    - 2026-06-12: Sprint 57.108 — ApprovalRequested +tool_name/reason (HITL card wire)
     - 2026-06-11: Sprint 57.101 — add MessageInjected (Cat 1 between-turns injection wire event)
     - 2026-06-10: Sprint 57.100 — ApprovalRequested +kind (pause kind on the wire; no new type)
     - 2026-06-09: Sprint 57.96 — add SubagentChildEvent wrapper (Cat 11 Scope B turn-stream)
@@ -405,6 +406,11 @@ class ApprovalRequested(LoopEvent):
     # Sprint 57.100: the pause kind (tool/input/between_turns/output/verification)
     # so the chat-v2 HITL UI can branch — verification reject coaches one turn.
     kind: str = ""
+    # Sprint 57.108: real approval context for the chat-v2 HITL card — tool_name
+    # only at the tool-escalate site (tc.name; None for the other 4 kinds);
+    # reason from the in-scope escalate reason at all 5 sites.
+    tool_name: str | None = None
+    reason: str = ""
 
 
 @dataclass(frozen=True)

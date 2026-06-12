@@ -48,6 +48,7 @@
  * Created: 2026-05-24 (Sprint 57.37 Day 1 US-A1)
  *
  * Modification History:
+ *   - 2026-06-12: Sprint 57.108 — add token actuals + approval tool context literals (type contract)
  *   - 2026-06-02: Sprint 57.66 — add cache fields to llm_response/loop_end literals (type contract)
  *   - 2026-05-24: Initial creation (Sprint 57.37 Day 1 US-A1)
  *
@@ -84,6 +85,8 @@ export const DEMO_LOOP_EVENTS: LoopEvent[] = [
       ],
       thinking: "User flagged P1. SLO at 1% breached — checking recent incidents to find correlated events.",
       cached_input_tokens: 0,
+      input_tokens: 1180,
+      output_tokens: 96,
     },
   },
   {
@@ -148,11 +151,19 @@ export const DEMO_LOOP_EVENTS: LoopEvent[] = [
       ],
       thinking: "Root cause likely connection-pool exhaustion. High-risk tool requires HITL.",
       cached_input_tokens: 896,
+      input_tokens: 2410,
+      output_tokens: 142,
     },
   },
   {
     type: "approval_requested",
-    data: { approval_request_id: "a8f3.k2p1", risk_level: "high", kind: "tool" },
+    data: {
+      approval_request_id: "a8f3.k2p1",
+      risk_level: "high",
+      kind: "tool",
+      tool_name: "k8s.set_env",
+      reason: "high-risk mutation on a production service requires approval",
+    },
   },
   {
     type: "loop_end",

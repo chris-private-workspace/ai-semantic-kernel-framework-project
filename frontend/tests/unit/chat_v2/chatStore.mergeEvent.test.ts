@@ -15,6 +15,7 @@
  * Created: 2026-05-17 (Sprint 57.21 Day 1)
  *
  * Modification History:
+ *   - 2026-06-12: Sprint 57.108 — HITL tool/reason + traceId/spanId/tokens/duration capture coverage
  *   - 2026-06-11: Sprint 57.101 B1 — message_injected → UserTurn(injected) coverage
  *   - 2026-06-03: Sprint 57.75 — span_started/span_ended/memory_accessed → spans + memoryOps slice coverage
  *   - 2026-06-02: Sprint 57.69 — agent_handoff pivot + handoffBanner / pivotSession / dismiss coverage
@@ -47,12 +48,17 @@ const llmResponse = (opts: {
   content?: string;
   thinking?: string | null;
   toolCalls?: Array<{ id: string; name: string; arguments: Record<string, unknown> }>;
+  inputTokens?: number;
+  outputTokens?: number;
 }): LoopEvent => ({
   type: "llm_response",
   data: {
     content: opts.content ?? "",
     thinking: opts.thinking ?? null,
     tool_calls: opts.toolCalls ?? [],
+    // Sprint 57.108: per-call token actuals (omitted by default — old-frame shape).
+    input_tokens: opts.inputTokens,
+    output_tokens: opts.outputTokens,
   },
 });
 
@@ -114,6 +120,16 @@ const subChild = (
 const approvalRequested = (id: string, level = "HIGH", kind = "tool"): LoopEvent => ({
   type: "approval_requested",
   data: { approval_request_id: id, risk_level: level, kind },
+});
+
+// Sprint 57.108: the tool-escalate frame shape — tool_name + reason on the wire.
+const approvalRequestedWithContext = (
+  id: string,
+  toolName: string | null,
+  reason: string,
+): LoopEvent => ({
+  type: "approval_requested",
+  data: { approval_request_id: id, risk_level: "HIGH", kind: "tool", tool_name: toolName, reason },
 });
 
 const approvalReceived = (id: string, decision = "APPROVED"): LoopEvent => ({
@@ -227,6 +243,52 @@ describe("chatStore.mergeEvent Turn block sequence (Sprint 57.21 Day 1)", () => 
     expect(t.tokensOut).toBeNull();
     expect(t.costUsd).toBeNull();
     expect(t.traceId).toBeNull();
+  });
+
+  test("turn_start captures the frame trace_id + links the running TURN span (Sprint 57.108)", () => {
+    useChatStore
+      .getState()
+      .mergeEvent(spanStarted("sp-turn-1", { type: "TURN", name: "agent_loop.turn" }));
+    useChatStore.getState().mergeEvent({
+      type: "turn_start",
+      data: { turn_num: 1, trace_id: "tr-abc" },
+    } as unknown as LoopEvent);
+    const t = lastAgentTurn(useChatStore.getState().turns);
+    expect(t.traceId).toBe("tr-abc");
+    expect(t.spanId).toBe("sp-turn-1");
+  });
+
+  test("second turn links its own TURN span, not the first turn's (Sprint 57.108)", () => {
+    useChatStore.getState().mergeEvent(spanStarted("sp-t1", { type: "TURN" }));
+    useChatStore.getState().mergeEvent(turnStart());
+    useChatStore.getState().mergeEvent(spanEnded("sp-t1", { type: "TURN", durationMs: 500 }));
+    useChatStore.getState().mergeEvent(spanStarted("sp-t2", { type: "TURN" }));
+    useChatStore.getState().mergeEvent(turnStart());
+    const state = useChatStore.getState();
+    const agentTurns = state.turns.filter((t) => t.role === "agent") as AgentTurn[];
+    expect(agentTurns[0].spanId).toBe("sp-t1");
+    expect(agentTurns[0].durationMs).toBe(500); // TURN span_ended filled it
+    expect(agentTurns[1].spanId).toBe("sp-t2");
+  });
+
+  test("llm_response token actuals overwrite the llm_request estimate (Sprint 57.108)", () => {
+    useChatStore.getState().mergeEvent(turnStart());
+    useChatStore.getState().mergeEvent(llmRequest(100));
+    useChatStore
+      .getState()
+      .mergeEvent(llmResponse({ content: "hi", inputTokens: 1200, outputTokens: 345 }));
+    const t = lastAgentTurn(useChatStore.getState().turns);
+    expect(t.tokensIn).toBe(1200);
+    expect(t.tokensOut).toBe(345);
+  });
+
+  test("llm_response without token actuals keeps prior values (old frames; Sprint 57.108)", () => {
+    useChatStore.getState().mergeEvent(turnStart());
+    useChatStore.getState().mergeEvent(llmRequest(100));
+    useChatStore.getState().mergeEvent(llmResponse({ content: "hi" }));
+    const t = lastAgentTurn(useChatStore.getState().turns);
+    expect(t.tokensIn).toBe(100); // llm_request estimate preserved
+    expect(t.tokensOut).toBeNull();
   });
 
   test("message_injected appends a UserTurn tagged injected (Sprint 57.101 B1)", () => {
@@ -480,6 +542,22 @@ describe("chatStore.mergeEvent Turn block sequence (Sprint 57.21 Day 1)", () => 
     expect(hitl.kind).toBe("");
   });
 
+  test("approval_requested carries real tool context onto the HITLTurn (Sprint 57.108)", () => {
+    useChatStore
+      .getState()
+      .mergeEvent(approvalRequestedWithContext("ap-t", "wire_transfer", "matched risky-action pattern"));
+    const hitl = useChatStore.getState().turns.find((t) => t.role === "hitl") as HITLTurn;
+    expect(hitl.tool).toBe("wire_transfer");
+    expect(hitl.rationale).toBe("matched risky-action pattern");
+  });
+
+  test("approval_requested without tool context falls back to '—' (Sprint 57.108)", () => {
+    useChatStore.getState().mergeEvent(approvalRequested("ap-old"));
+    const hitl = useChatStore.getState().turns.find((t) => t.role === "hitl") as HITLTurn;
+    expect(hitl.tool).toBe("—");
+    expect(hitl.rationale).toBe("—");
+  });
+
   test("approval_received dual-emit: HITLTurn decision + approvals dict update", () => {
     useChatStore.getState().mergeEvent(approvalRequested("ap-2", "CRITICAL"));
     useChatStore.getState().mergeEvent(approvalReceived("ap-2", "REJECTED"));
@@ -559,6 +637,22 @@ describe("chatStore.mergeEvent Turn block sequence (Sprint 57.21 Day 1)", () => 
     expect(spans[0].status).toBe("done");
     expect(spans[0].durationMs).toBe(42);
     expect(spans[0].parentSpanId).toBe("");
+  });
+
+  test("span_ended TURN fills the matching AgentTurn.durationMs (Sprint 57.108 — no turn_end event)", () => {
+    useChatStore.getState().mergeEvent(spanStarted("sp-turn", { type: "TURN" }));
+    useChatStore.getState().mergeEvent(turnStart());
+    useChatStore.getState().mergeEvent(spanEnded("sp-turn", { type: "TURN", durationMs: 1234 }));
+    const t = lastAgentTurn(useChatStore.getState().turns);
+    expect(t.durationMs).toBe(1234);
+  });
+
+  test("span_ended non-TURN does not touch AgentTurn.durationMs (Sprint 57.108)", () => {
+    useChatStore.getState().mergeEvent(spanStarted("sp-llm", { type: "LLM_CALL" }));
+    useChatStore.getState().mergeEvent(turnStart());
+    useChatStore.getState().mergeEvent(spanEnded("sp-llm", { type: "LLM_CALL", durationMs: 77 }));
+    const t = lastAgentTurn(useChatStore.getState().turns);
+    expect(t.durationMs).toBeNull();
   });
 
   test("nested spans preserve parent_span_id linkage (LOOP → TURN → LLM_CALL)", () => {

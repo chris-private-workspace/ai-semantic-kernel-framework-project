@@ -32,9 +32,10 @@
  *   ALSO feeding the new Turn block render path for /chat-v2 mockup-fidelity.
  *
  * Created: 2026-04-30 (Sprint 50.2 Day 3.3)
- * Last Modified: 2026-06-10
+ * Last Modified: 2026-06-12
  *
  * Modification History:
+ *   - 2026-06-12: Sprint 57.108 — HITL tool/reason + turn traceId/spanId/tokens/duration captures
  *   - 2026-06-12: Sprint 57.107 B3 — +loadSessions (real GET /sessions → Session[]; replaces fixture)
  *   - 2026-06-11: Sprint 57.103 B2b — SubagentEntry +mode +tokensUsed; child text += inner.text
  *   - 2026-06-11: Sprint 57.101 B1 — message_injected → UserTurn(injected) (mid-run injection render)
@@ -380,6 +381,14 @@ export const useChatStore = create<ChatStoreState>((set) => ({
         }
 
         case "turn_start": {
+          // Sprint 57.108: trace_id rides EVERY frame (sse.py wrapper injects it).
+          // The turn's TURN span opened just BEFORE TurnStarted (loop.py emission
+          // order: SpanStarted(TURN) → TurnStarted), so the newest running TURN
+          // span in the spans slice IS this turn's span — linking here, not in
+          // span_started, avoids attaching to the previous turn.
+          const turnSpan = [...s.spans]
+            .reverse()
+            .find((sp) => sp.spanType === "TURN" && sp.status === "running");
           const newAgentTurn: AgentTurn = {
             role: "agent",
             id: nextTurnId(),
@@ -391,8 +400,8 @@ export const useChatStore = create<ChatStoreState>((set) => ({
             tokensOut: null,
             tokensThinking: null,
             costUsd: null,
-            traceId: null,
-            spanId: null,
+            traceId: ev.data.trace_id ?? null,
+            spanId: turnSpan?.spanId ?? null,
           };
           return { ...s, rawEvents, turns: [...s.turns, newAgentTurn] };
         }
@@ -459,7 +468,15 @@ export const useChatStore = create<ChatStoreState>((set) => ({
                   isError: false,
                 });
               }
-              return { ...t, blocks: newBlocks };
+              // Sprint 57.108: per-call token actuals (overwrite the llm_request
+              // estimate; keep prior value for 0/absent — old frames lack the
+              // fields and an unmeasured 0 must not masquerade as a real count).
+              return {
+                ...t,
+                blocks: newBlocks,
+                tokensIn: ev.data.input_tokens > 0 ? ev.data.input_tokens : t.tokensIn,
+                tokensOut: ev.data.output_tokens > 0 ? ev.data.output_tokens : t.tokensOut,
+              };
             }),
           };
         }
@@ -543,13 +560,16 @@ export const useChatStore = create<ChatStoreState>((set) => ({
             at: nowIso(),
             title: `Approval required: ${ev.data.risk_level}`,
             severity: mapRiskLevel(ev.data.risk_level),
-            tool: "—",
+            // Sprint 57.108: real approval context from the wire — tool_name is
+            // set only for kind="tool"; reason at all 5 escalate sites. "—" stays
+            // the honest fallback for old frames / absent values.
+            tool: ev.data.tool_name ?? "—",
             // Sprint 57.100: carry the pause kind so HITLTurn can branch REJECT
             // (verification → coach one turn; others → terminate). "" for an
             // older replayed event with no kind on the wire.
             kind: ev.data.kind ?? "",
             payload: "—",
-            rationale: "—",
+            rationale: ev.data.reason || "—",
             approvalRequestId: id,
             decision: null,
             countdownSec: null,
@@ -654,6 +674,17 @@ export const useChatStore = create<ChatStoreState>((set) => ({
           // span so the waterfall still shows it (no parent linkage available).
           const sid = ev.data.span_id;
           if (!sid) return { ...s, rawEvents };
+          // Sprint 57.108: a closing TURN span carries the turn's wall-clock —
+          // fill the matching AgentTurn.durationMs (there is no turn_end event;
+          // spanId-keyed so emission order doesn't matter).
+          const nextTurns =
+            ev.data.span_type === "TURN"
+              ? s.turns.map((t) =>
+                  t.role === "agent" && t.spanId === sid
+                    ? { ...t, durationMs: ev.data.duration_ms }
+                    : t,
+                )
+              : s.turns;
           const idx = s.spans.findIndex((sp) => sp.spanId === sid);
           if (idx === -1) {
             const span: SpanNode = {
@@ -664,7 +695,7 @@ export const useChatStore = create<ChatStoreState>((set) => ({
               durationMs: ev.data.duration_ms,
               status: "done",
             };
-            return { ...s, rawEvents, spans: [...s.spans, span] };
+            return { ...s, rawEvents, turns: nextTurns, spans: [...s.spans, span] };
           }
           const nextSpans = s.spans.slice();
           nextSpans[idx] = {
@@ -672,7 +703,7 @@ export const useChatStore = create<ChatStoreState>((set) => ({
             durationMs: ev.data.duration_ms,
             status: "done",
           };
-          return { ...s, rawEvents, spans: nextSpans };
+          return { ...s, rawEvents, turns: nextTurns, spans: nextSpans };
         }
 
         case "memory_accessed": {

@@ -40,6 +40,8 @@ export interface LLMResponseEvent {
     tool_calls: LLMToolCall[];
     thinking: string | null;
     cached_input_tokens: number;
+    input_tokens: number;
+    output_tokens: number;
   };
 }
 
@@ -83,6 +85,8 @@ export interface ApprovalRequestedEvent {
     approval_request_id: string | null;
     risk_level: string;
     kind: string;
+    tool_name: string | null;
+    reason: string;
   };
 }
 

@@ -454,8 +454,11 @@ async def test_deferred_escalate_pauses_with_awaiting_approval() -> None:
     assert completes, "expected a LoopCompleted"
     assert completes[-1].stop_reason == TerminationReason.AWAITING_APPROVAL.value
 
-    # ApprovalRequested emitted.
-    assert any(isinstance(e, ApprovalRequested) for e in events)
+    # ApprovalRequested emitted — Sprint 57.108: the tool site carries real context.
+    approvals = [e for e in events if isinstance(e, ApprovalRequested)]
+    assert approvals
+    assert approvals[-1].tool_name == "sensitive_tool"
+    assert approvals[-1].reason
 
     # wait_for_decision NOT called (the whole point of deferred mode).
     assert hitl.wait_called is False
@@ -805,7 +808,9 @@ async def test_input_escalate_pauses_before_llm() -> None:
 
     completes = [e for e in events if isinstance(e, LoopCompleted)]
     assert completes[-1].stop_reason == TerminationReason.AWAITING_APPROVAL.value
-    assert any(isinstance(e, ApprovalRequested) for e in events)
+    # Sprint 57.108: non-tool kinds carry reason but NO tool_name.
+    approvals = [e for e in events if isinstance(e, ApprovalRequested)]
+    assert approvals and approvals[-1].tool_name is None and approvals[-1].reason
     assert hitl.wait_called is False  # deferred, not blocking
     assert not executor.executed  # no tool — input pause is before the loop body
     # Checkpoint carries an INPUT-kind pending_approval (no tool_call).
@@ -1087,7 +1092,9 @@ async def test_between_turns_escalate_pauses_before_next_turn() -> None:
     # Paused at the top of turn 1 (awaiting_approval) before any turn-1 LLM call.
     completes = [e for e in events if isinstance(e, LoopCompleted)]
     assert completes[-1].stop_reason == TerminationReason.AWAITING_APPROVAL.value
-    assert any(isinstance(e, ApprovalRequested) for e in events)
+    # Sprint 57.108: non-tool kinds carry reason but NO tool_name.
+    approvals = [e for e in events if isinstance(e, ApprovalRequested)]
+    assert approvals and approvals[-1].tool_name is None and approvals[-1].reason
     assert hitl.wait_called is False  # deferred, not blocking
     # Checkpoint carries a BETWEEN_TURNS-kind pending_approval (no tool_call).
     pauses = [s for s in checkpointer.saved if "pending_approval" in s.durable.metadata]
@@ -1308,7 +1315,9 @@ async def test_output_escalate_pauses_before_delivery() -> None:
     assert not any(isinstance(e, LLMResponded) for e in events)
     completes = [e for e in events if isinstance(e, LoopCompleted)]
     assert completes[-1].stop_reason == TerminationReason.AWAITING_APPROVAL.value
-    assert any(isinstance(e, ApprovalRequested) for e in events)
+    # Sprint 57.108: non-tool kinds carry reason but NO tool_name.
+    approvals = [e for e in events if isinstance(e, ApprovalRequested)]
+    assert approvals and approvals[-1].tool_name is None and approvals[-1].reason
     assert hitl.wait_called is False  # deferred, not blocking
     # Checkpoint carries an OUTPUT-kind pending_approval with the held-answer snapshot.
     pauses = [s for s in checkpointer.saved if "pending_approval" in s.durable.metadata]
@@ -1787,6 +1796,8 @@ async def test_verify_escalate_on_max_pauses_for_human() -> None:
     )
     approvals = [e for e in events if isinstance(e, ApprovalRequested)]
     assert approvals and approvals[-1].risk_level == "HIGH"
+    # Sprint 57.108: the verification escalate carries the joined verifier reason.
+    assert approvals[-1].tool_name is None and approvals[-1].reason
     assert hitl.wait_called is False  # deferred, not blocking
     # The checkpoint carries a verification-kind pending_approval with the held answer
     # + the durable verification_escalated flag (the bound for one coached turn).

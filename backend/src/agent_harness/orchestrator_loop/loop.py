@@ -42,9 +42,10 @@ Description:
     revisit if per-run override is needed.
 
 Created: 2026-04-30 (Sprint 50.1 Day 2.2)
-Last Modified: 2026-06-10
+Last Modified: 2026-06-12
 
 Modification History (newest-first):
+    - 2026-06-12: Sprint 57.108 — 5 ApprovalRequested yields +reason= (tool site also +tool_name=)
     - 2026-06-11: Sprint 57.101 B1 — +message_inbox; _run_turns drains before between-turns gate
     - 2026-06-10: Sprint 57.100 — 5 ApprovalRequested yields +kind= (pause kind on the wire)
     - 2026-06-10: Sprint 57.99 A2 — resume() verify-kind: APPROVE replays / REJECT 1 coached turn
@@ -832,6 +833,7 @@ class AgentLoopImpl(AgentLoop):
             approval_request_id=request_id,
             risk_level=risk_level.value,
             kind="input",
+            reason=reason,
             trace_context=ctx,
         )
 
@@ -1049,6 +1051,8 @@ class AgentLoopImpl(AgentLoop):
             approval_request_id=request_id,
             risk_level=risk_level.value,
             kind="tool",
+            tool_name=tc.name,
+            reason=guardrail_reason,
             trace_context=ctx,
         )
 
@@ -1453,6 +1457,7 @@ class AgentLoopImpl(AgentLoop):
             approval_request_id=request_id,
             risk_level=risk_level.value,
             kind="between_turns",
+            reason=reason,
             trace_context=ctx,
         )
 
@@ -1617,6 +1622,7 @@ class AgentLoopImpl(AgentLoop):
             approval_request_id=request_id,
             risk_level=risk_level.value,
             kind="output",
+            reason=reason,
             trace_context=ctx,
         )
 
@@ -1834,6 +1840,7 @@ class AgentLoopImpl(AgentLoop):
             approval_request_id=request_id,
             risk_level=risk_level.value,
             kind="verification",
+            reason=reason,
             trace_context=ctx,
         )
 

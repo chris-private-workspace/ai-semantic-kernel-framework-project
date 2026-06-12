@@ -94,6 +94,17 @@ class TestSerializeLoopEvent:
         assert out is not None
         assert out["type"] == "llm_response"
         assert out["data"]["cached_input_tokens"] == 321
+        # Sprint 57.108: per-call token actuals present, default to 0 when unset.
+        assert out["data"]["input_tokens"] == 0
+        assert out["data"]["output_tokens"] == 0
+
+    def test_llm_responded_token_actuals(self) -> None:
+        """Sprint 57.108: llm_response carries per-call input/output token actuals."""
+        ev = LLMResponded(content="hi", input_tokens=1200, output_tokens=345)
+        out = serialize_loop_event(ev)
+        assert out is not None
+        assert out["data"]["input_tokens"] == 1200
+        assert out["data"]["output_tokens"] == 345
 
     def test_tool_call_failed(self) -> None:
         ev = ToolCallFailed(
@@ -168,6 +179,9 @@ class TestSerializeLoopEvent:
         assert out["data"]["approval_request_id"] == str(rid)
         assert out["data"]["risk_level"] == "HIGH"
         assert out["data"]["kind"] == ""  # Sprint 57.100: default kind on the wire
+        # Sprint 57.108: tool context defaults on the wire (old-frame compatible).
+        assert out["data"]["tool_name"] is None
+        assert out["data"]["reason"] == ""
 
     def test_approval_requested_carries_kind(self) -> None:
         """Sprint 57.100: the pause kind rides the approval_requested wire."""
@@ -177,6 +191,22 @@ class TestSerializeLoopEvent:
         out = serialize_loop_event(ev)
         assert out is not None
         assert out["data"]["kind"] == "verification"
+
+    def test_approval_requested_carries_tool_context(self) -> None:
+        """Sprint 57.108: the tool-escalate approval carries tool_name + reason."""
+        from agent_harness._contracts import ApprovalRequested
+
+        ev = ApprovalRequested(
+            approval_request_id=uuid4(),
+            risk_level="HIGH",
+            kind="tool",
+            tool_name="wire_transfer",
+            reason="matched risky-action pattern",
+        )
+        out = serialize_loop_event(ev)
+        assert out is not None
+        assert out["data"]["tool_name"] == "wire_transfer"
+        assert out["data"]["reason"] == "matched risky-action pattern"
 
     def test_message_injected(self) -> None:
         """Sprint 57.101 B1: MessageInjected → message_injected wire frame."""
