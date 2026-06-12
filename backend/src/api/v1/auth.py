@@ -34,9 +34,10 @@ Description:
     real tenants.id (no more placeholder UUIDs).
 
 Created: 2026-05-09 (Sprint 57.7 Day 1 PM)
-Last Modified: 2026-06-06
+Last Modified: 2026-06-12
 
 Modification History (newest-first):
+    - 2026-06-12: Sprint 57.105 — callback + password-login roles claim DB-sourced at issue time
     - 2026-06-06: Sprint 57.86 — add POST /auth/password-login (local credentials; generic 401)
     - 2026-05-10: Sprint 57.13 US-A4 — add POST /auth/dev-login (dev-only fake login; 404 in prod)
     - 2026-05-10: Sprint 57.13 US-A1 — add GET /auth/me + /callback 302→SPA + Settings cookie attrs
@@ -82,6 +83,7 @@ from platform_layer.identity.oidc import (
     OIDCStateError,
     WorkOSOIDCFlow,
 )
+from platform_layer.identity.rbac import RBACManager
 from platform_layer.middleware.tenant_context import get_db_session_with_tenant
 
 logger = logging.getLogger(__name__)
@@ -295,11 +297,16 @@ async def callback(
 
     user = await _upsert_user_from_oidc(profile=profile, tenant_id=tenant.id, db=db)
 
+    # Issue-time DB roles (Sprint 57.105): the JWT claim carries the user's real
+    # grants ("user" baseline ∪ Role/UserRole codes) — admin gates read the claim.
+    role_codes = await RBACManager.get_user_role_codes(
+        user_id=user.id, tenant_id=tenant.id, session=db
+    )
     jwt_manager = JWTManager()
     v2_jwt = jwt_manager.encode(
         sub=str(user.id),
         tenant_id=tenant.id,
-        roles=["user"],  # RBAC actual roles loaded per-request via RBACManager
+        roles=sorted({"user", *role_codes}),
         extra={"email": profile.email, "external_id": profile.external_id},
     )
 
@@ -451,11 +458,10 @@ async def dev_login(
 # sign back in without SSO. Mirrors dev-login's JWT/cookie/AuthMeResponse SUCCESS
 # shape, but is a real auth path: a JSON body (creds never in the query string),
 # a real (tenant_code, email) lookup + bcrypt verify (CredentialsService), a
-# SINGLE generic 401 for every failure (no enumeration), roles=["user"] baseline
-# (RBAC resolves real authz per-request, like the OIDC callback). NOT
-# production-gated (unlike dev-login). Rate-limit/lockout is a tracked carryover
-# (AD-Auth-PasswordLogin-Lockout-Phase58).
-_PASSWORD_LOGIN_ROLES: tuple[str, ...] = ("user",)
+# SINGLE generic 401 for every failure (no enumeration). The roles claim is
+# DB-sourced at issue time ("user" ∪ Role/UserRole codes — Sprint 57.105), like
+# the OIDC callback. NOT production-gated (unlike dev-login). Rate-limit/lockout
+# is a tracked carryover (AD-Auth-PasswordLogin-Lockout-Phase58).
 
 
 class PasswordLoginRequest(BaseModel):
@@ -488,7 +494,10 @@ async def password_login(
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
     tenant = (await db.execute(select(Tenant).where(Tenant.id == user.tenant_id))).scalar_one()
-    roles = list(_PASSWORD_LOGIN_ROLES)
+    role_codes = await RBACManager.get_user_role_codes(
+        user_id=user.id, tenant_id=user.tenant_id, session=db
+    )
+    roles = sorted({"user", *role_codes})
     settings = get_settings()
     v2_jwt = JWTManager().encode(
         sub=str(user.id),

@@ -19,9 +19,10 @@ Description:
     exercised at this layer — covered by integration tests Phase 58+.
 
 Created: 2026-05-09 (Sprint 57.7 Day 2 PM)
-Last Modified: 2026-05-09
+Last Modified: 2026-06-12
 
 Modification History:
+    - 2026-06-12: Sprint 57.105 — add TestGetUserRoleCodes (issue-time JWT roles source)
     - 2026-05-09: Initial creation (Sprint 57.7 US-A3 Day 2)
 
 Related:
@@ -34,7 +35,7 @@ Related:
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -105,6 +106,38 @@ class TestRBACManagerHasRoleCode:
             session=AsyncMock(),
         )
         assert result is False
+
+
+class TestGetUserRoleCodes:
+    """Sprint 57.105 — issue-time JWT roles source (login handlers bake into claim)."""
+
+    @staticmethod
+    def _session_returning(codes: list[str]) -> AsyncMock:
+        """AsyncMock session whose execute() yields a Result with scalars().all() == codes."""
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = codes
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=result)
+        return session
+
+    @pytest.mark.asyncio
+    async def test_codes_sorted_and_deduped(self) -> None:
+        """Duplicate grants collapse; output sorted for a deterministic claim."""
+        session = self._session_returning(["user", "admin", "admin"])
+        codes = await RBACManager.get_user_role_codes(
+            user_id=uuid4(), tenant_id=uuid4(), session=session
+        )
+        assert codes == ["admin", "user"]
+        session.execute.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_no_grants_returns_empty(self) -> None:
+        """Role-less user → [] (claim stays the ['user'] baseline at the call site)."""
+        session = self._session_returning([])
+        codes = await RBACManager.get_user_role_codes(
+            user_id=uuid4(), tenant_id=uuid4(), session=session
+        )
+        assert codes == []
 
 
 class TestRequireRoleHybridPath:

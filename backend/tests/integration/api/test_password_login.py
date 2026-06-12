@@ -1,8 +1,10 @@
 """
 File: backend/tests/integration/api/test_password_login.py
-Purpose: POST /auth/password-login integration tests (Sprint 57.86 / US-2..US-5).
+Purpose: POST /auth/password-login integration tests (Sprint 57.86 / US-2..US-5;
+         Sprint 57.105 DB-sourced roles claim chain).
 Category: Tests / Integration / API (C-12 IAM credentials)
 Created: 2026-06-06 (Sprint 57.86 Day 3)
+Modified: 2026-06-12 (Sprint 57.105 — DB-sourced claim: grant/cross-tenant/founding-admin chain)
 
 Verifies the endpoint end-to-end over a real Postgres test session:
   - success → 200 + v2_jwt cookie + AuthMeResponse shape (US-2)
@@ -32,8 +34,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.v1.auth import router as auth_router
 from api.v1.invites import router as invites_router
+from api.v1.tenants import router as tenants_router
 from infrastructure.db.models.audit import AuditLog
-from infrastructure.db.models.identity import Role
+from infrastructure.db.models.identity import Role, User, UserRole
 from infrastructure.db.session import get_db_session
 from platform_layer.identity.auth import require_admin_platform_role
 from platform_layer.identity.credentials import CredentialsService
@@ -252,6 +255,104 @@ async def test_invite_accept_then_password_login(db_session: AsyncSession) -> No
     assert login.status_code == 200, login.text
     assert login.json()["user"]["email"] == "joiner@pwlinv.test"
     assert login.cookies.get("v2_jwt")
+    # Sprint 57.105: the invited role is claim-effective at first real login
+    assert login.json()["roles"] == ["member", "user"]
+
+
+# ----- DB-sourced roles claim (Sprint 57.105) -------------------------------
+
+
+async def test_login_claim_carries_db_role_grants(db_session: AsyncSession) -> None:
+    """US-3/US-4 — a Role(code='admin') grant → claim + body roles == ['admin', 'user']."""
+    tenant = await _seed_user_with_password(
+        db_session, code="PWL_RBAC", email="boss@pwl.test", password="rightpw123"
+    )
+    user = (
+        await db_session.execute(select(User).where(User.email == "boss@pwl.test"))
+    ).scalar_one()
+    role = Role(tenant_id=tenant.id, code="admin", display_name="Admin")
+    db_session.add(role)
+    await db_session.flush()
+    db_session.add(UserRole(user_id=user.id, role_id=role.id))
+    await db_session.flush()
+
+    app = _build_app(db_session)
+    async with _client(app) as ac:
+        resp = await ac.post(
+            "/api/v1/auth/password-login",
+            json={"tenant_code": "PWL_RBAC", "email": "boss@pwl.test", "password": "rightpw123"},
+        )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["roles"] == ["admin", "user"]
+    claims = JWTManager().decode(resp.cookies["v2_jwt"])
+    assert claims.roles == ["admin", "user"]
+
+
+async def test_login_claim_ignores_other_tenant_grants(db_session: AsyncSession) -> None:
+    """multi-tenant 鐵律 — a grant under ANOTHER tenant never leaks into the claim."""
+    tenant = await _seed_user_with_password(
+        db_session, code="PWL_XT_A", email="xt@pwl.test", password="rightpw123"
+    )
+    assert tenant is not None
+    user = (await db_session.execute(select(User).where(User.email == "xt@pwl.test"))).scalar_one()
+    other = await seed_tenant(db_session, code="PWL_XT_B")
+    await _ctx(db_session, other.id)
+    foreign_role = Role(tenant_id=other.id, code="admin", display_name="Admin B")
+    db_session.add(foreign_role)
+    await db_session.flush()
+    db_session.add(UserRole(user_id=user.id, role_id=foreign_role.id))
+    await db_session.flush()
+
+    app = _build_app(db_session)
+    async with _client(app) as ac:
+        resp = await ac.post(
+            "/api/v1/auth/password-login",
+            json={"tenant_code": "PWL_XT_A", "email": "xt@pwl.test", "password": "rightpw123"},
+        )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["roles"] == ["user"]  # the foreign-tenant grant is invisible
+    assert JWTManager().decode(resp.cookies["v2_jwt"]).roles == ["user"]
+
+
+async def test_register_then_password_login_claim_is_admin(db_session: AsyncSession) -> None:
+    """US-4 founding-admin chain — the 57.87 register-seeded admin grant becomes
+    claim-effective at the first real login. Register collects NO password (D11),
+    so the password is set via CredentialsService (the 57.86-proven primitive)."""
+    app = _build_app(db_session)
+    app.include_router(tenants_router, prefix="/api/v1")
+    async with _client(app) as ac:
+        reg = await ac.post(
+            "/api/v1/tenants/register",
+            json={
+                "email": "founder@pwl105.test",
+                "full_name": "Founder 105",
+                "company_name": "Co 105",
+                "tenant_slug": "pwl105",
+                "region": "global",
+                "plan": "pro",
+                "size": "11-50",
+            },
+        )
+        assert reg.status_code == 201, reg.text
+        user_id = UUID(reg.json()["user"]["id"])
+        tenant_id = reg.json()["tenant"]["id"]
+        founder = (await db_session.execute(select(User).where(User.id == user_id))).scalar_one()
+        await _ctx(db_session, tenant_id)
+        await CredentialsService().set_password(user=founder, raw="founderpw1")
+        await db_session.flush()
+
+        login = await ac.post(
+            "/api/v1/auth/password-login",
+            json={
+                "tenant_code": "pwl105",
+                "email": "founder@pwl105.test",
+                "password": "founderpw1",
+            },
+        )
+    assert login.status_code == 200, login.text
+    assert login.json()["roles"] == ["admin", "user"]
+    claims = JWTManager().decode(login.cookies["v2_jwt"])
+    assert claims.roles == ["admin", "user"]
 
 
 # ----- audit ---------------------------------------------------------------

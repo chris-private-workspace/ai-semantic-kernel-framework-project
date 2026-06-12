@@ -18,9 +18,20 @@ It condenses the user's "5-point deepening discussion" into 3 workflows and a re
 
 **Recommended 10-slice order**: A1 → A2 → B1 → B2 → C1 → B3 → C3 → C2 → B4 → A3 (driven by `loop.py` write-contention: A1+B1 both touch loop.py → serialize). **C1 can float to #2** if a per-tenant-governance milestone is prioritized (it doesn't touch loop.py).
 
-**C1 soft-prereq (RESOLVED for C1, Sprint 57.104)**: `AD-RBAC-DB-To-JWT-Wiring-Phase58` (below) — C1 shipped using dev-login's `platform_admin` JWT (`_DEV_LOGIN_ROLES`, `auth.py:378`), so the admin tab + drive-through are fully valid in dev. The prod-OIDC gap (callback hardcodes `roles=["user"]`, `auth.py:302`) is PRE-EXISTING + SHARED (already affects the 57.55-57.57 admin PUTs), NOT a C1 regression; it stays **its own slice** (unblocks production drivability of ALL admin endpoints, not just C1). User confirmed "直接做 C1" (don't bundle).
+**C1 soft-prereq — ✅ FULLY RESOLVED Sprint 57.105**: `AD-RBAC-DB-To-JWT-Wiring-Phase58` shipped as its own slice (per the 57.104 decision below): the OIDC callback + password-login now source the JWT `roles` claim from `RBACManager.get_user_role_codes` (DB `Role JOIN UserRole`, tenant-scoped) — a DB role grant IS authz-effective at login; drive-through proved the full no-dev-login chain (register → password-login → admin renders → model-policy PUT 200; role-less JWT → 403). ISSUE-6 closed. CHANGE-072 + note 23 §5 RESOLVED. *(Historical context: C1 shipped 57.104 using dev-login's `platform_admin` JWT; the prod gap was pre-existing + shared across all 57.55-57.57 admin PUTs; user confirmed "直接做 C1" — don't bundle.)*
 
 > **Status**: roadmap selected/acknowledged by user; NO slice sprint kicked off yet (rolling discipline — A1 plan is written only on explicit user go).
+
+---
+
+## 🆕 Sprint 57.105 Carryover — RBAC DB→JWT wiring SHIPPED (drive-through PASS, zero dev-login)
+
+Sprint 57.105 closed `AD-RBAC-DB-To-JWT-Wiring-Phase58` (see roadmap block above + CHANGE-072 + note 23 §5 RESOLVED). Per the 2026-06-12 interleave decision (RBAC → C3 → B3 → UX → C2 → B4, 1 UX slice per 2-3 harness slices), **next slice: C3** (per-tenant policy 面 + risky-action detector).
+
+- **`AD-FE-Tenant-Display-Fixture-Phase58`** (🆕 from the 57.105 drive-through) — the sidebar tenant-switcher + header tenant label render fixture **"acme-prod tenant_01h9a2 · Pro"** regardless of the real logged-in tenant (the 57.105 drive-through logged into `dt57105-rbac`; the Tenant Settings page itself showed the REAL tenant). FE tenant-display sourcing (authStore tenant → AppShell) is a scoped wiring task; pre-existing, NOT a 57.105 regression.
+- **`AD-Register-OIDC-User-Linkage-Phase58`** — still open (register-by-email vs callback-upsert-by-external_id second-user-row risk; why the 57.105 drive-through spine is password-login).
+- dev-login `_DEV_LOGIN_ROLES` hardcode — dev-only debt (prod 404), documented in CHANGE-072; folds into the OIDC-linkage slice when picked.
+- Claim staleness until re-login — **documented invariant** (no token refresh by design — AP-6 avoidance), not an open item.
 
 ---
 
@@ -279,7 +290,7 @@ Sprint 57.103 (B2b) shipped the **backend primitive** (proven, reusable) + the *
 - **`AD-AdminTenants-ListHeader-Fixture-String`** (✅ **RESOLVED 2026-06-07 — FIX-030**) — /admin-tenants "All tenants" subtitle was hardcoded `"48 active · 3 anomalies in last 24h"`. Fix: derive from real loaded rows — `` `${tenants.length} tenants` `` (table already real-data); dropped the fixture string + deleted orphan `_fixtures.ts` + its obsolete single-assertion test (coverage moved to `TenantsTable.test.tsx`). Drive-through verified: subtitle shows **"50 tenants"** (real count), "48 active" gone (`shots/24-admin-tenants-real-subtitle-FIX-030.png`).
 
 ### Confirmed (already-tracked) by the audit
-- **`AD-RBAC-DB-To-JWT-Wiring-Phase58`** (57.87 carryover) — drive-through CONFIRMS live: dev-login selected `admin` but every page renders role=`user`, admin-only content (cost provider-mix) not gated. Cosmetic role, not enforced.
+- **`AD-RBAC-DB-To-JWT-Wiring-Phase58`** (✅ **RESOLVED 2026-06-12 — Sprint 57.105**, CHANGE-072) — was: dev-login selected `admin` but every page renders role=`user` (ISSUE-6). Fixed at the issue sites: login bakes DB role codes into the JWT claim; 57.105 drive-through renders **"DT Founder / admin"** + model-policy PUT 200 with zero dev-login; role-less JWT → 403.
 - **`AD-ChatV2-SessionList-Backend`** — chat-v2 session list still DEMO-labelled (correct/honest); backend list endpoint still pending.
 
 ### 🆕 Deep Drive-Through (2026-06-07 — 15 full-impl pages, per-control)

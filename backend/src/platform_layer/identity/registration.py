@@ -17,11 +17,11 @@ Description:
     `_set_tenant(db, new_tenant.id)` (mirrors invites.py + the billing_outbox
     drainer — set_config app.tenant_id per write).
 
-    Honest boundary (Sprint 57.87): the seeded admin UserRole is DB-real but NOT
-    yet authz-effective — gating reads the JWT 'roles' claim and the OIDC callback
-    bakes roles=["user"]; making the DB role grant the JWT admin is a separate
-    DB-RBAC→JWT wiring slice (AD-RBAC-DB-To-JWT-Wiring-Phase58). This service is
-    the codebase's FIRST real Role(...) creation (seed_default_roles is a stub).
+    Authz effectiveness (Sprint 57.105): the seeded admin UserRole is JWT-effective
+    at login — the OIDC callback + password-login source the roles claim from
+    Role/UserRole at issue time (closes AD-RBAC-DB-To-JWT-Wiring-Phase58; was the
+    Sprint 57.87 honest boundary). This service is the codebase's FIRST real
+    Role(...) creation (seed_default_roles is a stub).
 
 Key Components:
     - RegistrationError + TenantSlugTakenError (carry an HTTP status hint)
@@ -29,9 +29,10 @@ Key Components:
     - set_/get_/maybe_get_registration_service: lenient singleton (no lifespan wiring)
 
 Created: 2026-06-06 (Sprint 57.87)
-Last Modified: 2026-06-07
+Last Modified: 2026-06-12
 
 Modification History:
+    - 2026-06-12: Sprint 57.105 — honest-boundary note resolved (roles claim now DB-sourced)
     - 2026-06-07: FIX-030 — IntegrityError(code) → TenantSlugTakenError 409 (slug race)
     - 2026-06-06: Initial creation (Sprint 57.87 / US-1..US-3) — self-service registration
 

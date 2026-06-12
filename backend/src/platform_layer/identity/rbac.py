@@ -23,14 +23,16 @@ Description:
     proving architecture works.
 
 Key Components:
-    - RBACManager: stateless class with 2 async static methods
+    - RBACManager: stateless class with 3 async static methods
         - has_role_code() — checks user has any role with code in allowed_codes
+        - get_user_role_codes() — all role codes for a user in a tenant (JWT issue-time source)
         - has_permission() — Day 2 stub for future role_permissions wire (Phase 58+)
 
 Created: 2026-05-09 (Sprint 57.7 Day 2 PM)
-Last Modified: 2026-05-09
+Last Modified: 2026-06-12
 
 Modification History (newest-first):
+    - 2026-06-12: Sprint 57.105 — add get_user_role_codes (issue-time JWT roles source)
     - 2026-05-09: Initial creation (Sprint 57.7 US-A3 Day 2 PM) — DB-backed RBAC
 
 Related:
@@ -135,6 +137,40 @@ class RBACManager:
         )
         result = await session.execute(stmt)
         return result.first() is not None
+
+    @staticmethod
+    async def get_user_role_codes(
+        *,
+        user_id: UUID,
+        tenant_id: UUID,
+        session: AsyncSession,
+    ) -> list[str]:
+        """Return ALL role codes granted to the user within the tenant (sorted, deduped).
+
+        JWT issue-time source (Sprint 57.105): the login handlers (OIDC callback +
+        password-login) call this once per login and bake the result into the JWT
+        `roles` claim — making DB role grants (registration founding admin 57.87,
+        invite-accept 57.85) authz-effective on real sessions.
+
+        Per `multi-tenant-data.md` 鐵律 #2: filtered by tenant_id via Role
+        (UserRole has no tenant column — the JOIN provides the scope).
+
+        Args:
+            user_id: User whose grants to read.
+            tenant_id: Tenant scope (per-tenant role isolation).
+            session: Caller's AsyncSession (REQUIRED — login handlers pass the
+                request session; this path never opens its own).
+
+        Returns:
+            Sorted unique role codes; empty list when the user has no grants.
+        """
+        stmt = (
+            select(Role.code)
+            .join(UserRole, UserRole.role_id == Role.id)
+            .where((UserRole.user_id == user_id) & (Role.tenant_id == tenant_id))
+        )
+        result = await session.execute(stmt)
+        return sorted(set(result.scalars().all()))
 
     @staticmethod
     async def has_permission(
