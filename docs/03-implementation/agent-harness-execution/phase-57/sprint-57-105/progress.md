@@ -53,3 +53,42 @@
 - Infra note: Docker Desktop + Postgres were DOWN at Day-2 start (57.101 Risk Class lesson applied — port check first, `docker compose up -d`, then tests).
 
 ---
+
+## Day 3 — 2026-06-12 — Drive-through (US-5) ✅ PASS + CHANGE-072 + note-23 edit
+
+### Clean restart (Risk Class E)
+
+Environment was already clean: NO listener on :8000/:3007, NO stale python spawn-workers
+(`Win32_Process` sweep = zero python.exe). Started a **fresh no-`--reload` single uvicorn**
+(PID 7672, sole :8000 owner; `api.main:app --app-dir src`) with startup log captured
+(`artifacts/backend-dt57105.log` — "startup complete" + pricing loader wired) + Vite :3007.
+
+### Drive-through — observed vs intended (NO dev-login anywhere)
+
+| Step | Intended | Observed |
+|------|----------|----------|
+| Register | `/auth/register` wizard → 201 | 4-step wizard (Identity → Organization → Plan) → **`POST /tenants/register` 201** (tenant `dt57105-rbac` / `founder@dt57105.test`); wizard then redirected to `/auth/callback` (OIDC, unconfigured locally) → bounced to `/auth/login`. Expected boundary per D9/D11 + `AD-Register-OIDC-User-Linkage-Phase58`. The Confirm step was not observed as a separate stop (Plan-step Continue submitted) — pre-existing wizard flow, out of scope. |
+| Set password (D11 adjustment) | one out-of-band `CredentialsService.set_password` | One inline call (user_id `6af30afd…`, tenant_id `aba7f2a9…`); no leftover script file. |
+| Password-login | `/auth/password-login` → lands in app | **POST 200** + `GET /auth/me` 200 → landed `/cost-dashboard`. |
+| Role renders admin (ISSUE-6) | sidebar/user card shows admin | Sidebar user card: **"DT Founder / admin"**; header "· admin". **ISSUE-6 observably closed** (was: every page renders role=user). Screenshot `dt57105-admin-renders.png`. |
+| Admin write (C1 tab) | Model Policy PUT 200, not 403 | Tenant Settings showed the REAL tenant (DT57105 RBAC Co / dt57105-rbac); Model Policy tab → Edit → action `gpt-5.4-mini` (priced) → Save → **PUT `/admin/tenants/aba7f2a9…/model-policy` 200** + saved value re-rendered. **First admin write ever driven with no dev-login.** Screenshot `dt57105-model-policy-put200.png`. |
+| Negative pole | role-less session → 403 | Minted a role-less JWT (`roles=["user"]`, SAME user/tenant) → same PUT → **403 "Platform admin role required"**. |
+| Cleanup | revert policy edit; note throwaway tenant | Override cleared via the tab (Edit → empty → Save → "System default" re-rendered; clear path proven). Throwaway tenant `dt57105-rbac` left in dev DB (valid data; trial plan; no shared-tenant pollution — the edit never touched acme-prod). |
+
+**Honest carryover (pre-existing, NOT this sprint)**: the sidebar tenant-switcher + header
+tenant label render fixture "acme-prod tenant_01h9a2 · Pro" regardless of the real logged-in
+tenant (the Tenant Settings page itself shows the real tenant). FE tenant-display sourcing is
+a separate AD candidate — logged to next-phase-candidates at closeout.
+
+### Drift finding
+
+| ID | Finding | Implication |
+|----|---------|-------------|
+| D12 | Checklist 3.3 said "17.md — JWT roles-claim sourcing semantics row"; but note 23 §4 (and the 57.84/85/86/87 precedent, 4 sprints) explicitly rules identity **N/A to 17.md** ("identity is a platform_layer surface, NOT one of the 11+1 categories"). Adding a first-ever identity row would break the registry's scope consistency. | Resolved by precedent: semantics recorded in note 23 §5 RESOLVED entry + CHANGE-072 instead; checklist item marked done with annotation (decision = the deliverable). |
+
+### Docs
+
+- `CHANGE-072-rbac-db-to-jwt-wiring.md` created (problem / Option A design / verification / open invariants).
+- note 23 §5: `AD-RBAC-DB-To-JWT-Wiring-Phase58` → **✅ RESOLVED Sprint 57.105** (OIDC-linkage stays open); MHist +1. No new design note (gap-fix continuation).
+
+---

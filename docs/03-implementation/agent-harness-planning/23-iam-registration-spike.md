@@ -7,6 +7,7 @@
 **Closes**: `AD-Auth-Register-Backend-IAM-Block-B-Phase58`
 
 > **Modification History**
+> - 2026-06-12: Sprint 57.105 — §5 RBAC-wiring invariant RESOLVED (DB-sourced roles claim; CHANGE-072)
 > - 2026-06-06: Initial creation — extracted from Sprint 57.87 shipped impl (8-point gate self-check in retrospective)
 
 ---
@@ -54,7 +55,7 @@ N/A to `17-cross-category-interfaces.md` — identity is a `platform_layer` surf
 
 ## 5. Open Invariants (Deferred — NOT verified this spike)
 
-- **`AD-RBAC-DB-To-JWT-Wiring-Phase58`** (NEW) — the seeded admin `UserRole` is DB-real but **NOT yet authz-effective**: gating reads the JWT `roles` claim (`platform_layer/identity/auth.py` `_require_role`) and the OIDC callback bakes `roles=["user"]` (`api/v1/auth.py:302`). Making the DB role grant JWT admin is a separate slice.
+- ~~**`AD-RBAC-DB-To-JWT-Wiring-Phase58`**~~ — **✅ RESOLVED Sprint 57.105** (CHANGE-072): the OIDC callback + password-login now source the JWT `roles` claim from `RBACManager.get_user_role_codes(user_id, tenant_id, session)` (`Role JOIN UserRole`, tenant-scoped, sorted+deduped) merged as `sorted({"user", *codes})` into BOTH `JWTManager.encode(roles=...)` and the login response body. The seeded admin `UserRole` IS authz-effective at login (drive-through: register → password-login → admin renders + model-policy PUT 200 with no dev-login; role-less JWT → 403). Single truth source = the JWT claim; staleness invariant: a grant/revoke AFTER issue takes effect at next login (no token refresh — deliberate AP-6 avoidance). dev-login keeps `_DEV_LOGIN_ROLES` (dev-only; `_is_production()` → 404).
 - **`AD-Register-OIDC-User-Linkage-Phase58`** (NEW) — register creates the user by `email` (no `external_id`); the OIDC callback upserts by `(tenant_id, external_id)` (`auth.py:177-209`) → a later OIDC login would create a SECOND user row. Linkage (callback link-by-email OR register OIDC-initiated) deferred.
 - **`AD-Tenant-Plan-Tiers-Phase58`** (NEW) — `TenantPlan` only has ENTERPRISE; real tiers + enforcement are Stage 2.
 - MFA (`AD-Auth-MFA-Backend-IAM-Block-C-Phase58`) / recovery (`AD-Auth-Recovery-Page-Phase58`) / lockout (`AD-Auth-PasswordLogin-Lockout-Phase58`, also covers register-spam throttle) — separate slices.

@@ -2,7 +2,7 @@
 
 [Plan](./sprint-57-105-plan.md)
 
-**Status**: 🚧 Day 0 ✅ GO — Day 1 in progress
+**Status**: 🚧 Day 0-3 ✅ (drive-through PASS) — Day 4 closeout in progress
 **Branch**: `feature/sprint-57-105-rbac-jwt-wiring`
 
 ---
@@ -66,19 +66,19 @@
 - [x] frontend untouched: `git status` shows backend-only (5 files)
 - [x] `loop.py` / DB / migration / generated wire schema diff = 0 (no such paths touched)
 
-### 3.2 Drive-through (US-5 — founding admin drives admin endpoints with NO dev-login) — must PASS
-- [ ] Clean restart (Risk Class E): kill stale uvicorn reloader + spawn-workers (`Win32_Process` PID/PPID/StartTime sweep); fresh PID sole :8000 owner; frontend node :3007 untouched
-- [ ] Real UI: `/auth/register` wizard → fresh tenant + founding admin (password set) → **201**
-- [ ] `/auth/password-login` as the founding admin → lands in app; **role renders admin** (ISSUE-6 "every page renders role=user" observably closed)
-- [ ] tenant-settings → Model Policy tab (C1) → edit + Save → **PUT 200** (not 403) — first admin write ever driven without dev-login
-- [ ] Negative probe: a role-less session (or curl with a role-less JWT) → admin PUT **403**
-- [ ] Screenshots (`artifacts/dt57105-*.png`) + observed-vs-intended into progress.md Day 3
-- [ ] (cleanup) revert any drive-through policy edit; note the throwaway tenant
+### 3.2 Drive-through (US-5 — founding admin drives admin endpoints with NO dev-login) — ✅ PASS
+- [x] Clean restart (Risk Class E): environment already clean (zero python.exe, no :8000/:3007 listener); fresh **no-`--reload`** uvicorn PID 7672 sole :8000 owner, startup log captured; Vite :3007 started
+- [x] Real UI: `/auth/register` wizard → fresh tenant `dt57105-rbac` + founding admin → **201** (password set out-of-band via `set_password` per D11)
+- [x] `/auth/password-login` as the founding admin → **200** → lands `/cost-dashboard`; **sidebar renders "DT Founder / admin"** (ISSUE-6 observably closed)
+- [x] tenant-settings → Model Policy tab (C1) → edit `gpt-5.4-mini` + Save → **PUT 200** — first admin write ever driven without dev-login
+- [x] Negative probe: role-less JWT (same user/tenant) → admin PUT **403 "Platform admin role required"**
+- [x] Screenshots (`artifacts/dt57105-admin-renders.png` + `dt57105-model-policy-put200.png`) + observed-vs-intended table into progress.md Day 3
+- [x] (cleanup) policy override cleared via the tab (clear path proven); throwaway tenant `dt57105-rbac` noted (trial plan, no shared-tenant pollution)
 
 ### 3.3 CHANGE-072 + docs
-- [ ] `CHANGE-072-rbac-db-to-jwt-wiring.md` (problem / design Option A / verification / open invariants: staleness + OIDC-linkage + dev-login divergence)
-- [ ] design note `23-iam-registration-spike.md` §Open Invariants — RBAC-wiring invariant RESOLVED (OIDC-linkage stays open); NO new design note (gap-fix continuation)
-- [ ] 17.md — JWT roles-claim sourcing semantics row updated
+- [x] `CHANGE-072-rbac-db-to-jwt-wiring.md` (problem / design Option A / verification / open invariants: staleness + OIDC-linkage + dev-login divergence)
+- [x] design note `23-iam-registration-spike.md` §Open Invariants — RBAC-wiring invariant RESOLVED (OIDC-linkage stays open); NO new design note (gap-fix continuation)
+- [x] 17.md — resolved **N/A by precedent** (D12): note 23 §4 + 57.84-87 rule identity OUT of the 17.md registry; semantics recorded in note 23 §5 RESOLVED + CHANGE-072 instead
 
 ---
 
