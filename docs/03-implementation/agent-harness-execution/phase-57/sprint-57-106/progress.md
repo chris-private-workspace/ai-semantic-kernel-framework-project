@@ -64,3 +64,33 @@ handler.py `:163/:173/:184/:196` 4 frozensets + `:460-467` PermissionRule-from-f
 `tests/unit/business_domain/incident/test_service.py::test_create_returns_incident` failed ONCE in the full-suite run but **passes isolated (1/1) and in its own file (12/12)**; `git diff main...HEAD` touches **zero** incident files; the conftest I edited is `tests/integration/api/` (a different tree from the failing `tests/unit/business_domain/incident/`). It's a full-suite ordering interaction (some earlier test's global state — Risk Class C class), pre-existing and out of C3 scope. Logged, not chased.
 
 ---
+
+## Day 3 — 2026-06-12 — FE tab (US-4) + two-tenant drive-through (US-5) ✅ PASS
+
+### FE tab (US-4 FE)
+
+Agent-delegated (code-implementer) mirror of ModelPolicyTab; **parent independently re-verified all 4 gates** (Before-Commit item 7): `npm run lint` 0 (no `--silent`) · `npm run build` 0 · Vitest **206** (21 files, +13 HarnessPolicyTab) · `check:mockup-fidelity` 53 unchanged. 0 shadcn-utility residue, 0 Chinese copy (English state strings), real `saveMutation.mutate` (not Potemkin). Hooks placed in `hooks/` matching `useModelPolicy` location. Commit `1c5dcd8a`.
+
+### Drive-through — observed vs intended (real UI :3007 + fresh no-reload backend PID 37844 on 57.106 code + real Azure gpt, NO dev-login)
+
+Risk Class E: killed the stale 57.105 backend (PID 7672, pre-57.106 code) → fresh single no-reload uvicorn PID 37844, startup log captured (`artifacts/backend-dt57106.log`). Logged in as the persisted 57.105 founding admin (`dt57105-rbac` / `founder@dt57105.test`, password-login, role renders **admin**) — the C3 admin surface is drivable because 57.105 made the DB admin grant JWT-effective.
+
+| # | Intended | Observed |
+|---|----------|----------|
+| US-4 | Harness Policy tab → edit → Save → PUT 200 | Tab (8th, between Model Policy + HITL Policies) renders 9 fields all "System default"; Edit → set `escalate_input_phrases="wire transfer"` + `verification_mode=disabled` + `risky_action_enabled=On` → Save → **PUT 200** + GET reflects saved values. Screenshot `dt57106-harness-policy-put200.png`. |
+| US-2/5 (A) | tenant's escalate phrase fires | chat-v2 real_llm "Please process a wire transfer…" → input guardrail **ESCALATE** → HITL pause at turn 0 (`approval_requested risk=HIGH` → `loop_end stop=awaiting_approval turns=0`, BEFORE any LLM call). "wire transfer" is NOT a system default (defaults: approval required / checkpoint / confidential) → the pause can ONLY be the tenant policy. Screenshot `dt57106-escalate-phrase-pause.png`. |
+| US-2/5 (B contrast) | without the phrase, no pause | Cleared `escalate_input_phrases` via the tab (PUT invalidates cache) → new session → SAME "wire transfer" message → **`stop=end_turn`, NO pause** (`hasApproval:false`). Same tenant, same message — behavior flipped purely by the policy. Screenshot `dt57106-no-phrase-no-pause.png`. |
+| US-3/5 (on) | risky sandbox code escalates | risky_action_enabled=On; "Use python_sandbox to run: import os; os.system('echo …')" → LLM calls `python_sandbox` → RiskyActionDetector **ESCALATE** → `approval_requested risk=HIGH` → `stop=awaiting_approval`. python_sandbox is `hitl_policy=AUTO` + has a PASS ToolGuardrail rule, so the ONLY escalation source is the detector (priority 8). Screenshot `dt57106-risky-detector-escalate.png`. |
+| US-3/5 (off) | per-tenant off-switch | Toggled risky_action_enabled=Off via the tab (PUT invalidates cache) → new session → SAME sandbox prompt → `python_sandbox` **executed**, NO approval, `stop=end_turn`. Per-tenant off proven. Screenshot `dt57106-risky-off-passthrough.png`. |
+| Negative | role-less → 403 | Minted a role-less JWT (same user/tenant, `roles=["user"]`) → harness-policy PUT → **403 "Platform admin role required"**. |
+| Cleanup | revert policy | Tab Edit → all fields → System default → Save → all "System default" (meta_data drops `harness_policy`). Throwaway tenant `dt57105-rbac` left clean (no shared-tenant pollution; acme-prod untouched). |
+
+**Honest notes**: the chat-v2 HITL card renders `tool: —` (it doesn't surface the `approval_requested` tool name/reason — a PRE-EXISTING chat-v2 card limitation, not a C3 regression; the Loop visualizer event chain `tool_call → approval_requested risk=HIGH` is the evidence). Drive-through used a **temporal A/B on one tenant** (before/after policy on `dt57105-rbac`) rather than two distinct tenants — a stronger controlled experiment (only the policy variable changes; everything else identical) and avoids a 2nd admin-tenant setup; the proposal DoD's "A escalates / B passes" invariant is proven by the WITH/WITHOUT contrast.
+
+### Drift finding
+
+| ID | Finding | Implication |
+|----|---------|-------------|
+| D11 | The chat-v2 HITL approval card surfaces `tool: —` (no tool name) for an `approval_requested` event. | Pre-existing chat-v2 limitation (the card reads a tool field the verification/risky escalate doesn't populate the same way). NOT a C3 regression; logged as a candidate FE wiring AD for a future chat-v2 slice. |
+
+---

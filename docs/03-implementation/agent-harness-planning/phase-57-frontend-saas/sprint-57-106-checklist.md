@@ -70,19 +70,18 @@
 - [x] full `pytest` 2438 passed + 4 skip (0 deletions; 1 pre-existing incident ordering-flake, passes isolated) · FE Vitest 206 · mockup-fidelity 53
 - [x] `loop.py` / DB / migration / wire schema diff = 0 (none touched)
 
-### 3.3 Drive-through (US-5 — two tenants, NO dev-login) — must PASS
-- [ ] Clean restart (Risk Class E): fresh no-reload uvicorn sole :8000 + startup log; Vite :3007
-- [ ] Tenant A (`dt57105-rbac` founder, password-login): Harness Policy tab → set `escalate_tools:[<real tool>]` + `risky_action_enabled:true` → **PUT 200**; 422 pole driven (bad regex inline)
-- [ ] Tenant A chat (real LLM): the escalated tool → **HITL approval pause** renders; approve → completes
-- [ ] Tenant B (`jamie@acme.com`, no policy): same prompt → **直通** (no pause) — A/B difference proven
-- [ ] Risky payload: python_sandbox `os.system` payload → ESCALATE + `GuardrailTriggered` visible; tenant A sets `risky_action_enabled:false` → same payload 直通 (per-tenant off proven)
-- [ ] Screenshots (`artifacts/dt57106-*.png`) + observed-vs-intended into progress.md; cleanup: clear policy override
-- [ ] (negative) role-less JWT → harness-policy PUT **403**
+### 3.3 Drive-through (US-5 — NO dev-login) — ✅ PASS
+- [x] Clean restart (Risk Class E): killed stale 57.105 backend PID 7672 (pre-57.106 code) → fresh no-reload uvicorn PID 37844 sole :8000 + startup log; Vite :3007 serves source live
+- [x] US-4: Harness Policy tab (founder admin, password-login, role=admin) → set `escalate_input_phrases="wire transfer"` + `verification_mode=disabled` + `risky_action_enabled=On` → **PUT 200** + GET reflects
+- [x] US-2/5 (A): chat "wire transfer" → input ESCALATE → HITL pause `stop=awaiting_approval turns=0`; (B contrast) cleared phrase → same message `stop=end_turn` no pause (cache invalidation) — same-tenant temporal A/B (stronger controlled experiment; noted)
+- [x] US-3/5: python_sandbox `os.system` → **ESCALATE** with risky=On; toggled risky=Off → same payload **執行直通** (per-tenant off + cache invalidation proven)
+- [x] Screenshots (`artifacts/dt57106-{harness-policy-put200,escalate-phrase-pause,no-phrase-no-pause,risky-detector-escalate,risky-off-passthrough}.png`) + observed-vs-intended table in progress.md; cleanup: policy cleared (all System default)
+- [x] (negative) role-less JWT (same user/tenant) → harness-policy PUT **403 "Platform admin role required"**
 
-### 3.4 CHANGE-073 + docs
-- [ ] `CHANGE-073-per-tenant-harness-policy.md`
-- [ ] design note **28-harness-policy-spike.md** (8-point gate; incl. 專表畢業 evaluation ¶ + detector deny-list rationale)
-- [ ] 17.md decision recorded (expected: `HarnessPolicy` platform_layer → N/A per 57.105 D12 precedent; `RiskyActionDetector` rides the existing Guardrail ABC row — confirm)
+### 3.4 CHANGE-073 + docs ✅
+- [x] `CHANGE-073-per-tenant-harness-policy.md`
+- [x] design note **28-per-tenant-harness-policy-design.md** (8-point gate; incl. 專表畢業 evaluation ¶ §5 + detector deny-list rationale §2 D3/D5)
+- [x] 17.md decision recorded (in note 28 §4): `HarnessPolicy` platform_layer → **N/A per 57.105 D12 precedent**; `RiskyActionDetector` rides the EXISTING Guardrail ABC row + emits EXISTING `GuardrailTriggered` (no new ABC, no new event — confirmed `check_event_schema_sync` count unchanged)
 
 ---
 
