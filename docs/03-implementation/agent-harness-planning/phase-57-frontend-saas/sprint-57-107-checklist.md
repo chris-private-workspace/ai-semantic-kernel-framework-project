@@ -19,25 +19,25 @@
 
 ---
 
-## Day 1 — Backend core: stub retirement + spec-only tool + governance fields (US-1 / US-2)
+## Day 1 — Backend core: stub retirement + spec-only tool + governance fields (US-1 / US-2) ✅
 
 ### 1.1 Stub retirement (US-1)
-- [ ] **DELETE `modes/handoff.py`**; EDIT `dispatcher.py` (drop import :83 / instantiate :155 / `handoff()` :315-332), `_abc.py` (drop `handoff()` ABC), `subagent/__init__.py` + `modes/__init__.py` (drop re-exports); `SubagentMode.HANDOFF` enum KEPT, `spawn()` raise comment re-pointed at the classifier path
-  - DoD: grep `HandoffExecutor|dispatcher\.handoff|make_handoff_tool` → 0 hits in `backend/src`; mypy strict 0; `check_cross_category_import` green
-- [ ] **17.md**: `SubagentDispatcher` contract row updated (handoff() removed; HANDOFF = classifier + platform path)
+- [x] **DELETE `modes/handoff.py`**; EDIT `dispatcher.py` (drop import :83 / instantiate :155 / `handoff()` :315-332), `_abc.py` (drop `handoff()` ABC), `subagent/__init__.py` + `modes/__init__.py` (drop re-exports); `SubagentMode.HANDOFF` enum KEPT, `spawn()` raise comment re-pointed at the classifier path
+  - DoD: grep `HandoffExecutor|dispatcher\.handoff|make_handoff_tool` → 0 hits in `backend/src` ✓; mypy strict 0/358 ✓; `check_cross_category_import` green ✓
+- [x] **17.md**: `SubagentDispatcher` contract row updated (handoff() removed; HANDOFF = classifier + platform path) + §3.1 `handoff` tool row (spec-only + policy gate)
 
 ### 1.2 Spec-only `handoff` tool (US-1)
-- [ ] **`tools.py`**: `make_handoff_tool` → `make_handoff_spec(suggested_targets: Sequence[str]) -> tuple[ToolSpec, handler]`; description enumerates targets + when-to-use; args `{target_agent: str (required), reason: str}`; handler raises `RuntimeError("handoff is loop-intercepted")` (AP-4 negative guard)
-- [ ] **`_register_all.py`**: `make_default_executor(handoff_targets: Sequence[str] | None = None)` opt-in branch (mirror `subagent_dispatcher`); registers the spec when not None
-- [ ] **`handler.py`**: thread `handoff_targets = policy.handoff_target_allowlist or DEFAULT_AGENTS keys` when `policy.handoff_enabled is not False`; else None (tool absent)
-  - DoD: NO-policy tenant → tool REGISTERED with 3 default targets; `handoff_enabled=false` → absent; no hot-path DB added
+- [x] **`tools.py`**: `make_handoff_tool` → `make_handoff_spec(suggested_targets: Sequence[str]) -> tuple[ToolSpec, handler]`; description enumerates targets + when-to-use; args `{target_agent: str (required), reason: str}`; handler raises `RuntimeError("handoff is loop-intercepted")` (AP-4 negative guard)
+- [x] **`_register_all.py`**: `make_default_executor(handoff_targets: Sequence[str] | None = None)` opt-in branch (mirror `subagent_dispatcher`); registers the spec when not None
+- [x] **`handler.py`**: thread `handoff_targets = policy.handoff_target_allowlist or DEFAULT_AGENTS keys` when `policy.handoff_enabled is not False`; else None (tool absent); `policy` resolution hoisted above the executor build
+  - DoD: NO-policy tenant → tool REGISTERED with 3 default targets ✓; `handoff_enabled=false` → absent ✓; no hot-path DB added ✓
 
 ### 1.3 Governance fields + boot enforcement (US-2)
-- [ ] **`harness_policy.py`**: +`handoff_enabled: bool | None` + `handoff_target_allowlist: tuple[str, ...] | None` (9→11 sparse fields; tri-state semantics preserved; `from_dict` wrong-type → not-set)
-- [ ] **`service.py`**: `boot_handoff(*, allowed_targets: Sequence[str] | None = None)` — post-persona-resolve reject off-list target → `HandoffError("target not allowed")` (router fail-soft + audit path unchanged)
-- [ ] **`router.py`**: pass `policy.handoff_target_allowlist` into the :661 boot hook
-- [ ] **Unit tests**: spec-shape + defensive-raise + registration gating (enabled/disabled/allowlist-description) · policy 2-field round-trip/tri-state · `boot_handoff` allowlist accept/reject/None · CONVERT `test_handoff.py` + `test_subagent_tools.py:96-131` (0 deletions — Never-Delete)
-  - DoD: unit suites green; flake8 clean; run_all 10/10 (event count UNCHANGED)
+- [x] **`harness_policy.py`**: +`handoff_enabled: bool | None` + `handoff_target_allowlist: tuple[str, ...] | None` (9→11 sparse fields; tri-state semantics preserved; `from_dict` wrong-type → not-set)
+- [x] **`service.py`**: `boot_handoff(*, allowed_targets: Sequence[str] | None = None)` — post-persona-resolve reject off-list target → `HandoffError("not allowed by tenant policy")` (router fail-soft + audit path unchanged)
+- [x] **`router.py`**: thread `handoff_allowed_targets` param into module-level `_stream_loop_events` (D8) + pass into the boot hook
+- [x] **Unit tests**: spec-shape + defensive-raise + registration gating ×2 · policy 2-field round-trip/tri-state ×2 · `boot_handoff` allowlist accept/reject/None ×3 · CONVERTED `test_handoff.py` (4 tests) + `test_subagent_tools.py` handoff block (3 tests) + `test_dispatcher_init.py` raise-match (0 deletions — Never-Delete)
+  - DoD: full unit suite **1734 passed** ✓; flake8 0 ✓; run_all 10/10 (event count UNCHANGED) ✓
 
 ---
 

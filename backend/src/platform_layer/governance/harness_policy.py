@@ -29,6 +29,7 @@ Created: 2026-06-12 (Sprint 57.106)
 Last Modified: 2026-06-12
 
 Modification History (newest-first):
+    - 2026-06-12: Sprint 57.107 (B3) — add handoff_enabled + handoff_target_allowlist (9→11)
     - 2026-06-12: Initial creation (Sprint 57.106 C3) — per-tenant harness policy resolver
 
 Related:
@@ -62,9 +63,10 @@ _LIST_FIELDS = (
     "escalate_output_phrases",
     "escalate_tools",
     "risky_action_extra_patterns",
+    "handoff_target_allowlist",
 )
 _STR_FIELDS = ("verification_mode", "verification_judge_template")
-_BOOL_FIELDS = ("verification_escalate_on_max", "risky_action_enabled")
+_BOOL_FIELDS = ("verification_escalate_on_max", "risky_action_enabled", "handoff_enabled")
 
 
 def _clean_str(value: Any) -> str | None:
@@ -114,6 +116,14 @@ class HarnessPolicy:
     verification_escalate_on_max: bool | None = None
     risky_action_enabled: bool | None = None
     risky_action_extra_patterns: tuple[str, ...] | None = None
+    # Sprint 57.107 (B3): handoff governance. handoff_enabled None/True = the
+    # spec-only `handoff` tool is registered (the shipped feature defaults ON);
+    # False = not registered (zero-cost off — the risky_action_enabled pattern).
+    # handoff_target_allowlist None = all registered personas; values = restrict
+    # (enforced at HandoffService.boot_handoff, defense in depth); the admin PUT
+    # rejects an explicit [] (use handoff_enabled to disable).
+    handoff_enabled: bool | None = None
+    handoff_target_allowlist: tuple[str, ...] | None = None
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any] | None) -> HarnessPolicy:

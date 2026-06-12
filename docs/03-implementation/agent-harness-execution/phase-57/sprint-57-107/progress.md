@@ -26,3 +26,18 @@
 
 ### Remaining for Day 1
 US-1 stub retirement + spec-only tool + US-2 governance fields + boot enforcement + unit tests/conversions.
+
+---
+
+## Day 1 — 2026-06-12 — US-1 stub retirement + spec-only tool + US-2 governance (backend)
+
+**Done**:
+- **US-1**: DELETED `modes/handoff.py` (`HandoffExecutor` stub; user-confirmed); `dispatcher.py` dropped import/instantiate/`handoff()` + spawn-raise re-pointed; `_abc.py` dropped `handoff()` abstractmethod; `__init__.py`×2 re-exports updated; `tools.py` `make_handoff_tool` → spec-only `make_handoff_spec(suggested_targets)` (defensive-raise handler — loop classifier intercepts pre-execution); `_register_all.py` opt-in `handoff_targets` registration; `handler.py` policy-gated threading at the MAIN real_llm executor only (`policy` hoisted above the build; echo/child/teammate get None — D10); 17.md `SubagentDispatcher` + `handoff` tool rows updated.
+- **US-2**: `harness_policy.py` 9→11 fields (`handoff_enabled` tri-state + `handoff_target_allowlist`); `service.py` `boot_handoff(allowed_targets=)` off-list reject BEFORE any write; `router.py` `handoff_allowed_targets` param threaded into module-level `_stream_loop_events` (D8) → boot hook.
+- **Tests**: `test_handoff.py` CONVERTED (4: defensive-raise / description-targets / empty-hint / spawn-HANDOFF-raise); `test_subagent_tools.py` handoff block CONVERTED (3) + 2 NEW gating tests; `test_harness_policy.py` +2; `test_service.py` +3 allowlist. 0 deletions.
+- **Gates**: mypy `src` **0/358** (was 359 — 1 file deleted) · flake8 0 · run_all **10/10** (event count UNCHANGED) · full unit **1734 passed**.
+
+**Note**: run_all must run from repo root (from `backend/` it reports 9/10 false-FAIL — CWD-sensitive `--root` defaults).
+
+### Remaining for Day 2
+US-3 sessions list API + US-4 migration 0028 (sidechain columns + DEFAULT partitions per D4) + router observer + admin validation fields + integration tests.

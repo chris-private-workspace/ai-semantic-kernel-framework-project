@@ -203,3 +203,27 @@ async def test_resolve_fail_open_on_db_error() -> None:
     session = _FakeSession(raise_exc=True)
     policy = await hp.resolve_tenant_harness_policy(session, uuid4())
     assert policy.is_empty()
+
+
+# === handoff governance fields (Sprint 57.107 B3) ============================
+
+
+def test_from_dict_handoff_fields_round_trip() -> None:
+    """handoff_enabled + handoff_target_allowlist parse + survive to_dict."""
+    policy = hp.HarnessPolicy.from_dict(
+        {"handoff_enabled": False, "handoff_target_allowlist": ["planner", "reviewer"]}
+    )
+    assert policy.handoff_enabled is False
+    assert policy.handoff_target_allowlist == ("planner", "reviewer")
+    assert policy.to_dict() == {
+        "handoff_enabled": False,
+        "handoff_target_allowlist": ["planner", "reviewer"],
+    }
+
+
+def test_handoff_fields_tri_state_not_set() -> None:
+    """Absent / wrong-typed handoff fields → None (system default: handoff ON)."""
+    policy = hp.HarnessPolicy.from_dict({"handoff_enabled": "yes", "handoff_target_allowlist": "x"})
+    assert policy.handoff_enabled is None
+    assert policy.handoff_target_allowlist is None
+    assert policy.is_empty()

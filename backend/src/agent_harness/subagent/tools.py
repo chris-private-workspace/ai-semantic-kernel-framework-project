@@ -26,6 +26,7 @@ Created: 2026-05-04 (Sprint 54.2)
 Last Modified: 2026-06-11
 
 Modification History:
+    - 2026-06-12: Sprint 57.107 (B3) — make_handoff_tool → spec-only make_handoff_spec
     - 2026-06-11: Sprint 57.102 (B2a) — add make_send_to_parent_tool (TEAMMATE child→parent report)
     - 2026-05-04: Initial creation (Sprint 54.2 US-5)
 
@@ -37,6 +38,7 @@ Related:
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Awaitable, Callable
 from uuid import UUID
 
@@ -130,23 +132,40 @@ def make_task_spawn_tool(
     return tool_spec, handler
 
 
-def make_handoff_tool(
+# === make_handoff_spec: spec-only trigger for the loop-intercepted handoff ===
+# Why: the loop's output classifier matches tc.name == HANDOFF_TOOL_NAME and
+# terminates with stop_reason="handoff" BEFORE tool execution (loop.py HANDOFF
+# branch) — booting the child session is the platform layer's job (router
+# post-loop hook → HandoffService). The LLM therefore needs a ToolSpec it can
+# SEE, but the handler must never run. The former make_handoff_tool routed
+# through dispatcher.handoff() → HandoffExecutor (a UUID stub with zero 主流量
+# callers) — retired Sprint 57.107 (AP-2/AP-11 convergence).
+# Alternative considered: dispatcher delegating to HandoffService — rejected
+# (Cat 11 must not import platform_layer; layering inversion).
+def make_handoff_spec(
     *,
-    dispatcher: SubagentDispatcher,
+    suggested_targets: Sequence[str],
 ) -> tuple[ToolSpec, ToolHandler]:
-    """Factory: returns (ToolSpec, handler) for the `handoff` Cat 11 tool.
+    """Factory: returns (ToolSpec, defensive handler) for the `handoff` tool.
 
-    LLM input schema: `{target_agent: str, context: dict}`. Returns the new
-    session_id; the chat router is expected to detect this in the tool result
-    and pivot the session to the new agent identity.
+    Spec-only: the AgentLoop classifies a `handoff` tool_call as
+    OutputType.HANDOFF and terminates the run with stop_reason="handoff"
+    (carrying target_agent / reason) BEFORE any tool execution; the platform
+    layer boots the child session. The handler raises if ever invoked —
+    reaching it means the classifier interception was bypassed (a bug).
+
+    `suggested_targets` is guidance for the LLM (listed in the description);
+    boot-time validation (persona registry + tenant allowlist) is authoritative.
     """
+    targets_hint = ", ".join(suggested_targets) if suggested_targets else "none configured"
     tool_spec = ToolSpec(
         name="handoff",
         description=(
-            "Transfer complete control to a target agent identity. Returns the "
-            "new session_id; the platform router will boot the target_agent "
-            "under that session. Use sparingly — this ENDS the current agent's "
-            "responsibility for the conversation."
+            "Transfer complete control of this conversation to another agent "
+            f"identity. Available target agents: {targets_hint}. Use ONLY when "
+            "the user explicitly asks to hand the conversation to another agent, "
+            "or the task clearly belongs to a different specialist — this ENDS "
+            "the current agent's responsibility for the conversation."
         ),
         input_schema={
             "type": "object",
@@ -155,9 +174,9 @@ def make_handoff_tool(
                     "type": "string",
                     "description": "Identifier of the target agent role.",
                 },
-                "context": {
-                    "type": "object",
-                    "description": "Hand-over context payload (free-form).",
+                "reason": {
+                    "type": "string",
+                    "description": "Short reason for the handoff (shown to the user).",
                 },
             },
             "required": ["target_agent"],
@@ -165,27 +184,10 @@ def make_handoff_tool(
     )
 
     async def handler(args: dict[str, Any]) -> dict[str, Any]:
-        target_agent = str(args.get("target_agent", "")).strip()
-        if not target_agent:
-            return {"handoff_initiated": False, "error": "missing_target_agent"}
-        context = args.get("context") or {}
-        if not isinstance(context, dict):
-            return {"handoff_initiated": False, "error": "context_must_be_object"}
-        try:
-            new_session_id = await dispatcher.handoff(
-                target_agent=target_agent,
-                context=context,
-            )
-        except Exception as exc:  # noqa: BLE001 — surface as tool error
-            return {
-                "handoff_initiated": False,
-                "error": f"handoff_failed: {type(exc).__name__}: {exc}",
-            }
-        return {
-            "handoff_initiated": True,
-            "target_agent": target_agent,
-            "new_session_id": str(new_session_id),
-        }
+        raise RuntimeError(
+            "handoff is loop-intercepted: the output classifier must terminate "
+            "the run before tool execution; reaching this handler is a bug"
+        )
 
     return tool_spec, handler
 

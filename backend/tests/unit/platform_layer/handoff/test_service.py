@@ -312,3 +312,71 @@ async def test_boot_handoff_with_parent_context_populates_carried(_wire: Any) ->
 
     assert carried[0] == {"role": _role(first_idx), "content": f"msg-{first_idx}"}
     assert carried[-1] == {"role": _role(last_idx), "content": f"msg-{last_idx}"}
+
+
+# === allowed_targets tenant allowlist (Sprint 57.107 B3) =====================
+
+
+@pytest.mark.asyncio
+async def test_boot_handoff_allowlist_permits_listed_target(_wire: Any) -> None:
+    """A target on the tenant allowlist boots normally."""
+    tenant_id = uuid4()
+    parent_id = uuid4()
+    state = _wire({(parent_id, tenant_id): _FakeParent(id=parent_id, tenant_id=tenant_id)})
+    db = _FakeSession()
+
+    result = await HandoffService().boot_handoff(
+        parent_session_id=parent_id,
+        target_agent="researcher",
+        reason="allowed",
+        tenant_id=tenant_id,
+        user_id=uuid4(),
+        db=db,
+        allowed_targets=["researcher", "planner"],
+    )
+    assert state["repo"].created["session_id"] == result.new_session_id
+
+
+@pytest.mark.asyncio
+async def test_boot_handoff_allowlist_rejects_offlist_target(_wire: Any) -> None:
+    """An off-list target (even a KNOWN persona) is rejected BEFORE any write."""
+    tenant_id = uuid4()
+    parent_id = uuid4()
+    state = _wire({(parent_id, tenant_id): _FakeParent(id=parent_id, tenant_id=tenant_id)})
+    db = _FakeSession()
+
+    with pytest.raises(HandoffError, match="not allowed by tenant policy"):
+        await HandoffService().boot_handoff(
+            parent_session_id=parent_id,
+            target_agent="reviewer",
+            reason="off-list",
+            tenant_id=tenant_id,
+            user_id=uuid4(),
+            db=db,
+            allowed_targets=["planner"],
+        )
+
+    # No session booted, no transaction opened, no audit written.
+    assert state["repo"] is None
+    assert state["audit_calls"] == []
+    assert db.transaction.entered is False
+
+
+@pytest.mark.asyncio
+async def test_boot_handoff_allowlist_none_means_unrestricted(_wire: Any) -> None:
+    """allowed_targets=None (no tenant policy) → any registered persona boots."""
+    tenant_id = uuid4()
+    parent_id = uuid4()
+    _wire({(parent_id, tenant_id): _FakeParent(id=parent_id, tenant_id=tenant_id)})
+    db = _FakeSession()
+
+    result = await HandoffService().boot_handoff(
+        parent_session_id=parent_id,
+        target_agent="reviewer",
+        reason="default path",
+        tenant_id=tenant_id,
+        user_id=uuid4(),
+        db=db,
+        allowed_targets=None,
+    )
+    assert isinstance(result, HandoffResult)

@@ -25,6 +25,7 @@ Created: 2026-04-30 (Sprint 51.0 Day 3)
 Last Modified: 2026-06-11
 
 Modification History:
+    - 2026-06-12: Sprint 57.107 (B3) — opt-in handoff_targets (registers spec-only handoff)
     - 2026-06-11: Sprint 57.102 (B2a) — opt-in teammate_mailbox (registers send_to_parent)
     - 2026-06-01: Sprint 57.64 Day 2 — make_default_executor opt-in Cat 3 + Cat 11 deps
     - 2026-05-04: (Sprint 55.2 Day 3.1) Uniform mode/factory_provider threading
@@ -37,13 +38,17 @@ Modification History:
 from __future__ import annotations
 
 import json
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from agent_harness._contracts import AgentSpec, ToolCall
 from agent_harness.observability import Tracer
-from agent_harness.subagent import make_send_to_parent_tool, make_task_spawn_tool
+from agent_harness.subagent import (
+    make_handoff_spec,
+    make_send_to_parent_tool,
+    make_task_spawn_tool,
+)
 from agent_harness.tools import (
     ToolExecutorImpl,
     ToolHandler,
@@ -172,6 +177,7 @@ def make_default_executor(
     subagent_dispatcher: "DefaultSubagentDispatcher | None" = None,
     parent_session_id: UUID | None = None,
     teammate_mailbox: "MailboxStore | None" = None,
+    handoff_targets: Sequence[str] | None = None,
 ) -> tuple[ToolRegistryImpl, ToolExecutorImpl]:
     """Build a registry+executor pair with echo_tool + 18 business tools (19 total).
 
@@ -196,9 +202,13 @@ def make_default_executor(
         pre-registered here (avoids the ToolRegistryImpl duplicate-name raise).
       - subagent_dispatcher → registers the Cat 11 `task_spawn` tool (FORK /
         TEAMMATE via make_task_spawn_tool) + one AS_TOOL wrapper
-        (``agent_researcher`` via dispatcher.as_tool_factory). HANDOFF is
-        EXCLUDED (A-3a scope; the HANDOFF executor is a hollow stub). Requires
+        (``agent_researcher`` via dispatcher.as_tool_factory). Requires
         `parent_session_id` for task_spawn's parent attribution.
+      - handoff_targets (Sprint 57.107 B3) → registers the SPEC-ONLY `handoff`
+        tool (make_handoff_spec): the loop's output classifier intercepts the
+        tool_call (stop_reason="handoff") before execution and the platform
+        layer boots the child session. None = tool absent (per-tenant
+        handoff_enabled=false / echo / child executors).
 
     Args:
         mock_url: Override for the mock_services backend URL.
@@ -212,6 +222,9 @@ def make_default_executor(
         teammate_mailbox: Cat 11 (B2a) mailbox for the teammate child's send_to_parent
             tool (opt-in; requires parent_session_id). Set only when building the
             teammate child executor (NOT the parent / FORK child).
+        handoff_targets: suggested handoff targets for the spec-only `handoff`
+            tool's description (opt-in; parent executor only — children cannot
+            hand off, depth-bound by design).
 
     Returns:
         (registry, executor) — wired with the tools selected by the opt-in deps.
@@ -262,8 +275,15 @@ def make_default_executor(
         factory_provider=factory_provider,
     )
 
+    # Sprint 57.107 (B3): the spec-only `handoff` trigger tool. The handler never
+    # runs (loop-intercepted); registration is the per-tenant on/off gate.
+    if handoff_targets is not None:
+        handoff_spec, handoff_handler = make_handoff_spec(suggested_targets=handoff_targets)
+        registry.register(handoff_spec)
+        handlers[handoff_spec.name] = _adapt_subagent_handler(handoff_handler)
+
     # Cat 11 (A-3a) subagent tools — FORK/TEAMMATE via task_spawn + one AS_TOOL
-    # wrapper. HANDOFF intentionally excluded (hollow executor stub).
+    # wrapper. HANDOFF is loop-intercepted (spec-only tool above; Sprint 57.107).
     if subagent_dispatcher is not None:
         if parent_session_id is None:
             raise ValueError(

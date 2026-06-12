@@ -33,6 +33,7 @@ US-2 deliverable (this file): wires FORK via ForkExecutor + as_tool_factory
 Created: 2026-05-04 (Sprint 54.2)
 
 Modification History:
+    - 2026-06-12: Sprint 57.107 (B3) — retire HandoffExecutor stub + handoff() method
     - 2026-06-11: Sprint 57.103 (B2b) — inbox_factory → inbox_scope (register child queue)
     - 2026-06-11: Sprint 57.102 (B2a) — TEAMMATE real child loop (teammate factory + inbox)
     - 2026-06-09: Sprint 57.96 — pass _emit_safely → ForkExecutor (forward child TAO events)
@@ -80,7 +81,6 @@ from agent_harness.subagent.exceptions import (
 from agent_harness.subagent.mailbox import MailboxStore
 from agent_harness.subagent.modes.as_tool import AsToolWrapper
 from agent_harness.subagent.modes.fork import ForkExecutor
-from agent_harness.subagent.modes.handoff import HandoffExecutor
 from agent_harness.subagent.modes.teammate import TeammateExecutor
 
 if TYPE_CHECKING:
@@ -152,7 +152,6 @@ class DefaultSubagentDispatcher(SubagentDispatcher):
             event_emitter=self._emit_safely,
             inbox_scope=inbox_scope,
         )
-        self._handoff = HandoffExecutor()
         self._as_tool_wrapper = AsToolWrapper(fork_executor=self._fork)
         # In-flight subagent tasks for wait_for() lookup. Per-instance state;
         # NOT module-level — fresh dispatcher per request.
@@ -183,7 +182,10 @@ class DefaultSubagentDispatcher(SubagentDispatcher):
         """Launch a subagent in FORK or TEAMMATE mode; return subagent_id.
 
         AS_TOOL mode raises SubagentLaunchError — use as_tool_factory() instead.
-        HANDOFF mode raises SubagentLaunchError — use handoff() method instead.
+        HANDOFF mode raises SubagentLaunchError — it is not dispatcher-served:
+        the loop's output classifier terminates the run with
+        stop_reason="handoff" and the platform layer boots the child session
+        (Sprint 57.107 B3 convergence; the HandoffExecutor stub is retired).
 
         US-2 fills FORK; US-3 fills TEAMMATE.
         """
@@ -194,8 +196,9 @@ class DefaultSubagentDispatcher(SubagentDispatcher):
             )
         if mode == SubagentMode.HANDOFF:
             raise SubagentLaunchError(
-                "HANDOFF mode does not use spawn(); call handoff(target_agent, context) "
-                "directly — it returns a new session_id."
+                "HANDOFF mode is not dispatcher-served: the `handoff` tool_call is "
+                "loop-intercepted (stop_reason='handoff') and the platform layer "
+                "boots the child session."
             )
 
         budget = budget or SubagentBudget()
@@ -311,25 +314,6 @@ class DefaultSubagentDispatcher(SubagentDispatcher):
                 summary="",
                 error=f"wait_for_timeout: {timeout_s}s",
             )
-
-    async def handoff(
-        self,
-        *,
-        target_agent: str,
-        context: dict[str, object],
-        trace_context: TraceContext | None = None,
-    ) -> UUID:
-        """Transfer control to target_agent; return new session_id.
-
-        Per Day 4 D18 simplification: delegates to HandoffExecutor (stateless;
-        allocates UUID + validates target_agent). Phase 55+ may add per-tenant
-        target_agent allowlist + audit event emission here.
-        """
-        return await self._handoff.execute(
-            target_agent=target_agent,
-            context=context,
-            trace_context=trace_context,
-        )
 
     def as_tool_factory(self, spec: AgentSpec) -> tuple["ToolSpec", "ToolHandler"]:
         """Wrap AgentSpec into a Cat 2 ToolSpec + handler pair.

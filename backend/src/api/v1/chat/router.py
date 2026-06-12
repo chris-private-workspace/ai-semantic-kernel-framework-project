@@ -38,6 +38,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.5)
 Last Modified: 2026-06-11
 
 Modification History (newest-first):
+    - 2026-06-12: Sprint 57.107 B3 — thread handoff_allowed_targets into the boot hook
     - 2026-06-11: Sprint 57.103 B2b — POST /{id}/subagents/{sid}/inject (into a live teammate)
     - 2026-06-11: Sprint 57.101 B1 — POST /{id}/inject + register/unregister the injection queue
     - 2026-06-10: Sprint 57.98 A1 US-5 — drop run_with_verification wrapper; gate is in-loop now
@@ -79,7 +80,7 @@ import asyncio
 import logging
 import os
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -380,6 +381,10 @@ async def chat(
             billing_outbox=billing_outbox,
             db=db,
             subagent_event_buffer=subagent_event_buffer,
+            # Sprint 57.107 (B3): the tenant's handoff allowlist for the post-loop
+            # boot hook (None = no restriction). _stream_loop_events is module-
+            # level, so the resolved policy is threaded explicitly.
+            handoff_allowed_targets=harness_policy.handoff_target_allowlist,
         ),
         media_type="text/event-stream",
         headers={
@@ -432,6 +437,7 @@ async def _stream_loop_events(
     billing_outbox: BillingOutboxService | None = None,
     db: AsyncSession | None = None,
     subagent_event_buffer: "list[LoopEvent] | None" = None,
+    handoff_allowed_targets: "Sequence[str] | None" = None,
 ) -> AsyncIterator[bytes]:
     """Drive the loop generator + emit SSE bytes; finalize tenant-scoped registry.
 
@@ -671,6 +677,10 @@ async def _stream_loop_events(
                             # in-memory conversation snapshot into the booted
                             # child's meta_data["carried_context"].
                             parent_context=event.handoff_context,
+                            # Sprint 57.107 (B3): tenant allowlist — an off-list
+                            # target raises HandoffError → the fail-soft path
+                            # below (no child, logged).
+                            allowed_targets=handoff_allowed_targets,
                         )
                         handoff_payload = serialize_loop_event(
                             AgentHandoff(

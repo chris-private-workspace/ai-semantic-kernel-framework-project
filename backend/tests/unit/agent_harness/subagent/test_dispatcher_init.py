@@ -66,12 +66,13 @@ async def test_spawn_as_tool_mode_raises_launch_error(
 async def test_spawn_handoff_mode_raises_launch_error(
     dispatcher: DefaultSubagentDispatcher,
 ) -> None:
-    """HANDOFF mode does NOT route through spawn(); use handoff() method instead.
+    """HANDOFF mode does NOT route through spawn() — it is loop-intercepted.
 
-    The ABC has a dedicated handoff() method (returns new session_id directly).
+    Sprint 57.107 (B3): the `handoff` tool_call terminates the loop with
+    stop_reason="handoff"; the platform layer boots the child session.
     spawn() raises to prevent silent fallthrough.
     """
-    with pytest.raises(SubagentLaunchError, match="HANDOFF mode does not use spawn"):
+    with pytest.raises(SubagentLaunchError, match="loop-intercepted"):
         await dispatcher.spawn(
             mode=SubagentMode.HANDOFF,
             task="dummy",
@@ -84,6 +85,5 @@ async def test_spawn_handoff_mode_raises_launch_error(
 #  test_teammate.py::test_dispatcher_spawn_teammate_then_wait_for_round_trip)
 
 
-# (test_handoff_method_skeleton_raises_not_implemented removed in US-4:
-#  handoff() now delegates to HandoffExecutor; round-trip behavior covered in
-#  test_handoff.py::test_dispatcher_handoff_returns_uuid)
+# (dispatcher.handoff() retired in Sprint 57.107 B3 — HANDOFF is loop-intercepted;
+#  the spec-only trigger is covered in test_handoff.py::test_handoff_spec_*)

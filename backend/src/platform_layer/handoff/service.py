@@ -32,9 +32,10 @@ Key Components:
     - HandoffService.boot_handoff(): the atomic session-boot
 
 Created: 2026-06-02 (Sprint 57.68 A-3b)
-Last Modified: 2026-06-02
+Last Modified: 2026-06-12
 
 Modification History (newest-first):
+    - 2026-06-12: Sprint 57.107 (B3) — boot_handoff allowed_targets tenant allowlist enforcement
     - 2026-06-02: Sprint 57.70 Stage-1a — await async per-tenant resolve_persona
     - 2026-06-02: Sprint 57.69 A-3b — boot_handoff carries parent_context into child meta_data
     - 2026-06-02: Initial creation (Sprint 57.68 A-3b) — atomic handoff session-boot
@@ -50,6 +51,7 @@ Related:
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID, uuid4
@@ -100,6 +102,7 @@ class HandoffService:
         user_id: UUID,
         db: AsyncSession,
         parent_context: list[Message] | None = None,
+        allowed_targets: Sequence[str] | None = None,
     ) -> HandoffResult:
         """Boot a child session for `target_agent`, mark parent handed-off, audit.
 
@@ -120,13 +123,19 @@ class HandoffService:
                 meta_data["carried_context"] so the child agent sees the prior
                 conversation. None / empty → no carried_context key (backward
                 compatible with the 57.68 boot).
+            allowed_targets: the tenant's handoff_target_allowlist (Sprint
+                57.107 B3 governance). None = no restriction (all registered
+                personas); values = only those targets boot. Enforced here
+                (defense in depth — the LLM may name any target regardless of
+                the spec description).
 
         Returns:
             HandoffResult with the new child session_id.
 
         Raises:
-            HandoffError: target_agent unknown (no persona) OR parent_session_id
-                does not exist in this tenant (foreign / missing parent).
+            HandoffError: target_agent unknown (no persona) OR not in the
+                tenant's allowlist OR parent_session_id does not exist in this
+                tenant (foreign / missing parent).
         """
         # 1. Resolve persona FIRST — reject unknown target before any write.
         #    Per-tenant DB catalog → hardcoded defaults → None (Sprint 57.70).
@@ -134,6 +143,14 @@ class HandoffService:
         persona = await resolve_persona(db, tenant_id, target_agent)
         if persona is None:
             raise HandoffError(f"unknown handoff target_agent: {target_agent!r}")
+
+        # 1b. Tenant allowlist (Sprint 57.107 B3): an off-list target is rejected
+        #     BEFORE any write — the router's existing fail-soft path logs it and
+        #     the run ends without a child (no orphan boot).
+        if allowed_targets is not None and target_agent not in allowed_targets:
+            raise HandoffError(
+                f"handoff target_agent not allowed by tenant policy: {target_agent!r}"
+            )
 
         repo = SessionRepository(db)
 

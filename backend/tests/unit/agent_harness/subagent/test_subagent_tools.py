@@ -1,15 +1,16 @@
 """
 File: backend/tests/unit/agent_harness/subagent/test_subagent_tools.py
-Purpose: Unit tests for make_task_spawn_tool + make_handoff_tool factories (US-5).
+Purpose: Unit tests for make_task_spawn_tool + make_handoff_spec factories (US-5).
 Category: Tests / 範疇 11 (Subagent Orchestration)
-Scope: Sprint 54.2 US-5
+Scope: Sprint 54.2 US-5 → handoff block converted Sprint 57.107 (B3 spec-only)
 
 Created: 2026-05-04 (Sprint 54.2)
+Modified: 2026-06-12 (Sprint 57.107 — make_handoff_tool → make_handoff_spec)
 """
 
 from __future__ import annotations
 
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -22,7 +23,7 @@ from agent_harness._contracts import (
 )
 from agent_harness.subagent import (
     DefaultSubagentDispatcher,
-    make_handoff_tool,
+    make_handoff_spec,
     make_task_spawn_tool,
 )
 
@@ -93,42 +94,51 @@ async def test_task_spawn_handler_unknown_mode_rejected() -> None:
     assert "fork/teammate only" in result["error"] or "unknown_mode" in result["error"]
 
 
-# === make_handoff_tool =======================================================
+# === make_handoff_spec (Sprint 57.107 — converted from make_handoff_tool) ====
 
 
-@pytest.mark.asyncio
-async def test_handoff_tool_returns_toolspec_and_handler() -> None:
-    """Factory returns ToolSpec with target_agent+context schema and handler."""
-    chat = MockChatClient()
-    dispatcher = DefaultSubagentDispatcher(chat_client=chat)
-    tool_spec, handler = make_handoff_tool(dispatcher=dispatcher)
+def test_handoff_spec_returns_toolspec_and_handler() -> None:
+    """Factory returns the spec-only ToolSpec with target_agent+reason schema."""
+    tool_spec, handler = make_handoff_spec(suggested_targets=["researcher"])
     assert isinstance(tool_spec, ToolSpec)
     assert tool_spec.name == "handoff"
     assert "target_agent" in tool_spec.input_schema["properties"]
-    assert "context" in tool_spec.input_schema["properties"]
+    assert "reason" in tool_spec.input_schema["properties"]
     assert tool_spec.input_schema["required"] == ["target_agent"]
     assert callable(handler)
 
 
 @pytest.mark.asyncio
-async def test_handoff_tool_handler_returns_new_session_id() -> None:
-    """Handler invokes dispatcher.handoff() → returns handoff_initiated=True + UUID."""
-    chat = MockChatClient()
-    dispatcher = DefaultSubagentDispatcher(chat_client=chat)
-    _, handler = make_handoff_tool(dispatcher=dispatcher)
-    result = await handler({"target_agent": "expert", "context": {"k": "v"}})
-    assert result["handoff_initiated"] is True
-    assert result["target_agent"] == "expert"
-    # Validate new_session_id parses as UUID
-    UUID(result["new_session_id"])
+async def test_handoff_spec_handler_is_defensive_raise() -> None:
+    """The handler never runs (loop-intercepted); invoking it raises loudly."""
+    _, handler = make_handoff_spec(suggested_targets=["expert"])
+    with pytest.raises(RuntimeError, match="loop-intercepted"):
+        await handler({"target_agent": "expert"})
 
 
-@pytest.mark.asyncio
-async def test_handoff_tool_handler_missing_target_returns_error() -> None:
-    """Handler without target_agent → handoff_initiated=False."""
-    chat = MockChatClient()
-    dispatcher = DefaultSubagentDispatcher(chat_client=chat)
-    _, handler = make_handoff_tool(dispatcher=dispatcher)
-    result = await handler({"context": {}})
-    assert result["handoff_initiated"] is False
-    assert result["error"] == "missing_target_agent"
+def test_handoff_spec_description_suggests_targets() -> None:
+    """Suggested targets surface in the description (boot-time check is authoritative)."""
+    tool_spec, _ = make_handoff_spec(suggested_targets=["reviewer", "planner"])
+    assert "reviewer" in tool_spec.description
+    assert "planner" in tool_spec.description
+
+
+# === handoff registration gating (Sprint 57.107 B3) ==========================
+
+
+def test_make_default_executor_registers_handoff_when_targets_given() -> None:
+    """handoff_targets=[...] → the spec-only handoff tool is in the registry."""
+    from business_domain._register_all import make_default_executor
+
+    registry, _ = make_default_executor(mode="mock", handoff_targets=["researcher", "planner"])
+    spec = registry.get("handoff")
+    assert spec is not None
+    assert "researcher" in spec.description
+
+
+def test_make_default_executor_omits_handoff_by_default() -> None:
+    """handoff_targets=None (echo / child / teammate executors) → tool absent."""
+    from business_domain._register_all import make_default_executor
+
+    registry, _ = make_default_executor(mode="mock")
+    assert registry.get("handoff") is None

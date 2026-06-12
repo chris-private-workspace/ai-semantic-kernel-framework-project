@@ -30,6 +30,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.4)
 Last Modified: 2026-06-11
 
 Modification History (newest-first):
+    - 2026-06-12: Sprint 57.107 B3 — register spec-only handoff tool (policy-gated, parent only)
     - 2026-06-11: Sprint 57.104 C1 — resolve per-tenant ModelPolicy → build per-tenant ModelProfile
     - 2026-06-11: Sprint 57.103 B2b — teammate inbox_factory → inbox_scope (register child queue)
     - 2026-06-11: Sprint 57.102 B2a — wire teammate child-loop factory + inbox_factory
@@ -94,6 +95,7 @@ from agent_harness.verification.templates import list_templates
 from business_domain._register_all import make_default_executor
 from core.config import get_settings
 from platform_layer.governance.harness_policy import HarnessPolicy
+from platform_layer.handoff.persona_registry import DEFAULT_AGENTS
 
 from ._category_factories import (
     make_chat_compactor,
@@ -416,12 +418,33 @@ def build_real_llm_handler(
     else:
         subagent_dispatcher = None
 
+    # Sprint 57.107 (B3): resolve the C3 policy EARLY — the spec-only `handoff`
+    # registration below needs it before the executor build (the rest of the
+    # C3 sourcing block further down reuses this same `policy`).
+    policy = harness_policy or HarnessPolicy()
+
+    # Sprint 57.107 (B3): the spec-only `handoff` trigger tool. Registered unless
+    # the tenant turned it off (handoff_enabled=False → tool absent, zero-cost
+    # off). The description suggests the tenant's allowlist (or the 3 default
+    # personas) — guidance only; HandoffService boot-time validation is
+    # authoritative. No hot-path DB read: DEFAULT_AGENTS is the hardcoded
+    # persona seed (per-tenant catalog targets still boot via resolve_persona).
+    # Child / teammate executors never get this (depth-bound: no nested handoff).
+    handoff_targets: list[str] | None = None
+    if policy.handoff_enabled is not False:
+        handoff_targets = (
+            list(policy.handoff_target_allowlist)
+            if policy.handoff_target_allowlist
+            else sorted(DEFAULT_AGENTS)
+        )
+
     registry, executor = make_default_executor(
         factory_provider=business_factory_provider,
         memory_retrieval=memory_retrieval,
         memory_layers=memory_layers,
         subagent_dispatcher=subagent_dispatcher,
         parent_session_id=session_id,
+        handoff_targets=handoff_targets,
     )
 
     # Sprint 57.2 US-3 (closes AD-Cat9-1-WireDetectors): production
@@ -473,8 +496,8 @@ def build_real_llm_handler(
     # byte-identical to the pre-57.106 hardcoded path. The frozenset names below
     # are the SYSTEM DEFAULTS (kept as-is — they are referenced by name in two
     # other modules' comments; renaming would churn unrelated files per the
-    # surgical-changes rule).
-    policy = harness_policy or HarnessPolicy()
+    # surgical-changes rule). `policy` itself is resolved earlier (57.107 moved
+    # it above the executor build for the handoff spec registration).
     escalate_tools = (
         frozenset(policy.escalate_tools)
         if policy.escalate_tools is not None
