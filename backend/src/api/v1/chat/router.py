@@ -101,12 +101,12 @@ from agent_harness._contracts.events import (
     SubagentSpawned,
     ToolCallExecuted,
 )
-from infrastructure.db.models.sessions import MessageEvent
 from agent_harness.observability._abc import Tracer
 from agent_harness.orchestrator_loop import AgentLoop
 from business_domain._service_factory import BusinessServiceFactory
 from core.config import get_settings
 from infrastructure.db.audit_helper import append_audit
+from infrastructure.db.models.sessions import MessageEvent
 from infrastructure.db.repositories import SessionRepository, ToolCallRepository
 from infrastructure.db.session import get_db_session
 from platform_layer.billing.billing_outbox import (
