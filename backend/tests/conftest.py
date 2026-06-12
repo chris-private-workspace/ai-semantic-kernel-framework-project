@@ -80,7 +80,16 @@ async def db_session() -> AsyncIterator[AsyncSession]:
 
     Caller may flush + use ORM normally; pending changes are rolled
     back at fixture teardown so each test sees a clean DB state.
+
+    FIX-032: dispose at SETUP too (not only teardown). Teardown-only disposal
+    leaks the engine into the next test if a prior test touched the engine WITHOUT
+    this fixture (no teardown dispose) OR if its teardown dispose raised on a dead
+    loop. Disposing at setup forces a fresh engine bound to THIS test's loop
+    regardless of what ran before — the robust complement to dispose_engine's
+    always-reset (so the cross-loop `Event loop is closed` cascade that flaked
+    incident/test_service.py under CI's collection order cannot recur).
     """
+    await dispose_engine()
     factory = get_session_factory()
     async with factory() as session:
         try:

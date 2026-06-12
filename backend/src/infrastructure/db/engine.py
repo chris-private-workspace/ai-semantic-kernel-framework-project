@@ -28,6 +28,7 @@ Created: 2026-04-29 (Sprint 49.2 Day 1.4)
 Last Modified: 2026-04-29
 
 Modification History:
+    - 2026-06-12: FIX-032 — dispose_engine always resets singletons even if close raises
     - 2026-04-29: Initial creation (Sprint 49.2 Day 1.4)
 
 Related:
@@ -87,10 +88,24 @@ async def dispose_engine() -> None:
 
     Use in pytest teardown fixtures and FastAPI lifespan shutdown.
     Safe to call multiple times.
+
+    FIX-032: the singleton reset MUST happen even if ``_engine.dispose()`` raises.
+    A stale engine whose pooled asyncpg connection belongs to an already-closed
+    event loop (per-test loops in pytest-asyncio) makes asyncpg's graceful close
+    do `create_task` on that dead loop → ``RuntimeError('Event loop is closed')``.
+    If that exception propagated, ``_engine``/``_session_factory`` stayed set and
+    the NEXT test reused the stale, cross-loop engine (the cascade that flaked
+    `incident/test_service.py::test_create_returns_incident` under CI's collection
+    order). Swallowing the close error here (the connection's loop is gone — there
+    is nothing left to clean) and always nulling the singletons forces a fresh
+    engine on the next loop.
     """
     global _engine, _session_factory
     if _engine is not None:
-        await _engine.dispose()
+        try:
+            await _engine.dispose()
+        except Exception:  # noqa: BLE001 — best-effort close; a dead loop can't be cleaned
+            pass
     _engine = None
     _session_factory = None
 
