@@ -52,20 +52,20 @@
 
 ---
 
-## Day 3 — Full gates + drive-through (US-4) + CHANGE-075
+## Day 3 — Full gates + drive-through (US-4) + CHANGE-075 ✅
 
 ### 3.1 Full gate sweep
-- [ ] mypy strict 0 · black/isort/flake8 0 · run_all 10/10 (count 24) · full pytest 0 del · FE 4 gates · wire schema diff = additive-only · loop.py diff = yield sites only
+- [x] mypy strict 0/359 · black/isort/flake8 0 · run_all 10/10 (count 24) · full pytest 2462+4skip (0 del) · FE 4 gates (Vitest 836 / mockup-fidelity 51==51) · wire schema diff = additive-only · loop.py diff = 5 yield kwargs + header only
 
-### 3.2 Drive-through (US-4 — real UI + real backend + real Azure; clean no-reload restart per Risk Class E)
-- [ ] **HITL card reality**: escalate-phrase / risky-tool ask (57.106 lever) → kind="tool" pause → card shows REAL tool name + reason (not "—") → approve → run continues
-- [ ] **Non-tool fallback**: input-phrase escalate → card tool falls back "—", reason real
-- [ ] **Inspector reality**: live run → turn pane `trace_id`/`span_id`/`tokens.in`/`tokens.out` real values; `cost`/`tokens.thinking` honest "—"
-- [ ] Screenshots (`artifacts/dt57108-*.png`) + observed-vs-intended in progress.md
-  - DoD: ALL legs PASS ✓; any policy/test tenant state restored
+### 3.2 Drive-through (US-4 — real UI :3007 + fresh no-reload backend PID 33124 + real Azure gpt-5.2; zero dev-login; Risk Class E clean restart) ✅ ALL LEGS PASS
+- [x] **HITL card reality**: risky sandbox ask → LLM refused → verifier coached → `subprocess` retry → RiskyActionDetector ESCALATE → card shows **tool: python_sandbox** + real rationale (`risky_action: sandbox code matched '\bsubprocess\b'`) → Approve → tool executed (real output) → `Decision: APPROVED` → final answer + verification 0.99
+- [x] **Non-tool fallback**: "approval required" input phrase → pause before any LLM call → card **tool: —** (honest) + **reason: input matched escalation phrase** (real)
+- [x] **Inspector reality**: tokens.in **2,301** (actuals overwrote the `tokens_in=0` llm_request estimate — D1 design proved live) · tokens.out **75** · trace_id + span_id real (span_id = the turn's TURN span exactly, D9) · duration fills on TURN span_ended (5.33s/6.45s) and stays "—" mid-pause (honest) · cost/thinking "—" by design
+- [x] Screenshots ×3 (`artifacts/dt57108-*.png`) + observed-vs-intended table in progress.md
+  - DoD: ALL legs PASS ✓; Leg B pause rejected (cleanup); no tenant policy was modified (defaults used throughout)
 
 ### 3.3 CHANGE-075
-- [ ] `claudedocs/4-changes/feature-changes/CHANGE-075-chatv2-hitl-card-inspector-metadata-wire.md` (1-page; spike design note NOT required — feature continuation, not a new-domain spike)
+- [x] `claudedocs/4-changes/feature-changes/CHANGE-075-chatv2-hitl-card-inspector-metadata-wire.md` (1-page; spike design note NOT required — feature continuation, not a new-domain spike)
 
 ---
 
