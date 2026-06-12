@@ -70,7 +70,7 @@ Build enterprise AI agent teams that work like **human professional teams** — 
 | Attribute | Value |
 |-----------|-------|
 | **Phase** | V2 22/22 ✅ + SaaS Stage 1 3/3 ✅ + SaaS Frontend ongoing (Phase 57+) |
-| **Current Sprint** | Sprint 57.104 (merge-pending) — **C1 per-tenant model policy: SHIPPED + drive-through PASS** (harness-deepening Workflow C slice C1). A tenant governs its own `{action, cheap}` LLM deployment via a pricing-validated admin write-side + a tenant-settings "Model Policy" tab; resolved per-request (TTL-cached, PUT-invalidated) into the chat `ModelProfile`. `loop.py` diff 0, no DB migration, no new event. Gate: mypy `src` 0/357 · run_all 10/10 · unit 27 · integration 13 · FE Vitest 809 / mockup-fidelity 53. Drive-through (real UI + real Azure): acme-prod policy nano→mini via the tab → `cost_ledger` action model sub_type tracked the change (cache invalidation) + 422 unpriced inline. Detail: `memory/project_phase57_104_per_tenant_model_policy.md` + CHANGE-071 + design note 27. Next: `claudedocs/1-planning/next-phase-candidates.md`. |
+| **Current Sprint** | Sprint 57.105 (merge-pending) — **RBAC DB→JWT wiring: SHIPPED + drive-through PASS** (closes `AD-RBAC-DB-To-JWT-Wiring-Phase58` + ISSUE-6). The OIDC callback + password-login source the JWT `roles` claim from `RBACManager.get_user_role_codes` (DB `Role JOIN UserRole`, tenant-scoped) — a DB role grant is authz-effective at login; gates + FE zero-diff; dev-login untouched (dev-only). Gate: mypy `src` 0/357 · run_all 10/10 · full pytest 2384+4skip (+5, 0 del) · loop.py/DB/wire/FE diff 0. Drive-through (zero dev-login): register 201 → set_password → password-login → "DT Founder / admin" renders → model-policy PUT 200 → role-less JWT 403. Detail: `memory/project_phase57_105_rbac_jwt_wiring.md` + CHANGE-072 + note 23 §5 RESOLVED. Next: `claudedocs/1-planning/next-phase-candidates.md` (C3 per interleave). |
 | **Sprint History** | See [`memory/MEMORY.md`](memory/MEMORY.md) §Recent Sprints + per-sprint subfile `memory/project_phase57_XX_*.md` + retrospective.md under `docs/03-implementation/agent-harness-execution/phase-57/sprint-57-XX/` |
 | **Pending / Next Phase** | See [`claudedocs/1-planning/next-phase-candidates.md`](claudedocs/1-planning/next-phase-candidates.md) |
 | **Roadmap** | Phase 49-55 V2 ✅ / Phase 56-58 SaaS Stage 1 3/3 ✅ / Phase 57+ Frontend ongoing |
@@ -619,7 +619,7 @@ V1 完整 CLAUDE.md 已保留於 `CLAUDE.backup.md`。如需查閱 V1 架構（M
 
 ---
 
-**Last Updated**: 2026-06-11 (Sprint 57.104 — C1 per-tenant model policy: SHIPPED + drive-through PASS. A tenant governs its `{action, cheap}` LLM deployment via a pricing-validated admin PUT/GET + a tenant-settings "Model Policy" tab; `ModelPolicy` value object + TTL-cached `resolve_tenant_model_policy` resolved per-request into the chat `ModelProfile`; `loop.py` diff 0, no migration, no new event; mypy 0/357 · run_all 10/10 · unit 27 · integration 13 · FE Vitest 809; drive-through proved per-tenant model + cache invalidation in cost_ledger nano→mini + 422 unpriced inline; CHANGE-071 + design note 27 + 17.md); see `memory/` for sprint history
+**Last Updated**: 2026-06-12 (Sprint 57.105 — RBAC DB→JWT wiring SHIPPED + drive-through PASS; CHANGE-072); see `memory/` for sprint history
 **Project Start**: 2025-11-14
 **V2 Authority**: `docs/03-implementation/agent-harness-planning/` (21 docs — 20 規劃 + 1 review)
 **V1 Reference**: `CLAUDE.backup.md` + `docs/07-analysis/V9/00-index.md`

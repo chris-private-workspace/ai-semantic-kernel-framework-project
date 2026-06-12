@@ -92,3 +92,12 @@ a separate AD candidate — logged to next-phase-candidates at closeout.
 - note 23 §5: `AD-RBAC-DB-To-JWT-Wiring-Phase58` → **✅ RESOLVED Sprint 57.105** (OIDC-linkage stays open); MHist +1. No new design note (gap-fix continuation).
 
 ---
+
+## Day 4 — 2026-06-12 — Closeout ✅
+
+- retrospective.md Q1-Q7 written (Q2: `iam-backend-spike` 0.65 2nd validation, actual ≈6.5 hr vs committed 6.8 hr → ratio ≈0.95 IN band → KEEP; 3-sprint window now 57.87 ≈1.0 + 57.105 ≈0.95).
+- sprint-workflow.md matrix: `iam-backend-spike` 0.65 row ADDED (had been plan-only since 57.87).
+- CLAUDE.md Current Sprint + Last Updated (lean) · MEMORY.md quality pointer + `project_phase57_105_rbac_jwt_wiring.md` subfile (auto-memory dir — initial Write to repo `memory/` was relocated; the repo has no `memory/` dir).
+- next-phase-candidates.md: AD closed + 🆕 `AD-FE-Tenant-Display-Fixture-Phase58` + next slice **C3** per interleave decision.
+- Checklist: all items `[x]`; 0 deleted.
+

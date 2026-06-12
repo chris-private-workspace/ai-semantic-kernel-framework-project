@@ -2,7 +2,7 @@
 
 [Plan](./sprint-57-105-plan.md)
 
-**Status**: 🚧 Day 0-3 ✅ (drive-through PASS) — Day 4 closeout in progress
+**Status**: ✅ CLOSED 2026-06-12 — drive-through PASS; merge-pending (push awaiting authorization)
 **Branch**: `feature/sprint-57-105-rbac-jwt-wiring`
 
 ---
@@ -85,10 +85,10 @@
 ## Day 4 — Closeout
 
 ### 4.1 Closeout
-- [ ] progress.md Day 0-3 complete (incl. drift catalog + drive-through observed-vs-intended)
-- [ ] retrospective.md Q1-Q7 (Q2: `iam-backend-spike` 0.65 2nd-validation ratio → 3-sprint window)
-- [ ] CLAUDE.md Current Sprint + Last Updated (lean, per §Sprint Closeout policy)
-- [ ] MEMORY.md pointer + `project_phase57_105_rbac_jwt_wiring.md` subfile
-- [ ] next-phase-candidates.md: `AD-RBAC-DB-To-JWT-Wiring-Phase58` ✅ CLOSED (+ drive-through-audit ISSUE-6 closed); next per interleave decision: C3
-- [ ] sprint-workflow.md calibration row (`iam-backend-spike` 0.65 — 2nd data point)
-- [ ] all checklist items `[x]` or annotated 🚧 (never delete unchecked)
+- [x] progress.md Day 0-4 complete (incl. drift catalog D1-D12 + drive-through observed-vs-intended table)
+- [x] retrospective.md Q1-Q7 (Q2: `iam-backend-spike` 0.65 2nd validation ratio ≈0.95 IN band → KEEP)
+- [x] CLAUDE.md Current Sprint + Last Updated (lean, per §Sprint Closeout policy)
+- [x] MEMORY.md pointer + `project_phase57_105_rbac_jwt_wiring.md` subfile (auto-memory dir)
+- [x] next-phase-candidates.md: `AD-RBAC-DB-To-JWT-Wiring-Phase58` ✅ CLOSED (+ ISSUE-6 closed) + 🆕 `AD-FE-Tenant-Display-Fixture-Phase58`; next per interleave decision: C3
+- [x] sprint-workflow.md calibration row (`iam-backend-spike` 0.65 — 2 pt, ~0.98 mean, KEEP)
+- [x] all checklist items `[x]` or annotated 🚧 (never delete unchecked)
