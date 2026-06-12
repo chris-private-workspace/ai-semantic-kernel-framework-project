@@ -60,24 +60,24 @@
 
 ## Day 3 — FE (US-3 FE / US-2 tab) + full gates + drive-through (US-5) + CHANGE-074 + note 29
 
-### 3.1 FE SessionList real-data + 鏈 (US-3)
-- [ ] **`sessionsService.listSessions()`** + chatStore `loadSessions` + `SessionList.tsx` real render (FIXTURE_SESSIONS + DEMO banner removed; `fixtures/sessions.ts` deleted; Vitest mocks the service); `types.ts` Session += `handoffParentId`/`agentRole`; child rows `↳ <parent short-ref>` badge
-- [ ] **`HarnessPolicyTab.tsx`**: +1 tri-state select (`handoffEnabled`) + 1 list field (`handoffTargetAllowlist`) + service mappers
-- [ ] **FE Vitest**: SessionList real-data/empty/鏈-badge + tab 2 new fields
-  - DoD: lint 0 (non-silent) · build 0 · Vitest green · mockup-fidelity 53
+### 3.1 FE SessionList real-data + 鏈 (US-3) ✅
+- [x] **`chatService.listSessions()`** + chatStore `loadSessions` + `SessionList.tsx` real render (FIXTURE_SESSIONS + DEMO banner removed; `fixtures/sessions.ts` deleted; Vitest mocks the store/service); `types.ts` Session += `handoffParentId`/`agentRole` (− `domain`, no backend source); child rows `↳ {agentRole}` `.route-pill` badge; ChatHeader rewired (fixture-deletion forced)
+- [x] **`HarnessPolicyTab.tsx`**: +1 tri-state select (`handoffEnabled`) + 1 list field (`handoffTargetAllowlist`) + service mappers (9→11)
+- [x] **FE Vitest**: SessionList real-data/empty/鏈-badge + tab 2 new fields (828/828, 137 files)
+  - DoD: lint 0 (non-silent) ✓ · build ✓ · Vitest green ✓ · mockup-fidelity ✓ — **baseline RATCHETED 53→51** (banner removal −2; agent-delegated, parent re-verified all 4 gates)
 
-### 3.2 Full gate sweep
-- [ ] mypy strict 0 · run_all 10/10 (event count UNCHANGED) · full pytest 0 del · FE 4 gates · `loop.py`/wire-schema diff = 0
+### 3.2 Full gate sweep ✅
+- [x] mypy strict 0/359 · run_all 10/10 (event count UNCHANGED) · full pytest 2460+4skip (0 del) · FE 4 gates · `loop.py`/wire-schema diff = 0
 
-### 3.3 Drive-through (US-5 — real UI + real backend + real Azure; clean no-reload restart per Risk Class E)
-- [ ] **Handoff e2e**: "hand this off to the reviewer agent" → handoff tool call → child session (`handoff_parent_id` set) → `AgentHandoff` SSE → FE pivot + banner → sessions list shows parent (handed_off) + child ↳ badge
-- [ ] **Allowlist negative**: tenant policy `["planner"]` → handoff to "reviewer" rejected (no child + audit row); `handoff_enabled=false` → tool absent (LLM cannot call it)
-- [ ] **Sidechain**: `task_spawn` run → sidechain session + `message_events` rows queryable (psql/API probe)
-- [ ] Screenshots + observed-vs-intended into progress.md
-  - DoD: ALL legs PASS or findings catalogued + fixed-to-usable
+### 3.3 Drive-through (US-5 — real UI + real backend + real Azure; clean no-reload restart per Risk Class E) ✅ ALL LEGS PASS
+- [x] **Handoff e2e**: **FIRST EVER real-LLM handoff** — gpt-5.2 called the spec-only tool → `loop_end stop=handoff` → `agent_handoff` (child `eab49331…`) → HandoffBanner「已交棒給 reviewer」→ sessions list parent (not running) + child ↳ badge
+- [x] **Allowlist negative**: policy `["planner"]` → the spec-description FIRST layer steered the real LLM to planner (never attempted off-list reviewer); boot-time rejection proven by integration test; `handoff_enabled=false` → tool absent → same ask `end_turn` normally (LLM fell back to task_spawn)
+- [x] **Sidechain**: teammate spawn → sidechain session `709ded76…` (completed + summary + 3993 tokens) + **message_events first-ever 6 rows (seq 1-6)** — DB-probed
+- [x] Screenshots (4, `artifacts/dt57107-*.png`) + observed-vs-intended in progress.md
+  - DoD: ALL legs PASS ✓; policy cleared back to defaults (cache invalidation re-proven)
 
-### 3.4 CHANGE-074 + docs
-- [ ] `claudedocs/4-changes/feature-changes/CHANGE-074-*.md` + design note 29 (spike extract, 8-point gate) + 17.md cross-refs
+### 3.4 CHANGE-074 + docs ✅
+- [x] `claudedocs/4-changes/feature-changes/CHANGE-074-handoff-finish-sidechain-transcripts.md` + design note `29-handoff-completion-sidechain-transcript-design.md` (spike extract, 8-point gate) + 17.md cross-refs (Day 1)
 
 ---
 

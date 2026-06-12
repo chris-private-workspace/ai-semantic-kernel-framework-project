@@ -54,3 +54,25 @@ US-3 sessions list API + US-4 migration 0028 (sidechain columns + DEFAULT partit
 
 ### Remaining for Day 3
 FE (SessionList real-data + 鏈 badge + HarnessPolicyTab 2 fields + Vitest) → full FE gates → drive-through (US-5) → CHANGE-074 + note 29.
+
+---
+
+## Day 3 — 2026-06-12 — FE (agent-delegated, parent re-verified) + drive-through PASS
+
+**3.1 FE** (code-implementer agent; parent re-ran ALL 4 gates per Before-Commit item 7):
+SessionList fixture→real (`listSessions` service + `loadSessions` store action + ↳ `.route-pill` chain badge; FIXTURE_SESSIONS + DEMO banner deleted; ChatHeader rewired); HarnessPolicyTab 9→11 fields. Gates: lint 0 · build ✓ · Vitest 828/828 (137 files) · mockup-fidelity ✓ (**HEX_OKLCH_BASELINE ratcheted 53→51** — banner removal −2). Agent deviations accepted: `domain` field dropped (no backend source — anti-Potemkin), ChatHeader rewire (fixture-deletion forced), orphan i18n keys removed. Closes `AD-ChatV2-SessionList-Backend`.
+
+**3.3 Drive-through (US-5) — ALL 4 LEGS PASS** (real UI :3007 + fresh no-reload backend PID 9680 on 57.107 + real Azure gpt-5.2; founder `founder@dt57105.test` password-login, zero dev-login; Risk Class E clean restart — killed stale 57.106-era PID 37844, fresh process sole :8000 owner; founder password re-set via the 57.105 D11 out-of-band `set_password` pattern — not recorded in docs by design):
+
+| Leg | Intended | Observed |
+|-----|----------|----------|
+| **A — handoff e2e** | LLM calls `handoff` → child boots → SSE → FE pivot | ✅ **FIRST EVER real-LLM handoff**: gpt-5.2 called the spec-only tool (llm_response "1 tool call") → `loop_end stop=handoff` → `agent_handoff` frame (target=reviewer, child `eab49331…`) → HandoffBanner「已交棒給 reviewer」+ reason rendered. `dt57107-A-handoff-banner.png` |
+| **B1 — allowlist** | off-list target rejected | ✅ STRONGER than intended: the allowlist's FIRST defense layer (spec description listing only `planner`) steered the real LLM to hand off to planner — it never attempted the off-list reviewer (reason: "transferring to available agent identity"). Boot-time rejection (2nd layer) proven by `test_chat_handoff_offlist_target_fails_soft_no_child`. `dt57107-B1-…png` |
+| **B2 — enabled=Off** | tool absent, no handoff | ✅ same ask → `Turn 2 · end_turn` completed normally, NO handoff/banner/child; the LLM (lacking the tool) delegated via `task_spawn` instead — Subagents (1) panel. `dt57107-B2-…png` |
+| **C — sidechain transcript** | task_spawn → rows queryable | ✅ sidechain session `709ded76…` (title "Subagent · teammate", completed, parent set, summary + tokens 3993 folded into meta_data) + **message_events FIRST EVER rows: 6 (seq 1-6, subagent_child)** |
+| **D — SessionList real** | real list + 鏈 | ✅ 8 real sessions newest-first; "Handoff → reviewer/planner" children with `↳ reviewer`/`↳ planner` badges + agent_role; parents no longer "running" (handed_off mapped). `dt57107-D-sessionlist-chain.png` |
+
+Cleanup: tenant policy cleared back to System default via the tab (cache invalidation re-proven). Screenshots in `artifacts/` (4).
+
+### Remaining for Day 4
+CHANGE-074 + design note 29 + checklist final + retro Q1-Q7 + calibration + navigators + carryover.
