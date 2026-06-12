@@ -24,6 +24,17 @@ It condenses the user's "5-point deepening discussion" into 3 workflows and a re
 
 ---
 
+## 🆕 Sprint 57.108 Carryover — UX slice: chat-v2 HITL card real tool/reason + Inspector turn metadata SHIPPED (drive-through ALL legs PASS)
+
+Sprint 57.108 closed the chat-v2 UX bundle (CHANGE-075; **closes `AD-ChatV2-HITL-Card-Tool-Name` + `AD-ChatV2-Inspector-Turn-Metadata-Wire`** / ISSUE-5). Additive wire fields only (`approval_requested` +tool_name/reason from all 5 escalate sites; `llm_response` +token actuals; count 24 unchanged) + chatStore 4 captures (ZERO component edits — store-driven). Per the interleave decision (RBAC → C3 → B3 → **UX ✅** → C2 → B4), **next slice: C2** (compaction cheap tier — the remaining C slice).
+
+- **Cost carve-out (documented, NOT silently dropped)**: Inspector `cost` + `tokens.thinking` stay honest "—" — cost is post-loop by design (cost_ledger / cost dashboard); only carve `AD-ChatV2-Inspector-Cost-InStream` if a real consumer demands it (YAGNI).
+- **`AD-Day0-Prong2-Event-Emission-Order`** (🆕 watch, 1st data point — D9): when FE wiring depends on a SEQUENCE of events, Day-0 must verify EMISSION ORDER, not just each event's shape (`SpanStarted(TURN)` precedes `TurnStarted` — the plan's span_started-side linkage would have attached to the previous turn). Promote to a Prong-2 drift-class row on a 2nd occurrence.
+- **`AD-LLMRequest-TokensIn-Zero`** (🆕 🟢 minor): `llm_request.tokens_in` streams 0 on the Azure adapter — populate the pre-call estimate or drop the now-redundant wire field (llm_response actuals are authoritative since 57.108).
+- Calibration: `frontend-feature-with-event-wire-addition` 0.55 **2nd data point** ratio ≈1.05-1.1 IN band (57.100 ≈1.0); agent-delegated: no (parent-direct; Explore recon only).
+
+---
+
 ## 🆕 Sprint 57.107 Carryover — B3 HANDOFF finish SHIPPED (drive-through 4 legs PASS; first-ever real-LLM handoff)
 
 Sprint 57.107 closed proposal §2.4 B3 (CHANGE-074 + design note 29; closes `AD-ChatV2-SessionList-Backend` + `AD-Subagent-Transcript-Isolation`). Per the interleave decision (RBAC → C3 → B3 ✅ → **UX** → C2 → B4), **next slice: 1 UX slice** — candidates: chat-v2 bundle (`AD-ChatV2-HITL-Card-Tool-Name` + `AD-ChatV2-Inspector-Turn-Metadata-Wire`) or `AD-FE-Tenant-Display-Fixture-Phase58`.

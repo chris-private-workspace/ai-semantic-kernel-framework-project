@@ -72,6 +72,6 @@
 ## Day 4 — Closeout
 
 ### 4.1 Closeout
-- [ ] retrospective.md Q1-Q7 + calibration (`frontend-feature-with-event-wire-addition` 0.55 2nd data point; agent-delegated: no) + progress.md final
-- [ ] Navigators: CLAUDE.md Current-Sprint row + Last-Updated; MEMORY.md quality pointer + memory subfile; next-phase-candidates (closes `AD-ChatV2-HITL-Card-Tool-Name` + `AD-ChatV2-Inspector-Turn-Metadata-Wire`; cost carve-out documented); sprint-workflow matrix row (2nd data point)
+- [x] retrospective.md Q1-Q7 + calibration (`frontend-feature-with-event-wire-addition` 0.55 2nd data point, ratio ≈1.05-1.1 IN band; agent-delegated: no) + progress.md final
+- [x] Navigators: CLAUDE.md Current-Sprint row + Last-Updated; MEMORY.md quality pointer + memory subfile; next-phase-candidates (closes `AD-ChatV2-HITL-Card-Tool-Name` + `AD-ChatV2-Inspector-Turn-Metadata-Wire`; cost carve-out documented; NEW `AD-Day0-Prong2-Event-Emission-Order` watch + `AD-LLMRequest-TokensIn-Zero` 🟢); sprint-workflow matrix row (2nd data point)
 - [ ] PR (push + open on user authorization)

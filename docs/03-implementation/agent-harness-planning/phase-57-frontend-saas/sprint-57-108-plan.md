@@ -113,11 +113,11 @@ Unit (backend): `ApprovalRequested` field defaults + 5-site emission shapes (too
 
 ## 6. Deliverables
 
-- [ ] US-1 `ApprovalRequested` +2 fields + 5-site emission + wire/serializer + codegen regen + test conversions
-- [ ] US-2 HITL card real tool/reason (store capture + renders + Vitest)
-- [ ] US-3 Inspector trace_id/span_id/tokens wired (3 store captures + llm_response wire pair + Vitest convert)
-- [ ] US-4 drive-through PASS (tool-escalate card reality + Inspector reality; screenshots + observed-vs-intended)
-- [ ] CHANGE-075 + closeout (retro Q1-Q7 + calibration + navigators + next-phase-candidates)
+- [x] US-1 `ApprovalRequested` +2 fields + 5-site emission + wire/serializer + codegen regen + test conversions
+- [x] US-2 HITL card real tool/reason (store capture + renders + Vitest)
+- [x] US-3 Inspector trace_id/span_id/tokens wired (3 store captures + llm_response wire pair + Vitest convert)
+- [x] US-4 drive-through PASS (tool-escalate card reality + Inspector reality; screenshots + observed-vs-intended)
+- [x] CHANGE-075 + closeout (retro Q1-Q7 + calibration + navigators + next-phase-candidates)
 
 ## 7. Workload Calibration
 
