@@ -51,6 +51,7 @@ from agent_harness._contracts.errors import (
     AuthenticationError,
     MissingDataError,
     RateLimitExceededError,
+    SubagentFailureEscalation,
     ToolExecutionError,
 )
 from agent_harness.error_handling._abc import ErrorClass, ErrorPolicy
@@ -116,6 +117,9 @@ class DefaultErrorPolicy(ErrorPolicy):
         # of being retried (Sprint 57.58 Track B). FATAL is already the registry
         # fallback, but registering keeps intent clear + survives default changes.
         self.register(RateLimitExceededError, ErrorClass.FATAL)
+        # FATAL — a fail_fast child failure must never be retried: a retry would
+        # RE-SPAWN the child (Sprint 57.110 B4; mirrors the rate-limit rationale).
+        self.register(SubagentFailureEscalation, ErrorClass.FATAL)
 
         # FATAL — fallback when no registered match found
 

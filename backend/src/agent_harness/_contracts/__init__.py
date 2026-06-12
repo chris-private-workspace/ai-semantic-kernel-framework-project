@@ -99,9 +99,11 @@ from agent_harness._contracts.state import (
     TransientState,
 )
 from agent_harness._contracts.subagent import (
+    SUBAGENT_FAILURE_POLICIES,
     AgentSpec,
     ChildLoopFactory,
     SubagentBudget,
+    SubagentFailurePolicy,
     SubagentMode,
     SubagentResult,
     TeammateChildLoopFactory,
@@ -189,7 +191,9 @@ __all__ = [
     # verification
     "VerificationResult",
     # subagent
+    "SUBAGENT_FAILURE_POLICIES",
     "SubagentBudget",
+    "SubagentFailurePolicy",
     "SubagentResult",
     "SubagentMode",
     "AgentSpec",

@@ -41,3 +41,17 @@
 - **D-DAY1-2 (event-vs-run semantics pin)**: the input soft-block path emits `GuardrailTriggered(action="escalate")` — the EVENT keeps the guardrail's truthful action while the RUN fail-closes (`stop_reason="guardrail_blocked"`). The plan's "GuardrailTriggered(input, block)" wording (from the loop docstring) describes the no-identity branch; the keyword path preserves the original action. Test pins the real shape — better for US-2 visibility (the Tree row will truthfully say escalate).
 
 **Gates**: subagent + handler suites 93 passed (+5, 0 del) · mypy strict 0/359 · flake8 0 · black/isort clean · `loop.py` UNTOUCHED.
+
+---
+
+## Day 2 — 2026-06-13 — US-2 relay visibility + US-3 failure policies ✅
+
+**Done (US-2)**: `_TAO_CHILD_EVENT_TYPES` += `GuardrailTriggered` (fork.py — teammate shares the tuple); FE `chatStore` projection (+`inner.reason`→text fallback + `action` field — the `subagent_child` reducer was already generic per D11) + `InspectorTree.childTurnLabel` `guardrail_triggered` case (`guardrail escalate · <reason>`) + `ChildTurnEvent.action?`. Vitest +1 (mergeEvent 55 passed) + backend relay forward test +1.
+
+**Done (US-3)**: `SubagentFailurePolicy` Literal + `SUBAGENT_FAILURE_POLICIES` + `SubagentBudget.failure_policy` (defaulted `fail_soft` — byte-identical) · `SubagentFailureEscalation` (`_contracts/errors.py`, the RateLimitExceededError FATAL mirror; registered in `DefaultErrorPolicy._register_defaults`) · task_spawn handler raises on `fail_fast`+failure (D5 threading: `make_task_spawn_tool(failure_policy=)` builds the per-spawn budget) · fork/teammate `_salvaged_summary()` on timeout/exception (`fail_partial` — the nonlocal survives cancellation) + `metadata["failure_policy"]` · `HarnessPolicy.subagent_failure_policy` joins `_STR_FIELDS` (round-trip free) · admin PUT/GET field + `_FAILURE_POLICIES` literal 422 (D13 mirror) · handler threading via `cast` → `make_default_executor(subagent_failure_policy=)` (D7/D12 sites).
+
+**Drift findings (Day 2)**:
+- **D-DAY2-1 (AS_TOOL fail_fast deferred)**: the as_tool wrapper handler lives behind `SubagentDispatcher.as_tool_factory` — an ABC METHOD; threading a failure policy through it is a contract change, not a closure param (unlike task_spawn). Deferred → `AD-Subagent-AsTool-FailFast` (salvage already inherits via ForkExecutor; AS_TOOL failures stay soft-returned). Karpathy §3.
+- **17.md**: `SubagentBudget` row updated + `SubagentFailurePolicy` NEW row (`HarnessPolicy` itself is a platform_layer value object — not a 17.md contract, matching the 57.106/57.107 precedent).
+
+**Tests**: backend +13 (tools ×4 / salvage ×2 / FATAL ×1 / harness_policy ×2 / admin PUT ×2 / relay ×1 + Day-1's identity-in-suite recount) · FE Vitest +1. **Gates**: subagent 90 · admin harness-policy 23 · error_handling/harness_policy/handler green · mypy 0/359 · flake8 0 · run_all 10/10 (count 24, no codegen diff) · FE lint + build ✓ · `loop.py` UNTOUCHED (`git diff --stat` confirms).

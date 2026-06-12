@@ -46,6 +46,7 @@ Created: 2026-05-06 (Sprint 56.1 Day 1)
 Last Modified: 2026-05-10
 
 Modification History:
+    - 2026-06-13: Sprint 57.110 B4 — harness-policy +subagent_failure_policy + literal 422
     - 2026-06-12: Sprint 57.107 B3 — harness-policy +handoff_enabled/target_allowlist + 422 poles
     - 2026-06-03: Sprint 57.74 — add GET /stats fleet aggregate (closes AD-AdminTenants-Stats)
     - 2026-05-29: Sprint 57.62 Track A — add GET /rate-limits/alerts (80%-threshold alert log)
@@ -91,6 +92,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from agent_harness._contracts import SUBAGENT_FAILURE_POLICIES
 from agent_harness._contracts.hitl import HITLPolicy, RiskLevel
 from agent_harness.verification.templates import list_templates
 from core.feature_flags import FeatureFlagNotFoundError, get_feature_flags_service
@@ -1617,6 +1619,9 @@ async def get_tenant_model_policy(
 _MAX_EXTRA_PATTERNS = 20
 _MAX_PATTERN_LEN = 200
 _VERIFICATION_MODES = frozenset({"enabled", "disabled"})
+# Sprint 57.110 (B4): spawn failure semantics literal (single-source:
+# agent_harness._contracts.SUBAGENT_FAILURE_POLICIES).
+_FAILURE_POLICIES = SUBAGENT_FAILURE_POLICIES
 # Sprint 57.107 (B3): handoff allowlist caps (mirror the pattern caps above).
 _MAX_HANDOFF_TARGETS = 20
 _MAX_HANDOFF_TARGET_LEN = 100
@@ -1644,6 +1649,8 @@ class HarnessPolicyUpsertRequest(BaseModel):
     # Sprint 57.107 (B3): handoff governance — enabled gate + target allowlist.
     handoff_enabled: bool | None = None
     handoff_target_allowlist: list[str] | None = None
+    # Sprint 57.110 (B4): spawn failure semantics — fail_fast | fail_soft | fail_partial.
+    subagent_failure_policy: str | None = None
 
 
 class HarnessPolicyResponse(BaseModel):
@@ -1660,6 +1667,7 @@ class HarnessPolicyResponse(BaseModel):
     risky_action_extra_patterns: list[str] | None = None
     handoff_enabled: bool | None = None
     handoff_target_allowlist: list[str] | None = None
+    subagent_failure_policy: str | None = None
 
 
 def _validate_harness_policy(payload: HarnessPolicyUpsertRequest) -> None:
@@ -1677,6 +1685,15 @@ def _validate_harness_policy(payload: HarnessPolicyUpsertRequest) -> None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"verification_mode must be one of {sorted(_VERIFICATION_MODES)}",
+        )
+    # Sprint 57.110 (B4): the spawn failure semantic must be a known literal.
+    if (
+        payload.subagent_failure_policy is not None
+        and payload.subagent_failure_policy not in _FAILURE_POLICIES
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"subagent_failure_policy must be one of {sorted(_FAILURE_POLICIES)}",
         )
     template = payload.verification_judge_template
     if template and template not in list_templates():
@@ -1769,6 +1786,7 @@ async def upsert_tenant_harness_policy(
         "risky_action_extra_patterns": payload.risky_action_extra_patterns,
         "handoff_enabled": payload.handoff_enabled,
         "handoff_target_allowlist": payload.handoff_target_allowlist,
+        "subagent_failure_policy": payload.subagent_failure_policy or None,
     }
     saved = {key: value for key, value in candidate.items() if value is not None}
 

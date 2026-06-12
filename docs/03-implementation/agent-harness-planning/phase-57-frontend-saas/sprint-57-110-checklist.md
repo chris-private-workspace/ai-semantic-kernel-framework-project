@@ -28,20 +28,21 @@
 
 ---
 
-## Day 2 — Backend: relay visibility + failure policies (US-2 + US-3)
+## Day 2 — Backend: relay visibility + failure policies (US-2 + US-3) ✅
 
 ### 2.1 GuardrailTriggered relay + FE label (US-2)
-- [ ] **`fork.py`**: `_TAO_CHILD_EVENT_TYPES` += `GuardrailTriggered` (additive; subset otherwise locked); MHist 1-line
-- [ ] **FE**: `chatStore` inner `guardrail_triggered` routing (if not generic already) + `InspectorTree.childTurnLabel` case; Vitest +N (label + routing)
-  - DoD: relay unit test extends (child guardrail event tagged + forwarded); wire count 24 unchanged + no codegen diff (run_all event-schema check) ✓; Vitest green ✓
+- [x] **`fork.py`**: `_TAO_CHILD_EVENT_TYPES` += `GuardrailTriggered` (additive; subset otherwise locked); MHist 1-line
+- [x] **FE**: `chatStore` projection (+`inner.reason`→text + `action` field; the reducer was already generic per D11) + `InspectorTree.childTurnLabel` `guardrail_triggered` case + `ChildTurnEvent.action?` (types.ts); Vitest +1 (store projection — mergeEvent suite 55 passed)
+  - DoD: relay unit test extends (`test_forwards_child_guardrail_triggered` — tagged + forwarded) ✓; wire count 24 unchanged + no codegen diff (run_all 10/10) ✓; Vitest green ✓; FE lint + build ✓
 
 ### 2.2 Failure policies (US-3)
-- [ ] **`_contracts/subagent.py`**: `SubagentFailurePolicy` Literal + `SubagentBudget.failure_policy: str = "fail_soft"` (frozen, defaulted); MHist 1-line
-- [ ] **`fork.py` / `teammate.py`**: catch sites honor `fail_partial` (salvage last assistant text into `summary`, keep `error`, `metadata["failure_policy"]`); `fail_soft` byte-identical
-- [ ] **`tools.py`**: task_spawn handler — `fail_fast` + `success=False` → raise `SubagentFailureEscalation` (FATAL-classified per Day-0 pin; NO retry / NO re-spawn)
-- [ ] **`harness_policy.py`**: `HarnessPolicy` += `subagent_failure_policy: str | None = None` tri-state + parse + PUT-side literal validation (invalid → 422); threading in handler.py to the budget-default site (per Day-0)
-- [ ] **Tests ADD**: budget field default + Literal · fail_partial salvage · fail_fast raise + FATAL + exactly-ONE-spawn pin · tri-state resolution (None → soft) · PUT 422 · chat-path integration (spawn → child-block → soft continuation)
-  - DoD: full pytest +N (0 del) vs 2485; run_all 10/10; 17.md HarnessPolicy + SubagentBudget rows updated ✓
+- [x] **`_contracts/subagent.py`**: `SubagentFailurePolicy` Literal + `SUBAGENT_FAILURE_POLICIES` frozenset + `SubagentBudget.failure_policy: SubagentFailurePolicy = "fail_soft"` (frozen, defaulted); exports; MHist 1-line
+- [x] **`fork.py` / `teammate.py`**: timeout/exception catch sites honor `fail_partial` (`_salvaged_summary()` — the nonlocal survives wait_for cancellation; `metadata["failure_policy"]`); `fail_soft` byte-identical
+- [x] **`tools.py`**: task_spawn handler — `fail_fast` + `success=False` → raise `SubagentFailureEscalation` (`_contracts/errors.py` NEW type; `DefaultErrorPolicy._register_defaults` FATAL — the RateLimitExceededError mirror; NO retry / NO re-spawn)
+- [x] **`harness_policy.py`**: `subagent_failure_policy` joins `_STR_FIELDS` (from_dict/to_dict/is_empty ride free) + `tenants.py` PUT/GET field + `_FAILURE_POLICIES` literal 422 + persisted dict; threading: `handler.py` cast→`make_default_executor(subagent_failure_policy=)`→`make_task_spawn_tool(failure_policy=)`→`SubagentBudget` (D7 `_register_all.py` site)
+- [x] **Tests ADD ×13 (backend)**: budget field ×1 · fail_fast raise + soft default + fast-success ×3 · fail_partial salvage + soft-empty ×2 (slow-tool timeout lever) · FATAL classification ×1 · harness_policy round-trip + tri-state ×2 · admin PUT 422 + persists ×2 · relay forward ×1 · (the spawn→child-block→soft chain is covered at the Cat 11 seam — fork input-block + tools fail_soft tests; chat-path covered live by the dt)
+  - DoD: subagent 90 + harness_policy + admin 23 + handler suites green (0 del); run_all 10/10; mypy 0/359; 17.md SubagentBudget row updated + SubagentFailurePolicy NEW row ✓
+- 🚧 **AS_TOOL fail_fast** deferred → `AD-Subagent-AsTool-FailFast` (D-DAY2-1: `as_tool_factory` is a `SubagentDispatcher` ABC method — a signature change is NOT surgical; salvage already inherits via ForkExecutor; AS_TOOL failures stay soft-returned to the LLM)
 
 ---
 

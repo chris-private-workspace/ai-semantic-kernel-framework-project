@@ -26,9 +26,10 @@ Key Components:
     - _HarnessPolicyCache — TTL cache with an injectable clock
 
 Created: 2026-06-12 (Sprint 57.106)
-Last Modified: 2026-06-12
+Last Modified: 2026-06-13
 
 Modification History (newest-first):
+    - 2026-06-13: Sprint 57.110 (B4) — add subagent_failure_policy (11→12)
     - 2026-06-12: Sprint 57.107 (B3) — add handoff_enabled + handoff_target_allowlist (9→11)
     - 2026-06-12: Initial creation (Sprint 57.106 C3) — per-tenant harness policy resolver
 
@@ -65,7 +66,7 @@ _LIST_FIELDS = (
     "risky_action_extra_patterns",
     "handoff_target_allowlist",
 )
-_STR_FIELDS = ("verification_mode", "verification_judge_template")
+_STR_FIELDS = ("verification_mode", "verification_judge_template", "subagent_failure_policy")
 _BOOL_FIELDS = ("verification_escalate_on_max", "risky_action_enabled", "handoff_enabled")
 
 
@@ -124,6 +125,10 @@ class HarnessPolicy:
     # rejects an explicit [] (use handoff_enabled to disable).
     handoff_enabled: bool | None = None
     handoff_target_allowlist: tuple[str, ...] | None = None
+    # Sprint 57.110 (B4): spawn failure semantics — "fail_fast" | "fail_soft" |
+    # "fail_partial"; None → the fail_soft system default. The admin PUT
+    # validates the literal (422 on anything else).
+    subagent_failure_policy: str | None = None
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any] | None) -> HarnessPolicy:

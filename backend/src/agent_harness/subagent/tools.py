@@ -44,9 +44,11 @@ from uuid import UUID
 
 from agent_harness._contracts import (
     SubagentBudget,
+    SubagentFailurePolicy,
     SubagentMode,
     ToolSpec,
 )
+from agent_harness._contracts.errors import SubagentFailureEscalation
 from agent_harness.subagent._abc import SubagentDispatcher
 
 if TYPE_CHECKING:
@@ -59,6 +61,7 @@ def make_task_spawn_tool(
     *,
     dispatcher: SubagentDispatcher,
     parent_session_id: UUID,
+    failure_policy: SubagentFailurePolicy = "fail_soft",
 ) -> tuple[ToolSpec, ToolHandler]:
     """Factory: returns (ToolSpec, handler) for the `task_spawn` Cat 11 tool.
 
@@ -68,6 +71,13 @@ def make_task_spawn_tool(
     The handler synchronously waits for the subagent (uses dispatcher.wait_for
     internally). LLM caller blocks per turn — for fire-and-forget patterns
     callers can extend the schema to accept `wait: bool` in Phase 55+.
+
+    Sprint 57.110 (B4): `failure_policy` is the TENANT-resolved spawn failure
+    semantic (NOT an LLM-controllable arg — governance belongs to the tenant).
+    It rides the per-spawn SubagentBudget; on a failed child, "fail_fast"
+    raises SubagentFailureEscalation (FATAL — the run ends, no retry/re-spawn),
+    while "fail_soft" (default) / "fail_partial" return the error result for
+    the parent LLM to integrate.
     """
     tool_spec = ToolSpec(
         name="task_spawn",
@@ -116,11 +126,20 @@ def make_task_spawn_tool(
                 mode=mode,
                 task=task,
                 parent_session_id=parent_session_id,
-                budget=SubagentBudget(),
+                budget=SubagentBudget(failure_policy=failure_policy),
             )
         except Exception as exc:  # noqa: BLE001 — surface as tool error
             return {"success": False, "error": f"spawn_failed: {type(exc).__name__}: {exc}"}
         result = await dispatcher.wait_for(subagent_id)
+        if failure_policy == "fail_fast" and not result.success:
+            # Sprint 57.110 (B4): tenant chose run-level failure semantics. The
+            # raise propagates through the tool executor to Cat 8, which
+            # classifies it FATAL (registered) — the run terminates, NO retry
+            # (a retry would re-spawn the child).
+            raise SubagentFailureEscalation(
+                subagent_id=str(result.subagent_id),
+                child_error=result.error or "unknown_child_failure",
+            )
         return {
             "subagent_id": str(result.subagent_id),
             "success": result.success,

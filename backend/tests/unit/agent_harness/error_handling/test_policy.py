@@ -14,6 +14,7 @@ import asyncio
 from agent_harness._contracts.errors import (
     AuthenticationError,
     MissingDataError,
+    SubagentFailureEscalation,
     ToolExecutionError,
 )
 from agent_harness.error_handling import DefaultErrorPolicy, ErrorClass
@@ -216,3 +217,11 @@ def test_imports_from_package_init() -> None:
     from agent_harness.error_handling import DefaultErrorPolicy as Imp
 
     assert Imp is DefaultErrorPolicy
+
+
+def test_subagent_failure_escalation_is_fatal() -> None:
+    """Sprint 57.110 (B4): a fail_fast child failure must NEVER be retried —
+    a retry would re-spawn the child (the RateLimitExceededError mirror)."""
+    p = DefaultErrorPolicy()
+    exc = SubagentFailureEscalation(subagent_id="sid", child_error="empty_response")
+    assert p.classify(exc) == ErrorClass.FATAL

@@ -31,6 +31,7 @@ Single-source: this file (do not redefine these elsewhere)
 Created: 2026-05-03 (Sprint 53.2 Day 1)
 
 Modification History (newest-first):
+    - 2026-06-13: Sprint 57.110 B4 — SubagentFailureEscalation (fail_fast FATAL escalation)
     - 2026-05-03: Initial creation (Sprint 53.2 Day 1) — supports Cat 8 production impl
 """
 
@@ -137,3 +138,29 @@ class RateLimitExceededError(Exception):
             f"rate limit exceeded for resource '{resource}': "
             f"limit={limit}; retry_after={retry_after}s"
         )
+
+
+class SubagentFailureEscalation(Exception):
+    """Terminal: a spawned subagent failed under failure_policy="fail_fast".
+
+    Sprint 57.110 (B4): raised by the task_spawn tool handler when the child's
+    SubagentResult has success=False and the spawn budget's failure_policy is
+    "fail_fast" — the tenant chose to treat a child failure as a run-level
+    failure instead of letting the parent LLM continue (the fail_soft default).
+
+    Intentionally does NOT subclass ToolExecutionError: that base maps to
+    ErrorClass.LLM_RECOVERABLE which the Loop retries by feeding the error
+    back to the LLM — a retry would RE-SPAWN the child (expensive + wrong).
+    DefaultErrorPolicy registers this type as ErrorClass.FATAL so the run ends
+    via the existing error machinery with no self-correction storm (the
+    RateLimitExceededError precedent).
+
+    Attributes:
+        subagent_id: the failed child's id (string form).
+        child_error: the child's SubagentResult.error string.
+    """
+
+    def __init__(self, *, subagent_id: str, child_error: str) -> None:
+        self.subagent_id = subagent_id
+        self.child_error = child_error
+        super().__init__(f"subagent {subagent_id} failed under fail_fast: {child_error}")

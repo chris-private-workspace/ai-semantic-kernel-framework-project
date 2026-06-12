@@ -61,7 +61,8 @@ V2 review 發現 7 條跨範疇 / 跨文件重複定義：
 | `CompactionResult` | `01-eleven-categories-spec.md` | 範疇 4 | `Compactor.compact_if_needed()` 回傳；7 欄位（triggered / strategy_used / tokens_before / tokens_after / messages_compacted / duration_ms / compacted_state）— **52.1 Day 1 新增** |
 | `CachePolicy` | `01-eleven-categories-spec.md` | 範疇 4 | `PromptCacheManager.get_cache_breakpoints()` 輸入；5 個 cache_* boolean + ttl_seconds + invalidate_on triggers — **52.1 Day 1 新增** |
 | `VerificationResult` | `01-eleven-categories-spec.md` | 範疇 10 | Verifier 回傳（**Sprint 57.82** 加 judge token 欄位 `input_tokens` / `output_tokens` / `model`，default 0/None；僅 LLMJudgeVerifier 填，供 **in-loop Cat 10 gate（Sprint 57.98，前為 correction-loop wrapper）** 冒泡至 LoopCompleted 入帳 cost-ledger/quota）|
-| `SubagentBudget` | `01-eleven-categories-spec.md` | 範疇 11 | token / duration / concurrency cap |
+| `SubagentBudget` | `01-eleven-categories-spec.md` | 範疇 11 | token / duration / concurrency cap（**Sprint 57.110** 加 `failure_policy: SubagentFailurePolicy = "fail_soft"` — spawn 失敗語義隨 budget 旅行至 executor + task_spawn handler）|
+| `SubagentFailurePolicy` | `_contracts/subagent.py` | 範疇 11 | `Literal["fail_fast","fail_soft","fail_partial"]` — **Sprint 57.110 (B4)** spawn 失敗語義：soft（預設，今日行為）/ fast（task_spawn raise `SubagentFailureEscalation`，Cat 8 FATAL 不 retry 不重 spawn）/ partial（executor 搶救 child 部分產出入 summary）。Tenant 經 `HarnessPolicy.subagent_failure_policy` 治理（admin PUT literal 422）；LLM 不可選 |
 | `SubagentResult` | `01-eleven-categories-spec.md` | 範疇 11 | Subagent 回傳（含強制 ≤ N token 摘要） |
 | `TraceContext` | `01-eleven-categories-spec.md` | **範疇 12 (Observability)** | trace_id / span_id / baggage |
 | `MetricEvent` | `01-eleven-categories-spec.md` | 範疇 12 | latency / token / cost 三軸 metric |

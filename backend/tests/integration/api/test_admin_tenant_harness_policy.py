@@ -269,6 +269,38 @@ async def test_put_bad_mode_rejected(db_session: AsyncSession) -> None:
     assert resp.status_code == 422, resp.text
 
 
+async def test_put_bad_failure_policy_rejected(db_session: AsyncSession) -> None:
+    """Sprint 57.110 (B4): subagent_failure_policy must be a known literal → 422."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url=_BASE_URL) as ac:
+        resp = await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/harness-policy",
+            json={"subagent_failure_policy": "fail_sometimes"},
+        )
+    assert resp.status_code == 422, resp.text
+
+
+async def test_put_failure_policy_persists(db_session: AsyncSession) -> None:
+    """Sprint 57.110 (B4): a valid failure policy persists + round-trips on GET."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url=_BASE_URL) as ac:
+        put_resp = await ac.put(
+            f"/api/v1/admin/tenants/{tenant.id}/harness-policy",
+            json={"subagent_failure_policy": "fail_fast"},
+        )
+        get_resp = await ac.get(f"/api/v1/admin/tenants/{tenant.id}/harness-policy")
+    assert put_resp.status_code == 200, put_resp.text
+    assert put_resp.json()["subagent_failure_policy"] == "fail_fast"
+    assert get_resp.status_code == 200, get_resp.text
+    assert get_resp.json()["subagent_failure_policy"] == "fail_fast"
+    row = (await db_session.execute(select(Tenant).where(Tenant.id == tenant.id))).scalar_one()
+    assert row.meta_data["harness_policy"] == {"subagent_failure_policy": "fail_fast"}
+
+
 # === PUT: isolation + audit ====================================================
 
 

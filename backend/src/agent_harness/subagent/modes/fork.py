@@ -38,7 +38,7 @@ Created: 2026-05-04 (Sprint 54.2)
 Last Modified: 2026-06-13
 
 Modification History:
-    - 2026-06-13: Sprint 57.110 B4 — truthful child_guardrail_blocked error (stop_reason capture)
+    - 2026-06-13: Sprint 57.110 B4 — GuardrailTriggered relay + blocked label + partial salvage
     - 2026-06-11: Sprint 57.103 (B2b) — add MessageInjected to the relayed TAO subset
     - 2026-06-09: Sprint 57.96 — forward child TAO events (SubagentChildEvent) via emitter
     - 2026-06-09: Real child loop via ChildLoopFactory + LoopEvent drain (Sprint 57.94)
@@ -60,6 +60,7 @@ from uuid import UUID, uuid4
 
 from agent_harness._contracts import (
     ChildLoopFactory,
+    GuardrailTriggered,
     LLMResponded,
     LoopCompleted,
     LoopEvent,
@@ -84,6 +85,8 @@ from agent_harness.subagent.budget import BudgetEnforcer
 # Sprint 57.103 (B2b): MessageInjected joins the subset — a chat-user inject landing
 # on a running TEAMMATE child is HIGH-signal (the whole point of B2b is SEEING it land
 # on the Tree node). FORK children carry no inbox, so they never fire it (harmless).
+# Sprint 57.110 (B4): GuardrailTriggered joins — once the child is governed, a child
+# guardrail fire is HIGH-signal audit/transparency (the Tree must show governance acting).
 _TAO_CHILD_EVENT_TYPES: tuple[type[LoopEvent], ...] = (
     TurnStarted,
     LLMResponded,
@@ -91,6 +94,7 @@ _TAO_CHILD_EVENT_TYPES: tuple[type[LoopEvent], ...] = (
     ToolCallExecuted,
     ToolCallFailed,
     MessageInjected,
+    GuardrailTriggered,
 )
 
 
@@ -162,6 +166,15 @@ class ForkExecutor:
                     tokens_used = ev.total_tokens
                     stop_reason = ev.stop_reason
 
+        def _salvaged_summary() -> str:
+            # Sprint 57.110 (B4) fail_partial: the nonlocal final_answer survives
+            # the wait_for cancellation — a timed-out / crashed child's partial
+            # work is salvaged into the summary instead of discarded.
+            if budget.failure_policy == "fail_partial" and final_answer:
+                summary, _ = self._enforcer.truncate_summary(final_answer, cap_words=500)
+                return summary
+            return ""
+
         try:
             await asyncio.wait_for(_drive(), timeout=budget.max_duration_s)
         except asyncio.TimeoutError:
@@ -169,18 +182,20 @@ class ForkExecutor:
                 subagent_id=subagent_id,
                 mode=SubagentMode.FORK,
                 success=False,
-                summary="",
+                summary=_salvaged_summary(),
                 duration_ms=(time.monotonic() - start) * 1000.0,
                 error=f"timeout: {budget.max_duration_s}s",
+                metadata={"failure_policy": budget.failure_policy},
             )
         except Exception as exc:  # noqa: BLE001 — fail-closed catches all
             return SubagentResult(
                 subagent_id=subagent_id,
                 mode=SubagentMode.FORK,
                 success=False,
-                summary="",
+                summary=_salvaged_summary(),
                 duration_ms=(time.monotonic() - start) * 1000.0,
                 error=f"child_loop_error: {type(exc).__name__}: {exc}",
+                metadata={"failure_policy": budget.failure_policy},
             )
 
         duration_ms = (time.monotonic() - start) * 1000.0

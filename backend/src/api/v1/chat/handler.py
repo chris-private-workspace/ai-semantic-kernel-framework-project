@@ -74,7 +74,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from adapters._base.chat_client import ChatClient
 from adapters._testing.mock_clients import MockChatClient
@@ -121,7 +121,12 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from adapters._base.model_policy import ModelPolicy
-    from agent_harness._contracts import MessageInbox, SubagentBudget, TeammateInboxScope
+    from agent_harness._contracts import (
+        MessageInbox,
+        SubagentBudget,
+        SubagentFailurePolicy,
+        TeammateInboxScope,
+    )
     from agent_harness.hitl import HITLManager
     from agent_harness.observability import Tracer
     from agent_harness.orchestrator_loop._abc import AgentLoop
@@ -455,6 +460,13 @@ def build_real_llm_handler(
             else sorted(DEFAULT_AGENTS)
         )
 
+    # Sprint 57.110 (B4): tenant-resolved spawn failure semantics. The PUT-side
+    # literal validation guarantees the stored value; cast narrows str|None to
+    # the Literal for the factory chain (None → the fail_soft default).
+    subagent_failure_policy = cast(
+        "SubagentFailurePolicy", policy.subagent_failure_policy or "fail_soft"
+    )
+
     registry, executor = make_default_executor(
         factory_provider=business_factory_provider,
         memory_retrieval=memory_retrieval,
@@ -462,6 +474,7 @@ def build_real_llm_handler(
         subagent_dispatcher=subagent_dispatcher,
         parent_session_id=session_id,
         handoff_targets=handoff_targets,
+        subagent_failure_policy=subagent_failure_policy,
     )
 
     # Sprint 57.2 US-3 (closes AD-Cat9-1-WireDetectors): production

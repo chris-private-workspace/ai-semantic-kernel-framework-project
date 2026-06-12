@@ -66,17 +66,20 @@ export type SubagentStatus = "running" | "completed";
 export interface ChildTurnEvent {
   /**
    * inner wire type: turn_start / llm_response / tool_call_request / tool_call_result /
-   * message_injected (Sprint 57.103 B2b — a chat-user inject the teammate drained mid-run).
+   * message_injected (Sprint 57.103 B2b — a chat-user inject the teammate drained mid-run) /
+   * guardrail_triggered (Sprint 57.110 B4 — a governed child's guardrail fire).
    */
   kind: string;
   /** turn number (turn_start). */
   turn?: number;
-  /** assistant text (llm_response) / tool result (tool_call_result) / injected text (message_injected). */
+  /** assistant text (llm_response) / tool result (tool_call_result) / injected text (message_injected) / reason (guardrail_triggered). */
   text?: string;
   /** tool name (tool_call_request / tool_call_result). */
   toolName?: string;
   /** tool call id (tool_call_request / tool_call_result). */
   toolCallId?: string;
+  /** guardrail action — e.g. escalate / block (guardrail_triggered, Sprint 57.110 B4). */
+  action?: string;
 }
 
 /**

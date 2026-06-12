@@ -514,6 +514,29 @@ describe("chatStore.mergeEvent Turn block sequence (Sprint 57.21 Day 1)", () => 
     });
   });
 
+  test("subagent_child guardrail_triggered projects action + reason (Sprint 57.110 B4)", () => {
+    // A governed child's guardrail fire rides the relay: the event keeps the
+    // guardrail's truthful action (escalate) while the child RUN fail-closes.
+    useChatStore.getState().mergeEvent(turnStart());
+    useChatStore.getState().mergeEvent(subSpawned("sa-gv", "fork"));
+    useChatStore
+      .getState()
+      .mergeEvent(
+        subChild("sa-gv", "guardrail_triggered", {
+          guardrail_type: "input",
+          action: "escalate",
+          reason: "input matched escalation phrase: 'forbidden topic'",
+        }),
+      );
+    const node = useChatStore.getState().subagents.find((n) => n.subagentId === "sa-gv");
+    expect(node?.childEvents).toHaveLength(1);
+    expect(node?.childEvents[0]).toMatchObject({
+      kind: "guardrail_triggered",
+      action: "escalate",
+      text: "input matched escalation phrase: 'forbidden topic'",
+    });
+  });
+
   // --- approval (HITL) ---------------------------------------------------
 
   test("approval_requested dual-emit: HITLTurn pushed + approvals dict populated", () => {

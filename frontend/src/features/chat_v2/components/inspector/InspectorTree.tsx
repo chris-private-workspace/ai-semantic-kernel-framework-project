@@ -37,6 +37,7 @@
  * Last Modified: 2026-06-11
  *
  * Modification History (newest-first):
+ *   - 2026-06-13: Sprint 57.110 B4 — guardrail_triggered child row (governed-child visibility)
  *   - 2026-06-11: Sprint 57.103 B2b — message_injected child row (relay render; inject UI deferred to §2.5)
  *   - 2026-06-09: Sprint 57.96 — render childEvents as nested rows (Scope B turn-stream)
  *   - 2026-06-03: Initial creation (Sprint 57.72) — A-5c Tree tab verbatim re-point
@@ -155,6 +156,13 @@ function childTurnLabel(ev: ChildTurnEvent): string {
       // render is reachable once a live inject window exists (the detached teammate /
       // streaming relay, proposal §2.5); the backend relay primitive is wired now.
       return ev.text ? `injected · ${clip(ev.text)}` : "injected mid-run";
+    case "guardrail_triggered": {
+      // Sprint 57.110 (B4): a governed child's guardrail fire. The event keeps the
+      // guardrail's truthful action (e.g. escalate) while the child RUN fail-closes
+      // to BLOCK (no HITL wiring in a child) — governance acting must be VISIBLE.
+      const head = ev.action ? `guardrail ${ev.action}` : "guardrail";
+      return ev.text ? `${head} · ${clip(ev.text)}` : head;
+    }
     default:
       return ev.kind;
   }

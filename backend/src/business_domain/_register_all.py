@@ -42,7 +42,7 @@ from collections.abc import Awaitable, Callable, Sequence
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-from agent_harness._contracts import AgentSpec, ToolCall
+from agent_harness._contracts import AgentSpec, SubagentFailurePolicy, ToolCall
 from agent_harness.observability import Tracer
 from agent_harness.subagent import (
     make_handoff_spec,
@@ -178,6 +178,7 @@ def make_default_executor(
     parent_session_id: UUID | None = None,
     teammate_mailbox: "MailboxStore | None" = None,
     handoff_targets: Sequence[str] | None = None,
+    subagent_failure_policy: SubagentFailurePolicy = "fail_soft",
 ) -> tuple[ToolRegistryImpl, ToolExecutorImpl]:
     """Build a registry+executor pair with echo_tool + 18 business tools (19 total).
 
@@ -292,6 +293,10 @@ def make_default_executor(
         task_spec, task_handler = make_task_spawn_tool(
             dispatcher=subagent_dispatcher,
             parent_session_id=parent_session_id,
+            # Sprint 57.110 (B4): tenant-resolved spawn failure semantics (the
+            # caller resolves HarnessPolicy.subagent_failure_policy; LLM cannot
+            # choose it — governance belongs to the tenant).
+            failure_policy=subagent_failure_policy,
         )
         registry.register(task_spec)
         handlers[task_spec.name] = _adapt_subagent_handler(task_handler)

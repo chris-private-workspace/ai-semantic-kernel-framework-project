@@ -17,9 +17,10 @@ Owner: 01-eleven-categories-spec.md §範疇 11
 Single-source: 17.md §1.1
 
 Created: 2026-04-29 (Sprint 49.1)
-Last Modified: 2026-06-11
+Last Modified: 2026-06-13
 
 Modification History:
+    - 2026-06-13: Sprint 57.110 B4 — SubagentFailurePolicy + SubagentBudget.failure_policy
     - 2026-06-11: Add TeammateInboxScope (Sprint 57.103 B2b) — lifecycle-scoped teammate inbox
     - 2026-06-11: Add TeammateChildLoopFactory (Sprint 57.102 B2a) — TEAMMATE child loop + B1 inbox
     - 2026-06-09: Add ChildLoopFactory type (Sprint 57.94) — FORK real child loop
@@ -36,7 +37,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Literal
 from uuid import UUID
 
 if TYPE_CHECKING:
@@ -57,14 +58,29 @@ class SubagentMode(Enum):
     AS_TOOL = "as_tool"  # LLM calls subagent as if it were a tool
 
 
+# Sprint 57.110 (B4): spawn failure semantics. Rides SubagentBudget (the existing
+# spawn-policy vehicle — max_concurrent / max_subagent_depth live here too) so the
+# executors + the task_spawn handler read ONE source:
+#   fail_soft (default) — today's behavior: SubagentResult(success=False) folded
+#       into the tool result; the parent LLM decides how to proceed.
+#   fail_fast — the task_spawn handler raises SubagentFailureEscalation
+#       (ErrorClass.FATAL — never retried; a retry would RE-SPAWN the child).
+#   fail_partial — executors salvage the child's partial output (the last
+#       assistant text seen) into summary while keeping error.
+SubagentFailurePolicy = Literal["fail_fast", "fail_soft", "fail_partial"]
+
+SUBAGENT_FAILURE_POLICIES: frozenset[str] = frozenset({"fail_fast", "fail_soft", "fail_partial"})
+
+
 @dataclass(frozen=True)
 class SubagentBudget:
-    """Token / duration / concurrency caps for a subagent invocation."""
+    """Token / duration / concurrency caps + failure semantics for a subagent invocation."""
 
     max_tokens: int = 10_000
     max_duration_s: int = 300
     max_concurrent: int = 5
     max_subagent_depth: int = 3  # prevent recursive spawn explosion
+    failure_policy: SubagentFailurePolicy = "fail_soft"  # Sprint 57.110 (B4)
 
 
 @dataclass(frozen=True)

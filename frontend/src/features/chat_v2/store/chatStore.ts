@@ -35,6 +35,7 @@
  * Last Modified: 2026-06-12
  *
  * Modification History:
+ *   - 2026-06-13: Sprint 57.110 B4 — child guardrail_triggered projection (reason→text + action)
  *   - 2026-06-12: Sprint 57.108 — HITL tool/reason + turn traceId/spanId/tokens/duration captures
  *   - 2026-06-12: Sprint 57.107 B3 — +loadSessions (real GET /sessions → Session[]; replaces fixture)
  *   - 2026-06-11: Sprint 57.103 B2b — SubagentEntry +mode +tokensUsed; child text += inner.text
@@ -883,9 +884,12 @@ export const useChatStore = create<ChatStoreState>((set) => ({
                   ? inner.result
                   : typeof inner.text === "string"
                     ? inner.text
-                    : undefined,
+                    : typeof inner.reason === "string"
+                      ? inner.reason // guardrail_triggered (Sprint 57.110 B4)
+                      : undefined,
             toolName: typeof inner.tool_name === "string" ? inner.tool_name : undefined,
             toolCallId: typeof inner.tool_call_id === "string" ? inner.tool_call_id : undefined,
+            action: typeof inner.action === "string" ? inner.action : undefined,
           };
           const idx = s.subagents.findIndex((n) => n.subagentId === sid);
           let newSubagents: SubagentNode[];

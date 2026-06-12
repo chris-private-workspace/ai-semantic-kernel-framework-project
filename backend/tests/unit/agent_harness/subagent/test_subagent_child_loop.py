@@ -15,6 +15,7 @@ Created: 2026-06-09 (Sprint 57.94)
 
 from __future__ import annotations
 
+import asyncio
 from uuid import uuid4
 
 import pytest
@@ -29,12 +30,15 @@ from agent_harness._contracts import (
     SubagentBudget,
     TokenUsage,
     ToolCall,
+    ToolSpec,
 )
 from agent_harness.guardrails import build_default_guardrail_engine
 from agent_harness.guardrails.input import KeywordEscalationGuardrail
 from agent_harness.guardrails.tool.capability_matrix import CapabilityMatrix, PermissionRule
 from agent_harness.guardrails.tool.tool_guardrail import ToolGuardrail
 from agent_harness.subagent import DefaultSubagentDispatcher, ForkExecutor
+from agent_harness.tools.executor import ToolExecutorImpl
+from agent_harness.tools.registry import ToolRegistryImpl
 from business_domain._register_all import make_default_executor
 
 from ._child_loop_helpers import RecordingTracer, make_child_loop_factory
@@ -225,3 +229,70 @@ async def test_child_tool_escalate_blocks_tool_and_continues() -> None:
     result = await fork.execute(subagent_id=uuid4(), task="echo ping", budget=SubagentBudget())
     assert result.success is True
     assert "done without the tool" in result.summary
+
+
+# --- Sprint 57.110 (B4): fail_partial salvage --------------------------------
+
+
+def _slow_tool_setup() -> tuple[MockChatClient, ToolRegistryImpl, ToolExecutorImpl]:
+    """A child whose turn-1 emits partial content then blocks in a slow tool —
+    the wait_for timeout cancels it with the partial answer already captured."""
+    slow_spec = ToolSpec(
+        name="slow_tool",
+        description="sleeps past the budget",
+        input_schema={"type": "object", "properties": {}},
+    )
+
+    async def slow_handler(call: ToolCall) -> str:
+        await asyncio.sleep(10)
+        return "never returns"
+
+    registry = ToolRegistryImpl()
+    registry.register(slow_spec)
+    executor = ToolExecutorImpl(registry=registry, handlers={"slow_tool": slow_handler})
+    chat = MockChatClient(
+        responses=[
+            ChatResponse(
+                model="mock-gpt",
+                content="partial finding so far",
+                tool_calls=[ToolCall(id="s1", name="slow_tool", arguments={})],
+                stop_reason=StopReason.TOOL_USE,
+            )
+        ]
+    )
+    return chat, registry, executor
+
+
+@pytest.mark.asyncio
+async def test_fail_partial_salvages_timed_out_child_output() -> None:
+    """fail_partial: a timed-out child's partial work lands in summary (error kept)."""
+    chat, registry, executor = _slow_tool_setup()
+    fork = ForkExecutor(
+        child_loop_factory=make_child_loop_factory(chat, registry=registry, executor=executor)
+    )
+    result = await fork.execute(
+        subagent_id=uuid4(),
+        task="long research",
+        budget=SubagentBudget(max_duration_s=1, failure_policy="fail_partial"),
+    )
+    assert result.success is False
+    assert result.error == "timeout: 1s"
+    assert "partial finding so far" in result.summary  # salvaged, not discarded
+    assert result.metadata["failure_policy"] == "fail_partial"
+
+
+@pytest.mark.asyncio
+async def test_fail_soft_timeout_keeps_empty_summary() -> None:
+    """The default (fail_soft) keeps today's shape: timeout → empty summary."""
+    chat, registry, executor = _slow_tool_setup()
+    fork = ForkExecutor(
+        child_loop_factory=make_child_loop_factory(chat, registry=registry, executor=executor)
+    )
+    result = await fork.execute(
+        subagent_id=uuid4(),
+        task="long research",
+        budget=SubagentBudget(max_duration_s=1),
+    )
+    assert result.success is False
+    assert result.error == "timeout: 1s"
+    assert result.summary == ""

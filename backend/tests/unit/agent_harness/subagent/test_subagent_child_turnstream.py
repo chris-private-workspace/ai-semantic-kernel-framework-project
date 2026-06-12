@@ -23,6 +23,7 @@ from uuid import uuid4
 import pytest
 
 from agent_harness._contracts import (
+    GuardrailTriggered,
     LLMRequested,
     LLMResponded,
     LoopCompleted,
@@ -101,6 +102,30 @@ async def test_forwards_tao_subset_tagged_with_subagent_id() -> None:
     inner_types = [type(e.inner).__name__ for e in forwarded if isinstance(e, SubagentChildEvent)]
     # LLMRequested + LoopCompleted excluded by the filter.
     assert inner_types == ["TurnStarted", "LLMResponded", "ToolCallRequested", "ToolCallExecuted"]
+
+
+@pytest.mark.asyncio
+async def test_forwards_child_guardrail_triggered() -> None:
+    """Sprint 57.110 (B4): a governed child's guardrail fire joins the relayed subset
+    (governance acting inside the child must be VISIBLE on the Inspector Tree)."""
+    sid = uuid4()
+    child_events: list[LoopEvent] = [
+        GuardrailTriggered(guardrail_type="input", action="escalate", reason="phrase matched"),
+        LLMResponded(content="x"),
+    ]
+    emitter = _RecordingEmitter()
+    executor = ForkExecutor(
+        child_loop_factory=_factory_yielding(child_events),  # type: ignore[arg-type]
+        event_emitter=emitter,
+    )
+    await executor.execute(subagent_id=sid, task="t", budget=SubagentBudget())
+
+    forwarded = [e for e in emitter.events if isinstance(e, SubagentChildEvent)]
+    inner_types = [type(e.inner).__name__ for e in forwarded]
+    assert inner_types == ["GuardrailTriggered", "LLMResponded"]
+    guard = forwarded[0].inner
+    assert isinstance(guard, GuardrailTriggered)
+    assert guard.action == "escalate" and guard.reason == "phrase matched"
 
 
 @pytest.mark.asyncio

@@ -227,3 +227,19 @@ def test_handoff_fields_tri_state_not_set() -> None:
     assert policy.handoff_enabled is None
     assert policy.handoff_target_allowlist is None
     assert policy.is_empty()
+
+
+def test_subagent_failure_policy_round_trip() -> None:
+    """Sprint 57.110 (B4): subagent_failure_policy rides the _STR_FIELDS round-trip."""
+    policy = hp.HarnessPolicy.from_dict({"subagent_failure_policy": "fail_fast"})
+    assert policy.subagent_failure_policy == "fail_fast"
+    assert not policy.is_empty()
+    assert policy.to_dict() == {"subagent_failure_policy": "fail_fast"}
+
+
+def test_subagent_failure_policy_tri_state_not_set() -> None:
+    """Absent / wrong-typed → None (the fail_soft system default applies at wiring)."""
+    assert hp.HarnessPolicy.from_dict({}).subagent_failure_policy is None
+    policy = hp.HarnessPolicy.from_dict({"subagent_failure_policy": 7})
+    assert policy.subagent_failure_policy is None
+    assert policy.is_empty()
