@@ -86,3 +86,32 @@
 ### Notes
 - One lint fix mid-Day-3: the multi-line `style={{` panels need the `// eslint-disable-next-line no-restricted-syntax` directly above the `style=` line (not above the `<div` opening tag) — `eslint-disable-next-line` targets the line where the `no-restricted-syntax` node (the `style` attribute) actually sits. Single-line `style=` is fine on the same line as the element.
 - No backend change Day 3 (`router.py`/`handler.py`/`loop.py` still UNTOUCHED). The tab is fully backed by the Day-2 admin CRUD endpoints.
+
+---
+
+## Day 4 — Multi-tenant drive-through (US-6) + closeout (2026-06-13)
+
+### Clean restart (Risk Class E)
+- Orphan sweep via `Get-CimInstance Win32_Process`: **ZERO python.exe processes** (no stale spawn-worker) + :8000 free; :3007 owned by the live frontend node (untouched). One stale MCP-profile Chrome (7 PIDs holding `mcp-chrome-903abde`) killed to free the Playwright browser.
+- Fresh **no-reload single-process** backend (`PYTHONPATH=src python -m uvicorn api.main:app --port 8000`) PID 38756, sole owner of :8000. Startup log: `Application startup complete` + pricing loader / rate-limit counter / SLA recorder / billing outbox all wired, **0 error**.
+- Migration `0030_tenant_skills` confirmed head + applied (`alembic current`). Two tenants via `POST /auth/dev-login` (roles `[user,admin,platform_admin]`): `acme-skills` (A) + `globex-skills` (B), both auto-created.
+
+### Drive-through — ALL 3 legs PASS (real chat-v2 :3007 + real Azure gpt-5.2, provider:neutral)
+
+| Leg | Observed vs intended | Verdict |
+|-----|----------------------|---------|
+| **A — author→appears→loaded→followed** | Admin (A) Skills tab → "+ Add skill" → `release-notes` (3-header instructions) → Save → list row appeared (cache invalidated). A's chat "Write release notes…" → model self-called `read_skill({"name":"release-notes"})` (Inspector tool card + Loop trace `tool_call_request: read_skill`) → loaded the tenant's body verbatim → answer followed EXACTLY `## Summary / ## Highlights / ## Upgrade steps`; verification llm_judge 0.99. | ✅ load+follow |
+| **B — isolation + bundled intact** | B (globex-skills) identical release-notes request → **`read_skill` called 0×, `# Skill: release-notes` NOT loaded** (A's skill did not leak — RLS-scoped resolver). A separate B `code-review` request → `read_skill("code-review")` loaded the **BUNDLED** body (`# Code Review … report findings in this exact structure`), `isTenantAOverride:false`. | ✅ isolated + bundled intact |
+| **C — override-by-name** | A add `code-review` override (`RESPOND ONLY WITH A NUMBERED CHECKLIST…`) → Save (list 2 rows, alphabetical) → A's chat code-review → `read_skill("code-review")` returned the **OVERRIDDEN** body (`loadedBundledShape:false`) → output a pure 7-line numbered checklist (no headers/table). Contrast with Leg B same name → bundled. | ✅ override shadows bundled |
+
+### Control-by-control (Drive-Through-Acceptance — no dead control / no fixture / real LLM)
+- **Add** (create): form opens, 3 fields, Save disabled until all 3 non-blank, create→persist→list re-fetch→next chat reflects (cache invalidate proven e2e). ✅
+- **Edit** (update): `release-notes` description edited → Save → list shows `EDITED…` + form auto-closed. ✅
+- **Delete** (2-step confirm): `code-review` Delete → Confirm affordance → Confirm → row gone (list back to 1). ✅
+- Persistence across re-login: A's `release-notes` survived a tenant B round-trip + re-login (still listed). ✅
+
+Screenshots in `artifacts/`: `legA-skills-tab-created.png`, `legA-chat-readskill-followed.png`, `legB-isolation-no-readskill.png`, `legB-bundled-codereview-intact.png`, `legC-override-created.png`, `legC-override-followed-checklist.png`.
+
+### Notes
+- The sidebar tenant-switcher chip still shows the `acme-prod / Pro` fixture (known `AD-FE-Tenant-Display-Fixture-Phase58`); the tenant-settings **page header + content** correctly showed the real `Dev Tenant (acme-skills)` / `acme-skills` from the authStore — the real tenant scoping was honored end-to-end (the chat read the right per-tenant overlay).
+- `llm_request tokens_in=0` in the trace is the known `AD-LLMRequest-TokensIn-Zero` display nuance (the Inspector turn metadata showed the real `tokens.in 2,428`); unrelated to skills.
