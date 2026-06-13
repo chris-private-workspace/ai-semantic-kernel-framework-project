@@ -24,6 +24,7 @@
  * Last Modified: 2026-05-26
  *
  * Modification History (newest-first):
+ *   - 2026-06-13: Sprint 57.114 — +Skills tab (9th, after Harness Policy)
  *   - 2026-06-12: Sprint 57.106 C3 — +Harness Policy tab (8th, after Model Policy)
  *   - 2026-06-11: Sprint 57.104 C1 — +Model Policy tab (7th, after Quotas)
  *   - 2026-05-26: Sprint 57.49 — pass tenantId prop to 4 migrated tabs (FF/Quotas/HITL/Members)
@@ -54,8 +55,18 @@ import { HITLPoliciesTab } from "./tabs/HITLPoliciesTab";
 import { MembersTab } from "./tabs/MembersTab";
 import { ModelPolicyTab } from "./tabs/ModelPolicyTab";
 import { QuotasTab } from "./tabs/QuotasTab";
+import { SkillsTab } from "./tabs/SkillsTab";
 
-type TabId = "general" | "flags" | "quotas" | "model" | "harness" | "hitl" | "members" | "danger";
+type TabId =
+  | "general"
+  | "flags"
+  | "quotas"
+  | "model"
+  | "harness"
+  | "skills"
+  | "hitl"
+  | "members"
+  | "danger";
 
 const TAB_ITEMS = [
   { id: "general", label: "General" },
@@ -63,6 +74,7 @@ const TAB_ITEMS = [
   { id: "quotas", label: "Quotas" },
   { id: "model", label: "Model Policy" },
   { id: "harness", label: "Harness Policy" },
+  { id: "skills", label: "Skills" },
   { id: "hitl", label: "HITL Policies" },
   { id: "members", label: "Members", count: 8 },
   { id: "danger", label: "Danger Zone" },
@@ -123,6 +135,7 @@ export function TenantSettingsView(): JSX.Element {
       {tab === "quotas" && <QuotasTab tenantId={tenantId} />}
       {tab === "model" && <ModelPolicyTab tenantId={tenantId} />}
       {tab === "harness" && <HarnessPolicyTab tenantId={tenantId} />}
+      {tab === "skills" && <SkillsTab tenantId={tenantId} />}
       {tab === "hitl" && <HITLPoliciesTab tenantId={tenantId} />}
       {tab === "members" && <MembersTab tenantId={tenantId} />}
       {tab === "danger" && <DangerZoneTab />}

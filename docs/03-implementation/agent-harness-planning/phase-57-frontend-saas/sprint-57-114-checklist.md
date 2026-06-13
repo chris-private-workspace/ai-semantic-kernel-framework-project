@@ -15,7 +15,7 @@
   - [x] **D-service-template** 🟢: `InvitesService`/`TOTPService` `_set_tenant` + stateless per-call + singleton mirrored
   - [x] **D-admin-template** 🟢 (recon): model/harness PUT/GET idiom + `require_admin_platform_role`/`_load_tenant_or_404`/`append_audit` (re-confirm exact lines at Day-2 2.2)
   - [x] **D-cross-category** 🟢: `platform_layer/ → agent_harness/` established (25+ imports); no reverse cycle
-  - [ ] **D-fe-tree (Prong-2.5)**: deferred to Day-3 FE start (`TenantSettingsView` child-tree audit before `SkillsTab`)
+  - [x] **D-fe-tree (Prong-2.5)** (done Day-3 start): `TenantSettingsView` → 8 existing tab children all on the mockup-ui `Card`+`grid-main`+inline-token idiom; no shadcn-utility residue / no mockup-fidelity drift (admin-internal免). `SkillsTab` is a NEW child (no vintage drift). 🟢 GREEN — no scope expansion
 - [x] **Prong 3 — schema verify** (NEW table):
   - [x] migration head `0029` → `0030` free (ls + alembic confirmed)
   - [x] RLS template `0026_invites.py` two-policy read; tenant_skills mirrors MINUS the sentinel escape (no guest path)
@@ -77,19 +77,20 @@
 
 ## Day 3 — Frontend: tenant-settings "Skills" tab (US-5)
 
-### 3.1 Service + types
-- [ ] **`features/tenant-settings/types.ts`** (EDIT): `Skill{id,name,description,instructions,createdAt,updatedAt}` · `SkillListResponse{skills:Skill[]}` · `SkillCreateRequest` · `SkillUpdateRequest`
-- [ ] **`features/tenant-settings/services/tenantSettingsService.ts`** (EDIT): `fetchTenantSkills` · `createTenantSkill` · `updateTenantSkill` · `deleteTenantSkill` (all via `fetchWithAuth` + `_handleResponse`)
+### 3.1 Service + types ✅
+- [x] **`features/tenant-settings/types.ts`** (EDIT): `Skill{id,name,description,instructions,created_at,updated_at}` · `SkillListResponse{skills:Skill[]}` · `SkillCreateRequest` · `SkillUpdateRequest`
+  - **Decision**: snake_case direct (`created_at`/`updated_at`) mirroring sibling list-resources (`TenantMemberItem`/`QuotaItem`/`FeatureFlagItem`), NOT camelCase + mapper (that's the sparse policy value-object idiom — overkill for a simple list-CRUD)
+- [x] **`features/tenant-settings/services/tenantSettingsService.ts`** (EDIT): `fetchTenantSkills` · `createTenantSkill` · `updateTenantSkill` · `deleteTenantSkill` (all via `fetchWithAuth` + `_handleResponse`; DELETE replicates the error-detail extraction since 204 has no body)
 
-### 3.2 SkillsTab + tab registration
-- [ ] **`features/tenant-settings/hooks/useTenantSkills.ts`** (NEW, or fold into the tab per QuotasTab): read + create/update/delete (each invalidates the read)
-- [ ] **`features/tenant-settings/components/tabs/SkillsTab.tsx`** (NEW): list-CRUD (mirror QuotasTab) — list rows in `<Card title="Skills">` · Add form (name + description + instructions `<textarea>`) · per-row Edit(draft)/Save/Delete(confirm) · loading/empty/error (`var(--danger)`) · `data-testid` on each control · mockup-ui `Card`+`grid-main`+inline tokens only · English copy
-- [ ] **`features/tenant-settings/components/TenantSettingsView.tsx`** (EDIT): `TabId += "skills"` · `TAB_ITEMS += {id:"skills",label:"Skills"}` (after harness) · `{tab === "skills" && <SkillsTab tenantId={tenantId} />}` · import
-  - DoD: `npm run build` clean; the tab renders + switches
+### 3.2 SkillsTab + tab registration ✅
+- [x] **`features/tenant-settings/hooks/useTenantSkills.ts`** (NEW, one cohesive 4-op module): `useTenantSkills` read + `useTenantSkill{Create,Update,Delete}` mutations (each invalidates the read)
+- [x] **`features/tenant-settings/components/tabs/SkillsTab.tsx`** (NEW): list-CRUD — rows in `<Card title="Skills">` · "+ Add skill" toggle → inline form (name + description + instructions `<textarea>`) · per-row Edit(draft)/Save + Delete(inline 2-step confirm) · loading/empty/error (`var(--danger)`) · Save disabled until all 3 fields filled · `data-testid` on each control · mockup-ui `Card`+`grid-main`+inline tokens only · English copy
+- [x] **`features/tenant-settings/components/TenantSettingsView.tsx`** (EDIT): `TabId += "skills"` · `TAB_ITEMS += {id:"skills",label:"Skills"}` (after harness, 9th) · `{tab === "skills" && <SkillsTab tenantId={tenantId} />}` · import
+  - DoD: `npm run build` clean; the tab renders + switches ✅
 
-### 3.3 Vitest + FE gates
-- [ ] **`components/tabs/__tests__/SkillsTab.test.tsx`** (NEW): renders the list · Add opens the form + create calls the service · Edit→Save calls update · Delete calls delete · error surfaces `body.detail`
-- [ ] FE gates: `npm run lint` (NO `--silent`) 0 · `npm run build` clean · `npm run test` Vitest **+M** vs 840 · `npm run check:mockup-fidelity` **51** holds (admin-internal, no mockup CSS)
+### 3.3 Vitest + FE gates ✅
+- [x] **`tests/unit/tenant-settings/tabs/SkillsTab.test.tsx`** (NEW, ×11) — **path corrected** (vite.config `include: tests/unit/**`, NOT co-located `__tests__/`): title · loading · load-error · empty · lists rows · Add opens form (3 fields) · Save disabled-until-complete + create-mutate · create error inline · Edit seeds + update-mutate · Delete 2-step confirm + delete-mutate · delete error inline
+- [x] FE gates: `npm run lint` (NO `--silent`) 0 error · `npm run build` clean · `npm run test` Vitest **851 (+11 vs 840)** · `npm run check:mockup-fidelity` **51** holds (admin-internal, no mockup CSS)
   - Verify: `cd frontend && npm run lint && npm run build && npm run test && npm run check:mockup-fidelity`
 
 ---

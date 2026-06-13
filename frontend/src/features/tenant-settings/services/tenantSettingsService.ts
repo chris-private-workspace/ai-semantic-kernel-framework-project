@@ -21,6 +21,7 @@
  * Last Modified: 2026-05-26
  *
  * Modification History (newest-first):
+ *   - 2026-06-13: Sprint 57.114 — +fetch/create/update/deleteTenantSkill (per-tenant skills tab)
  *   - 2026-06-12: Sprint 57.107 B3 — harness-policy mappers +handoff_enabled +handoff_target_allowlist
  *   - 2026-06-12: Sprint 57.106 C3 — +getHarnessPolicy/putHarnessPolicy (harness-policy tab)
  *   - 2026-06-11: Sprint 57.104 C1 — +getModelPolicy/putModelPolicy (model-policy tab)
@@ -63,6 +64,10 @@ import type {
   RateLimitsUpsertRequest,
   RateLimitsUpsertResponse,
   RateLimitsUsageResponse,
+  Skill,
+  SkillCreateRequest,
+  SkillListResponse,
+  SkillUpdateRequest,
   TenantIdentity,
   TenantMemberListResponse,
   TenantSettingsResponse,
@@ -438,6 +443,81 @@ export async function putHarnessPolicy(
   );
   const api = await _handleResponse<HarnessPolicyApiResponse>(response);
   return _harnessPolicyFromApi(api);
+}
+
+/* === Sprint 57.114 — Per-tenant Skills catalog (CRUD) ===
+ *
+ * GET lists a tenant's custom skills ({skills: Skill[]} — no pagination envelope).
+ * POST creates (201 → the new Skill); PUT is a sparse update (only the provided
+ * fields change); DELETE → 204 (no body). Each mutation invalidates the resolver
+ * TTL cache server-side, so the next chat request reflects the change. Errors
+ * surface via _handleResponse (409 duplicate name / 404 missing skill or tenant /
+ * 422 non-kebab name or unknown field).
+ */
+
+export async function fetchTenantSkills(
+  tenantId: string,
+  signal?: AbortSignal,
+): Promise<SkillListResponse> {
+  const response = await fetchWithAuth(`${API_BASE}/tenants/${tenantId}/skills`, {
+    method: "GET",
+    signal,
+  });
+  return _handleResponse<SkillListResponse>(response);
+}
+
+export async function createTenantSkill(
+  tenantId: string,
+  payload: SkillCreateRequest,
+  signal?: AbortSignal,
+): Promise<Skill> {
+  const response = await fetchWithAuth(`${API_BASE}/tenants/${tenantId}/skills`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    signal,
+  });
+  return _handleResponse<Skill>(response);
+}
+
+export async function updateTenantSkill(
+  tenantId: string,
+  skillId: string,
+  payload: SkillUpdateRequest,
+  signal?: AbortSignal,
+): Promise<Skill> {
+  const response = await fetchWithAuth(
+    `${API_BASE}/tenants/${tenantId}/skills/${skillId}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal,
+    },
+  );
+  return _handleResponse<Skill>(response);
+}
+
+export async function deleteTenantSkill(
+  tenantId: string,
+  skillId: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const response = await fetchWithAuth(
+    `${API_BASE}/tenants/${tenantId}/skills/${skillId}`,
+    { method: "DELETE", signal },
+  );
+  // 204 has no body; replicate _handleResponse's error-detail extraction for non-2xx.
+  if (!response.ok) {
+    let detail = `HTTP ${response.status}`;
+    try {
+      const body = (await response.json()) as { detail?: string };
+      if (body.detail) detail = body.detail;
+    } catch {
+      // ignore JSON parse failure; use status only
+    }
+    throw new Error(detail);
+  }
 }
 
 /* === Sprint 57.50 — Identity single-record endpoint === */

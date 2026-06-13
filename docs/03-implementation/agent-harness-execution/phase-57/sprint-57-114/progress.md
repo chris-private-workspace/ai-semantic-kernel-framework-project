@@ -63,3 +63,26 @@
 ### Notes
 - `check_rls_policies` green on the new `tenant_skills` two-policy (strict per-tenant, no sentinel).
 - Multi-tenant mandatory cases land at the **endpoint** level (per `test_rbac.py` convention: unit = app-scoping, integration = endpoint isolation): cross-tenant read → empty list; cross-tenant write → 404.
+
+---
+
+## Day 3 — Frontend: tenant-settings "Skills" tab (US-5) (2026-06-13)
+
+### Prong-2.5 child-tree audit (deferred from Day 0)
+- `TenantSettingsView` → 8 existing tab children (General/FF/Quotas/Model/Harness/HITL/Members/Danger) all on the mockup-ui `Card`+`grid-main`+inline-token idiom; no shadcn-utility residue, no mockup-fidelity drift (admin-internal免 mockup-fidelity). `SkillsTab` is a NEW 9th child → no vintage drift to audit. 🟢 GREEN, no scope expansion.
+
+### Accomplishments (US-5)
+- **types.ts** (EDIT) — `Skill{id,name,description,instructions,created_at,updated_at}` + `SkillListResponse{skills}` + `SkillCreateRequest` + `SkillUpdateRequest`. **Decision**: snake_case direct (mirrors `TenantMemberItem`/`QuotaItem`/`FeatureFlagItem` list-resource idiom), NOT camelCase+mapper (that's the sparse policy value-object idiom — overkill for a simple list-CRUD).
+- **tenantSettingsService.ts** (EDIT) — `fetchTenantSkills`/`createTenantSkill`/`updateTenantSkill`/`deleteTenantSkill` via `fetchWithAuth` + `_handleResponse`. DELETE replicates the error-detail extraction inline (204 has no body so `_handleResponse`'s `.json()` would throw on success).
+- **useTenantSkills.ts** (NEW) — one cohesive 4-op module: `useTenantSkills` read + `useTenantSkill{Create,Update,Delete}` mutations; each invalidates `[...TENANT_SKILLS_QUERY_KEY_BASE, tenantId]`.
+- **SkillsTab.tsx** (NEW) — list-CRUD: "+ Add skill" toggle → inline create form (name + description + instructions `<textarea>`); per-row Edit (inline seeded form, one open at a time) + Delete (inline 2-step confirm); Save disabled until all 3 fields non-blank; create/update/delete errors surface inline (`var(--danger)`); loading/empty/error states; `data-testid` on every control. mockup-ui `Card`+`Button` + `btn-secondary`/`btn-primary` + inline tokens only; English copy. Mirrors QuotasTab idioms.
+- **TenantSettingsView.tsx** (EDIT) — `TabId += "skills"`, `TAB_ITEMS += {id,label:"Skills"}` (9th, after Harness Policy), render guard + import.
+- **SkillsTab.test.tsx** (NEW, ×11) — at `tests/unit/tenant-settings/tabs/` (**path corrected** from the checklist's co-located `__tests__/` — vite.config `include: tests/unit/**`). Mirrors `ModelPolicyTab.test.tsx` mock harness (vi.mock the hooks module).
+
+### Gate (Day-3 — frontend complete)
+- `npm run lint` (no `--silent`) **0 error** (only pre-existing jsx-ast-utils TSSatisfiesExpression noise) · `npm run build` **clean** (3.31s) · `npm run test` Vitest **851 passed (+11 vs 840; 138 files)** · `npm run check:mockup-fidelity` **51** holds (byte-identical + 51 baseline).
+- An incidental stderr stack trace in the full Vitest run is from a pre-existing test's error-path render (NOT SkillsTab — isolated run = 11/11 clean, no console errors).
+
+### Notes
+- One lint fix mid-Day-3: the multi-line `style={{` panels need the `// eslint-disable-next-line no-restricted-syntax` directly above the `style=` line (not above the `<div` opening tag) — `eslint-disable-next-line` targets the line where the `no-restricted-syntax` node (the `style` attribute) actually sits. Single-line `style=` is fine on the same line as the element.
+- No backend change Day 3 (`router.py`/`handler.py`/`loop.py` still UNTOUCHED). The tab is fully backed by the Day-2 admin CRUD endpoints.

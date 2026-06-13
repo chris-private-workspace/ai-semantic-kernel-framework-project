@@ -21,6 +21,7 @@
  * Last Modified: 2026-05-26
  *
  * Modification History (newest-first):
+ *   - 2026-06-13: Sprint 57.114 — +Skill CRUD schemas (per-tenant skills catalog tab)
  *   - 2026-06-12: Sprint 57.107 B3 — HarnessPolicy +handoffEnabled +handoffTargetAllowlist (Cat 11 handoff governance)
  *   - 2026-06-12: Sprint 57.106 C3 — +HarnessPolicy read/write schemas (harness-policy tab)
  *   - 2026-06-11: Sprint 57.104 C1 — +ModelPolicy read/write schemas (model-policy tab)
@@ -383,4 +384,42 @@ export interface HarnessPolicyApiUpsertRequest {
   // Sprint 57.107 B3
   handoff_enabled?: boolean | null;
   handoff_target_allowlist?: string[] | null;
+}
+
+/* === Sprint 57.114 — Per-tenant Skills catalog (CRUD) ===
+ *
+ * Mirrors backend GET/POST/PUT/DELETE /admin/tenants/{id}/skills at
+ * backend/src/api/v1/admin/tenants.py. A tenant's custom skills overlay the
+ * bundled set per chat request (a same-name tenant skill shadows a bundled one).
+ * snake_case direct (mirrors TenantMemberItem / QuotaItem — a simple list
+ * resource, not a sparse policy value-object, so no camelCase mapper).
+ *   - name:         kebab-case slug (^[a-z0-9][a-z0-9-]*$), max 128
+ *   - description:  one-line summary, max 512
+ *   - instructions: the full skill body (read_skill returns it verbatim)
+ * Create requires all 3; update is sparse (only provided fields change).
+ */
+
+export interface Skill {
+  id: string;
+  name: string;
+  description: string;
+  instructions: string;
+  created_at: string; // ISO 8601 datetime
+  updated_at: string;
+}
+
+export interface SkillListResponse {
+  skills: Skill[];
+}
+
+export interface SkillCreateRequest {
+  name: string;
+  description: string;
+  instructions: string;
+}
+
+export interface SkillUpdateRequest {
+  name?: string;
+  description?: string;
+  instructions?: string;
 }
