@@ -65,4 +65,5 @@ markers = [
     "anti_pattern: anti-pattern regression tests",
     "observability: observability instrumentation tests",
     "slow: tests that take >5s",
+    "benchmark: real-LLM cheap-judge accuracy benchmark (on-demand; needs RUN_AZURE_INTEGRATION=1 + AZURE_OPENAI_*)",
 ]

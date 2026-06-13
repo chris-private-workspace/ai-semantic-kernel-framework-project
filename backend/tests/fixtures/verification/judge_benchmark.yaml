@@ -1,0 +1,176 @@
+# Golden dataset for the cheap-judge accuracy benchmark (Sprint 57.111 A3).
+#
+# Labels are hand-assigned to match the `output_quality` judge's contract: flag ONLY a
+# CLEAR failure (refuse / incoherent / empty / off-topic / contradicts the trace);
+# default to pass; a short correct answer PASSES.
+#
+# Categories:
+#   clear_pass      — a coherent, usable answer (expected_passed: true)
+#   clear_fail      — refusal / empty / incoherent / off-topic / truncated (false)
+#   trace_dependent — the final string looks fine but the TRACE disproves it (mostly
+#                     false); requires trace-awareness to judge correctly. A couple are
+#                     trace-CONSISTENT (true) so the metric is not all-false.
+#   borderline      — genuinely soft (short / mildly incomplete) → pass per "when in doubt"
+#                     (reported but EXCLUDED from the accuracy floor)
+#
+# Consumed by: backend/scripts/benchmark_judge.py :: load_cases
+
+cases:
+  # ---- clear_pass (8) ----
+  - id: cp-01
+    category: clear_pass
+    expected_passed: true
+    output: "The capital of France is Paris."
+  - id: cp-02
+    category: clear_pass
+    expected_passed: true
+    output: "Water boils at 100°C (212°F) at sea-level atmospheric pressure."
+  - id: cp-03
+    category: clear_pass
+    expected_passed: true
+    output: "To reverse a string in Python, use slicing: `reversed_s = s[::-1]`."
+  - id: cp-04
+    category: clear_pass
+    expected_passed: true
+    output: "Your meeting is scheduled for 3:00 PM on Tuesday in Conference Room B."
+  - id: cp-05
+    category: clear_pass
+    expected_passed: true
+    output: "The three primary colors are red, blue, and yellow."
+  - id: cp-06
+    category: clear_pass
+    expected_passed: true
+    output: >
+      To create a virtual environment, run `python -m venv .venv`, then activate it with
+      `source .venv/bin/activate` (macOS/Linux) or `.venv\\Scripts\\activate` (Windows).
+  - id: cp-07
+    category: clear_pass
+    expected_passed: true
+    output: "The order total is $45.00, including $3.00 tax and free shipping."
+  - id: cp-08
+    category: clear_pass
+    expected_passed: true
+    output: "Yes — the library is open from 9 AM to 6 PM on weekdays."
+
+  # ---- clear_fail (8) ----
+  - id: cf-01
+    category: clear_fail
+    expected_passed: false
+    output: "I'm sorry, but I can't help with that."
+  - id: cf-02
+    category: clear_fail
+    expected_passed: false
+    output: ""
+  - id: cf-03
+    category: clear_fail
+    expected_passed: false
+    output: "asdf jkl qwerty zxcv mnbv random tokens noise"
+  - id: cf-04
+    category: clear_fail
+    expected_passed: false
+    output: "I won't answer that. Let me instead tell you about my favorite color."
+  - id: cf-05
+    category: clear_fail
+    expected_passed: false
+    output: "The answer is"
+  - id: cf-06
+    category: clear_fail
+    expected_passed: false
+    output: "I don't know and I'm not going to try to figure it out."
+  - id: cf-07
+    category: clear_fail
+    expected_passed: false
+    output: "Banana banana banana banana banana banana."
+  - id: cf-08
+    category: clear_fail
+    expected_passed: false
+    output: "As an AI language model, I am unable to provide any answer to this."
+
+  # ---- trace_dependent (7): output looks fine, the trace disproves it ----
+  - id: td-01
+    category: trace_dependent
+    expected_passed: false
+    output: "Done — I've saved your report to the database."
+    trace:
+      - role: user
+        content: "Save my quarterly report to the database."
+      - role: assistant
+        content: "Saving the report now."
+      - role: tool
+        content: "ERROR: database connection refused (ECONNREFUSED)"
+  - id: td-02
+    category: trace_dependent
+    expected_passed: false
+    output: "The current weather in Tokyo is 22°C and sunny."
+    trace:
+      - role: user
+        content: "What's the weather in Tokyo right now?"
+      - role: tool
+        content: "weather_api ERROR: 404 city 'Tokyo' not found in provider"
+  - id: td-03
+    category: trace_dependent
+    expected_passed: false
+    output: "Your payment of $50.00 was processed successfully. Thank you!"
+    trace:
+      - role: user
+        content: "Charge $50 to my card on file."
+      - role: tool
+        content: "payment_gateway: DECLINED — insufficient funds (code 51)"
+  - id: td-04
+    category: trace_dependent
+    expected_passed: false
+    output: "I found 3 matching customer records for you."
+    trace:
+      - role: user
+        content: "How many customers are named 'Acme'?"
+      - role: tool
+        content: "db_query result: 0 rows returned"
+  - id: td-05
+    category: trace_dependent
+    expected_passed: true
+    output: "The file was uploaded successfully (id: file_abc123)."
+    trace:
+      - role: user
+        content: "Upload report.pdf."
+      - role: tool
+        content: "upload_service: 200 OK, file_id=file_abc123"
+  - id: td-06
+    category: trace_dependent
+    expected_passed: false
+    output: "Your email has been sent to the whole team."
+    trace:
+      - role: user
+        content: "Email the summary to the team."
+      - role: tool
+        content: "send_email ERROR: SMTP timeout after 30s, message not delivered"
+  - id: td-07
+    category: trace_dependent
+    expected_passed: true
+    output: "The calculation result is 42."
+    trace:
+      - role: user
+        content: "What is 6 times 7?"
+      - role: tool
+        content: "calculator result: 42"
+
+  # ---- borderline (5): soft / short but acceptable → pass; excluded from the floor ----
+  - id: bd-01
+    category: borderline
+    expected_passed: true
+    output: "Paris."
+  - id: bd-02
+    category: borderline
+    expected_passed: true
+    output: "Yes."
+  - id: bd-03
+    category: borderline
+    expected_passed: true
+    output: "The answer is 4."
+  - id: bd-04
+    category: borderline
+    expected_passed: true
+    output: "It depends on your use case, but generally the second option is safer."
+  - id: bd-05
+    category: borderline
+    expected_passed: true
+    output: "Sure — you can reset it from Settings → Account → Reset Password."

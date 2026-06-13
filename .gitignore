@@ -4,6 +4,9 @@
 .env.*.local
 *.env
 
+# Cheap-judge accuracy benchmark report artifacts (Sprint 57.111 A3 — on-demand, never committed)
+/backend/benchmark_reports/
+
 # Python
 __pycache__/
 *.py[cod]

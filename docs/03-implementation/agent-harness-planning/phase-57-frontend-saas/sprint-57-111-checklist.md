@@ -34,19 +34,19 @@
 
 ---
 
-## Day 2 — Backend: permanent cheap-judge benchmark (US-2)
+## Day 2 — Backend: permanent cheap-judge benchmark (US-2) ✅
 
 ### 2.1 Golden fixture + marker
-- [ ] **`tests/fixtures/verification/judge_benchmark.yaml`** (NEW): ~24-32 labeled cases `{id, output, trace?, expected_passed, category}`; categories `clear_pass` / `clear_fail` / `trace_dependent` (final string fine but trace makes it wrong — exercises US-1) / `borderline`; mirror `tests/fixtures/guardrails/*.yaml` shape; labeled by hand (parent-direct judgment)
-- [ ] **`pyproject.toml`** (or `pytest.ini` per Day-0): register `benchmark` marker
-- [ ] **`.github/workflows/backend-ci.yml`** (if needed): CI pytest deselects `-m "not benchmark"` (Day-0 confirms the current command)
-- [ ] **`.gitignore`**: ignore `tests/benchmark/reports/`
+- [x] **`tests/fixtures/verification/judge_benchmark.yaml`** (NEW): **28** labeled cases `{id, output, trace?, expected_passed, category}` — clear_pass ×8 / clear_fail ×8 / trace_dependent ×7 (5 fail-when-trace-disproves + 2 trace-consistent-pass — exercises US-1 + drives trace_delta) / borderline ×5 (excluded from the floor); mirrors the `tests/fixtures/guardrails/*.yaml` shape; hand-labeled to the `output_quality` judge contract
+- [x] **`pyproject.toml`**: registered `benchmark` marker (`--strict-markers` is ON → required)
+- [x] **`.github/workflows/backend-ci.yml`**: **NOT edited** (D6 — CI runs `pytest -v --tb=short` with NO `-m` filter; real-LLM tests gate via `RUN_AZURE_INTEGRATION` skipif, NOT marker deselection → the benchmark SKIPS in CI for free)
+- [x] **`.gitignore`** (root): ignore `/backend/benchmark_reports/`
 
-### 2.2 Harness + metric math
-- [ ] **`tests/benchmark/test_judge_accuracy.py`** (NEW, `@pytest.mark.benchmark`) + `__init__.py` (+ conftest if needed): build real Azure `ModelProfile`; per case run `profile.cheap` + `profile.action` trace-aware judges; compute cheap_accuracy / strong_accuracy / cheap_vs_strong_agreement / per-category / trace_delta + token cost; assert `cheap_accuracy >= BENCHMARK_CHEAP_ACCURACY_FLOOR` (tracked constant); write JSON+markdown report to `tests/benchmark/reports/`
-- [ ] **`backend/scripts/benchmark_judge.py`** (optional — Day-1 decision; only if it adds value beyond `pytest -m benchmark`)
-- [ ] **Harness-math tests ADD (CI-safe, NOT benchmark-marked)**: fixture loads + schema-valid (every case has required keys + valid category) ×1 · metric computation pure-function-tested with MockChatClient (cheap/strong agreement + trace_delta math) ×2
-  - DoD: CI pytest green WITHOUT running benchmark (`-m "not benchmark"`); harness-math covered CI-safe; mypy 0/359; run_all 10/10 (count 24; no codegen diff)
+### 2.2 Harness + metric math (logic in `scripts/`, real-LLM wrapper in `tests/benchmark/`)
+- [x] **`scripts/benchmark_judge.py`** (NEW — the reusable logic home, precedent `verify_audit_chain.py`): `BenchCase` / `JudgeRun` / `BenchReport` + `load_cases` (schema-validate) + `run_judge(judge, cases, *, with_trace)` (builds the trace LoopState per case) + `build_report` (pure accuracy / cheap-vs-strong agreement / per-category / trace_delta) + `CHEAP_ACCURACY_FLOOR=0.70` (the tracked metric; floor judged on unambiguous categories only) + `main()` CLI (build Azure profile → run both tiers → write JSON+MD report). file header + WHY
+- [x] **`tests/benchmark/test_judge_accuracy.py`** (NEW, `@pytest.mark.benchmark` + `RUN_AZURE_INTEGRATION` skipif): real Azure `build_azure_model_profile()` → `profile.cheap` + `profile.action` judges at temp 0 → cheap/strong/agreement/trace_delta → assert `cheap_passes_floor`; **loads `benchmark_judge` via importlib** (D12 — the `tests.unit.scripts` package shadows `scripts/` once collected; same idiom as `test_verify_audit_chain.py`)
+- [x] **Harness-math tests ADD (CI-safe, NOT benchmark-marked) ×9** (`tests/unit/scripts/test_benchmark_judge.py`, importlib-loaded): real-fixture schema (28, 4 categories, td has trace, cp has none, unique ids) · load rejects missing-key / bad-category / duplicate-id ×3 · `run_judge` builds state for trace cases + accumulates tokens + with_trace=False → state None ×2 · `build_report` perfect→floor-pass + cheap_vs_strong agreement ×1 · trace_delta positive ×1 · floor excludes borderline ×1
+  - DoD: CI pytest green WITHOUT the benchmark (skipif → skipped; `-m "not benchmark"` deselects 1) ✓; **9 passed + 1 skipped** together ✓; mypy `src` 0/360 (scripts not gated but logic CI-tested) ✓; black/isort/flake8 0 ✓; loop.py / wire / codegen / DB UNTOUCHED ✓
 
 ---
 

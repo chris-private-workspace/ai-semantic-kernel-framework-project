@@ -56,9 +56,20 @@ Net scope shift < 20%: D6 REMOVES a file (`backend-ci.yml` not needed — scope 
 
 **Decision recorded**: trace knobs are module constants + env override inside `_trace.py`, NOT `core/config` Settings — they are verification-internal tuning, not tenant policy (per-tenant verification is C3, out of scope). Keeps `core/config` untouched.
 
-## Day 2 — (pending)
+## Day 2 — 2026-06-13 — US-2 permanent cheap-judge accuracy benchmark (backend)
 
-## Day 2 — (pending)
+**Shipped**: a permanent, re-runnable benchmark (user picked the eval-harness shape over a one-off).
+- **`scripts/benchmark_judge.py` (NEW)** — the reusable logic (precedent `verify_audit_chain.py`): `BenchCase`/`JudgeRun`/`BenchReport` + `load_cases` (schema-validate) + `run_judge(judge, cases, *, with_trace)` (builds the trace `LoopState` per case so trace_dependent cases exercise US-1) + `build_report` (pure: accuracy-vs-label / cheap-vs-strong agreement / per-category / trace_delta) + `CHEAP_ACCURACY_FLOOR=0.70` (the tracked metric; floor on the unambiguous categories only — borderline excluded) + a `main()` CLI (`python scripts/benchmark_judge.py`).
+- **`tests/fixtures/verification/judge_benchmark.yaml` (NEW)** — 28 hand-labeled cases: clear_pass ×8 / clear_fail ×8 / trace_dependent ×7 (5 fail-when-trace-disproves + 2 trace-consistent-pass) / borderline ×5.
+- **`tests/benchmark/test_judge_accuracy.py` (NEW)** — the real-LLM wrapper (`@pytest.mark.benchmark` + `RUN_AZURE_INTEGRATION` skipif): builds the Azure profile, runs cheap + strong (temp 0) + cheap-no-trace, asserts the floor. Day-3 drives it for real.
+- **`tests/unit/scripts/test_benchmark_judge.py` (NEW)** — 9 CI-safe logic tests (spy Verifier + synthetic JudgeRuns), NO real LLM.
+- **`pyproject.toml`** — registered the `benchmark` marker (`--strict-markers` ON). **`.gitignore`** — `/backend/benchmark_reports/`.
+
+**D12 (Day-2 finding — `scripts/` shadow)**: `from scripts.benchmark_judge import ...` works alone but FAILS at collection in the full suite — once the `tests.unit.scripts` package is imported it shadows top-level `scripts` (documented in `pyproject.toml:55` + `test_verify_audit_chain.py`). Fix: BOTH test files load `benchmark_judge.py` via `importlib.util.spec_from_file_location` (register in `sys.modules` before `exec_module` — Py3.12 dataclass resolution), the established codebase idiom.
+
+**D6 confirmed (scope reduction)**: CI runs `pytest -v --tb=short` (no `-m` filter) → the benchmark gates via `RUN_AZURE_INTEGRATION` skipif (CI skips it for free); `backend-ci.yml` NOT edited.
+
+**Gates (Day-2 partial)**: mypy `src` **0/360** (scripts not gated; logic covered by the 9 CI-safe tests) · black/isort/flake8 0 · `-m benchmark` selects exactly 1 · `-m "not benchmark"` deselects it · together **9 passed + 1 skipped**. loop.py / wire / codegen / DB UNTOUCHED.
 
 ## Day 3 — (pending)
 
