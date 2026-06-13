@@ -320,6 +320,12 @@ async def _amain(fixture: Path, out_dir: Path, judge_template: str) -> int:
 
 
 def main() -> int:
+    # The report markdown carries non-ASCII typography (− · → —); a Windows cp950 console
+    # can't encode it. Force the stdout text layer to UTF-8 so the print never crashes.
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+    except Exception:  # noqa: BLE001 — best-effort; redirected/odd streams keep their codec
+        pass
     parser = argparse.ArgumentParser(description="Cheap-judge accuracy benchmark (A3).")
     parser.add_argument(
         "--fixture",

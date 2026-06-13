@@ -19,7 +19,7 @@ Created: 2026-04-29 (Sprint 49.1)
 Last Modified: 2026-06-13
 
 Modification History (newest-first):
-    - 2026-06-13: Sprint 57.111 A3 — widen state to LoopState | None (trace-aware; was cast(None) at every call site)
+    - 2026-06-13: Sprint 57.111 A3 — widen state to LoopState | None (trace-aware; drops cast-None)
     - 2026-04-29: Initial creation (Sprint 49.1)
 """
 

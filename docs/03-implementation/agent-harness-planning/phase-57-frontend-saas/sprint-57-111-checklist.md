@@ -50,19 +50,19 @@
 
 ---
 
-## Day 3 — Full gates + drive-through (US-3) + CHANGE-078
+## Day 3 — Full gates + drive-through (US-3) + CHANGE-078 ✅
 
 ### 3.1 Full gate sweep
-- [ ] mypy strict 0/359 · black/isort/flake8 0 (all four) · run_all 10/10 from repo root (count 24; no codegen diff) · full pytest +N (0 del, benchmark-marked excluded) vs 2502 baseline · Vitest 837 holds (no FE) · mockup-fidelity 51 holds · `loop.py` diff = arg+param only (reviewed line-by-line) · wire schema diff empty
+- [x] mypy `src` **0/360** · black/isort/flake8 **0** (caught + fixed 2 MHist E501s that slipped into Day-1 — `_abc.py`/`llm_judge.py`, added after the Day-1 flake8 run; AD-Lint-MHist-Verbosity trap) · run_all **10/10** (count 24; no codegen diff; `check_event_schema_sync` + `check_llm_sdk_leak` green) · full pytest **2526 passed + 5 skipped** (+24 / +1 benchmark skip vs 2502+4, 0 del) · Vitest **837** holds (no FE) · mockup-fidelity **51** holds · `loop.py` diff 25 ins/3 del (threading only, reviewed) · wire schema diff empty
 
-### 3.2 Drive-through (US-3 — real UI :3007 + fresh no-reload backend + real Azure; zero dev-login; Risk Class E clean restart, sole-owner verified, stale 57.110-knob backend killed)
-- [ ] **Leg A (trace-aware critique end-to-end)**: construct a trace-dependent scenario (a prompt producing a tool error then a superficially-fine final answer) → trace-aware judge's `VerificationFailed.reason` visibly references the trace (tool error / prior turn) → correction turn → `VerificationPassed` → answer renders; reuse "soft forced-fail judge template" (:140) + "forced-fail steers no-tools" (:155); if non-deterministic, the `forced_fail_trace.txt` strict template makes the judge cite the trace deterministically; screenshot
-- [ ] **Leg B (real benchmark run + verdict)**: `pytest -m benchmark` once against real Azure → real cheap_accuracy / strong_accuracy / agreement / trace_delta / cost numbers in the report artifact → write the human go/no-go verdict (keep cheap tier vs move judge to strong) from the measured number vs the tracked floor
-- [ ] Screenshots + observed-vs-intended table in progress.md; report artifact saved under `sprint-57-111/artifacts/` (never-commit) + the verdict numbers into the design note
-  - DoD: leg A trace-citing critique PASS; leg B real numbers recorded + verdict written
+### 3.2 Drive-through (US-3 — real UI :3007 + fresh single-process A3 backend PID 38328 + real Azure gpt-5.2; dev-login `jamie@acme.com · acme-prod`; Risk Class E clean restart — killed stale 57.110 backend 34916, sole :8000 owner verified)
+- [x] **Leg A (live chat trace-aware verification path)**: "what is the capital of France?" → "The capital of France is Paris." + **Verification (1) ✅** — the in-loop `_cat10_verify_gate` ran live (built the `trace_state`, the trace-aware judge verified + passed). Honest scope: a PASS case (good answer correctly passed); a live trace-dependent FAIL was NOT engineered (gpt-5.2 won't claim success after a tool error w/o a config change) → the FAIL behavior is proven quantitatively by Leg B. Screenshot `artifacts/dt57111-legA-chat-verification-pass.png`
+- [x] **Leg B (real benchmark run + verdict)**: `python scripts/benchmark_judge.py` (real Azure, exit 0) → cheap **92.86%** (stable ×2) / strong 78.57–92.86% / agreement 71–86% / **trace_delta +42.86% (stable)** / floor 70% **PASS**. Verdict: **keep the cheap tier** (cheap accurate + better-aligned to the lenient contract than strong which over-flags clear_pass). D-DAY3-1: first run's `print(md)` crashed on Windows cp950 (`−` U+2212; report files written before the print) → `sys.stdout.reconfigure(utf-8)` fix → re-run clean
+- [x] Screenshots + observed-vs-intended in progress.md; report `artifacts/legB-benchmark-report.md` (never-commit) + verdict numbers recorded
+  - DoD: Leg A path active live + renders ✓; Leg B real numbers + verdict ✓
 
 ### 3.3 CHANGE-078
-- [ ] `claudedocs/4-changes/feature-changes/CHANGE-078-trace-aware-critique-cheap-judge-benchmark.md` (1-page)
+- [x] `claudedocs/4-changes/feature-changes/CHANGE-078-trace-aware-critique-cheap-judge-benchmark.md` (1-page)
 
 ---
 

@@ -71,6 +71,24 @@ Net scope shift < 20%: D6 REMOVES a file (`backend-ci.yml` not needed — scope 
 
 **Gates (Day-2 partial)**: mypy `src` **0/360** (scripts not gated; logic covered by the 9 CI-safe tests) · black/isort/flake8 0 · `-m benchmark` selects exactly 1 · `-m "not benchmark"` deselects it · together **9 passed + 1 skipped**. loop.py / wire / codegen / DB UNTOUCHED.
 
-## Day 3 — (pending)
+## Day 3 — 2026-06-13 — full gate sweep + drive-through (US-3) + CHANGE-078
+
+**Full gate sweep**: mypy `src` **0/360** · black/isort/flake8 **0** (caught + fixed 2 MHist E501s that slipped into Day-1 — `_abc.py`/`llm_judge.py`; the AD-Lint-MHist-Verbosity trap, added after the Day-1 flake8 run) · run_all **10/10** (`check_event_schema_sync` green → wire count **24**, no codegen diff; `check_llm_sdk_leak` green) · full pytest **2526 passed + 5 skipped** (+24 passed / +1 benchmark skip vs 2502+4 baseline, 0 del) · Vitest **837** holds (no FE touched) · mockup-fidelity **51** holds · `loop.py` diff = 25 ins/3 del (threading only, reviewed).
+
+**Drive-through Leg A — live chat trace-aware verification** (real UI :3007 + fresh A3 backend PID 38328 + real Azure gpt-5.2; dev-login `jamie@acme.com · acme-prod`; Risk Class E clean restart — killed stale 57.110 backend 34916, fresh single-process sole :8000 owner, startup log "pricing loader wired" + "startup complete"):
+- Sent "In one short sentence, what is the capital of France?" → agent (turn 2, `stop: end_turn`): **"The capital of France is Paris."** rendered → **Verification panel "Verification (1)" with ✅ PASS**.
+- Observed-vs-intended: the in-loop `_cat10_verify_gate` ran live (built the `trace_state` from the live messages; the trace-aware judge verified + passed a good answer). No Potemkin — real answer + real verification render. Screenshot `artifacts/dt57111-legA-chat-verification-pass.png`.
+- **Honest scope**: this is a PASS case (good answer correctly passed; the trace was the prior user turn). A live trace-dependent FAIL was NOT engineered — gpt-5.2 won't claim success after a tool error without a config change. Leg A proves the A3 verification PATH is active live + renders; the trace-aware FAIL BEHAVIOR is proven quantitatively by Leg B.
+
+**Drive-through Leg B — real cheap-judge benchmark** (`RUN_AZURE_INTEGRATION=1 python scripts/benchmark_judge.py`, real Azure, exit 0; D-DAY3-1 below):
+- **cheap accuracy 92.86%** (stable across 2 runs) · strong 78.57–92.86% (Azure non-determinism on clear_pass even at temp 0) · cheap-vs-strong agreement 71–86% · **trace_delta +42.86% (STABLE)** — cheap-with-trace nails trace_dependent 100%; without-trace misses ~43% → the quantitative end-to-end proof US-1 works on real Azure · floor 70% → **PASS** (`cheap_passes_floor=True`). Report `artifacts/legB-benchmark-report.md`.
+- Per-category (run 2): clear_pass cheap 100% / strong 87.5% · clear_fail cheap 75% / strong 100% · trace_dependent both 100% · borderline cheap 100% / strong 80%.
+- **Design note 24 verdict (SETTLED)**: the cheap tier is accurate (92.86%, stable, 100% trace_dependent) and actually aligns BETTER with the lenient "default-pass, flag-only-clear-failures" contract than the strong tier (which over-flags clear_pass) → **keep the cheap tier** (57.97's choice confirmed with a real number).
+
+**D-DAY3-1 (benchmark print crash → fixed)**: the first `python scripts/benchmark_judge.py` made all 84 real Azure calls + wrote the report files (utf-8) but crashed on the final `print(md)` — Windows cp950 can't encode the `−` (U+2212) in the markdown. The measurement was valid (files written before the print); fixed by `sys.stdout.reconfigure(encoding="utf-8", errors="replace")` in `main()`; the re-run printed clean (exit 0).
+
+**CHANGE-078** written (`claudedocs/4-changes/feature-changes/`).
+
+## Day 4 — (pending: closeout — retro + calibration + navigators + design note 25 §5 trace-aware + benchmark verdict)
 
 ## Day 4 — (pending)

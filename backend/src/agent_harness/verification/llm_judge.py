@@ -27,7 +27,7 @@ Created: 2026-05-04 (Sprint 54.1 Day 2)
 Last Modified: 2026-06-13
 
 Modification History:
-    - 2026-06-13: Sprint 57.111 A3 — trace-aware {trace} prompt (reads state.messages) + optional judge temperature
+    - 2026-06-13: Sprint 57.111 A3 — trace-aware {trace} prompt + optional judge temperature
     - 2026-06-05: Sprint 57.82 — capture response.usage + model into result (B-8 cost-ledger)
     - 2026-05-04: AD-Cat10-Obs-1 — accept optional Tracer (Sprint 54.2 US-5)
     - 2026-05-04: Initial (Sprint 54.1 US-2) — closes AD-Cat9-1 (LLM-judge fallback for detectors)
