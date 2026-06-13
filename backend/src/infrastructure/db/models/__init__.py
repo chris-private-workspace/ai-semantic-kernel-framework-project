@@ -98,6 +98,9 @@ from infrastructure.db.models.sessions import (
     Session,
 )
 
+# Sprint 57.114 — TenantSkill (per-tenant custom Skills catalog; Skills System overlay)
+from infrastructure.db.models.skill import TenantSkill
+
 # Sprint 56.3 Day 2 — SLA Monitoring (US-2)
 from infrastructure.db.models.sla import (
     SLAMetricType,
@@ -120,9 +123,6 @@ from infrastructure.db.models.tools import (
     ToolRegistry,
     ToolResult,
 )
-
-# Sprint 57.114 — TenantSkill (per-tenant custom Skills catalog; Skills System overlay)
-from infrastructure.db.models.skill import TenantSkill
 
 # Sprint 57.11 Day 1 — Verification Log (US-1)
 from infrastructure.db.models.verification_log import (
