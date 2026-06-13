@@ -25,6 +25,7 @@ Created: 2026-04-30 (Sprint 51.0 Day 3)
 Last Modified: 2026-06-11
 
 Modification History:
+    - 2026-06-13: Sprint 57.113 — opt-in skill_registry (registers read_skill lazy-load tool)
     - 2026-06-12: Sprint 57.107 (B3) — opt-in handoff_targets (registers spec-only handoff)
     - 2026-06-11: Sprint 57.102 (B2a) — opt-in teammate_mailbox (registers send_to_parent)
     - 2026-06-01: Sprint 57.64 Day 2 — make_default_executor opt-in Cat 3 + Cat 11 deps
@@ -44,6 +45,7 @@ from uuid import UUID
 
 from agent_harness._contracts import AgentSpec, SubagentFailurePolicy, ToolCall
 from agent_harness.observability import Tracer
+from agent_harness.skills import READ_SKILL_TOOL_SPEC, make_read_skill_handler
 from agent_harness.subagent import (
     make_handoff_spec,
     make_send_to_parent_tool,
@@ -63,6 +65,7 @@ from ._service_factory import BusinessServiceFactory
 
 if TYPE_CHECKING:
     from agent_harness.memory import MemoryLayer, MemoryRetrieval
+    from agent_harness.skills import SkillRegistry
     from agent_harness.subagent import DefaultSubagentDispatcher, MailboxStore
 from .audit_domain.tools import register_audit_tools
 from .correlation.tools import register_correlation_tools
@@ -179,6 +182,7 @@ def make_default_executor(
     teammate_mailbox: "MailboxStore | None" = None,
     handoff_targets: Sequence[str] | None = None,
     subagent_failure_policy: SubagentFailurePolicy = "fail_soft",
+    skill_registry: "SkillRegistry | None" = None,
 ) -> tuple[ToolRegistryImpl, ToolExecutorImpl]:
     """Build a registry+executor pair with echo_tool + 18 business tools (19 total).
 
@@ -282,6 +286,15 @@ def make_default_executor(
         handoff_spec, handoff_handler = make_handoff_spec(suggested_targets=handoff_targets)
         registry.register(handoff_spec)
         handlers[handoff_spec.name] = _adapt_subagent_handler(handoff_handler)
+
+    # Sprint 57.113: the read_skill lazy-load tool (opt-in). When a skill registry
+    # is supplied, register read_skill so the model can load a skill's full
+    # instructions on demand (the system prompt advertises them cheaply via
+    # render_catalog_block). The chat path's registry-derived permission matrix
+    # auto-grants a PASS rule (handler.py builds rules from registry.list()).
+    if skill_registry is not None:
+        registry.register(READ_SKILL_TOOL_SPEC)
+        handlers["read_skill"] = make_read_skill_handler(skill_registry)
 
     # Cat 11 (A-3a) subagent tools — FORK/TEAMMATE via task_spawn + one AS_TOOL
     # wrapper. HANDOFF is loop-intercepted (spec-only tool above; Sprint 57.107).

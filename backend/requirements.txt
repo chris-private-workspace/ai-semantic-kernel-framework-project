@@ -95,3 +95,10 @@ bcrypt>=4.1,<5.0
 # TOTP(secret).verify(code, valid_window=1) absorbs ±30s skew; provisioning_uri()
 # builds the otpauth:// URI the authenticator app scans.
 pyotp>=2.9,<3.0
+
+# ---- Sprint 57.113 US-1: Skills System (model-invoked lazy-load) ------------
+# PyYAML parses the YAML frontmatter (name + description) of bundled SKILL.md
+# files in agent_harness/skills/registry.py::SkillRegistry.from_dir. It was
+# already imported transitively (guardrails/tool/capability_matrix.py) but
+# never declared — declared now (the from_dir loader depends on it directly).
+PyYAML>=6.0,<7.0

@@ -92,6 +92,7 @@ from agent_harness.guardrails.tool.risky_action_detector import RiskyActionDetec
 from agent_harness.guardrails.tool.tool_guardrail import ToolGuardrail
 from agent_harness.orchestrator_loop import AgentLoopImpl
 from agent_harness.output_parser import OutputParserImpl
+from agent_harness.skills import render_catalog_block
 from agent_harness.subagent import MailboxStore
 from agent_harness.verification.templates import list_templates
 from business_domain._register_all import make_default_executor
@@ -130,6 +131,7 @@ if TYPE_CHECKING:
     from agent_harness.hitl import HITLManager
     from agent_harness.observability import Tracer
     from agent_harness.orchestrator_loop._abc import AgentLoop
+    from agent_harness.skills import SkillRegistry
     from agent_harness.subagent.dispatcher import DefaultSubagentDispatcher, SubagentEventEmitter
     from agent_harness.verification import VerifierRegistry
     from business_domain._service_factory import BusinessServiceFactory
@@ -281,6 +283,7 @@ def build_real_llm_handler(
     system_prompt: str = DEMO_SYSTEM_PROMPT,
     tracer: "Tracer | None" = None,
     subagent_event_emitter: "SubagentEventEmitter | None" = None,
+    skill_registry: "SkillRegistry | None" = None,
 ) -> AgentLoopImpl:
     """Wire AgentLoopImpl with AzureOpenAIAdapter. Requires env vars.
 
@@ -475,7 +478,18 @@ def build_real_llm_handler(
         parent_session_id=session_id,
         handoff_targets=handoff_targets,
         subagent_failure_policy=subagent_failure_policy,
+        skill_registry=skill_registry,
     )
+
+    # Sprint 57.113: advertise the available skills cheaply in the system prompt
+    # (names + descriptions only) so the model self-selects + calls read_skill to
+    # lazy-load the full instructions. Rides the persona system_prompt seam (the
+    # loop prepends it as the system message → reaches the LLM). Empty registry →
+    # "" → system_prompt byte-identical to the no-skills path.
+    if skill_registry is not None:
+        skills_block = render_catalog_block(skill_registry.list())
+        if skills_block:
+            system_prompt = f"{system_prompt}\n\n{skills_block}"
 
     # Sprint 57.2 US-3 (closes AD-Cat9-1-WireDetectors): production
     # handler wires GuardrailEngine with default 4-detector chain (PII +
@@ -712,6 +726,7 @@ def build_handler(
     system_prompt: str = DEMO_SYSTEM_PROMPT,
     tracer: "Tracer | None" = None,
     subagent_event_emitter: "SubagentEventEmitter | None" = None,
+    skill_registry: "SkillRegistry | None" = None,
 ) -> AgentLoopImpl:
     """Dispatch to the per-mode builder. Single entry-point for the router.
 
@@ -756,6 +771,9 @@ def build_handler(
             harness_policy=harness_policy,
             user_id=user_id,
             system_prompt=system_prompt,
+            # Sprint 57.113: thread the skill registry → build_real_llm_handler
+            # advertises the skills in the system prompt + registers read_skill.
+            skill_registry=skill_registry,
             # Sprint 57.71 (A-4 Tier 0): thread the router's real tracer through
             # to the loop. echo_demo path is unaffected (no tracer arg).
             tracer=tracer,

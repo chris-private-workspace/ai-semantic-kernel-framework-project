@@ -105,6 +105,7 @@ from agent_harness._contracts.events import (
 )
 from agent_harness.observability._abc import Tracer
 from agent_harness.orchestrator_loop import AgentLoop
+from agent_harness.skills import get_default_skill_registry
 from business_domain._service_factory import BusinessServiceFactory
 from core.config import get_settings
 from infrastructure.db.audit_helper import append_audit
@@ -293,6 +294,9 @@ async def chat(
             tracer=tracer,
             # Sprint 57.95: the emitter the dispatcher calls on spawn / complete.
             subagent_event_emitter=_relay_subagent_event,
+            # Sprint 57.113: the system-bundled skill registry — build_handler
+            # advertises the skills in the system prompt + registers read_skill.
+            skill_registry=get_default_skill_registry(),
         )
     except (RuntimeError, ValueError) as exc:
         # Misconfiguration (env vars / unsupported mode) → 503.
