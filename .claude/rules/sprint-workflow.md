@@ -117,7 +117,7 @@ Per AD-Sprint-Plan-4 (logged Sprint 55.3) + 4-sprint window evidence,one-multipl
 | `reality-check` | 0.85 | n/a (1 pt) | KEEP pending 2-3 sprint validation |
 | `reality-gap-fix` | 0.50 | n/a (1 pt) | KEEP; AD-Sprint-Plan-8 maybe →0.35 |
 | `iam-frontend-spike` | 0.60 | n/a (1 pt) | KEEP pending validation |
-| `iam-backend-spike` | 0.65 | ~0.98 (2 pt) | KEEP — proposed from 57.85/86 over-runs under `medium-backend` 0.80; 57.87 1st validation ≈1.0 + 57.105 2nd validation ≈0.95 both IN band (row first landed in matrix at 57.105 closeout — had been plan-only since 57.87) |
+| `iam-backend-spike` | 0.65 | ~1.08 (3 pt) | KEEP — 57.87 ≈1.0 + 57.105 ≈0.95 (IN band) + 57.112 ≈1.28 (slightly over — the FE component + the D13 drive-through detour vs the prior two's purer-backend shape); single over-point, 3-pt mean ≈1.08 IN band → KEEP; if the next IAM-backend spike WITH an FE component also runs >1.20 propose an `iam-backend-with-fe` sub-class ~0.75 |
 | `frontend-arch-spike` | 0.50 | n/a (1 pt) | KEEP; AD-Sprint-Plan-10 maybe split greenfield/reuse-ship |
 | `frontend-feature-with-migration` | 0.50 | n/a (1 pt) | KEEP |
 | `audit-cycle / docs / template` | 0.40 | 1.13 | KEEP — 3-sprint window complete |

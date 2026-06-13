@@ -73,11 +73,11 @@
 
 ---
 
-## Day 4 — Closeout
+## Day 4 — Closeout ✅
 
 ### 4.1 Closeout
-- [ ] retrospective.md Q1-Q7 + calibration (`iam-backend-spike` 0.65 3rd data point — record ratio vs 57.87/57.105; agent-delegated: no) + progress.md final
-- [ ] **Spike design note `30-iam-mfa-spike.md`** (§5.5) — 8-point quality gate (section-header per US / file:line per claim / decision matrix — challenge-token vs body-id, plaintext-vs-encrypted secret / verification command / test fixture / open-invariant boundary / rollback path / 17.md cross-ref); record verified ratio in retro Q6
-- [ ] Navigators: CLAUDE.md Current-Sprint row + Last-Updated; MEMORY.md quality pointer + memory subfile `project_phase57_112_iam_mfa_totp.md`; next-phase-candidates 57.112 carryover block (`AD-Auth-MFA-Backend-IAM-Block-C-Phase58` CLOSED TOTP leg + NEW deferred ADs: `AD-MFA-Secret-At-Rest-Encryption` / `AD-MFA-Enroll-Setup-UI` / WebAuthn + recovery + OIDC-gate remaining); sprint-workflow matrix `iam-backend-spike` 3rd data point; 17.md if a contract changed
-- [ ] **Anti-pattern self-check** (esp. AP-4 Potemkin — verify enroll→confirm→verify is a REAL drivable vertical, not a verify-only stub; AP-2 — no dead control / honest webauthn 400)
+- [x] retrospective.md Q1-Q7 + calibration (`iam-backend-spike` 0.65 3rd data point ratio ~1.28, 3-pt mean ~1.08 IN band, KEEP; agent-delegated: no) + progress.md final
+- [x] **Spike design note `30-iam-mfa-spike.md`** (§5.5) — 8-point quality gate all ✓, ~95% verified ratio (recorded retro Q6)
+- [x] Navigators: CLAUDE.md Current-Sprint row + Last-Updated; MEMORY.md quality pointer + memory subfile `project_phase57_112_iam_mfa_totp.md`; next-phase-candidates 57.112 carryover block (TOTP leg CLOSED + 7 deferred ADs incl. NEW `AD-FE-FetchWithAuth-Validation-401-Lint` from D13); sprint-workflow matrix `iam-backend-spike` 3rd data point; 17.md unchanged (identity is platform infra, no new contract — per 21/22/23 precedent)
+- [x] **Anti-pattern self-check** (retro Q7 — 0 violations; AP-4 ✅ real drivable vertical not a verify-only stub; AP-2 ✅ no dead control, honest webauthn 400, recovery honestly disabled)
 - [ ] PR (push + open on user authorization)
