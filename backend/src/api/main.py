@@ -27,6 +27,7 @@ Created: 2026-04-29 (Sprint 49.4 Day 5)
 Last Modified: 2026-06-07
 
 Modification History (newest-first):
+    - 2026-06-13: Sprint 57.112 — mount mfa router (TOTP enroll/confirm/verify; IAM Block C)
     - 2026-06-07: FIX-028 — _wire_sla_recorder() at startup (sla-report 500 fix; twin of FIX-022)
     - 2026-06-05: Sprint 57.81 — _wire_error_budget() at startup (B-7 RedisBudgetStore wiring)
     - 2026-06-02: Sprint 57.70 Stage-1b — mount admin_agents router (agent_catalog CRUD)
@@ -73,6 +74,7 @@ from api.v1.health import router as health_router
 from api.v1.invites import router as invites_router
 from api.v1.loops import router as loops_router
 from api.v1.memory import router as memory_router
+from api.v1.mfa import router as mfa_router
 from api.v1.sessions import router as sessions_router
 from api.v1.subagents import router as subagents_router
 from api.v1.telemetry import router as telemetry_router
@@ -389,6 +391,7 @@ def create_app() -> FastAPI:
     # Routers: api/v1.
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(auth_router, prefix="/api/v1")
+    app.include_router(mfa_router, prefix="/api/v1")
     app.include_router(invites_router, prefix="/api/v1")
     app.include_router(tenants_router, prefix="/api/v1")
     app.include_router(telemetry_router, prefix="/api/v1")

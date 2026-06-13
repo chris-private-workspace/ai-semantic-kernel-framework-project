@@ -87,3 +87,11 @@ workos>=4.0,<6.0
 # POST /auth/password-login. Consumed only from platform_layer/identity/
 # passwords.py (sync hash/verify offloaded via anyio.to_thread.run_sync).
 bcrypt>=4.1,<5.0
+
+# ---- Sprint 57.112 US-1: TOTP second factor (C-12 IAM Block C MFA) ----------
+# pyotp implements RFC 6238 TOTP (stdlib-hmac, no native deps). Consumed only
+# from platform_layer/identity/mfa.py (TOTPService.enroll/confirm/verify) +
+# the drive-through helper. random_base32() generates the shared secret;
+# TOTP(secret).verify(code, valid_window=1) absorbs ±30s skew; provisioning_uri()
+# builds the otpauth:// URI the authenticator app scans.
+pyotp>=2.9,<3.0

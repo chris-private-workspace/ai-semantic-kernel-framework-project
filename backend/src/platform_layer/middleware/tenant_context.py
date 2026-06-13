@@ -41,6 +41,7 @@ Created: 2026-04-29 (Sprint 49.3 Day 4.4)
 Last Modified: 2026-06-06
 
 Modification History (newest-first):
+    - 2026-06-13: Sprint 57.112 — EXEMPT /api/v1/mfa/verify (challenge-gated TOTP second factor)
     - 2026-06-06: Sprint 57.87 — EXEMPT /api/v1/tenants/register (pre-JWT self-service registration)
     - 2026-06-06: Sprint 57.86 — EXEMPT /api/v1/auth/password-login (pre-JWT local sign-in)
     - 2026-05-10: Sprint 57.13 US-A1 — v2_jwt cookie fallback + EXEMPT auth/* + telemetry (D-PRE-8)
@@ -137,6 +138,13 @@ class TenantContextMiddleware(BaseHTTPMiddleware):
         # /api/v1/tenants/register ONLY — admin tenant CRUD lives at
         # /api/v1/admin/tenants/... and stays NON-exempt (require_admin_platform_role).
         "/api/v1/tenants/register",
+        # TOTP MFA second-factor verify (Sprint 57.112): the caller holds only a
+        # short-lived mfa_pending challenge cookie (NOT a session JWT yet); the
+        # endpoint decodes that challenge itself + scopes its own RLS context. The
+        # match is EXACT (dispatch checks `path == prefix`) → /api/v1/mfa/verify
+        # ONLY; /api/v1/mfa/enroll + /enroll/confirm stay NON-exempt (they require
+        # a full session — you enroll while logged in).
+        "/api/v1/mfa/verify",
     )
 
     def __init__(

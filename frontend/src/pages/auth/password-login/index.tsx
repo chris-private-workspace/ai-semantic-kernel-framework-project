@@ -19,6 +19,7 @@
  * Last Modified: 2026-06-06
  *
  * Modification History:
+ *   - 2026-06-13: Sprint 57.112 — mfa_required branch → navigate /auth/mfa (TOTP gate)
  *   - 2026-06-06: Initial creation (Sprint 57.86 US-4) — local password-login page
  *
  * Related:
@@ -70,6 +71,15 @@ export default function PasswordLoginPage(): JSX.Element {
       );
       if (!res.ok) {
         setError(t("passwordLogin.error"));
+        return;
+      }
+      // MFA-gate (Sprint 57.112): an mfa_enabled user gets {mfa_required:true} +
+      // a short-lived challenge cookie instead of a session — continue to /auth/mfa
+      // (the stashed post-login redirect is preserved in sessionStorage and consumed
+      // by /auth/callback AFTER the TOTP verify issues the real session).
+      const data: { mfa_required?: boolean } = await res.json();
+      if (data.mfa_required) {
+        navigate("/auth/mfa");
         return;
       }
       await bootstrap();

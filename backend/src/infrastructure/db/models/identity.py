@@ -202,6 +202,15 @@ class User(Base, TenantScopedMixin):
     # have none; set at invite-accept, verified by POST /auth/password-login.
     # bcrypt hash string ($2b$12$…); see platform_layer/identity/passwords.py.
     password_hash: Mapped[str | None] = mapped_column(String(255))
+    # TOTP second factor (Sprint 57.112, C-12 IAM Block C MFA). totp_secret is the
+    # base32 shared secret (pyotp.random_base32, ≤32 chars); NULL until enrolled.
+    # Stored PLAINTEXT — a TOTP secret must be readable to recompute codes (unlike
+    # a password it cannot be hashed). At-rest encryption is deferred
+    # (AD-MFA-Secret-At-Rest-Encryption — no encryption utility is wired today).
+    # mfa_enabled flips true on the first confirmed code; password-login then
+    # challenges for a TOTP before issuing a session. See identity/mfa.py.
+    totp_secret: Mapped[str | None] = mapped_column(String(64))
+    mfa_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
     preferences: Mapped[dict[str, Any]] = mapped_column(
         JSONB,

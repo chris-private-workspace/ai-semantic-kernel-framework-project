@@ -16,9 +16,13 @@
  *         onPaste split + filled-state visual primary border (var(--primary) bg + border)
  *       · WebAuthn Simulate button → POST /api/v1/mfa/verify {simulated: true}
  *
- *   Backend stub behavior preserved (Sprint 57.23 US-D2):
- *     - POST /api/v1/mfa/verify expected 501 → errorStubbed surface
- *     - AD-Auth-MFA-Backend-IAM-Block-C-Phase58 carryover
+ *   Backend wired (Sprint 57.112 — closes AD-Auth-MFA-Backend-IAM-Block-C TOTP leg):
+ *     - POST /api/v1/mfa/verify is real (challenge-gated): reached after a
+ *       password-login on an mfa_enabled user (the SPA holds the v2_mfa_challenge
+ *       cookie). A valid TOTP → 200 + v2_jwt session → /auth/callback; a wrong code
+ *       → 401 → errorInvalid. The demo banner is gone (the endpoint is no longer a stub).
+ *     - WebAuthn is NOT supported this release: the Simulate button hits the endpoint,
+ *       which returns 400 → webauthnUnavailable (honest, not a faked success).
  *
  *   Inline-style escape hatch instances (STYLE.md §1, all verbatim mockup literals):
  *     - 48×48 key avatar circle
@@ -30,6 +34,7 @@
  * Last Modified: 2026-05-24
  *
  * Modification History:
+ *   - 2026-06-13: Sprint 57.112 — wire real backend: drop demo banner; errorInvalid/webauthnUnavailable copy; redirectOn401:false on verify (a wrong code is an inline error, not a session-expiry SSO bounce — caught by drive-through)
  *   - 2026-05-24: Sprint 57.35 US-D2 — verbatim re-point per page-auth-extras.jsx:248-371 (closes Sprint 57.23 vintage HSL-translation drift)
  *   - 2026-05-18: Initial creation (Sprint 57.23 US-D2) — mockup-direct port of AuthMFA
  *
@@ -103,18 +108,24 @@ export default function MFAPage(): JSX.Element {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetchWithAuth("/api/v1/mfa/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ method, code: code.join("") }),
-      });
+      const res = await fetchWithAuth(
+        "/api/v1/mfa/verify",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ method, code: code.join("") }),
+        },
+        // A wrong code returns 401 — surface it inline here, do NOT let
+        // fetchWithAuth treat it as an expired session + bounce to SSO.
+        { redirectOn401: false },
+      );
       if (!res.ok) {
-        setError(t("mfa.errorStubbed"));
+        setError(t("mfa.errorInvalid"));
         return;
       }
       navigate("/auth/callback");
     } catch {
-      setError(t("mfa.errorStubbed"));
+      setError(t("mfa.errorInvalid"));
     } finally {
       setBusy(false);
     }
@@ -124,18 +135,23 @@ export default function MFAPage(): JSX.Element {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetchWithAuth("/api/v1/mfa/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ method: "webauthn", simulated: true }),
-      });
+      const res = await fetchWithAuth(
+        "/api/v1/mfa/verify",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ method: "webauthn", simulated: true }),
+        },
+        { redirectOn401: false },
+      );
       if (!res.ok) {
-        setError(t("mfa.errorStubbed"));
+        // WebAuthn isn't supported yet (backend 400) — surface honestly, no fake success.
+        setError(t("mfa.webauthnUnavailable"));
         return;
       }
       navigate("/auth/callback");
     } catch {
-      setError(t("mfa.errorStubbed"));
+      setError(t("mfa.webauthnUnavailable"));
     } finally {
       setBusy(false);
     }
@@ -184,17 +200,6 @@ export default function MFAPage(): JSX.Element {
               <div className="muted" style={{ fontSize: 12.5 }}>
                 {method === "totp" ? t("mfa.totpSub") : t("mfa.webauthnSub")}
               </div>
-            </div>
-          </div>
-
-          {/* AP-2 demo banner */}
-          <div className="hitl-card" data-severity="risk-medium" style={{ margin: 0 }} role="note">
-            <div className="hitl-card-bar" />
-            <div className="hitl-head">
-              <span className="icon-ring">
-                <Icon name="warn" size={13} />
-              </span>
-              {t("mfa.demoBanner")}
             </div>
           </div>
 
