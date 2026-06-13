@@ -97,6 +97,16 @@ describe("PasswordLoginPage", () => {
     expect(call).toBeDefined();
   });
 
+  it("submit 200 {mfa_required:true} navigates to /auth/mfa and does NOT bootstrap", async () => {
+    fetchSpy.mockResolvedValueOnce(jsonResponse({ mfa_required: true }));
+    renderPage();
+    fillForm();
+    fireEvent.click(screen.getByRole("button", { name: /Sign in/i }));
+
+    await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith("/auth/mfa"));
+    expect(bootstrapSpy).not.toHaveBeenCalled();
+  });
+
   it("submit 401 surfaces a generic error and does not navigate", async () => {
     fetchSpy.mockResolvedValueOnce(jsonResponse({ detail: "Invalid credentials" }, 401));
     renderPage();

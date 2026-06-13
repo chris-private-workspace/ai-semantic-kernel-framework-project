@@ -48,26 +48,28 @@
 
 ---
 
-## Day 3 — Thin FE + full gates + drive-through (US-3) + CHANGE-079
+## Day 3 — Thin FE + full gates + drive-through (US-3) + CHANGE-079 ✅
 
 ### 3.1 Thin FE (password-login branch + un-stub mfa page + i18n)
-- [ ] **password-login page**: `mfa_required` branch → `navigate("/auth/mfa")` (preserve redirect target); else existing bootstrap
-- [ ] **`/auth/mfa/index.tsx`**: remove demo banner; real invalid-code copy; webauthn Simulate surfaces the honest 400 (or visibly "coming soon" per mockup — no invented UI); keep success `navigate("/auth/callback")`
-- [ ] **`auth.json` en + zh-TW**: update `mfa.*` (drop 501/stubbed/demo copy; real invalid-code message); symmetric keys
-- [ ] **Vitest ADD**: password-login `mfa_required` → navigate `/auth/mfa` · mfa page submit code → success/401 handling
-  - DoD: `npm run lint` (NO `--silent`) + `npm run build` clean; Vitest +N vs 837; `npm run check:mockup-fidelity` **51 holds** (banner removal + copy only — no oklch/layout change)
+- [x] **password-login page**: `mfa_required` branch → `navigate("/auth/mfa")` (redirect preserved); else existing bootstrap
+- [x] **`/auth/mfa/index.tsx`**: removed demo banner; `errorInvalid` copy; webauthn Simulate → honest 400 `webauthnUnavailable`; recovery link stays honestly disabled; **+ `redirectOn401:false` on both verify calls (D13 drive-through fix)**
+- [x] **`auth.json` en + zh-TW**: dropped `demoBanner`/`errorStubbed`, added `errorInvalid`/`webauthnUnavailable`; symmetric keys
+- [x] **Vitest**: password-login +1 (`mfa_required` → `/auth/mfa`) · mfa.test.tsx 7→9 (converted demo-banner + webauthn-200 → no-banner + webauthn-400; +TOTP verify 200/401)
+  - DoD: ✅ `npm run lint` (no `--silent`) + `npm run build` clean; Vitest **840** (+3); `check:mockup-fidelity` **51 holds** (banner used `hitl-card` class, no oklch)
 
 ### 3.2 Full gate sweep
-- [ ] mypy `src` 0 · black/isort/flake8 0 (full `flake8 src/ tests/` CI-identical — re-run after MHist/header edits; 57.111 CI-escape lesson) · run_all 10/10 (count 24; no codegen diff; `check_llm_sdk_leak` + `check_event_schema_sync` green) · full pytest +N (0 del) vs 2526+5skip · Vitest +N vs 837 · mockup-fidelity 51 · `loop.py`/wire diff empty
+- [x] mypy `src` **0/363** · black/isort/flake8 **0** (full `src tests` CI-identical) · run_all **10/10** (count 24; `check_rls_policies`+`check_event_schema_sync`+`check_ap4_frontend_placeholder` green) · full pytest **2546+5skip** (+20, 0 del) · Vitest **840** (+3) · mockup-fidelity **51** · loop.py/wire diff empty
 
-### 3.3 Drive-through (US-3 — real UI :3007 + fresh single-process backend + real DB; zero dev-login; Risk Class E clean restart + `alembic upgrade head`)
-- [ ] **Enroll leg (API-driven — no mockup enroll UI)**: real password-login a test user (pre-MFA) → `POST /mfa/enroll` (session cookie) → secret → `pyotp` compute current code → `POST /mfa/enroll/confirm` → `mfa_enabled=true` (DB-verified)
-- [ ] **Login leg (real UI)**: log out → password-login as that user → backend `{mfa_required:true}` + `v2_mfa_challenge` set (no `v2_jwt`) → FE navigates `/auth/mfa` → enter the LIVE TOTP code → `/mfa/verify` → full `v2_jwt` set → `/auth/callback` → pages render the real role; a WRONG code → generic 401 + real error copy (banner gone)
-- [ ] Screenshots + observed-vs-intended in progress.md (`artifacts/`); confirm no dead control / no fixture masquerade
-  - DoD: full login→challenge→TOTP→session drivable end-to-end on real UI + real backend + real DB; wrong-code path shows real 401 copy
+### 3.3 Drive-through (US-3 — real UI :3007 + fresh single-process backend PID 25896 + real Postgres; zero dev-login; Risk Class E clean restart)
+- [x] **Live routing probe**: `/mfa/verify` no-cookie → 401 "MFA challenge required" (EXEMPT+gated); `/mfa/enroll` no-auth → 401 "Authorization Bearer token required" (non-exempt) → D1 proven in prod
+- [x] **Enroll leg (API-driven — no mockup enroll UI)**: real `/mfa/enroll` → secret + otpauth URI → pyotp code → `/mfa/enroll/confirm` → `mfa_enabled=true`
+- [x] **Login leg (real UI)**: password-login (`mfa-dt`/`mfauser@dt.test`) → `{mfa_required}` + challenge (no v2_jwt) → `/auth/mfa` → live TOTP → full `v2_jwt` → `/auth/callback` → authenticated `/chat-v2` (header "acme-prod · user"); **wrong code `000000` → inline "That code didn't match…" + stays (after D13 fix)**
+- [x] Screenshots `artifacts/dt57112-{1,4,5}-*.png` + observed-vs-intended in progress.md; no dead control / no fixture masquerade
+  - DoD: ✅ full login→challenge→TOTP→session drivable e2e on real UI+backend+DB; wrong-code shows real error
+- [x] **D13 drive-through find FIXED**: MFA verify `fetchWithAuth` lacked `{redirectOn401:false}` → wrong-code 401 bounced to SSO; fixed + re-driven (gate-green ≠ usable — Drive-Through-Acceptance proof)
 
 ### 3.4 CHANGE-079
-- [ ] `claudedocs/4-changes/feature-changes/CHANGE-079-iam-mfa-totp.md` (1-page)
+- [x] `claudedocs/4-changes/feature-changes/CHANGE-079-iam-mfa-totp.md` (1-page, incl. the D13 drive-through find)
 
 ---
 

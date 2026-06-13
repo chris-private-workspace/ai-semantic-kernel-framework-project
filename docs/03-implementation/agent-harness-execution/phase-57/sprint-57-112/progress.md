@@ -77,3 +77,27 @@
 **Gates (Day-2 partial)**: mypy `src` 0 (mfa.py+auth.py) · black/isort/flake8 0 · 9/9 MFA integration pass · **87 passed** auth+identity regression (the `issue_session` extraction + JWT import change are clean — no break) · loop.py/wire/codegen UNTOUCHED.
 
 **Actual ~3.5 hr** (est ~4.5; ahead — the password-login pattern + shared `issue_session` extraction made the gate + verify clean).
+
+---
+
+## Day 3 — 2026-06-13 — Thin FE + full gates + drive-through (US-3) ✅
+
+**Thin FE**:
+- `password-login/index.tsx` — `mfa_required` branch → `navigate("/auth/mfa")` (redirect preserved for `/auth/callback`).
+- `mfa/index.tsx` — removed the demo banner; `errorInvalid` copy; WebAuthn Simulate → honest `webauthnUnavailable` (backend 400, no fake success); recovery link stays honestly disabled.
+- `auth.json` en + zh-TW — `mfa.*` symmetric (dropped `demoBanner`/`errorStubbed`, added `errorInvalid`/`webauthnUnavailable`).
+- Vitest: password-login +1 (mfa_required branch), mfa.test.tsx 7→9 (converted demo-banner + webauthn-200 tests → no-banner + webauthn-400; added TOTP verify 200/401).
+
+**Full gate sweep**: mypy `src` **0/363** · black/isort/flake8 **0** (full `src tests`, CI-identical) · run_all **10/10** (count 24; `check_rls_policies` + `check_event_schema_sync` + `check_ap4_frontend_placeholder` green) · full pytest **2546 passed + 5 skipped** (+20 vs 2526, 0 del) · Vitest **840** (+3 vs 837) · mockup-fidelity **51** (banner used `hitl-card` class — no oklch touched) · FE build ✓.
+
+**Drive-through (real UI :3007 + fresh backend PID 25896 single-process no-reload + real Postgres; zero dev-login; Risk Class E clean restart — killed stale 57.111 backend 38328, sole :8000 owner verified)** — ALL 3 legs PASS:
+- Live routing probe: `POST /mfa/verify` (no cookie) → 401 "MFA challenge required" (mounted + EXEMPT + challenge-gate); `POST /mfa/enroll` (no auth) → 401 "Authorization Bearer token required" (non-exempt) → **D1 proven in production**.
+- **Leg A (enroll, API-driven — no enroll UI by design)**: real `/mfa/enroll` → secret + `otpauth://` URI; `/mfa/enroll/confirm` (pyotp code) → `mfa_enabled=true`.
+- **Leg B (login, real UI)**: password-login (`mfa-dt`/`mfauser@dt.test`/`DriveThru123`) → `{mfa_required}` → `/auth/mfa` → TOTP `471919` → `v2_jwt` → `/auth/callback` → authenticated `/chat-v2` (header "acme-prod · user"). `artifacts/dt57112-{1,4}-*.png`.
+- **Leg C (wrong code)**: `000000` → inline "That code didn't match…" + stays on page. `artifacts/dt57112-5-wrong-code-error.png`.
+
+**🔴 Drive-through find (D13, fixed same sprint)**: the FIRST wrong-code attempt **bounced to `/auth/login` (SSO)** instead of the inline error — the MFA page's `fetchWithAuth("/mfa/verify", …)` omitted `{redirectOn401:false}`, so `fetchWithAuth` treated the wrong-code 401 as a session expiry (`handleAuthExpired` → SSO redirect). The Vitest mocks `global.fetch` directly + jsdom no-ops `window.location` → unit tests passed; only the real drive-through surfaced it. Fixed: both `/mfa/verify` calls pass `{redirectOn401:false}` (the password-login page already did). Re-driven → wrong code stays + shows the real error. **Textbook Drive-Through-Acceptance value: gate-green ≠ usable.**
+
+**CHANGE-079** written.
+
+**Actual ~3.5 hr** (est ~3.5; on — the FE was thin but the drive-through bug + re-drive added ~30 min, offset by the clean port).

@@ -5,14 +5,16 @@
  * Scope: Phase 57 / Sprint 57.23 US-D2 (NEW /auth/mfa route — Roll-own TOTP + WebAuthn UI per Q3)
  *
  * Description:
- *   7 tests covering Sprint 57.23 US-D2 MFAPage:
- *   1. Initial render — TOTP tab default + 6 digit inputs + demo banner (AP-2) + Verify disabled
+ *   9 tests covering MFAPage (Sprint 57.23 input mechanics + Sprint 57.112 real backend):
+ *   1. Initial render — TOTP tab default + 6 digit inputs + NO demo banner + Verify disabled
  *   2. Typing digit advances focus to next input
  *   3. Backspace on empty digit retreats focus to previous input
  *   4. Paste 6 digits fills all boxes + focuses last
  *   5. Verify button enabled once all 6 digits filled
- *   6. Tab switch TOTP → WebAuthn renders spinning ring + Simulate button (no digit grid)
- *   7. WebAuthn Simulate button calls POST /api/v1/mfa/verify with method=webauthn
+ *   6. TOTP verify 200 → posts {method:totp, code} + navigates /auth/callback (57.112)
+ *   7. TOTP verify 401 → invalid-code error, no navigate (57.112)
+ *   8. Tab switch TOTP → WebAuthn renders spinning ring + Simulate button (no digit grid)
+ *   9. WebAuthn Simulate → backend 400 → honest "unavailable" message, no navigate (57.112)
  *
  * Created: 2026-05-18 (Sprint 57.23 US-D2)
  *
@@ -56,14 +58,12 @@ describe("MFAPage", () => {
     fetchSpy.mockRestore();
   });
 
-  it("renders TOTP tab as default with 6 digit inputs + demo banner; Verify disabled initially", () => {
+  it("renders TOTP tab as default with 6 digit inputs; Verify disabled initially (no demo banner)", () => {
     renderMFA();
     // Header
     expect(screen.getByText(/Two-factor verification/i)).toBeInTheDocument();
-    // AP-2 demo banner
-    expect(
-      screen.getByText(/MFA backend wire pending Phase 58\+ IAM Block C/i),
-    ).toBeInTheDocument();
+    // Sprint 57.112: the backend is wired now — the demo banner is gone.
+    expect(screen.queryByText(/MFA backend wire pending/i)).not.toBeInTheDocument();
     // 6 digit inputs (aria-label "Digit 1" through "Digit 6")
     for (let i = 1; i <= 6; i++) {
       expect(screen.getByLabelText(`Digit ${i}`)).toBeInTheDocument();
@@ -110,6 +110,41 @@ describe("MFAPage", () => {
     expect(screen.getByRole("button", { name: /Verify/i })).not.toBeDisabled();
   });
 
+  it("TOTP verify 200 posts {method:totp, code} and navigates to /auth/callback", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      new Response(JSON.stringify({ user: { email: "x@y.test" }, roles: ["user"] }), {
+        status: 200,
+      }),
+    );
+    renderMFA();
+    for (let i = 1; i <= 6; i++) {
+      fireEvent.change(screen.getByLabelText(`Digit ${i}`), { target: { value: String(i) } });
+    }
+    fireEvent.click(screen.getByRole("button", { name: /Verify/i }));
+
+    await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith("/auth/callback"));
+    const call = fetchSpy.mock.calls.find((c) => (c[0] as string) === "/api/v1/mfa/verify");
+    expect(call).toBeDefined();
+    expect(JSON.parse((call?.[1] as RequestInit).body as string)).toEqual({
+      method: "totp",
+      code: "123456",
+    });
+  });
+
+  it("TOTP verify 401 surfaces the invalid-code error and does not navigate", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: "Invalid verification code" }), { status: 401 }),
+    );
+    renderMFA();
+    for (let i = 1; i <= 6; i++) {
+      fireEvent.change(screen.getByLabelText(`Digit ${i}`), { target: { value: String(i) } });
+    }
+    fireEvent.click(screen.getByRole("button", { name: /Verify/i }));
+
+    await waitFor(() => expect(screen.getByText(/That code didn't match/i)).toBeInTheDocument());
+    expect(navigateSpy).not.toHaveBeenCalled();
+  });
+
   it("Tab switch TOTP → WebAuthn renders spinning ring + Simulate (no digit grid)", () => {
     renderMFA();
     const tab = screen.getByRole("tab", { name: /Security Key/i });
@@ -122,13 +157,20 @@ describe("MFAPage", () => {
     expect(screen.queryByLabelText("Digit 1")).not.toBeInTheDocument();
   });
 
-  it("WebAuthn Simulate calls POST /api/v1/mfa/verify + navigates on success", async () => {
-    fetchSpy.mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+  it("WebAuthn Simulate calls /mfa/verify; backend 400 → unavailable message, no navigate", async () => {
+    // Sprint 57.112: WebAuthn isn't supported — the endpoint returns 400; the page
+    // surfaces an honest "not supported" message and does NOT navigate (no fake success).
+    fetchSpy.mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: "WebAuthn is not supported yet" }), { status: 400 }),
+    );
     renderMFA();
     fireEvent.click(screen.getByRole("tab", { name: /Security Key/i }));
     fireEvent.click(screen.getByRole("button", { name: /Simulate success/i }));
 
-    await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith("/auth/callback"));
+    await waitFor(() =>
+      expect(screen.getByText(/Security keys aren't supported yet/i)).toBeInTheDocument(),
+    );
+    expect(navigateSpy).not.toHaveBeenCalled();
     const verifyCall = fetchSpy.mock.calls.find((c) => (c[0] as string) === "/api/v1/mfa/verify");
     expect(verifyCall).toBeDefined();
   });
