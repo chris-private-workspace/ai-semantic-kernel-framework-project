@@ -18,18 +18,19 @@
 
 ---
 
-## Day 1 — Backend: trace-aware critique verifier (US-1)
+## Day 1 — Backend: trace-aware critique verifier (US-1) ✅
 
 ### 1.1 Trace builder + judge prompt
-- [ ] **`verification/_trace.py`** (NEW): `build_trace_block(messages, *, max_turns, char_budget) -> str` — bounded recent-turns + tool-errors formatter (provider-neutral, operates on `Message` list, no SDK import); module constants + env overrides (`CHAT_VERIFICATION_TRACE_TURNS` / `_TRACE_CHAR_BUDGET`); file header + WHY
-- [ ] **`verification/llm_judge.py`**: `_build_prompt(output, state)` builds `{trace}` via `build_trace_block(state.transient.messages, ...)` when state non-None, substitutes; `state=None` → empty `{trace}` (back-compat); MHist 1-line
-- [ ] **`verification/templates/output_quality.txt`**: add a `{trace}` section (judge weighs trace — tool errors / prior turns — alongside `{output}`); back-compat preserved (no-`{trace}` templates still work)
-- [ ] **`core/config/__init__.py`** (if Day-0 says settings not constants): `CHAT_VERIFICATION_TRACE_TURNS` / `_TRACE_CHAR_BUDGET`
+- [x] **`verification/_trace.py`** (NEW): `build_trace_block(messages, *, max_messages, char_budget) -> str` — bounded recent-msgs + tool-errors formatter (provider-neutral on `Message` list, no SDK import); module constants + env overrides (`CHAT_VERIFICATION_TRACE_MAX_MESSAGES` / `_CHAR_BUDGET`) + per-message cap; file header + WHY
+- [x] **`verification/llm_judge.py`**: `_build_prompt(output, state)` builds `{trace}` via `build_trace_block(state.transient.messages)` when state non-None, substitutes; `state=None` → empty `{trace}` (back-compat); + optional `temperature` ctor param (D7 — benchmark determinism; default 1.0 = byte-identical); MHist 1-line
+- [x] **`verification/templates/output_quality.txt`**: added a `{trace}` section + a 4th trace-contradiction failure bullet; "MAY BE EMPTY" wording keeps back-compat (no-state → judge output alone)
+- [x] **config**: module constants + env override IN `_trace.py` (NOT `core/config` — D7: verification-internal tuning knobs, not tenant policy → keeps core/config untouched)
 
-### 1.2 Gate threads the real state (US-1 load-bearing)
-- [ ] **`loop.py`**: `_cat10_verify_gate` receives the trace (real `LoopState` or bounded view per Day-0) + forwards `state=<real>` to `verifier.verify` (remove `cast(LoopState, None)` @ :1684); line-by-line `git diff` review — call-site arg + helper param ONLY, NO logic rewrite; MHist 1-line
-- [ ] **Tests ADD (CI-safe)**: trace builder bounds (max_turns truncation + char budget) ×2 · judge consumes trace (tool-error in trace → prompt CONTAINS the trace block, MockChatClient) ×1 · `state=None` graceful empty ×1 · gate forwards real state (no `cast(None)`) ×1 · `{trace}` substitution present/absent ×1 · CONVERT any `state is None` pin found in Day-0
-  - DoD: verification + loop suites green (0 del); `loop.py` diff = arg+param only (reviewed); mypy strict 0/359; black/isort/flake8 0
+### 1.2 Gate threads the real state (US-1 load-bearing) + ABC widen (D1/D3)
+- [x] **`loop.py`**: `_cat10_verify_gate` gains a `messages` param + builds a minimal `trace_state` (mirroring `compact_state` :2096) + forwards `state=trace_state` to `verifier.verify` (removed `cast(LoopState, None)` @ :1684 + the now-unused `cast` import); call site passes `messages=messages`; MHist 1-line — NO loop logic rewrite (data threaded in)
+- [x] **ABC widen (D3)**: `Verifier.verify` `state: LoopState → LoopState | None = None` (`_abc.py`) — removes the 4-site `cast(LoopState, None)` type-lie; `rules_based.py` signature widened (ignores state by design); the 3 Cat 9 fallback judge sites (`verification/tools.py` / `cat9_mutator.py` / `cat9_fallback.py`) drop the cast → `state=None` + remove now-unused `cast`/`LoopState` imports
+- [x] **Tests ADD (CI-safe) ×13**: `test_trace_block.py` ×8 (empty / system-only / renders user+assistant+tool / tool-call annotation / max_messages truncation / char_budget tail / per-msg cap / zero-bound) · `test_llm_judge_trace.py` ×5 (trace in prompt when state present / empty trace when state=None / back-compat no-`{trace}` template / temperature 0.0 passed / default temp 1.0). No `state is None` test pin needed convert (existing `_state()` helper returns `cast(LoopState, None)` → already exercises the back-compat path)
+  - DoD: verification + guardrails + orchestrator suites **617 passed** (+13 new, 0 del) ✓; `loop.py` diff = arg + helper param + trace_state build (NO logic rewrite, reviewed) ✓; **mypy src 0/360** (359→360 = new `_trace.py`) ✓; black/isort/flake8 0 ✓
 
 ---
 

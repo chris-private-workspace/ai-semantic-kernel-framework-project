@@ -64,7 +64,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from agent_harness._contracts import LoopState, TraceContext
+from agent_harness._contracts import TraceContext
 from agent_harness.guardrails import (
     Guardrail,
     GuardrailAction,
@@ -118,13 +118,9 @@ class LLMJudgeFallbackGuardrail(Guardrail):
         # PASS path: run judge on the content as defense-in-depth
         # Judge expects str output; coerce content for cases where it's a Message / ToolCall
         output_str = self._content_to_str(content)
-        # State is unused by LLMJudgeVerifier; we don't have a real LoopState in this layer.
-        # The judge.verify() body doesn't dereference state, so casting None is safe here too.
-        from typing import cast
-
         judge_result = await self._judge.verify(
             output=output_str,
-            state=cast(LoopState, None),
+            state=None,  # no loop state in the Cat 9 fallback layer (A3: judge → empty trace)
             trace_context=trace_context,
         )
 

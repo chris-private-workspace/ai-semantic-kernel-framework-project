@@ -52,9 +52,12 @@ class RulesBasedVerifier(Verifier):
         self,
         *,
         output: str,
-        state: LoopState,
+        state: LoopState | None = None,
         trace_context: TraceContext | None = None,
     ) -> VerificationResult:
+        # Rules are string-only by design (regex / schema / format on `output`);
+        # `state` (the A3 trace) is intentionally ignored here — only the LLM judge
+        # is trace-aware.
         async with verification_span(self._tracer, self._name):
             for rule in self._rules:
                 passed, reason, suggestion = rule.check(output)

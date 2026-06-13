@@ -40,9 +40,9 @@ Related:
 
 from __future__ import annotations
 
-from typing import Any, Awaitable, Callable, cast
+from typing import Any, Awaitable, Callable
 
-from agent_harness._contracts import LoopState, RiskLevel
+from agent_harness._contracts import RiskLevel
 from agent_harness._contracts.tools import (
     ConcurrencyPolicy,
     ToolAnnotations,
@@ -95,7 +95,7 @@ def make_verify_tool(
         for verifier in registry.get_all():
             result = await verifier.verify(
                 output=output,
-                state=cast(LoopState, None),  # verifier doesn't deref state
+                state=None,  # no loop state in this tool path (A3: judge → empty trace)
             )
             results.append(
                 {

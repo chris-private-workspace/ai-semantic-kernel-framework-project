@@ -3,10 +3,18 @@ usable answer to the user's request:
 - refuses or deflects without actually answering
 - incoherent, self-contradictory, or truncated mid-thought
 - empty, or entirely off-topic (ignores what was asked)
+- contradicts the conversation trace below (e.g. claims a tool ran / succeeded when the
+  trace shows that tool errored or was never called; states a result the trace disproves)
 
 Do NOT flag for style, length, tone, formatting, completeness debates, or anything
 a reasonable user would still accept as an answer. A short, correct answer PASSES.
 When in doubt, pass.
+
+Conversation trace (recent turns + tool results; MAY BE EMPTY — if empty, judge the
+output on its own and do not invent a failure):
+---
+{trace}
+---
 
 Output to verify:
 ---
@@ -16,7 +24,7 @@ Output to verify:
 Respond with a JSON object (no markdown fences, no commentary) with these keys:
 - "passed": boolean — true UNLESS the output clearly fails as above
 - "score": number between 0.0 and 1.0 — confidence in the verdict
-- "reason": string — which clear failure was found (or "no clear failure")
+- "reason": string — which clear failure was found (cite the trace if relevant), or "no clear failure"
 - "suggested_correction": string or null — if passed=false, a usable answer
 
 Default to passed=true. Respond with JSON only.

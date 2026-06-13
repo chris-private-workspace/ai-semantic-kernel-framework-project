@@ -42,9 +42,10 @@ Description:
     revisit if per-run override is needed.
 
 Created: 2026-04-30 (Sprint 50.1 Day 2.2)
-Last Modified: 2026-06-12
+Last Modified: 2026-06-13
 
 Modification History (newest-first):
+    - 2026-06-13: Sprint 57.111 A3 — _cat10_verify_gate threads real trace_state (recent turns) to the judge
     - 2026-06-12: Sprint 57.109 C2 — ContextCompacted yield carries summarize usage/model
     - 2026-06-12: Sprint 57.108 — 5 ApprovalRequested yields +reason= (tool site also +tool_name=)
     - 2026-06-11: Sprint 57.101 B1 — +message_inbox; _run_turns drains before between-turns gate
@@ -117,7 +118,7 @@ from dataclasses import dataclass
 
 # Local import to avoid circular: only used at runtime for state placeholders
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Any, AsyncIterator, cast
+from typing import TYPE_CHECKING, Any, AsyncIterator
 from uuid import UUID, uuid4
 
 # Need imports from sibling adapter / tools / output_parser modules:
@@ -1650,6 +1651,7 @@ class AgentLoopImpl(AgentLoop):
         self,
         *,
         output_text: str,
+        messages: list[Message],
         turn_count: int,
         session_id: UUID,
         attempt: int,
@@ -1678,10 +1680,29 @@ class AgentLoopImpl(AgentLoop):
         verif_in = 0
         verif_out = 0
         verif_model: str | None = None
+        # A3 (57.111): build the loop-state snapshot the trace-aware judge reads
+        # (recent turns + tool errors via transient.messages). Mirrors the Cat 4
+        # compactor's state build. The candidate answer is NOT in `messages` here —
+        # the caller appends it AFTER this gate (see _run_turns ~:2552) → the trace
+        # carries only the PRIOR turns, no double-count. A None-state path stays for
+        # the Cat 9 fallback judge sites (they have no loop → string-only critique).
+        trace_state = LoopState(
+            transient=TransientState(messages=list(messages), current_turn=turn_count),
+            durable=DurableState(
+                session_id=session_id,
+                tenant_id=self._tenant_id or session_id,
+            ),
+            version=StateVersion(
+                version=turn_count,
+                parent_version=turn_count - 1 if turn_count > 0 else None,
+                created_at=datetime.now(),
+                created_by_category="orchestrator_loop",
+            ),
+        )
         for verifier in registry.get_all():
             result = await verifier.verify(
                 output=output_text,
-                state=cast(LoopState, None),
+                state=trace_state,
                 trace_context=ctx,
             )
             if result.passed:
@@ -2535,6 +2556,7 @@ class AgentLoopImpl(AgentLoop):
                     ):
                         verdict = await self._cat10_verify_gate(
                             output_text=parsed.text,
+                            messages=messages,
                             turn_count=turn_count,
                             session_id=session_id,
                             attempt=verification_attempts,

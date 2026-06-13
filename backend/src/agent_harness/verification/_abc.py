@@ -16,6 +16,11 @@ Owner: 01-eleven-categories-spec.md §範疇 10
 Single-source: 17.md §2.1
 
 Created: 2026-04-29 (Sprint 49.1)
+Last Modified: 2026-06-13
+
+Modification History (newest-first):
+    - 2026-06-13: Sprint 57.111 A3 — widen state to LoopState | None (trace-aware; was cast(None) at every call site)
+    - 2026-04-29: Initial creation (Sprint 49.1)
 """
 
 from __future__ import annotations
@@ -33,6 +38,12 @@ class Verifier(ABC):
         self,
         *,
         output: str,
-        state: LoopState,
+        state: LoopState | None = None,
         trace_context: TraceContext | None = None,
-    ) -> VerificationResult: ...
+    ) -> VerificationResult:
+        """Verify `output`. `state` (Sprint 57.111 A3) carries the loop trace
+        (recent turns + tool errors via `state.transient.messages`) so a judge can
+        critique trace-aware; `None` when no loop state is available (the Cat 9
+        fallback judge paths) → string-only critique. Was non-optional + `cast(None)`
+        at every call site pre-A3; the Optional makes the truth explicit."""
+        ...

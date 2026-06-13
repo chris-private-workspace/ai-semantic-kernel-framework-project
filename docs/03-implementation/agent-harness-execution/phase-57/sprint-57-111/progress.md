@@ -42,7 +42,21 @@ Net scope shift < 20%: D6 REMOVES a file (`backend-ci.yml` not needed — scope 
 
 ---
 
-## Day 1 — (pending)
+## Day 1 — 2026-06-13 — US-1 trace-aware critique verifier (backend)
+
+**Shipped**: the in-loop Cat 10 judge is now trace-aware. The single load-bearing change is `loop.py:1684` `state=cast(LoopState, None)` → a real `trace_state` the gate builds from its `messages` (mirroring the Cat 4 `compact_state` idiom, D3). Around it:
+- **`_trace.py` (NEW)** — `build_trace_block(messages, *, max_messages, char_budget)`: bounded (last N msgs / per-msg cap / total char budget; env overrides), provider-neutral, renders `[role] content` + annotates assistant tool calls so a `[tool] ERROR…` reads in context. The candidate answer is NOT in the trace (gate runs before the `:2552` append → no double-count).
+- **`llm_judge.py`** — `_build_prompt(output, state)` substitutes `{trace}` from `state.transient.messages` (empty when `state is None`); + an optional `temperature` ctor param (D7 — the benchmark builds judges at 0.0; default 1.0 byte-identical).
+- **`output_quality.txt`** — a `{trace}` section + a 4th "contradicts the trace" failure bullet; "MAY BE EMPTY" wording keeps the no-state path identical.
+- **ABC widen (D3)** — `Verifier.verify` `state: LoopState | None = None` removes the 4-site `cast(LoopState, None)` type-lie; `rules_based` widened (string-only by design); the 3 Cat 9 fallback judge sites (`tools.py` / `cat9_mutator.py` / `cat9_fallback.py`) now pass `state=None` (back-compat empty trace — load-bearing for them per D1).
+
+**Tests** +13 (CI-safe): `test_trace_block.py` ×8 + `test_llm_judge_trace.py` ×5. No `state is None` pin needed converting (the existing `_state()` helper already returns `cast(LoopState, None)` → exercises the back-compat path).
+
+**Gates (Day-1 partial)**: mypy `src` **0/360** (was 359; +1 = `_trace.py`) · black/isort/flake8 0 · verification + guardrails + orchestrator_loop **617 passed** (+13, 0 del). `loop.py` diff = 1 call-site arg + 1 helper param + the `trace_state` build + the `cast` import removal — NO loop logic rewrite (data threaded in, reviewed line-by-line).
+
+**Decision recorded**: trace knobs are module constants + env override inside `_trace.py`, NOT `core/config` Settings — they are verification-internal tuning, not tenant policy (per-tenant verification is C3, out of scope). Keeps `core/config` untouched.
+
+## Day 2 — (pending)
 
 ## Day 2 — (pending)
 

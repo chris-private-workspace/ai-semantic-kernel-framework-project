@@ -24,9 +24,10 @@ Owner: 01-eleven-categories-spec.md §範疇 10
 Single-source: 17.md §2.1 (Verifier ABC) / §1.1 (VerificationResult)
 
 Created: 2026-05-04 (Sprint 54.1 Day 2)
-Last Modified: 2026-06-05
+Last Modified: 2026-06-13
 
 Modification History:
+    - 2026-06-13: Sprint 57.111 A3 — trace-aware {trace} prompt (reads state.messages) + optional judge temperature
     - 2026-06-05: Sprint 57.82 — capture response.usage + model into result (B-8 cost-ledger)
     - 2026-05-04: AD-Cat10-Obs-1 — accept optional Tracer (Sprint 54.2 US-5)
     - 2026-05-04: Initial (Sprint 54.1 US-2) — closes AD-Cat9-1 (LLM-judge fallback for detectors)
@@ -49,6 +50,7 @@ from agent_harness._contracts.chat import ChatRequest
 from agent_harness.observability import Tracer
 from agent_harness.verification._abc import Verifier
 from agent_harness.verification._obs import verification_span
+from agent_harness.verification._trace import build_trace_block
 from agent_harness.verification.templates import load_template
 
 
@@ -62,31 +64,40 @@ class LLMJudgeVerifier(Verifier):
         judge_template: str,
         name: str = "llm_judge",
         tracer: Tracer | None = None,
+        temperature: float = 1.0,
     ) -> None:
         """
         Args:
             chat_client: ChatClient ABC (LLM-provider-neutral). Tests pass MockChatClient.
             judge_template: Either a template name (e.g. "factual_consistency") or a raw
                 template string. Names are loaded via `load_template()`. Raw strings must
-                contain a literal `{output}` placeholder.
+                contain a literal `{output}` placeholder; an optional `{trace}` placeholder
+                receives the A3 trace block.
             name: Verifier display name (used in VerificationResult.verifier_name).
+            temperature: judge sampling temperature (default 1.0 = pre-A3 behavior). The
+                cheap-judge accuracy benchmark (Sprint 57.111) constructs judges at 0.0 for
+                a stable accuracy number; production verification keeps the default.
         """
         self._chat = chat_client
         self._template_arg = judge_template
         self._name = name
         self._tracer = tracer
+        self._temperature = temperature
 
     async def verify(
         self,
         *,
         output: str,
-        state: LoopState,
+        state: LoopState | None = None,
         trace_context: TraceContext | None = None,
     ) -> VerificationResult:
         async with verification_span(self._tracer, self._name):
             try:
-                prompt = self._build_prompt(output)
-                request = ChatRequest(messages=[Message(role="user", content=prompt)])
+                prompt = self._build_prompt(output, state)
+                request = ChatRequest(
+                    messages=[Message(role="user", content=prompt)],
+                    temperature=self._temperature,
+                )
                 response = await self._chat.chat(request, trace_context=trace_context)
                 result = self._parse_response(response.content)
                 # Sprint 57.82 (B-8 leg-1): attach judge token usage + model so the
@@ -109,15 +120,23 @@ class LLMJudgeVerifier(Verifier):
                     reason=f"judge_error: {type(e).__name__}: {e}",
                 )
 
-    def _build_prompt(self, output: str) -> str:
-        """Resolve template (name or raw) and substitute {output}."""
+    def _build_prompt(self, output: str, state: LoopState | None) -> str:
+        """Resolve template (name or raw) and substitute {output} (+ optional {trace}).
+
+        {trace} (Sprint 57.111 A3): when `state` carries a loop trace, substitute the
+        recent turns + tool errors so the judge critiques trace-aware. Absent state OR a
+        template without a `{trace}` placeholder → the substitution is a no-op (an empty
+        block; `.replace` on a string with no `{trace}` is byte-identical to the pre-A3
+        final-string-only prompt).
+        """
         if "{output}" in self._template_arg:
             # Raw template string
             template_text = self._template_arg
         else:
             # Template name → load from templates/
             template_text = load_template(self._template_arg)
-        return template_text.replace("{output}", output)
+        trace_block = build_trace_block(state.transient.messages) if state is not None else ""
+        return template_text.replace("{output}", output).replace("{trace}", trace_block)
 
     def _parse_response(self, content: str | list[Any]) -> VerificationResult:
         """Parse judge JSON response into VerificationResult. Fail-closed on errors."""

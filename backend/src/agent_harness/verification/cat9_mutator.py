@@ -55,9 +55,9 @@ Related:
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
-from agent_harness._contracts import LoopState, TraceContext
+from agent_harness._contracts import TraceContext
 from agent_harness.guardrails import (
     Guardrail,
     GuardrailAction,
@@ -99,7 +99,7 @@ class LLMVerifyMutateGuardrail(Guardrail):
         output_str = self._content_to_str(content)
         judge_result = await self._judge.verify(
             output=output_str,
-            state=cast(LoopState, None),
+            state=None,  # no loop state in the Cat 9 mutator layer (A3: judge → empty trace)
             trace_context=trace_context,
         )
 
