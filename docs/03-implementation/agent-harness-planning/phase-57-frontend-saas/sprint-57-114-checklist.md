@@ -59,18 +59,18 @@
 - [x] **`tests/unit/platform_layer/skills/test_resolve_tenant_skill_registry.py`** (NEW): no rows → bundled set (fail-open) · db None → bundled · with rows → overlay present · TTL cache hit (2nd call no DB; injectable-clock expiry) · `invalidate` drops · `reset` clears
   - DoD: tests pass; mypy `src` 0
 
-### 2.2 Admin CRUD endpoints
-- [ ] **`api/v1/admin/tenants.py`** (EDIT): Pydantic `SkillCreateRequest`/`SkillUpdateRequest` (`extra="forbid"`)/`SkillResponse`/`SkillListResponse`; 4 endpoints — `GET /{tenant_id}/skills` (list, no audit) · `POST` (create, validate kebab `name`/non-empty, `DuplicateSkillError`→409) · `PUT /{tenant_id}/skills/{skill_id}` (update, `SkillNotFoundError`→404) · `DELETE …/{skill_id}` (→204); each `require_admin_platform_role` + `_load_tenant_or_404` + `append_audit("tenant_skill_*")` + `commit` + `invalidate_tenant_skill_registry`
-- [ ] **`tests/integration/api/test_admin_tenant_skills.py`** (NEW): create→list→update→delete happy path · `require_admin_platform_role` 401/403 non-admin · **multi-tenant mandatory** (cross-tenant read 404 / cross-tenant write 404 / RLS enforced — per `.claude/rules/multi-tenant-data.md`) · audit row per mutation · cache invalidated (create then `resolve_tenant_skill_registry` reflects) · duplicate-name → 409
+### 2.2 Admin CRUD endpoints ✅
+- [x] **`api/v1/admin/tenants.py`** (EDIT): Pydantic `SkillCreateRequest`/`SkillUpdateRequest` (`extra="forbid"`)/`SkillResponse`/`SkillListResponse`; 4 endpoints — `GET /{tenant_id}/skills` (list, no audit) · `POST` (create, validate kebab `name`/non-empty, `DuplicateSkillError`→409) · `PUT /{tenant_id}/skills/{skill_id}` (update, `SkillNotFoundError`→404) · `DELETE …/{skill_id}` (→204); each `require_admin_platform_role` + `_load_tenant_or_404` + `append_audit("tenant_skill_*")` + `commit` + `invalidate_tenant_skill_registry`
+- [x] **`tests/integration/api/test_admin_tenant_skills.py`** (NEW, ×13) + conftest `SKILL_ADMIN_%` sweep + `reset_skill_registry_cache`: create→list→update→delete happy path · `require_admin_platform_role` 401/403 non-admin · **multi-tenant mandatory** (cross-tenant read 404 / cross-tenant write 404 / RLS enforced — per `.claude/rules/multi-tenant-data.md`) · audit row per mutation · cache invalidated (create then `resolve_tenant_skill_registry` reflects) · duplicate-name → 409
   - DoD: tests pass; `pytest tests/integration/api/test_admin_tenant_skills.py -q`
 
-### 2.3 Router swap (主流量, 約束 2)
-- [ ] **`api/v1/chat/router.py`** (EDIT): after `harness_policy = await resolve_tenant_harness_policy(...)`, add `skill_registry = await resolve_tenant_skill_registry(db, current_tenant)`; change the `build_handler(...)` `skill_registry=get_default_skill_registry()` → `skill_registry=skill_registry`; drop the `get_default_skill_registry` import iff orphaned; comment
-- [ ] **`tests/integration/api/test_skills_per_tenant_wiring.py`** (NEW): router resolves the overlay → `build_handler` system text includes a tenant custom skill · a stubbed-LLM `read_skill("<custom>")` returns the custom body · a no-custom-skill tenant is byte-identical to the bundled path (regression)
+### 2.3 Router swap (主流量, 約束 2) ✅
+- [x] **`api/v1/chat/router.py`** (EDIT): after `harness_policy = await resolve_tenant_harness_policy(...)`, add `skill_registry = await resolve_tenant_skill_registry(db, current_tenant)`; change the `build_handler(...)` `skill_registry=get_default_skill_registry()` → `skill_registry=skill_registry`; drop the `get_default_skill_registry` import iff orphaned; comment
+- [x] **`tests/integration/api/test_skills_per_tenant_wiring.py`** (NEW, ×3): router resolves the overlay → `build_handler` system text includes a tenant custom skill · a stubbed-LLM `read_skill("<custom>")` returns the custom body · a no-custom-skill tenant is byte-identical to the bundled path (regression)
   - DoD: tests pass; `build_handler`/`make_default_executor`/`handler.py` diff empty (only `router.py` changed)
 
-### 2.4 Backend gate sweep
-- [ ] mypy `src` 0 · black/isort/flake8 0 · `python scripts/lint/run_all.py` **10/10** (count 24 — no codegen/wire diff; `check_cross_category_import` + `check_llm_sdk_leak` green) · full pytest **+N (0 del)** vs 2566 · `loop.py`/wire/codegen UNTOUCHED · migration 0030 the only new migration
+### 2.4 Backend gate sweep ✅
+- [x] mypy `src` 0 · black/isort/flake8 0 · `python scripts/lint/run_all.py` **10/10** (count 24) · full pytest **2602+5skip (+36, 0 del)** vs 2566 · `loop.py`/`handler.py`/`make_default_executor`/wire/codegen UNTOUCHED · migration 0030 the only new migration
   - Verify: `cd backend && mypy . && python scripts/lint/run_all.py && pytest -q`
 
 ---

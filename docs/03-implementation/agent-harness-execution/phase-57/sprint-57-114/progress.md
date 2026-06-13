@@ -44,3 +44,22 @@
 ### Notes
 - Backend wiring blast radius confirmed at **1 line** (the Day-2 router swap) — `build_handler` already consumes whatever registry is passed.
 - D-mypy-list-shadow is a reusable lesson: a `list[...]` annotation inside a class with a `list` method silently binds to the method for any method defined after it; prefer `Sequence[...]`.
+
+---
+
+## Day 2 — Backend: admin CRUD + router swap (2026-06-13)
+
+### Accomplishments (US-4 + the already-done US-3 resolver)
+
+- **US-4 admin CRUD** — `api/v1/admin/tenants.py`: 4 endpoints (`GET /{tid}/skills` list · `POST` create 201 · `PUT /{tid}/skills/{sid}` update · `DELETE …/{sid}` 204), each `require_admin_platform_role` + `_load_tenant_or_404` + `append_audit("tenant_skill_*")` + `db.commit()` + `invalidate_tenant_skill_registry`. Pydantic `SkillCreateRequest`/`SkillUpdateRequest` (`extra="forbid"` + kebab-name validator + min/max lengths) / `SkillResponse` / `SkillListResponse`. Typed errors → HTTPException (409 dup / 404 miss).
+  - **Design note (post-commit RLS)**: the response is projected **before** `db.commit()` — `expire_on_commit` would otherwise reload the RLS-protected `tenant_skills` row under no tenant ctx (new txn) and fail. The model-policy precedent projects from a plain dict so it doesn't hit this; the table-backed catalog does.
+- **US-4 router swap** — `api/v1/chat/router.py`: `skill_registry = await resolve_tenant_skill_registry(db, current_tenant)` (after harness_policy) → passed to `build_handler` (replaces `get_default_skill_registry()`); import swapped (`agent_harness.skills` → `platform_layer.skills`, isort-regrouped). `handler.py`/`make_default_executor`/`loop.py` **UNTOUCHED** (verified `git status` empty).
+- **conftest** — `tests/integration/api/conftest.py`: `SKILL_ADMIN_%` committed-tenant sweep + `reset_skill_registry_cache()` in both reset fixtures (Risk Class C).
+- **Tests (16, all pass)** — `test_admin_tenant_skills.py` (13: auth 401/403 · tenant-404 · create-201+list · dup-409 · non-kebab-422 · extra-field-422 · update-200 · update-404 · delete-204 · delete-404 · **multi-tenant isolation** (B never lists A's skill + cross-tenant PUT → 404) · audit-emitted · **cache-invalidated**) · `test_skills_per_tenant_wiring.py` (3: overlay reaches `loop._system_prompt` · no-custom == bundled byte-identical · tenant override → `read_skill` returns overridden body).
+
+### Gate (Day-2 — backend complete)
+- mypy `src` (changed) **0** · black/isort/flake8 **0** · `scripts/lint/run_all.py` **10/10** (count 24; cross-category + RLS + LLM-neutrality green) · full pytest **2602+5skip** (+36 vs 2566, 0 del) · `handler.py`/`make_default_executor`/`loop.py`/wire/codegen **UNTOUCHED** · migration 0030 reversible.
+
+### Notes
+- `check_rls_policies` green on the new `tenant_skills` two-policy (strict per-tenant, no sentinel).
+- Multi-tenant mandatory cases land at the **endpoint** level (per `test_rbac.py` convention: unit = app-scoping, integration = endpoint isolation): cross-tenant read → empty list; cross-tenant write → 404.

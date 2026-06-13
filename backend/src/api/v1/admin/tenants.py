@@ -102,6 +102,7 @@ from infrastructure.db.models.api_keys import RateLimit
 from infrastructure.db.models.feature_flag import FeatureFlag
 from infrastructure.db.models.identity import Tenant, TenantPlan, TenantState, User
 from infrastructure.db.models.sessions import Session
+from infrastructure.db.models.skill import TenantSkill
 from infrastructure.db.session import get_db_session
 from platform_layer.billing.model_policy import invalidate_tenant_model_policy
 from platform_layer.billing.pricing import maybe_get_pricing_loader
@@ -110,6 +111,11 @@ from platform_layer.governance.hitl.policy_store import DBHITLPolicyStore
 from platform_layer.identity.auth import (
     require_admin_platform_role,
     require_tenant_match_or_platform_admin,
+)
+from platform_layer.skills import (
+    TenantSkillError,
+    invalidate_tenant_skill_registry,
+    tenant_skill_service,
 )
 from platform_layer.tenant.health_check import TenantHealthChecker
 from platform_layer.tenant.lifecycle import IllegalTransitionError, TenantLifecycle
@@ -1832,6 +1838,204 @@ async def get_tenant_harness_policy(
     raw = (tenant.meta_data or {}).get("harness_policy")
     stored = raw if isinstance(raw, dict) else {}
     return _project_harness_policy(stored)
+
+
+# =====================================================================
+# Sprint 57.114 — per-tenant Skills catalog admin CRUD
+# =====================================================================
+# A tenant authors custom skills (name + description + a full instruction body)
+# stored in the tenant_skills table; resolve_tenant_skill_registry overlays them on
+# the bundled set per chat request (a same-name tenant skill shadows a bundled one).
+# Each mutation appends an audit row + invalidates the resolver TTL cache so the
+# change is instant on the next chat request. tenant_skill_service does the RLS-scoped
+# CRUD; typed errors (DuplicateSkillError 409 / SkillNotFoundError 404) map to
+# HTTPException via their status_code/detail. The response is projected BEFORE commit
+# (expire_on_commit would otherwise reload the RLS-protected row under no tenant ctx).
+_SKILL_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+
+
+class SkillCreateRequest(BaseModel):
+    """A new per-tenant skill (kebab name + one-line description + full instructions)."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=1, max_length=128)
+    description: str = Field(min_length=1, max_length=512)
+    instructions: str = Field(min_length=1)
+
+    @field_validator("name")
+    @classmethod
+    def _kebab(cls, value: str) -> str:
+        if not _SKILL_NAME_RE.match(value):
+            raise ValueError("name must be kebab-case (lowercase letters, digits, hyphens)")
+        return value
+
+
+class SkillUpdateRequest(BaseModel):
+    """A sparse update — only the provided fields change (kebab name when given)."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: str | None = Field(default=None, min_length=1, max_length=128)
+    description: str | None = Field(default=None, min_length=1, max_length=512)
+    instructions: str | None = Field(default=None, min_length=1)
+
+    @field_validator("name")
+    @classmethod
+    def _kebab(cls, value: str | None) -> str | None:
+        if value is not None and not _SKILL_NAME_RE.match(value):
+            raise ValueError("name must be kebab-case (lowercase letters, digits, hyphens)")
+        return value
+
+
+class SkillResponse(BaseModel):
+    """A stored tenant skill."""
+
+    id: UUID
+    name: str
+    description: str
+    instructions: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class SkillListResponse(BaseModel):
+    """A tenant's custom skills."""
+
+    skills: list[SkillResponse]
+
+
+def _project_skill(skill: TenantSkill) -> SkillResponse:
+    return SkillResponse(
+        id=skill.id,
+        name=skill.name,
+        description=skill.description,
+        instructions=skill.instructions,
+        created_at=skill.created_at,
+        updated_at=skill.updated_at,
+    )
+
+
+@router.get("/{tenant_id}/skills", response_model=SkillListResponse)
+async def list_tenant_skills(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db_session),
+    admin_user_id: UUID = Depends(require_admin_platform_role),
+) -> SkillListResponse:
+    """List a tenant's custom skills (read-only; no audit). 404 via _load_tenant_or_404."""
+    await _load_tenant_or_404(db, tenant_id)
+    rows = await tenant_skill_service.list_skills(db, tenant_id=tenant_id)
+    return SkillListResponse(skills=[_project_skill(row) for row in rows])
+
+
+@router.post(
+    "/{tenant_id}/skills",
+    response_model=SkillResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_tenant_skill(
+    tenant_id: UUID,
+    payload: SkillCreateRequest,
+    db: AsyncSession = Depends(get_db_session),
+    admin_user_id: UUID = Depends(require_admin_platform_role),
+) -> SkillResponse:
+    """Create a custom skill for the tenant.
+
+    - 401/403 via require_admin_platform_role; 404 (tenant) via _load_tenant_or_404
+    - 422 via extra="forbid" / non-kebab name / empty field
+    - 409 when (tenant, name) already exists (DuplicateSkillError)
+    - 201 with the created skill; invalidates the resolver TTL cache.
+    """
+    await _load_tenant_or_404(db, tenant_id)
+    try:
+        skill = await tenant_skill_service.create(
+            db,
+            tenant_id=tenant_id,
+            name=payload.name,
+            description=payload.description,
+            instructions=payload.instructions,
+        )
+    except TenantSkillError as err:
+        raise HTTPException(status_code=err.status_code, detail=err.detail) from err
+
+    response = _project_skill(skill)  # read attrs while live (pre-commit, ctx set)
+    await append_audit(
+        db,
+        tenant_id=tenant_id,
+        operation="tenant_skill_create",
+        resource_type="tenant_skill",
+        resource_id=str(response.id),
+        operation_data={"tenant_id": str(tenant_id), "name": response.name},
+        user_id=admin_user_id,
+        operation_result="success",
+    )
+    await db.commit()
+    invalidate_tenant_skill_registry(tenant_id)
+    return response
+
+
+@router.put("/{tenant_id}/skills/{skill_id}", response_model=SkillResponse)
+async def update_tenant_skill(
+    tenant_id: UUID,
+    skill_id: UUID,
+    payload: SkillUpdateRequest,
+    db: AsyncSession = Depends(get_db_session),
+    admin_user_id: UUID = Depends(require_admin_platform_role),
+) -> SkillResponse:
+    """Update a tenant skill (sparse). 404 (skill) → SkillNotFoundError; 409 on a name clash."""
+    await _load_tenant_or_404(db, tenant_id)
+    try:
+        skill = await tenant_skill_service.update(
+            db,
+            tenant_id=tenant_id,
+            skill_id=skill_id,
+            name=payload.name,
+            description=payload.description,
+            instructions=payload.instructions,
+        )
+    except TenantSkillError as err:
+        raise HTTPException(status_code=err.status_code, detail=err.detail) from err
+
+    response = _project_skill(skill)  # read attrs while live (pre-commit, ctx set)
+    await append_audit(
+        db,
+        tenant_id=tenant_id,
+        operation="tenant_skill_update",
+        resource_type="tenant_skill",
+        resource_id=str(skill_id),
+        operation_data={"tenant_id": str(tenant_id), "name": response.name},
+        user_id=admin_user_id,
+        operation_result="success",
+    )
+    await db.commit()
+    invalidate_tenant_skill_registry(tenant_id)
+    return response
+
+
+@router.delete("/{tenant_id}/skills/{skill_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_tenant_skill(
+    tenant_id: UUID,
+    skill_id: UUID,
+    db: AsyncSession = Depends(get_db_session),
+    admin_user_id: UUID = Depends(require_admin_platform_role),
+) -> None:
+    """Delete a tenant skill. 404 (skill) → SkillNotFoundError."""
+    await _load_tenant_or_404(db, tenant_id)
+    try:
+        await tenant_skill_service.delete(db, tenant_id=tenant_id, skill_id=skill_id)
+    except TenantSkillError as err:
+        raise HTTPException(status_code=err.status_code, detail=err.detail) from err
+
+    await append_audit(
+        db,
+        tenant_id=tenant_id,
+        operation="tenant_skill_delete",
+        resource_type="tenant_skill",
+        resource_id=str(skill_id),
+        operation_data={"tenant_id": str(tenant_id)},
+        user_id=admin_user_id,
+        operation_result="success",
+    )
+    await db.commit()
+    invalidate_tenant_skill_registry(tenant_id)
 
 
 # =====================================================================

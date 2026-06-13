@@ -105,7 +105,6 @@ from agent_harness._contracts.events import (
 )
 from agent_harness.observability._abc import Tracer
 from agent_harness.orchestrator_loop import AgentLoop
-from agent_harness.skills import get_default_skill_registry
 from business_domain._service_factory import BusinessServiceFactory
 from core.config import get_settings
 from infrastructure.db.audit_helper import append_audit
@@ -134,6 +133,7 @@ from platform_layer.observability import (
     maybe_get_sla_recorder,
 )
 from platform_layer.resume import ResumeService
+from platform_layer.skills import resolve_tenant_skill_registry
 from platform_layer.tenant.quota import (
     QuotaEnforcer,
     QuotaExceededError,
@@ -255,6 +255,14 @@ async def chat(
     # system-default path = byte-identical to pre-57.106).
     harness_policy = await resolve_tenant_harness_policy(db, current_tenant)
 
+    # Sprint 57.114 (per-tenant Skills catalog): resolve the tenant's skill registry
+    # overlay (TTL-cached, same mirror) — the bundled skills + the tenant's custom
+    # skills from the tenant_skills table (a same-name tenant skill shadows a bundled
+    # one). Fail-open to the bundled set (no rows / db None / error → byte-identical
+    # to the system-bundled path). Threads through build_handler so the "## Available
+    # Skills" block + read_skill carry the per-tenant overlay.
+    skill_registry = await resolve_tenant_skill_registry(db, current_tenant)
+
     # Sprint 57.95 (Cat 11 → Cat 12 SSE relay): a router-owned buffer collects the
     # SubagentSpawned / SubagentCompleted events the dispatcher emits WHILE the loop
     # is awaiting a task_spawn tool (the loop generator is blocked then, so it cannot
@@ -294,9 +302,10 @@ async def chat(
             tracer=tracer,
             # Sprint 57.95: the emitter the dispatcher calls on spawn / complete.
             subagent_event_emitter=_relay_subagent_event,
-            # Sprint 57.113: the system-bundled skill registry — build_handler
-            # advertises the skills in the system prompt + registers read_skill.
-            skill_registry=get_default_skill_registry(),
+            # Sprint 57.114: the per-tenant skill registry resolved above (the bundled
+            # set + the tenant's custom skills); build_handler advertises them in the
+            # system prompt + registers read_skill over the overlay.
+            skill_registry=skill_registry,
         )
     except (RuntimeError, ValueError) as exc:
         # Misconfiguration (env vars / unsupported mode) → 503.
