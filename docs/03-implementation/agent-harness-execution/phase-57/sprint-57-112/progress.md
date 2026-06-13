@@ -60,3 +60,20 @@
 **Gates (Day-1 partial)**: mypy `src` 0 on mfa.py · black/isort/flake8 0 (mfa.py + migration + ORM + test) · migration roundtrip OK · 11/11 unit pass (real Postgres `db_session`, docker up 33h healthy).
 
 **Actual ~3.0 hr** (est ~3.5; ahead — the credentials.py mirror was a clean template).
+
+---
+
+## Day 2 — 2026-06-13 — Backend: endpoints + login MFA-gate (US-2) ✅
+
+**Shipped**:
+- `api/v1/mfa.py` (NEW) — 3 endpoints. enroll/confirm read `request.state.user_id/tenant_id` (the `me` pattern) + `get_db_session_with_tenant`; verify uses raw `get_db_session` + `decode_mfa_challenge` (EXEMPT). webauthn → honest 400. verify success → `issue_session` (full v2_jwt) + clears challenge.
+- `auth.py` — extracted shared `issue_session(db, user, *, operation)` (DRY: password-login non-MFA + `/mfa/verify`) + `_issue_mfa_challenge` + `decode_mfa_challenge` + `MFA_CHALLENGE_COOKIE="v2_mfa_challenge"`; password-login MFA-gate inserted between authenticate-success and the session block (D7); JWT import += `JWTAuthError, JWTClaims`.
+- `tenant_context.py` — EXEMPT exact `/api/v1/mfa/verify` (D1: `path==prefix` exact-match → `/enroll` stays full-session protected).
+- `core/config` — `mfa_issuer_name` + `mfa_challenge_ttl_minutes`. `api/main.py` — mount mfa_router.
+- `tests/integration/api/test_mfa_endpoints.py` (NEW) — 9 tests incl. the full enroll→confirm→login→verify e2e. **9 passed**.
+
+**Design note**: the challenge token is a separate `v2_mfa_challenge` cookie (`roles=[]`, `mfa_pending:true`); the middleware treats ONLY `v2_jwt` as a session → a half-authed user reaches only the EXEMPT `/mfa/verify`. Both EXEMPT (`get_db_session`) + non-EXEMPT (`get_db_session_with_tenant`) endpoints work: the EXEMPT verify self-sets RLS via `TOTPService.verify._set_tenant`, then `issue_session` runs under that context (the password-login precedent).
+
+**Gates (Day-2 partial)**: mypy `src` 0 (mfa.py+auth.py) · black/isort/flake8 0 · 9/9 MFA integration pass · **87 passed** auth+identity regression (the `issue_session` extraction + JWT import change are clean — no break) · loop.py/wire/codegen UNTOUCHED.
+
+**Actual ~3.5 hr** (est ~4.5; ahead — the password-login pattern + shared `issue_session` extraction made the gate + verify clean).

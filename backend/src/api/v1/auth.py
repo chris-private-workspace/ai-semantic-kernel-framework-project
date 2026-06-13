@@ -75,7 +75,7 @@ from platform_layer.identity.credentials import (
     CredentialsService,
     maybe_get_credentials_service,
 )
-from platform_layer.identity.jwt import JWTManager
+from platform_layer.identity.jwt import JWTAuthError, JWTClaims, JWTManager
 from platform_layer.identity.oidc import (
     OIDCConfigError,
     OIDCExchangeError,
@@ -113,6 +113,12 @@ _REDIRECT_COOKIE = "oidc_redirect_to"
 _TENANT_COOKIE = "oidc_tenant_code"
 _JWT_COOKIE = "v2_jwt"
 _STATE_TTL_SECONDS = 600  # 10 min
+# MFA challenge cookie (Sprint 57.112): a short-lived mfa_pending JWT set by
+# password-login when the user has MFA enabled — NOT a session (roles=[]); only
+# the EXEMPT POST /api/v1/mfa/verify consumes it (decode_mfa_challenge) and, on a
+# valid TOTP, swaps it for the real _JWT_COOKIE session. Public so api/v1/mfa.py
+# can read + clear it.
+MFA_CHALLENGE_COOKIE = "v2_mfa_challenge"
 
 
 class LogoutResponse(BaseModel):
@@ -453,6 +459,118 @@ async def dev_login(
     return response
 
 
+# ---- Session issuance + MFA challenge (Sprint 57.112) --------------------
+# Why: the full-session block (DB-sourced roles → V2 JWT cookie + AuthMeResponse)
+# is now issued from TWO places — password-login's non-MFA path and POST
+# /api/v1/mfa/verify after a TOTP passes. issue_session() is the single shared
+# implementation (DRY; api/v1/mfa.py imports it). The MFA challenge helpers gate
+# the login: when a user has MFA enabled, password-login issues a short-lived
+# mfa_pending challenge (roles=[]) instead of a session, and /mfa/verify swaps it
+# for the real session only after the second factor checks out.
+
+
+async def issue_session(
+    db: AsyncSession,
+    user: User,
+    *,
+    operation: str,
+    operation_data: dict[str, Any] | None = None,
+) -> JSONResponse:
+    """Issue a full V2 session: DB-sourced roles → v2_jwt cookie + AuthMeResponse body.
+
+    Shared by POST /auth/password-login (non-MFA path) and POST /api/v1/mfa/verify
+    (post-TOTP). The caller's db session must already carry the user's RLS tenant
+    context (both call sites set it: CredentialsService.authenticate / TOTPService
+    .verify run set_config('app.tenant_id', ...) before this runs). `operation` is
+    the audit op name (password_login / mfa_verified).
+    """
+    tenant = (await db.execute(select(Tenant).where(Tenant.id == user.tenant_id))).scalar_one()
+    role_codes = await RBACManager.get_user_role_codes(
+        user_id=user.id, tenant_id=user.tenant_id, session=db
+    )
+    roles = sorted({"user", *role_codes})
+    settings = get_settings()
+    v2_jwt = JWTManager().encode(
+        sub=str(user.id),
+        tenant_id=user.tenant_id,
+        roles=roles,
+        extra={"email": user.email},
+    )
+    await append_audit(
+        db,
+        tenant_id=user.tenant_id,
+        operation=operation,
+        resource_type="user",
+        resource_id=str(user.id),
+        operation_data=operation_data or {},
+        user_id=user.id,
+        operation_result="success",
+    )
+    body_out = AuthMeResponse(
+        user=AuthMeUser(id=user.id, email=user.email, display_name=user.display_name),
+        tenant=AuthMeTenant(id=tenant.id, name=tenant.display_name, code=tenant.code),
+        roles=roles,
+    ).model_dump(mode="json")
+    response = JSONResponse(content=body_out)
+    response.set_cookie(
+        key=_JWT_COOKIE,
+        value=v2_jwt,
+        **_cookie_kwargs(max_age=settings.jwt_expires_minutes * 60),
+    )
+    return response
+
+
+def _issue_mfa_challenge(user: User) -> JSONResponse:
+    """Issue a short-lived mfa_pending challenge cookie (NOT a session); signal the SPA.
+
+    roles=[] + extra={"mfa_pending": True} → the middleware never treats this as a
+    session (only v2_jwt is the session cookie). Body {"mfa_required": true} tells
+    the SPA to navigate to /auth/mfa. The full session is granted only by
+    /api/v1/mfa/verify after the TOTP code checks out.
+    """
+    settings = get_settings()
+    challenge = JWTManager().encode(
+        sub=str(user.id),
+        tenant_id=user.tenant_id,
+        roles=[],
+        expires_minutes=settings.mfa_challenge_ttl_minutes,
+        extra={"mfa_pending": True},
+    )
+    response = JSONResponse(content={"mfa_required": True})
+    response.set_cookie(
+        key=MFA_CHALLENGE_COOKIE,
+        value=challenge,
+        **_cookie_kwargs(max_age=settings.mfa_challenge_ttl_minutes * 60),
+    )
+    return response
+
+
+def decode_mfa_challenge(request: Request) -> JWTClaims:
+    """Decode + validate the v2_mfa_challenge cookie → claims, or raise 401.
+
+    Used by POST /api/v1/mfa/verify (EXEMPT, pre-session). Raises 401 if the cookie
+    is absent / expired / invalid / not an mfa_pending challenge. The claims carry
+    sub (user_id) + tenant_id — the verify endpoint scopes TOTPService.verify with them.
+    """
+    token = request.cookies.get(MFA_CHALLENGE_COOKIE)
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="MFA challenge required"
+        )
+    try:
+        claims = JWTManager().decode(token)
+    except JWTAuthError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="MFA challenge invalid or expired",
+        ) from exc
+    if claims.extra.get("mfa_pending") is not True:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="MFA challenge invalid"
+        )
+    return claims
+
+
 # ---- Password-login (local credentials; Sprint 57.86) --------------------
 # Why: invited users who set a local password (invite-accept) must be able to
 # sign back in without SSO. Mirrors dev-login's JWT/cookie/AuthMeResponse SUCCESS
@@ -493,40 +611,25 @@ async def password_login(
     except CredentialsError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
-    tenant = (await db.execute(select(Tenant).where(Tenant.id == user.tenant_id))).scalar_one()
-    role_codes = await RBACManager.get_user_role_codes(
-        user_id=user.id, tenant_id=user.tenant_id, session=db
-    )
-    roles = sorted({"user", *role_codes})
-    settings = get_settings()
-    v2_jwt = JWTManager().encode(
-        sub=str(user.id),
-        tenant_id=user.tenant_id,
-        roles=roles,
-        extra={"email": user.email},
-    )
-    await append_audit(
-        db,
-        tenant_id=user.tenant_id,
-        operation="password_login",
-        resource_type="user",
-        resource_id=str(user.id),
-        operation_data={},
-        user_id=user.id,
-        operation_result="success",
-    )
-    body_out = AuthMeResponse(
-        user=AuthMeUser(id=user.id, email=user.email, display_name=user.display_name),
-        tenant=AuthMeTenant(id=tenant.id, name=tenant.display_name, code=tenant.code),
-        roles=roles,
-    ).model_dump(mode="json")
-    response = JSONResponse(content=body_out)
-    response.set_cookie(
-        key=_JWT_COOKIE,
-        value=v2_jwt,
-        **_cookie_kwargs(max_age=settings.jwt_expires_minutes * 60),
-    )
-    return response
+    # MFA-gate (Sprint 57.112): a user with a TOTP second factor does NOT get a
+    # session here — password-login issues a short-lived mfa_pending challenge and
+    # the SPA continues to /auth/mfa; the full session is granted by /api/v1/mfa/
+    # verify after the code checks out. authenticate() already set the RLS tenant
+    # context on db, so user.mfa_enabled is the freshly-loaded value.
+    if user.mfa_enabled:
+        await append_audit(
+            db,
+            tenant_id=user.tenant_id,
+            operation="password_login_mfa_challenge",
+            resource_type="user",
+            resource_id=str(user.id),
+            operation_data={},
+            user_id=user.id,
+            operation_result="success",
+        )
+        return _issue_mfa_challenge(user)
+
+    return await issue_session(db, user, operation="password_login")
 
 
 @router.post("/logout")

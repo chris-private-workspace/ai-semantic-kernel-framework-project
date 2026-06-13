@@ -8,6 +8,7 @@ Per project rules (.claude/rules/code-quality.md): always use Pydantic
 Settings (not raw os.environ) so type-safe + validation + .env support.
 
 Modification History (newest-first):
+    - 2026-06-13: Sprint 57.112 — add mfa_issuer_name + mfa_challenge_ttl_minutes (IAM Block C MFA)
     - 2026-06-10: Sprint 57.99 A2 — add chat_verification_escalate_on_max (default OFF)
     - 2026-05-10: Sprint 57.13 US-A1 — fix oidc_redirect_uri + frontend_base_url + cookie_secure
     - 2026-05-09: Sprint 57.7 US-A2 — add WorkOS OIDC fields (vendor route per US-A1 matrix)
@@ -130,6 +131,16 @@ class Settings(BaseSettings):
     # on chat_verification_mode == "enabled" + a wired hitl_manager (no pause
     # possible without HITL). Default False preserves the A1 terminal byte-identical.
     chat_verification_escalate_on_max: bool = False
+
+    # ---- Sprint 57.112 IAM Block C MFA (TOTP) -----------------------
+    # mfa_issuer_name: the otpauth:// issuer label shown in the user's authenticator
+    #   app (e.g. "IPA Platform: jamie@acme.com"). Override via env: MFA_ISSUER_NAME.
+    # mfa_challenge_ttl_minutes: lifetime of the short-lived mfa_pending challenge
+    #   token (password-login → /auth/mfa → POST /mfa/verify). 5 min is enough to
+    #   key in a TOTP code without leaving a long-lived half-auth window open.
+    #   Override via env: MFA_CHALLENGE_TTL_MINUTES.
+    mfa_issuer_name: str = "IPA Platform"
+    mfa_challenge_ttl_minutes: int = 5
 
     # ---- Phase 56.1 SaaS quota (US-2) -------------------------------
     # Off by default — production rollout flips True after Redis client

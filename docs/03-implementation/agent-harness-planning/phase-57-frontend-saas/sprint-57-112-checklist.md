@@ -33,18 +33,18 @@
 
 ---
 
-## Day 2 — Backend: endpoints + login MFA-gate (US-2)
+## Day 2 — Backend: endpoints + login MFA-gate (US-2) ✅
 
 ### 2.1 MFA endpoints + router mount
-- [ ] **`api/v1/mfa.py`** (NEW, `prefix="/mfa"`): `POST /enroll` (current-user dep) → `EnrollResponse(secret, otpauth_uri)` · `POST /enroll/confirm` (current-user dep, `{code}`) → `{mfa_enabled:true}` · `POST /verify` (EXEMPT, challenge-gated) — decode `v2_mfa_challenge` cookie + require `mfa_pending` + `{method, code}`; `webauthn` → honest 400; `totp` → `TOTPService.verify` → issue full `v2_jwt` (`get_user_role_codes` + `JWTManager.encode` + `set_cookie`) + `delete_cookie("v2_mfa_challenge")` + `AuthMeResponse`; request/response Pydantic models; error map via `MFAError.status_code`; file header
-- [ ] **`api/main.py`**: mount the `mfa` router (next to `auth`/`tenants`)
-- [ ] **`core/config`** (if Day-0 pins settings): `MFA_ISSUER_NAME` + `MFA_CHALLENGE_TTL_MINUTES`
+- [x] **`api/v1/mfa.py`** (NEW, `prefix="/mfa"`): `POST /enroll` (`request.state` user/tenant + tenant DB dep) → `EnrollResponse(secret, otpauth_uri)` · `POST /enroll/confirm` (`{code}`) → `{mfa_enabled:true}` · `POST /verify` (EXEMPT, raw DB + `decode_mfa_challenge`) — `webauthn` → honest 400 / `totp` → `TOTPService.verify` → `issue_session` (full `v2_jwt`) + `delete_cookie(MFA_CHALLENGE_COOKIE)` + `AuthMeResponse`; Pydantic models; `MFAError.status_code` map; audit at endpoint (enroll/confirm) / via `issue_session` (verify); file header
+- [x] **`api/main.py`**: mounted `mfa_router` (next to `auth`); MHist 1-line
+- [x] **`core/config`**: `mfa_issuer_name="IPA Platform"` + `mfa_challenge_ttl_minutes=5`; MHist 1-line
 
 ### 2.2 Password-login MFA-gate + middleware EXEMPT
-- [ ] **`auth.py`**: after password verify + user load, branch `if user.mfa_enabled` → issue `mfa_pending` challenge (`encode(roles=[], expires_minutes=<ttl>, extra={"mfa_pending":True})`) + `set_cookie("v2_mfa_challenge")` + NO `v2_jwt` + return `{"mfa_required":true}` + audit; else existing full-session path; extract `_issue_full_session(response, user, db)` helper IF it cleanly de-dups the JWT+cookie+AuthMeResponse block (used by password-login non-MFA + `/mfa/verify`); MHist 1-line
-- [ ] **`tenant_context.py`**: EXEMPT exact `/api/v1/mfa/verify` (NOT `/enroll`); MHist 1-line
-- [ ] **Integration tests ADD** `tests/integration/api/test_mfa_endpoints.py`: enroll without session → 401 · enroll → secret · confirm flips · verify reachable with only the challenge cookie · verify missing/expired/non-`mfa_pending` challenge → 401 · verify good code → sets `v2_jwt` + `AuthMeResponse` + clears challenge · `webauthn` → 400 · password-login `mfa_enabled` → `{mfa_required:true}` + `v2_mfa_challenge` set + NO `v2_jwt` · non-MFA password-login unchanged (regression) · CONVERT any `/api/v1/mfa` 404 assertion; autouse `reset_mfa_service` + `get_db_session` override (Risk Class C)
-  - DoD: integration suite green (+N, 0 del); mypy `src` 0; black/isort/flake8 0; wire/codegen/loop.py UNTOUCHED (run_all count 24)
+- [x] **`auth.py`**: extracted shared `issue_session(db, user, *, operation)` (DRY — used by password-login non-MFA + `/mfa/verify`) + `_issue_mfa_challenge(user)` + `decode_mfa_challenge(request)` + `MFA_CHALLENGE_COOKIE`; password-login branches `if user.mfa_enabled` → challenge cookie + `{"mfa_required":true}` + audit `password_login_mfa_challenge`, else `issue_session`; JWT import += `JWTAuthError, JWTClaims`
+- [x] **`tenant_context.py`**: EXEMPT exact `/api/v1/mfa/verify` (D1 — `path==prefix` match → `/enroll` stays protected); MHist 1-line
+- [x] **Integration tests ADD ×9** `tests/integration/api/test_mfa_endpoints.py`: full flow enroll→confirm→login(mfa_required)→verify→session · password-login `mfa_enabled` → `{mfa_required:true}` + challenge set + NO `v2_jwt` · non-MFA login unchanged (regression) · verify no-challenge → 401 · verify non-`mfa_pending` challenge → 401 · verify wrong code → 401 · `webauthn` → 400 · enroll already-enabled → 409 · EXEMPT contract (`/mfa/verify` in, `/mfa/enroll` not). Both `get_db_session` + `get_db_session_with_tenant` overridden to test session; TOTPService stateless (no reset fixture, mirrors CredentialsService)
+  - DoD: ✅ **9 passed**; **87 passed** auth+identity regression (password-login refactor clean); mypy `src` 0 (mfa.py+auth.py); black/isort/flake8 0; loop.py/wire/codegen UNTOUCHED
 
 ---
 
