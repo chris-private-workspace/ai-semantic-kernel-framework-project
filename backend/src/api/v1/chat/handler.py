@@ -27,9 +27,10 @@ Key Components:
     - build_handler(mode: ChatMode, message: str) -> AgentLoopImpl  (dispatcher)
 
 Created: 2026-04-30 (Sprint 50.2 Day 1.4)
-Last Modified: 2026-06-13
+Last Modified: 2026-06-14
 
 Modification History (newest-first):
+    - 2026-06-14: Sprint 57.115 — force_load_skill param → "## Active Skill" deterministic injection
     - 2026-06-13: Sprint 57.110 B4 — child loops inherit the composed guardrail engine
     - 2026-06-12: Sprint 57.109 C2 — compactor runs on profile.cheap (semantic summarize tier)
     - 2026-06-12: Sprint 57.107 B3 — register spec-only handoff tool (policy-gated, parent only)
@@ -92,7 +93,7 @@ from agent_harness.guardrails.tool.risky_action_detector import RiskyActionDetec
 from agent_harness.guardrails.tool.tool_guardrail import ToolGuardrail
 from agent_harness.orchestrator_loop import AgentLoopImpl
 from agent_harness.output_parser import OutputParserImpl
-from agent_harness.skills import render_catalog_block
+from agent_harness.skills import render_catalog_block, render_skill_instructions
 from agent_harness.subagent import MailboxStore
 from agent_harness.verification.templates import list_templates
 from business_domain._register_all import make_default_executor
@@ -284,6 +285,7 @@ def build_real_llm_handler(
     tracer: "Tracer | None" = None,
     subagent_event_emitter: "SubagentEventEmitter | None" = None,
     skill_registry: "SkillRegistry | None" = None,
+    force_load_skill: str | None = None,
 ) -> AgentLoopImpl:
     """Wire AgentLoopImpl with AzureOpenAIAdapter. Requires env vars.
 
@@ -490,6 +492,23 @@ def build_real_llm_handler(
         skills_block = render_catalog_block(skill_registry.list())
         if skills_block:
             system_prompt = f"{system_prompt}\n\n{skills_block}"
+
+    # Sprint 57.115 (force-load / slash-command): when the user explicitly picked
+    # a skill via the /skill-name composer command, the router validated it
+    # against this registry and threads its name here. Append its FULL instructions
+    # under "## Active Skill" so the skill loads DETERMINISTICALLY — the model does
+    # NOT need to self-select read_skill (the drive-through proves read_skill 0×
+    # yet the output follows). None / a stale name → no block (byte-identical to
+    # the no-force-load path). read_skill stays registered for other skills.
+    if force_load_skill and skill_registry is not None:
+        forced_skill = skill_registry.get(force_load_skill)
+        if forced_skill is not None:
+            system_prompt = (
+                f"{system_prompt}\n\n## Active Skill\n"
+                f'The user explicitly selected the "{forced_skill.name}" skill for '
+                f"this request. Follow its instructions:\n\n"
+                f"{render_skill_instructions(forced_skill)}"
+            )
 
     # Sprint 57.2 US-3 (closes AD-Cat9-1-WireDetectors): production
     # handler wires GuardrailEngine with default 4-detector chain (PII +
@@ -727,6 +746,7 @@ def build_handler(
     tracer: "Tracer | None" = None,
     subagent_event_emitter: "SubagentEventEmitter | None" = None,
     skill_registry: "SkillRegistry | None" = None,
+    force_load_skill: str | None = None,
 ) -> AgentLoopImpl:
     """Dispatch to the per-mode builder. Single entry-point for the router.
 
@@ -774,6 +794,10 @@ def build_handler(
             # Sprint 57.113: thread the skill registry → build_real_llm_handler
             # advertises the skills in the system prompt + registers read_skill.
             skill_registry=skill_registry,
+            # Sprint 57.115: the user-picked /skill-name (validated by the router
+            # against skill_registry) → deterministic force-load. echo path never
+            # receives it (force-load is real_llm-only, a structural no-op on echo).
+            force_load_skill=force_load_skill,
             # Sprint 57.71 (A-4 Tier 0): thread the router's real tracer through
             # to the loop. echo_demo path is unaffected (no tracer arg).
             tracer=tracer,

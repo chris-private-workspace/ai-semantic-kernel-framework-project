@@ -149,6 +149,58 @@ def test_build_handler_no_block_without_registry(monkeypatch: pytest.MonkeyPatch
 
 
 # ============================================================
+# Sprint 57.115 — force-load (/skill-name slash command): the "## Active Skill"
+# block injects the picked skill's FULL instructions deterministically.
+# ============================================================
+
+
+def test_build_handler_force_load_appends_active_skill_block(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_fake_azure(monkeypatch)
+    loop = build_handler(
+        "real_llm",
+        "review this",
+        skill_registry=get_default_skill_registry(),
+        force_load_skill="code-review",
+    )
+    system_prompt = loop._system_prompt  # type: ignore[attr-defined]
+    # The deterministic force-load section + the full instruction body.
+    assert "## Active Skill" in system_prompt
+    assert 'selected the "code-review" skill' in system_prompt
+    assert "# Skill: code-review" in system_prompt
+    # The catalog block stays (force-load is additive, not a replacement).
+    assert "## Available Skills" in system_prompt
+
+
+def test_build_handler_force_load_none_no_active_block(monkeypatch: pytest.MonkeyPatch) -> None:
+    # No force_load_skill → catalog block only, no "## Active Skill" (byte-identical
+    # to the 57.113 model-invoked path).
+    _set_fake_azure(monkeypatch)
+    loop = build_handler(
+        "real_llm",
+        "review this",
+        skill_registry=get_default_skill_registry(),
+    )
+    assert "## Active Skill" not in loop._system_prompt  # type: ignore[attr-defined]
+    assert "## Available Skills" in loop._system_prompt  # type: ignore[attr-defined]
+
+
+def test_build_handler_force_load_unknown_name_graceful(monkeypatch: pytest.MonkeyPatch) -> None:
+    # An unknown / stale force_load_skill → no "## Active Skill" block (graceful;
+    # build_handler defensively re-checks the registry even though the router pre-validates).
+    _set_fake_azure(monkeypatch)
+    loop = build_handler(
+        "real_llm",
+        "review this",
+        skill_registry=get_default_skill_registry(),
+        force_load_skill="does-not-exist",
+    )
+    assert "## Active Skill" not in loop._system_prompt  # type: ignore[attr-defined]
+    assert "## Available Skills" in loop._system_prompt  # type: ignore[attr-defined]
+
+
+# ============================================================
 # Chat SSE flow — a scripted read_skill call executes end-to-end (lazy-load)
 # ============================================================
 

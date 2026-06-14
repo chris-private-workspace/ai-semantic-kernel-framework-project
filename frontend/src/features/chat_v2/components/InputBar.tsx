@@ -27,9 +27,10 @@
  *   cause investigation identified.
  *
  * Created: 2026-04-30 (Sprint 50.2 Day 4.3)
- * Last Modified: 2026-05-23
+ * Last Modified: 2026-06-14
  *
  * Modification History (newest-first):
+ *   - 2026-06-14: Sprint 57.115 — "/skill-name" slash picker (SkillSlashMenu) → force-load on send
  *   - 2026-06-11: Sprint 57.101 B1 — composer usable mid-run (real_llm) → Inject button routes to inject()
  *   - 2026-06-06: chat-v2 honest surface — mode-button tooltips + echo_demo "echoes input" note; +useTranslation (CHANGE-054)
  *   - 2026-05-23: Sprint 57.30 Day 2 US-C2 — verbatim re-point to mockup composer shell (.composer / .composer-inner / .composer-input / .btn primary / .btn danger / .btn ghost)
@@ -49,9 +50,11 @@
 import { useState, type CSSProperties, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
+import { useChatSkills } from "../hooks/useChatSkills";
 import { useLoopEventStream } from "../hooks/useLoopEventStream";
 import { useChatStore } from "../store/chatStore";
 import type { ChatMode } from "../types";
+import SkillSlashMenu from "./SkillSlashMenu";
 
 // 4-way status pill (production-only; no mockup equivalent). Each entry maps to
 // a mockup CSS-var color so visual continuity with .badge / Cat 9 risk palette holds.
@@ -79,6 +82,46 @@ export default function InputBar(): JSX.Element {
   // it here avoids a dead control in echo mode per the Drive-Through rule).
   const canInject = isRunning && mode === "real_llm";
 
+  // Sprint 57.115 (Skills slash-command): the "/skill-name" picker. Force-load is a
+  // fresh-message + real_llm concept (echo ignores force_load_skill; mid-run is the
+  // inject path) → the menu is gated to !isRunning && real_llm (no dead control).
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [menuDismissed, setMenuDismissed] = useState(false);
+  const slashEnabled = !isRunning && mode === "real_llm";
+  const { data: chatSkills } = useChatSkills(slashEnabled);
+  // A LEADING "/" with no space yet = the user is still typing a skill name.
+  const slashActive = slashEnabled && text.startsWith("/") && !text.slice(1).includes(" ");
+  const slashQuery = text.slice(1).toLowerCase();
+  const filteredSkills = slashActive
+    ? (chatSkills ?? []).filter((s) => s.name.toLowerCase().includes(slashQuery))
+    : [];
+  const showMenu = slashActive && !menuDismissed && filteredSkills.length > 0;
+
+  // Parse a leading "/skill-name" token (only a KNOWN skill) → force-load + the
+  // stripped message. real_llm only; an unmatched "/foo" stays plain text.
+  const matchForceLoad = (raw: string): { message: string; forceLoadSkill?: string } => {
+    if (mode !== "real_llm") return { message: raw };
+    const m = raw.match(/^\/([a-z0-9-]+)(?:\s+|$)/);
+    if (m && (chatSkills ?? []).some((s) => s.name === m[1])) {
+      return { message: raw.slice(m[0].length).trim(), forceLoadSkill: m[1] };
+    }
+    return { message: raw };
+  };
+
+  const onChangeText = (value: string): void => {
+    setText(value);
+    setMenuDismissed(false);
+    setActiveIndex(0);
+  };
+
+  const selectSkill = (name: string): void => {
+    setText(`/${name} `); // trailing space → slashActive false → menu closes
+    setMenuDismissed(false);
+    setActiveIndex(0);
+  };
+
+  const fresh = matchForceLoad(text.trim());
+
   const onSend = (): void => {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -88,11 +131,41 @@ export default function InputBar(): JSX.Element {
       void inject(trimmed); // mid-run: send a supplementary instruction (next turn)
       return;
     }
+    if (!fresh.message) return; // "/release-notes" with no task — require a task
     setText("");
-    void send(trimmed);
+    setMenuDismissed(false);
+    setActiveIndex(0);
+    if (fresh.forceLoadSkill) {
+      void send(fresh.message, { forceLoadSkill: fresh.forceLoadSkill });
+    } else {
+      void send(fresh.message);
+    }
   };
 
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>): void => {
+    if (showMenu) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveIndex((i) => Math.min(i + 1, filteredSkills.length - 1));
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveIndex((i) => Math.max(i - 1, 0));
+        return;
+      }
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        const picked = filteredSkills[activeIndex];
+        if (picked) selectSkill(picked.name);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMenuDismissed(true);
+        return;
+      }
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       onSend();
@@ -102,6 +175,9 @@ export default function InputBar(): JSX.Element {
   const pill = getPill(status);
   const modes: ChatMode[] = ["echo_demo", "real_llm"];
   const sendDisabled = text.trim().length === 0;
+  // Send (fresh message): disabled while the picker is open or when a "/skill"
+  // token leaves no task. The Inject button (mid-run) keeps the plain sendDisabled.
+  const freshSendDisabled = showMenu || fresh.message.length === 0;
 
   // Production-only widget styles (no mockup equivalent) — kept as inline-style
   // literals using mockup CSS-var token vocabulary for visual continuity.
@@ -169,11 +245,19 @@ export default function InputBar(): JSX.Element {
         </div>
       )}
 
-      <div className="composer-inner">
+      <div className="composer-inner" style={{ position: "relative" }}>
+        {showMenu && (
+          <SkillSlashMenu
+            skills={filteredSkills}
+            activeIndex={activeIndex}
+            onSelect={selectSkill}
+            onHover={setActiveIndex}
+          />
+        )}
         <textarea
           className="composer-input"
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => onChangeText(e.target.value)}
           onKeyDown={onKey}
           placeholder={
             canInject
@@ -211,8 +295,8 @@ export default function InputBar(): JSX.Element {
               className="btn primary"
               data-size="sm"
               onClick={onSend}
-              disabled={sendDisabled}
-              style={sendDisabled ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+              disabled={freshSendDisabled}
+              style={freshSendDisabled ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
             >
               Send
             </button>

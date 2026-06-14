@@ -21,9 +21,10 @@ Key Components:
     - make_read_skill_handler(registry): the async ToolHandler closure
 
 Created: 2026-06-13 (Sprint 57.113)
-Last Modified: 2026-06-13
+Last Modified: 2026-06-14
 
 Modification History (newest-first):
+    - 2026-06-14: Sprint 57.115 — use render_skill_instructions (DRY; output byte-identical)
     - 2026-06-13: Initial creation (Sprint 57.113) — read_skill lazy-load tool
 
 Related:
@@ -44,7 +45,7 @@ from agent_harness._contracts import (
     ToolHITLPolicy,
     ToolSpec,
 )
-from agent_harness.skills.registry import SkillRegistry
+from agent_harness.skills.registry import SkillRegistry, render_skill_instructions
 
 READ_SKILL_TOOL_SPEC: ToolSpec = ToolSpec(
     name="read_skill",
@@ -87,9 +88,10 @@ def make_read_skill_handler(
         if skill is None:
             available = ", ".join(s.name for s in registry.list()) or "(none)"
             return f"Unknown skill {name!r}. Available skills: {available}."
+        # Sprint 57.115: render_skill_instructions is the shared (DRY) body; the
+        # tool appends its own trailing directive (byte-identical to pre-refactor).
         return (
-            f"# Skill: {skill.name}\n\n"
-            f"{skill.instructions}\n\n"
+            f"{render_skill_instructions(skill)}\n\n"
             "Follow these instructions for the current task."
         )
 

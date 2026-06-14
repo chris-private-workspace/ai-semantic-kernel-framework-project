@@ -23,9 +23,10 @@
  *   store fields rather than receiving them through hook return value.
  *
  * Created: 2026-04-30 (Sprint 50.2 Day 3.5)
- * Last Modified: 2026-06-08
+ * Last Modified: 2026-06-14
  *
  * Modification History:
+ *   - 2026-06-14: Sprint 57.115 — send() takes opts.forceLoadSkill → force_load_skill request field
  *   - 2026-06-11: Sprint 57.101 B1 — +inject() for mid-run message injection (POST /inject)
  *   - 2026-06-08: Sprint 57.88 US-5 — +resume() for durable HITL pause-resume continuation
  *   - 2026-04-30: Initial creation (Sprint 50.2 Day 3.5)
@@ -41,7 +42,9 @@ import { injectMessage, resumeChat, streamChat } from "../services/chatService";
 import { useChatStore } from "../store/chatStore";
 
 export type UseLoopEventStream = {
-  send: (message: string) => Promise<void>;
+  // Sprint 57.115: opts.forceLoadSkill carries the user-picked /skill-name (the
+  // InputBar parses the leading token) → the chat POST's force_load_skill field.
+  send: (message: string, opts?: { forceLoadSkill?: string }) => Promise<void>;
   resume: () => Promise<void>;
   inject: (message: string) => Promise<void>;
   cancel: () => void;
@@ -60,7 +63,7 @@ export function useLoopEventStream(): UseLoopEventStream {
   const abortRef = useRef<AbortController | null>(null);
 
   const send = useCallback(
-    async (message: string) => {
+    async (message: string, opts?: { forceLoadSkill?: string }) => {
       if (status === "running") return;
       pushUserMessage(message);
       setStatus("running");
@@ -74,6 +77,8 @@ export function useLoopEventStream(): UseLoopEventStream {
           message,
           mode,
           ...(sessionId ? { session_id: sessionId } : {}),
+          // Sprint 57.115: the user-picked /skill-name → deterministic force-load.
+          ...(opts?.forceLoadSkill ? { force_load_skill: opts.forceLoadSkill } : {}),
         },
         {
           onEvent: mergeEvent,

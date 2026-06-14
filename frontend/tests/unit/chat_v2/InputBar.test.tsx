@@ -46,6 +46,12 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (k: string) => k }),
 }));
 
+// Sprint 57.115: InputBar now reads useChatSkills (TanStack) for the slash picker —
+// mock it (no QueryClientProvider in this harness); empty list = no menu rendered.
+vi.mock("@/features/chat_v2/hooks/useChatSkills", () => ({
+  useChatSkills: () => ({ data: [] }),
+}));
+
 describe("InputBar — mid-run injection vs idle send (Sprint 57.101 B1)", () => {
   beforeEach(() => {
     h.isRunning = false;

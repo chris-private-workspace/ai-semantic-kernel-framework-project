@@ -31,9 +31,10 @@
  *   `consumeSSEStream` reader/parser (extracted to avoid duplication).
  *
  * Created: 2026-04-30 (Sprint 50.2 Day 3.4)
- * Last Modified: 2026-06-08
+ * Last Modified: 2026-06-14
  *
  * Modification History (newest-first):
+ *   - 2026-06-14: Sprint 57.115 — +force_load_skill on ChatRequestBody + fetchChatSkills (picker list)
  *   - 2026-06-12: Sprint 57.107 B3 — +listSessions (GET /sessions; real SessionList data)
  *   - 2026-06-11: Sprint 57.101 B1 — +injectMessage (POST /chat/{id}/inject; mid-run instruction)
  *   - 2026-06-08: Sprint 57.88 US-5 — +resumeChat (POST /chat/{id}/resume); extract consumeSSEStream
@@ -53,7 +54,37 @@ export type ChatRequestBody = {
   message: string;
   mode: ChatMode;
   session_id?: string;
+  // Sprint 57.115 (Skills slash-command): the user-picked /skill-name. The backend
+  // validates it against the tenant's registry and force-loads its instructions.
+  force_load_skill?: string;
 };
+
+// === Sprint 57.115: Skills slash-command picker list =====================
+// The non-admin, tenant-scoped view of the tenant's effective skills (bundled +
+// overlay) — name + description ONLY (the instructions body loads on force-load).
+export type ChatSkill = {
+  name: string;
+  description: string;
+};
+
+export type ChatSkillsResponse = {
+  skills: ChatSkill[];
+};
+
+/**
+ * Sprint 57.115: list the caller tenant's effective skills for the /skill-name
+ * composer picker (tenant from the JWT via fetchWithAuth). A non-2xx throws so
+ * the caller can surface it. Returns name + description (no instructions body).
+ */
+export async function fetchChatSkills(signal?: AbortSignal): Promise<ChatSkill[]> {
+  const response = await fetchWithAuth("/api/v1/chat/skills", { method: "GET", signal });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`HTTP ${response.status}: ${text}`);
+  }
+  const body = (await response.json()) as ChatSkillsResponse;
+  return body.skills;
+}
 
 // === Sprint 57.107 B3: session list ======================================
 // Snake_case wire shape of GET /api/v1/sessions items (1:1 backend). Mapped to
