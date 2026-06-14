@@ -14,6 +14,7 @@ from agent_harness.skills.registry import (
     SkillRegistry,
     get_default_skill_registry,
     render_catalog_block,
+    render_skill_instructions,
 )
 from agent_harness.skills.tool import READ_SKILL_TOOL_SPEC, make_read_skill_handler
 
@@ -24,4 +25,5 @@ __all__ = [
     "get_default_skill_registry",
     "make_read_skill_handler",
     "render_catalog_block",
+    "render_skill_instructions",
 ]

@@ -21,11 +21,13 @@ Key Components:
     - SkillRegistry: register / get / list + from_dir markdown loader
     - get_default_skill_registry(): module singleton over the bundled/ dir
     - render_catalog_block(skills): the "## Available Skills" system-prompt block
+    - render_skill_instructions(skill): one skill's framed body (DRY: read_skill + force-load)
 
 Created: 2026-06-13 (Sprint 57.113)
-Last Modified: 2026-06-13
+Last Modified: 2026-06-14
 
 Modification History (newest-first):
+    - 2026-06-14: Sprint 57.115 — add render_skill_instructions (DRY body helper)
     - 2026-06-13: Sprint 57.114 — add SkillRegistry.with_overlay (per-tenant overlay primitive)
     - 2026-06-13: Initial creation (Sprint 57.113) — Skills System first vertical
 
@@ -185,3 +187,15 @@ def render_catalog_block(skills: list[Skill]) -> str:
     ]
     lines.extend(f"- {skill.name}: {skill.description}" for skill in skills)
     return "\n".join(lines)
+
+
+# === Skill instruction body ===
+# Why: the framed full-instruction body for ONE skill. Shared (DRY) by the
+# read_skill tool (model-invoked lazy-load, tool.py appends its own trailing
+# "Follow these instructions…" line) AND the user-invoked force-load path
+# (Sprint 57.115 — build_handler appends this under a "## Active Skill" header
+# when the user picks a skill via the /skill-name slash command). Single source
+# so the two load paths never drift.
+def render_skill_instructions(skill: Skill) -> str:
+    """Render a skill's full instruction body ('# Skill: <name>\\n\\n<instructions>')."""
+    return f"# Skill: {skill.name}\n\n{skill.instructions}"
