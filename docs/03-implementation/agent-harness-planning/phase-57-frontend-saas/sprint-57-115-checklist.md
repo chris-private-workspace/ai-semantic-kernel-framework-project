@@ -47,20 +47,21 @@
 
 ## Day 2 — Backend: `GET /chat/skills` + router validate-and-pass + tests (US-2, US-3 router half)
 
-### 2.1 `GET /api/v1/chat/skills` list endpoint (US-2)
-- [ ] **`api/v1/chat/schemas.py`** (EDIT): `ChatSkillItem{name, description}` + `ChatSkillsResponse{skills: list[ChatSkillItem]}` (NO `instructions`)
-- [ ] **`api/v1/chat/router.py`** (EDIT): `GET /skills` — `db` + `current_tenant` deps (NON-admin), `registry = await resolve_tenant_skill_registry(db, current_tenant)`, return `ChatSkillsResponse(skills=[ChatSkillItem(name=s.name, description=s.description) for s in registry.list()])`; register before any `{param}` route
-- [ ] **`tests/integration/api/test_chat_skills_list.py`** (NEW): bundled-only tenant returns the bundled set · a tenant with an overlay returns bundled+overlay · `current_tenant`-scoped (401 unauthed; A's list ≠ B's overlay) · payload has NO `instructions` key
-  - DoD: `pytest tests/integration/api/test_chat_skills_list.py -q`
+### 2.1 `GET /api/v1/chat/skills` list endpoint (US-2) ✅
+- [x] **`api/v1/chat/schemas.py`** (EDIT): `ChatSkillItem{name, description}` + `ChatSkillsResponse{skills}` (NO `instructions`) — done Day-1 (file cohesion)
+- [x] **`api/v1/chat/router.py`** (EDIT): `GET /skills` — `Depends(get_current_tenant)` (NON-admin) + `get_db_session`, `resolve_tenant_skill_registry` → `ChatSkillsResponse` name+description; placed right after the chat POST (router internal prefix `/chat` → effective `/api/v1/chat/skills`; no `GET /{param}` catch-all to shadow it)
+- [x] **`tests/integration/api/test_chat_skills_list.py`** (NEW ×5): bundled-only tenant · overlay tenant (bundled+overlay) · NO `instructions` key + body never in payload · tenant-scoped (B never sees A's overlay) · unauthed → **401**
+  - DoD: ✅ 5/5 pass (caught + fixed the router's internal `/chat` prefix → mount at `/api/v1` not `/api/v1/chat`)
 
-### 2.2 Chat POST validate-and-pass `force_load_skill` (US-3)
-- [ ] **`api/v1/chat/router.py`** (EDIT): after `skill_registry = await resolve_tenant_skill_registry(...)` (`:264`), `forced = req.force_load_skill if (req.force_load_skill and skill_registry.get(req.force_load_skill) is not None) else None`; pass `force_load_skill=forced` to `build_handler(...)`; comment
-- [ ] **`tests/integration/api/test_chat_force_load_skill.py`** (NEW): a tenant-custom `force_load_skill` → the loop's system text carries the `## Active Skill` body (stubbed LLM; assert `read_skill` NOT auto-called) · an unknown `force_load_skill` → graceful (chat runs, no 4xx, no block) · echo mode + `force_load_skill` set → no error
-  - DoD: tests pass; `handler.py` force-load reached from the 主流量 router
+### 2.2 Chat POST validate-and-pass `force_load_skill` (US-3) ✅
+- [x] **`api/v1/chat/router.py`** (EDIT): after `skill_registry = ...` (`:264`), `forced_skill = req.force_load_skill if (req.force_load_skill and skill_registry.get(...) is not None) else None`; pass `force_load_skill=forced_skill` to `build_handler(...)`; comment + MHist
+- [x] **`tests/integration/api/test_chat_force_load_skill.py`** (NEW ×3): a tenant-custom skill → `## Active Skill` carries the per-tenant body · a tenant override → the OVERRIDDEN body (force-load respects the 57.114 overlay) · an unknown name → graceful (no block). (The build-level present/absent/unknown + the bundled path are in `test_skills_wiring.py` from Day-1; the chat-POST unknown-graceful at the router is exercised end-to-end in the Day-4 drive-through.)
+  - DoD: ✅ tests pass; `handler.py` force-load reached from the 主流量 router (`force_load_skill=forced_skill`)
 
-### 2.3 Backend gate sweep
-- [ ] mypy `src` 0 · black/isort/flake8 0 · `python scripts/lint/run_all.py` **10/10** (count 24) · full pytest **+N (0 del)** vs 2602 · `make_default_executor`/`loop.py`/wire/codegen UNTOUCHED · no migration
-  - Verify: `cd backend && mypy . && python scripts/lint/run_all.py && pytest -q`
+### 2.3 Backend gate sweep ✅
+- [x] mypy `src` **0/370** (+4 files) · black/isort/flake8 0 · `python scripts/lint/run_all.py` **10/10** (count 24, no codegen diff) · `make_default_executor`/`loop.py`/wire/codegen UNTOUCHED · no migration
+- [x] full pytest **2616 passed + 5 skip (+14, 0 del)** vs 2602 (123s) ✅
+  - Verify: `cd backend && python -m mypy src` ✅ · `python scripts/lint/run_all.py` ✅ (from repo root) · `python -m pytest -q` ✅
 
 ---
 

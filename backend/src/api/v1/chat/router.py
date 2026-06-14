@@ -35,9 +35,10 @@ Description:
     actual loop run lives in the worker.
 
 Created: 2026-04-30 (Sprint 50.2 Day 1.5)
-Last Modified: 2026-06-11
+Last Modified: 2026-06-14
 
 Modification History (newest-first):
+    - 2026-06-14: Sprint 57.115 — GET /skills picker list + force_load_skill validate-and-pass
     - 2026-06-12: Sprint 57.109 C2 — `_compaction` billing enqueue + quota fold (57.82 sibling)
     - 2026-06-12: Sprint 57.107 B3 — thread handoff_allowed_targets into the boot hook
     - 2026-06-11: Sprint 57.103 B2b — POST /{id}/subagents/{sid}/inject (into a live teammate)
@@ -142,7 +143,13 @@ from platform_layer.tenant.quota import (
 
 from .handler import build_handler, resolve_session_persona
 from .injection_registry import get_default_injection_registry
-from .schemas import ChatRequest, ChatSessionResponse, InjectRequestBody
+from .schemas import (
+    ChatRequest,
+    ChatSessionResponse,
+    ChatSkillItem,
+    ChatSkillsResponse,
+    InjectRequestBody,
+)
 from .session_registry import SessionRegistry, get_default_registry
 from .sse import format_sse_message, serialize_loop_event
 
@@ -263,6 +270,18 @@ async def chat(
     # Skills" block + read_skill carry the per-tenant overlay.
     skill_registry = await resolve_tenant_skill_registry(db, current_tenant)
 
+    # Sprint 57.115 (Skills slash-command force-load): the user-picked /skill-name
+    # arrives as req.force_load_skill. Validate it against the resolved per-tenant
+    # registry — an unknown / stale name → None (graceful no-op; the chat still runs,
+    # no 4xx, no "## Active Skill" block). build_handler injects the picked skill's
+    # full instructions deterministically (the model does NOT need to self-select
+    # read_skill). echo mode never reaches the force-load append (no registry).
+    forced_skill = (
+        req.force_load_skill
+        if req.force_load_skill and skill_registry.get(req.force_load_skill) is not None
+        else None
+    )
+
     # Sprint 57.95 (Cat 11 → Cat 12 SSE relay): a router-owned buffer collects the
     # SubagentSpawned / SubagentCompleted events the dispatcher emits WHILE the loop
     # is awaiting a task_spawn tool (the loop generator is blocked then, so it cannot
@@ -306,6 +325,9 @@ async def chat(
             # set + the tenant's custom skills); build_handler advertises them in the
             # system prompt + registers read_skill over the overlay.
             skill_registry=skill_registry,
+            # Sprint 57.115: the validated user-picked skill (force_load_skill) →
+            # deterministic "## Active Skill" injection; None when absent / unknown.
+            force_load_skill=forced_skill,
         )
     except (RuntimeError, ValueError) as exc:
         # Misconfiguration (env vars / unsupported mode) → 503.
@@ -415,6 +437,26 @@ async def chat(
             "X-Session-Id": str(session_id),
             "X-Trace-Id": trace_ctx.trace_id,
         },
+    )
+
+
+@router.get("/skills", response_model=ChatSkillsResponse)
+async def list_chat_skills(
+    current_tenant: UUID = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db_session),
+) -> ChatSkillsResponse:
+    """List the caller tenant's effective skills for the /skill-name composer picker.
+
+    Sprint 57.115 (Skills slash-command): a NON-admin, tenant-scoped view of the
+    same registry a chat turn resolves (resolve_tenant_skill_registry → bundled +
+    the tenant_skills overlay) so the picker always matches what force-load would
+    load. Returns name + description ONLY — the full instructions body is never
+    sent to a list endpoint (it loads on force-load / read_skill). Static segment
+    registered after the chat POST; no collision with the /{session_id} POST routes.
+    """
+    registry = await resolve_tenant_skill_registry(db, current_tenant)
+    return ChatSkillsResponse(
+        skills=[ChatSkillItem(name=s.name, description=s.description) for s in registry.list()]
     )
 
 

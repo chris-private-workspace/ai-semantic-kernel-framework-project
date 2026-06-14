@@ -48,3 +48,19 @@ pytest 2602+5skip · wire 24 · Vitest 851 · mockup-fidelity 51 · mypy `src` 0
 **Touch points**: `registry.py` · `tool.py` · `skills/__init__.py` · `handler.py` · `schemas.py` (5 src) + `test_render_skill_instructions.py` (NEW) + `test_skills_wiring.py` (EDIT). `make_default_executor`/`loop.py`/`read_skill` behavior/wire schema UNTOUCHED.
 
 ---
+
+## Day 2 — 2026-06-14 — `GET /chat/skills` + router force-load validate-and-pass (US-2 + US-3 router half)
+
+**Done (2.1 + 2.2)**:
+- `router.py`: NEW `GET /skills` (`list_chat_skills`) — `Depends(get_current_tenant)` (non-admin) + `get_db_session`, `resolve_tenant_skill_registry` → `ChatSkillsResponse(name+description)`. Chat POST: `forced_skill = req.force_load_skill if (req.force_load_skill and skill_registry.get(...)) else None` → `build_handler(force_load_skill=forced_skill)`. + MHist.
+- `schemas.py`: `ChatSkillItem`/`ChatSkillsResponse` (added Day-1).
+
+**Bug caught + fixed (router prefix)**: the GET tests 404'd — the chat `router` carries an internal `prefix="/chat"`, so the real app mounts it at `/api/v1` (→ `/api/v1/chat/...`). My test app initially used `include_router(prefix="/api/v1/chat")` → double `/chat/chat/skills`. Fixed to `prefix="/api/v1"`. (Route inventory confirmed: `GET /chat/skills` registered, no `GET /{param}` catch-all to shadow it.)
+
+**Plan-vs-repo adjustment (Day 2)**: same DRY principle as Day-1 — the force-load **per-tenant** tests went into a focused NEW `test_chat_force_load_skill.py` (custom body / override body / unknown-graceful, reusing the per-tenant resolver harness); the build-level present/absent/unknown cases stayed in `test_skills_wiring.py` (Day-1). The plan's "stubbed-LLM read_skill-not-auto-called" assertion is deferred to the Day-4 drive-through (the real-LLM read_skill 0× proof) — a scripted MockChatClient can't meaningfully prove "the model didn't NEED read_skill".
+
+**Tests/gate (Day-2)**: new GET ×5 + force-load ×3 → 11/11 with the per-tenant regression; chat+skills sweep **204 passed**; `mypy src` **0/370** (+4 files); `flake8` 0 (fixed a docstring E501); `run_all.py` **10/10** (wire count 24 unchanged, sdk-leak green); full pytest running (background).
+
+**Touch points**: `router.py` (EDIT) + `test_chat_skills_list.py` (NEW) + `test_chat_force_load_skill.py` (NEW). `loop.py`/`make_default_executor`/wire/codegen/migration UNTOUCHED.
+
+---
