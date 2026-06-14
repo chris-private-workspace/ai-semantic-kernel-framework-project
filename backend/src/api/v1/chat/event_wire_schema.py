@@ -34,9 +34,10 @@ Key Components:
     - validate_ts_type(spec): pragmatic TS-type-string sanity check.
 
 Created: 2026-06-02 (Sprint 57.67)
-Last Modified: 2026-06-12
+Last Modified: 2026-06-14
 
 Modification History (newest-first):
+    - 2026-06-14: Sprint 57.116 — loop_start +active_skill field (count 24 unchanged)
     - 2026-06-12: Sprint 57.108 — approval_requested +tool_name/reason; llm_response +in/out tokens
     - 2026-06-11: Sprint 57.101 — add message_injected wire-type (Cat 1 injection) 23→24
     - 2026-06-10: Sprint 57.100 — approval_requested +kind field (no new wire-type; 22 unchanged)
@@ -87,6 +88,9 @@ WIRE_SCHEMA: dict[str, dict[str, str]] = {
     "loop_start": {
         "session_id": "string | null",
         "request_id": "string",
+        # Sprint 57.116: the server-confirmed force-load skill name (or null).
+        # Additive field on an existing type — the 24 wire-TYPE count is unchanged.
+        "active_skill": "string | null",
     },
     "turn_start": {
         "turn_num": "number",

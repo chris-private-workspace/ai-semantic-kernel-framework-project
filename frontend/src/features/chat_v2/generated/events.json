@@ -28,7 +28,8 @@
   "events": {
     "loop_start": {
       "session_id": "string | null",
-      "request_id": "string"
+      "request_id": "string",
+      "active_skill": "string | null"
     },
     "turn_start": {
       "turn_num": "number"

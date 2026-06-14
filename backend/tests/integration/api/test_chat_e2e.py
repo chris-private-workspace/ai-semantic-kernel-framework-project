@@ -6,6 +6,7 @@ Category: tests / integration
 Scope: Phase 50 / Sprint 50.2 (Day 4.6) — Sprint 52.5 Day 2.5 (P0 #11+#12+#16)
 
 Modification History (newest-first):
+    - 2026-06-14: Sprint 57.116 — +3 loop_start active_skill SSE assertions (confirmed/null/unknown)
     - 2026-05-01: Sprint 52.5 Day 2.5 (P0 #11 + #12 + #16) — replaced
         skip-tenant-middleware fixture with dependency_overrides for
         get_current_tenant; added MultiTenantE2E + TraceIdE2E classes;
@@ -128,6 +129,64 @@ def test_e2e_echo_demo_full_loop_event_sequence(client: TestClient) -> None:
     end = events[-1]
     assert end["data"]["stop_reason"] == "end_turn"
     assert end["data"]["total_turns"] == 1
+
+
+# ============================================================
+# Sprint 57.116 — loop_start carries the server-confirmed force-load skill
+# (the router augments the loop_start frame in _stream_loop_events; echo mode
+# computes forced_skill the same way real_llm does — it is router-level, not
+# mode-gated — so the SSE field is exercisable without a real Azure call).
+# ============================================================
+
+
+def test_e2e_loop_start_carries_active_skill_on_force_load(client: TestClient) -> None:
+    """A force-load run stamps the opening loop_start frame with the validated skill.
+
+    `code-review` is a bundled skill (Sprint 57.113) → the per-tenant registry
+    resolves it → the router sets loop_start.active_skill so chat-v2 can chip the
+    user turn. This is the server-CONFIRMED value (not the sent request field).
+    """
+    with client.stream(
+        "POST",
+        "/api/v1/chat/",
+        json={"message": "hi", "mode": "echo_demo", "force_load_skill": "code-review"},
+    ) as resp:
+        assert resp.status_code == 200
+        body = b"".join(chunk for chunk in resp.iter_bytes())
+
+    events = _parse_sse(body)
+    assert events[0]["type"] == "loop_start"
+    assert events[0]["data"]["active_skill"] == "code-review"
+
+
+def test_e2e_loop_start_active_skill_null_without_force_load(client: TestClient) -> None:
+    """No force_load_skill → the loop_start field is present-and-null (no chip)."""
+    with client.stream(
+        "POST", "/api/v1/chat/", json={"message": "hi", "mode": "echo_demo"}
+    ) as resp:
+        body = b"".join(chunk for chunk in resp.iter_bytes())
+
+    events = _parse_sse(body)
+    assert events[0]["type"] == "loop_start"
+    assert events[0]["data"]["active_skill"] is None
+
+
+def test_e2e_loop_start_active_skill_null_for_unknown_skill(client: TestClient) -> None:
+    """An unknown skill name → the router drops it → null (graceful, no chip).
+
+    Proves the chip is server-confirmed: the FE may SEND any name, but only a name
+    the per-tenant registry validates survives onto the wire.
+    """
+    with client.stream(
+        "POST",
+        "/api/v1/chat/",
+        json={"message": "hi", "mode": "echo_demo", "force_load_skill": "nope-not-real"},
+    ) as resp:
+        body = b"".join(chunk for chunk in resp.iter_bytes())
+
+    events = _parse_sse(body)
+    assert events[0]["type"] == "loop_start"
+    assert events[0]["data"]["active_skill"] is None
 
 
 def test_e2e_session_id_in_response_header(client: TestClient) -> None:

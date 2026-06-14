@@ -38,6 +38,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.5)
 Last Modified: 2026-06-14
 
 Modification History (newest-first):
+    - 2026-06-14: Sprint 57.116 — inject confirmed active_skill onto the loop_start frame
     - 2026-06-14: Sprint 57.115 — GET /skills picker list + force_load_skill validate-and-pass
     - 2026-06-12: Sprint 57.109 C2 — `_compaction` billing enqueue + quota fold (57.82 sibling)
     - 2026-06-12: Sprint 57.107 B3 — thread handoff_allowed_targets into the boot hook
@@ -99,6 +100,7 @@ from agent_harness._contracts import (
 )
 from agent_harness._contracts.events import (
     ContextCompacted,
+    LoopStarted,
     SubagentChildEvent,
     SubagentCompleted,
     SubagentSpawned,
@@ -428,6 +430,10 @@ async def chat(
             # boot hook (None = no restriction). _stream_loop_events is module-
             # level, so the resolved policy is threaded explicitly.
             handoff_allowed_targets=harness_policy.handoff_target_allowlist,
+            # Sprint 57.116 (Skills Inspector affordance): the server-confirmed
+            # force-load skill (validated above) — injected onto the opening
+            # loop_start frame so chat-v2 can chip the user turn. None → no chip.
+            active_skill=forced_skill,
         ),
         media_type="text/event-stream",
         headers={
@@ -583,6 +589,7 @@ async def _stream_loop_events(
     db: AsyncSession | None = None,
     subagent_event_buffer: "list[LoopEvent] | None" = None,
     handoff_allowed_targets: "Sequence[str] | None" = None,
+    active_skill: str | None = None,
 ) -> AsyncIterator[bytes]:
     """Drive the loop generator + emit SSE bytes; finalize tenant-scoped registry.
 
@@ -647,6 +654,16 @@ async def _stream_loop_events(
                 # Day 2: serializer signals "skip this event" (e.g. Thinking →
                 # LLMResponded carries the canonical content).
                 continue
+            # Sprint 57.116 (Skills Inspector affordance): the chat router owns
+            # the validated force-load skill (a chat-API / Cat-5 concern, NOT a
+            # Cat-1 loop concern — the loop only ever sees a system_prompt string,
+            # never a "skill"). Inject the server-confirmed name onto the opening
+            # loop_start frame; events.py / loop.py stay diff-0. The sse.py
+            # serializer defaults active_skill to null; only a force-load run
+            # overrides it here. None (no/unknown skill, or the resume mirror) →
+            # the field stays null → chat-v2 renders no chip.
+            if active_skill and isinstance(event, LoopStarted):
+                payload["data"]["active_skill"] = active_skill
             yield format_sse_message(payload["type"], payload["data"])
             # Sprint 57.109 (C2): fold the summarize call's usage (server-side
             # fields on ContextCompacted; structural-only compactions carry 0).
