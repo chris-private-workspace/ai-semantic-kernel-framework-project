@@ -12,6 +12,7 @@ export interface LoopStartEvent {
     trace_id?: string | null;
     session_id: string | null;
     request_id: string;
+    active_skill: string | null;
   };
 }
 

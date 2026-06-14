@@ -133,6 +133,10 @@ export type UserTurn = {
   // Sprint 57.101 B1: true when this is a mid-run injected instruction (rendered
   // from a message_injected event on drain), so the timeline can tag it.
   injected?: boolean;
+  // Sprint 57.116: the force-loaded skill name (from the server-confirmed
+  // loop_start.active_skill), stamped onto the turn that triggered the run so the
+  // timeline can chip it. Undefined when no skill was force-loaded.
+  activeSkill?: string;
 };
 
 export type AgentTurn = {

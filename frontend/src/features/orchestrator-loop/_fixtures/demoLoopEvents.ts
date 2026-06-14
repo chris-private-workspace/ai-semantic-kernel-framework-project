@@ -70,7 +70,8 @@ export const DEMO_LOOP_EVENTS: LoopEvent[] = [
   // === Preamble (mockup user_message turn 0 absorbed here) ===
   {
     type: "loop_start",
-    data: { session_id: "sess_4tk2p_demo", request_id: "req_demo_001" },
+    // Sprint 57.116: active_skill is a required loop_start field (null = no force-load).
+    data: { session_id: "sess_4tk2p_demo", request_id: "req_demo_001", active_skill: null },
   },
 
   // === Turn 1 — investigate incident ===

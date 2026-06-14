@@ -34,9 +34,10 @@ Key Components:
     - format_sse_message(event_type, data) -> bytes
 
 Created: 2026-04-30 (Sprint 50.2 Day 1.3)
-Last Modified: 2026-06-12
+Last Modified: 2026-06-14
 
 Modification History (newest-first):
+    - 2026-06-14: Sprint 57.116 — loop_start +active_skill (default null; router overrides)
     - 2026-06-12: Sprint 57.108 — approval +tool_name/reason; llm_response +input/output tokens
     - 2026-06-11: Sprint 57.101 B1 — serialize MessageInjected → message_injected (between-turns)
     - 2026-06-10: Sprint 57.100 — approval_requested serializer +kind (pause kind on the wire)
@@ -141,6 +142,13 @@ def _serialize_inner(event: LoopEvent) -> dict[str, Any] | None:
             "data": {
                 "session_id": str(event.session_id) if event.session_id else None,
                 "request_id": str(event.event_id),
+                # Sprint 57.116 (Skills Inspector affordance): the force-loaded
+                # skill name. The Cat-1 loop has no concept of "skill" (it only
+                # receives a system_prompt string) → the serializer defaults this
+                # null; the chat router overrides it on the loop_start frame for a
+                # force-load run (router._stream_loop_events). Keeps events.py /
+                # loop.py diff-0; the wire field is always present for the FE.
+                "active_skill": None,
             },
         }
 

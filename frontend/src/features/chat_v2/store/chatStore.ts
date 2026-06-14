@@ -363,6 +363,16 @@ export const useChatStore = create<ChatStoreState>((set) => ({
         case "loop_start": {
           // Sprint 57.69: a new turn cycle in the (possibly child) session
           // dismisses any handoff transition notice.
+          // Sprint 57.116: the server-confirmed force-load skill (or null). When
+          // present, stamp it onto the LAST user turn (the one that triggered this
+          // run, pushed by pushUserMessage just before send) so the timeline can
+          // chip it. Truthy guard → a null (resume mirror / no force-load) never
+          // overwrites an existing chip. Server-confirmed → an invalid name the FE
+          // sent was dropped by the router → null → no chip (no AP-4 mislabel).
+          const activeSkill = ev.data.active_skill;
+          const lastUserIdx = activeSkill
+            ? s.turns.reduce((acc, t, i) => (t.role === "user" ? i : acc), -1)
+            : -1;
           return {
             ...s,
             rawEvents,
@@ -375,9 +385,15 @@ export const useChatStore = create<ChatStoreState>((set) => ({
             // indicator from the turn that paused earlier. Once the loop is
             // running again, no prior agent turn is still awaiting. No-op on a
             // normal first send (no prior waiting turn).
-            turns: s.turns.map((t) =>
-              t.role === "agent" && t.waiting ? { ...t, waiting: false } : t,
-            ),
+            turns: s.turns.map((t, i) => {
+              if (i === lastUserIdx && t.role === "user") {
+                return { ...t, activeSkill: activeSkill ?? undefined };
+              }
+              if (t.role === "agent" && t.waiting) {
+                return { ...t, waiting: false };
+              }
+              return t;
+            }),
           };
         }
 

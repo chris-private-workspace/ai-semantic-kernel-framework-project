@@ -21,6 +21,7 @@
  * Created: 2026-05-17 (Sprint 57.21 Day 2 §2.1)
  *
  * Modification History:
+ *   - 2026-06-14: Sprint 57.116 — chip the force-loaded skill (server-confirmed loop_start.active_skill)
  *   - 2026-06-11: Sprint 57.101 B1 — tag injected mid-run user turns (.route-pill reuse, no new token)
  *   - 2026-05-23: Sprint 57.30 Day 3 §D1 — verbatim re-point Tailwind → mockup .turn/.turn-rail/.turn-marker/.turn-head/.role/.route-pill
  *   - 2026-05-17: Initial extract from mockup L165-176 + Tailwind convert
@@ -56,6 +57,18 @@ export function UserTurn({ turn }: { turn: UserTurnType }): JSX.Element {
           </span>
         )}
         <span className="mono subtle">{turn.at}</span>
+        {/* Sprint 57.116: chip the force-loaded skill (server-confirmed via the
+            loop_start.active_skill the router stamped). Reuse .route-pill (no new
+            HEX/oklch). Absent → no chip (an unknown / no skill → null upstream). */}
+        {turn.activeSkill && (
+          <span
+            className="route-pill"
+            data-testid="user-turn-skill-chip"
+            title={`Skill: ${turn.activeSkill}`}
+          >
+            ⚡ {turn.activeSkill}
+          </span>
+        )}
       </div>
       <div className="turn-body">{turn.text}</div>
     </div>
