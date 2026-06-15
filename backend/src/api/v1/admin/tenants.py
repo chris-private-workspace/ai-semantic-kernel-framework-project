@@ -46,6 +46,7 @@ Created: 2026-05-06 (Sprint 56.1 Day 1)
 Last Modified: 2026-06-15
 
 Modification History:
+    - 2026-06-15: Sprint 57.119 — Skills system-visibility: +GET /{id}/skills/system (read-only)
     - 2026-06-15: Sprint 57.117 — Skills quota: instructions max_length + SkillListResponse limits
     - 2026-06-13: Sprint 57.110 B4 — harness-policy +subagent_failure_policy + literal 422
     - 2026-06-12: Sprint 57.107 B3 — harness-policy +handoff_enabled/target_allowlist + 422 poles
@@ -95,6 +96,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from agent_harness._contracts import SUBAGENT_FAILURE_POLICIES
 from agent_harness._contracts.hitl import HITLPolicy, RiskLevel
+from agent_harness.skills import get_default_skill_registry
 from agent_harness.verification.templates import list_templates
 from core.feature_flags import FeatureFlagNotFoundError, get_feature_flags_service
 from infrastructure.db.audit_helper import append_audit
@@ -1912,6 +1914,26 @@ class SkillListResponse(BaseModel):
     max_instructions_chars: int
 
 
+class SystemSkillResponse(BaseModel):
+    """A system-bundled skill as an admin sees it (read-only).
+
+    `has_script` (Sprint 57.118) flags a bundled skill that carries an executable script;
+    `overridden` is True when THIS tenant has a same-name custom skill that shadows it.
+    """
+
+    name: str
+    description: str
+    instructions: str
+    has_script: bool
+    overridden: bool
+
+
+class SystemSkillListResponse(BaseModel):
+    """The system-bundled skills available to a tenant (the base its overlays sit on)."""
+
+    skills: list[SystemSkillResponse]
+
+
 def _project_skill(skill: TenantSkill) -> SkillResponse:
     return SkillResponse(
         id=skill.id,
@@ -1936,6 +1958,37 @@ async def list_tenant_skills(
         skills=[_project_skill(row) for row in rows],
         max_skills=SKILLS_MAX_PER_TENANT,
         max_instructions_chars=SKILLS_MAX_INSTRUCTIONS_CHARS,
+    )
+
+
+@router.get("/{tenant_id}/skills/system", response_model=SystemSkillListResponse)
+async def list_system_skills(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db_session),
+    admin_user_id: UUID = Depends(require_admin_platform_role),
+) -> SystemSkillListResponse:
+    """List the system-bundled skills available to a tenant (read-only; no audit).
+
+    The bundled catalog is system-global, but the tenant_id makes `overridden` meaningful:
+    a bundled skill whose name matches one of this tenant's custom skills is shadowed by it.
+    Supports the admin Skills tab's read-only "System Skills" section + preview (Sprint 57.119).
+    """
+    await _load_tenant_or_404(db, tenant_id)
+    tenant_names = {
+        row.name for row in await tenant_skill_service.list_skills(db, tenant_id=tenant_id)
+    }
+    bundled = get_default_skill_registry().list()
+    return SystemSkillListResponse(
+        skills=[
+            SystemSkillResponse(
+                name=skill.name,
+                description=skill.description,
+                instructions=skill.instructions,
+                has_script=skill.script is not None,
+                overridden=skill.name in tenant_names,
+            )
+            for skill in bundled
+        ]
     )
 
 

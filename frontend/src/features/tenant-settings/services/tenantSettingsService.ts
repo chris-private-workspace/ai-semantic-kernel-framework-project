@@ -68,6 +68,7 @@ import type {
   SkillCreateRequest,
   SkillListResponse,
   SkillUpdateRequest,
+  SystemSkillListResponse,
   TenantIdentity,
   TenantMemberListResponse,
   TenantSettingsResponse,
@@ -464,6 +465,21 @@ export async function fetchTenantSkills(
     signal,
   });
   return _handleResponse<SkillListResponse>(response);
+}
+
+/**
+ * Sprint 57.119: the system-bundled skills available to a tenant (read-only) — the base
+ * set this tenant's custom skills overlay, with `has_script` + per-tenant `overridden`.
+ */
+export async function fetchSystemSkills(
+  tenantId: string,
+  signal?: AbortSignal,
+): Promise<SystemSkillListResponse> {
+  const response = await fetchWithAuth(`${API_BASE}/tenants/${tenantId}/skills/system`, {
+    method: "GET",
+    signal,
+  });
+  return _handleResponse<SystemSkillListResponse>(response);
 }
 
 export async function createTenantSkill(

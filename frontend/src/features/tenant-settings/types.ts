@@ -432,3 +432,20 @@ export interface SkillUpdateRequest {
   description?: string;
   instructions?: string;
 }
+
+/**
+ * Sprint 57.119: a system-bundled skill as an admin sees it (read-only). `has_script`
+ * (57.118) flags a bundled skill carrying an executable script; `overridden` is true when
+ * this tenant has a same-name custom skill that shadows it.
+ */
+export interface SystemSkill {
+  name: string;
+  description: string;
+  instructions: string;
+  has_script: boolean;
+  overridden: boolean;
+}
+
+export interface SystemSkillListResponse {
+  skills: SystemSkill[];
+}

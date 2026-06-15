@@ -24,6 +24,7 @@
  * Created: 2026-06-13 (Sprint 57.114)
  *
  * Modification History (newest-first):
+ *   - 2026-06-15: Sprint 57.119 — read-only System Skills section + Preview modal (any skill body)
  *   - 2026-06-15: Sprint 57.117 — N/max count + disable Add at quota + textarea maxLength + counter
  *   - 2026-06-13: Initial creation (Sprint 57.114)
  *
@@ -37,6 +38,7 @@ import { useEffect, useState } from "react";
 
 import { Button, Card } from "../../../../components/mockup-ui";
 import {
+  useSystemSkills,
   useTenantSkillCreate,
   useTenantSkillDelete,
   useTenantSkillUpdate,
@@ -70,6 +72,8 @@ export function SkillsTab({ tenantId }: SkillsTabProps): JSX.Element {
   const createMutation = useTenantSkillCreate(tenantId);
   const updateMutation = useTenantSkillUpdate(tenantId);
   const deleteMutation = useTenantSkillDelete(tenantId);
+  // Sprint 57.119: the read-only system-bundled catalog (the base this tenant's skills overlay).
+  const systemSkills = useSystemSkills(tenantId);
 
   const [adding, setAdding] = useState(false);
   const [addDraft, setAddDraft] = useState<SkillDraft>({ ...EMPTY_DRAFT });
@@ -78,6 +82,10 @@ export function SkillsTab({ tenantId }: SkillsTabProps): JSX.Element {
   const [editDraft, setEditDraft] = useState<SkillDraft>({ ...EMPTY_DRAFT });
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Sprint 57.119: the skill whose full instructions the Preview modal renders (null = closed).
+  const [previewSkill, setPreviewSkill] = useState<{ name: string; instructions: string } | null>(
+    null,
+  );
 
   // Reset all transient UI state on tenant switch.
   useEffect(() => {
@@ -86,6 +94,7 @@ export function SkillsTab({ tenantId }: SkillsTabProps): JSX.Element {
     setEditingId(null);
     setEditDraft({ ...EMPTY_DRAFT });
     setDeletingId(null);
+    setPreviewSkill(null);
     createMutation.reset();
     updateMutation.reset();
     deleteMutation.reset();
@@ -107,6 +116,16 @@ export function SkillsTab({ tenantId }: SkillsTabProps): JSX.Element {
       setEditDraft({ ...EMPTY_DRAFT });
     }
   }, [updateMutation.isSuccess, editingId]);
+
+  // Sprint 57.119: close the Preview modal on Escape (the codebase drawer/dialog convention).
+  useEffect(() => {
+    if (previewSkill === null) return;
+    const handler = (e: KeyboardEvent): void => {
+      if (e.key === "Escape") setPreviewSkill(null);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [previewSkill]);
 
   const items = skills.data?.skills ?? [];
   // Sprint 57.117: the effective per-tenant limits (server-sourced via the list response).
@@ -428,6 +447,18 @@ export function SkillsTab({ tenantId }: SkillsTabProps): JSX.Element {
                       <button
                         type="button"
                         className="btn-secondary"
+                        onClick={() =>
+                          setPreviewSkill({ name: skill.name, instructions: skill.instructions })
+                        }
+                        // eslint-disable-next-line no-restricted-syntax -- inline-style: btn sizing
+                        style={{ fontSize: 11, padding: "2px 8px" }}
+                        data-testid={`skills-preview-btn-${skill.name}`}
+                      >
+                        Preview
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary"
                         onClick={() => handleEditOpen(skill)}
                         // eslint-disable-next-line no-restricted-syntax -- inline-style: btn sizing
                         style={{ fontSize: 11, padding: "2px 8px" }}
@@ -453,6 +484,151 @@ export function SkillsTab({ tenantId }: SkillsTabProps): JSX.Element {
           </div>
         )}
       </Card>
+
+      <Card title="System Skills">
+        {/* eslint-disable-next-line no-restricted-syntax -- inline-style: hint copy */}
+        <p className="muted" style={{ fontSize: 12, marginBottom: 12 }}>
+          Built-in skills available to every tenant. Your custom skills above overlay
+          these by name; a <span className="mono">🔧 script</span> skill ships an
+          executable the agent can run.
+        </p>
+
+        {systemSkills.isLoading ? (
+          <p className="muted">Loading system skills…</p>
+        ) : systemSkills.error ? (
+          // eslint-disable-next-line no-restricted-syntax -- inline-style error hint
+          <p style={{ color: "var(--danger)", fontSize: 12 }} data-testid="system-skills-load-error">
+            Error loading system skills: {systemSkills.error.message}
+          </p>
+        ) : (
+          // eslint-disable-next-line no-restricted-syntax -- inline-style: list column gap
+          <div className="col" style={{ gap: 12, marginTop: 4 }} data-testid="system-skills-section">
+            {(systemSkills.data?.skills ?? []).map((sys) => (
+              <div key={sys.name} className="spread" data-testid={`system-skills-row-${sys.name}`}>
+                {/* eslint-disable-next-line no-restricted-syntax -- inline-style: name+desc column */}
+                <div className="col" style={{ gap: 2 }}>
+                  {/* eslint-disable-next-line no-restricted-syntax -- inline-style: name+badges row */}
+                  <span className="row" style={{ gap: 6, alignItems: "center" }}>
+                    {/* eslint-disable-next-line no-restricted-syntax -- inline-style: name fontSize */}
+                    <span className="mono" style={{ fontSize: 12.5 }}>{sys.name}</span>
+                    {sys.has_script ? (
+                      <span
+                        className="subtle"
+                        // eslint-disable-next-line no-restricted-syntax -- inline-style: script badge pill
+                        style={{
+                          fontSize: 10,
+                          padding: "1px 6px",
+                          border: "1px solid var(--border)",
+                          borderRadius: 4,
+                        }}
+                        data-testid={`system-skill-script-badge-${sys.name}`}
+                      >
+                        🔧 script
+                      </span>
+                    ) : null}
+                    {sys.overridden ? (
+                      <span
+                        className="subtle"
+                        // eslint-disable-next-line no-restricted-syntax -- inline-style: shadowed tag
+                        style={{ fontSize: 10 }}
+                        data-testid={`system-skill-shadowed-${sys.name}`}
+                      >
+                        shadowed by your skill
+                      </span>
+                    ) : null}
+                  </span>
+                  {/* eslint-disable-next-line no-restricted-syntax -- inline-style: desc fontSize */}
+                  <span className="subtle" style={{ fontSize: 11.5 }}>{sys.description}</span>
+                </div>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() =>
+                    setPreviewSkill({ name: sys.name, instructions: sys.instructions })
+                  }
+                  // eslint-disable-next-line no-restricted-syntax -- inline-style: btn sizing
+                  style={{ fontSize: 11, padding: "2px 8px" }}
+                  data-testid={`system-skill-preview-btn-${sys.name}`}
+                >
+                  Preview
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {previewSkill ? (
+        // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- backdrop overlay; Escape-key handler attached via the window listener above; the Close button + Escape are the keyboard paths
+        <div
+          // eslint-disable-next-line no-restricted-syntax -- inline-style: modal backdrop (no Modal primitive)
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+            zIndex: 50,
+          }}
+          onClick={() => setPreviewSkill(null)}
+          data-testid="skill-preview-modal"
+        >
+          {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- stop-propagation div; role=dialog provides the accessible name; the inner Close button is keyboard-accessible */}
+          <div
+            // eslint-disable-next-line no-restricted-syntax -- inline-style: modal panel
+            style={{
+              background: "var(--bg)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius)",
+              boxShadow: "var(--shadow)",
+              width: "100%",
+              maxWidth: 640,
+              maxHeight: "80vh",
+              display: "flex",
+              flexDirection: "column",
+              padding: 16,
+            }}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-label="Skill preview"
+          >
+            {/* eslint-disable-next-line no-restricted-syntax -- inline-style: modal header row */}
+            <div className="spread" style={{ marginBottom: 10, alignItems: "center" }}>
+              {/* eslint-disable-next-line no-restricted-syntax -- inline-style: modal title */}
+              <span className="mono" style={{ fontSize: 13, fontWeight: 600 }}>
+                {previewSkill.name}
+              </span>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setPreviewSkill(null)}
+                // eslint-disable-next-line no-restricted-syntax -- inline-style: btn sizing
+                style={{ fontSize: 11, padding: "2px 8px" }}
+                data-testid="skill-preview-close-btn"
+              >
+                Close
+              </button>
+            </div>
+            <pre
+              className="mono"
+              // eslint-disable-next-line no-restricted-syntax -- inline-style: preview body
+              style={{
+                margin: 0,
+                fontSize: 12,
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                overflowY: "auto",
+                maxHeight: "64vh",
+              }}
+              data-testid="skill-preview-body"
+            >
+              {previewSkill.instructions}
+            </pre>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

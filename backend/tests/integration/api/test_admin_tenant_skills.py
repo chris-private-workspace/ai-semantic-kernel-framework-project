@@ -2,7 +2,7 @@
 File: backend/tests/integration/api/test_admin_tenant_skills.py
 Purpose: Integration tests — /admin/tenants/{id}/skills CRUD (Sprint 57.114 per-tenant catalog).
 Category: Tests / Integration / API (Skills System per-tenant catalog)
-Scope: Sprint 57.114 / US-4 + 57.117 quota/body-size
+Scope: Sprint 57.114 / US-4 + 57.117 quota/body-size + 57.119 system-skills visibility
 
 Description:
     Verifies the per-tenant Skills admin endpoints (mirrors the model-policy C1
@@ -339,3 +339,60 @@ async def test_list_response_carries_limits(db_session: AsyncSession) -> None:
     body = listed.json()
     assert body["max_skills"] == SKILLS_MAX_PER_TENANT
     assert body["max_instructions_chars"] == SKILLS_MAX_INSTRUCTIONS_CHARS
+
+
+# === system skills (read-only visibility + preview) — Sprint 57.119 ==========
+
+
+async def test_system_skills_lists_bundled(db_session: AsyncSession) -> None:
+    """GET /skills/system lists the bundled catalog with has_script + instructions."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get(f"/api/v1/admin/tenants/{tenant.id}/skills/system")
+    assert resp.status_code == 200, resp.text
+    skills = {s["name"]: s for s in resp.json()["skills"]}
+    # The bundled set (agent_harness/skills/bundled/*.md) — at least these three.
+    assert {"code-review", "digest", "summarize"} <= set(skills)
+    # digest ships an executable script (Sprint 57.118); the text-only skills do not.
+    assert skills["digest"]["has_script"] is True
+    assert skills["code-review"]["has_script"] is False
+    assert skills["summarize"]["has_script"] is False
+    # instructions are included (the preview needs no 2nd endpoint).
+    assert skills["digest"]["instructions"].strip() != ""
+    # no tenant skills → nothing overridden.
+    assert all(s["overridden"] is False for s in skills.values())
+
+
+async def test_system_skills_overridden_flag(db_session: AsyncSession) -> None:
+    """A tenant skill with a bundled name shadows it → overridden=True for that one only."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created = await ac.post(
+            f"/api/v1/admin/tenants/{tenant.id}/skills", json=_payload("code-review")
+        )
+        assert created.status_code == 201, created.text
+        resp = await ac.get(f"/api/v1/admin/tenants/{tenant.id}/skills/system")
+    assert resp.status_code == 200
+    skills = {s["name"]: s for s in resp.json()["skills"]}
+    assert skills["code-review"]["overridden"] is True
+    assert skills["digest"]["overridden"] is False
+
+
+async def test_system_skills_requires_admin() -> None:
+    app = _build_app()  # no overrides → real require_admin_platform_role
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get(f"/api/v1/admin/tenants/{uuid4()}/skills/system")
+    assert resp.status_code in (401, 403)
+
+
+async def test_system_skills_tenant_not_found(db_session: AsyncSession) -> None:
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get(f"/api/v1/admin/tenants/{uuid4()}/skills/system")
+    assert resp.status_code == 404

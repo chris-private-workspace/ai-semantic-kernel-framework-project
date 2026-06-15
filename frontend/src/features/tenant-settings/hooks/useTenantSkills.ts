@@ -16,6 +16,7 @@
  * Created: 2026-06-13 (Sprint 57.114)
  *
  * Modification History (newest-first):
+ *   - 2026-06-15: Sprint 57.119 — +useSystemSkills (read-only bundled catalog for the tab)
  *   - 2026-06-13: Initial creation (Sprint 57.114)
  *
  * Related:
@@ -33,6 +34,7 @@ import {
 import {
   createTenantSkill,
   deleteTenantSkill,
+  fetchSystemSkills,
   fetchTenantSkills,
   updateTenantSkill,
 } from "../services/tenantSettingsService";
@@ -41,14 +43,27 @@ import type {
   SkillCreateRequest,
   SkillListResponse,
   SkillUpdateRequest,
+  SystemSkillListResponse,
 } from "../types";
 
 export const TENANT_SKILLS_QUERY_KEY_BASE = ["tenant-settings", "skills"] as const;
+export const SYSTEM_SKILLS_QUERY_KEY_BASE = ["tenant-settings", "skills-system"] as const;
 
 export function useTenantSkills(tenantId: string) {
   return useQuery<SkillListResponse, Error>({
     queryKey: [...TENANT_SKILLS_QUERY_KEY_BASE, tenantId],
     queryFn: ({ signal }) => fetchTenantSkills(tenantId, signal),
+    enabled: Boolean(tenantId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+// Sprint 57.119: the read-only system-bundled catalog (the base the tenant's skills overlay).
+// A separate read query (its own key) — the bundled set is static, so no mutation invalidates it.
+export function useSystemSkills(tenantId: string) {
+  return useQuery<SystemSkillListResponse, Error>({
+    queryKey: [...SYSTEM_SKILLS_QUERY_KEY_BASE, tenantId],
+    queryFn: ({ signal }) => fetchSystemSkills(tenantId, signal),
     enabled: Boolean(tenantId),
     placeholderData: keepPreviousData,
   });

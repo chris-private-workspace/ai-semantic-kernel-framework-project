@@ -5,6 +5,7 @@
  * Scope: Phase 57 / Sprint 57.114 (Per-Tenant Skills Catalog)
  *
  * Modification History (newest-first):
+ *   - 2026-06-15: Sprint 57.119 — System Skills section (badge / shadowed tag) + Preview modal cases
  *   - 2026-06-15: Sprint 57.117 — quota count / disable-at-cap / textarea maxLength+counter / quota error
  *   - 2026-06-13: Initial creation (Sprint 57.114)
  *
@@ -20,20 +21,28 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/features/tenant-settings/hooks/useTenantSkills", () => ({
   useTenantSkills: vi.fn(),
+  useSystemSkills: vi.fn(),
   useTenantSkillCreate: vi.fn(),
   useTenantSkillUpdate: vi.fn(),
   useTenantSkillDelete: vi.fn(),
   TENANT_SKILLS_QUERY_KEY_BASE: ["tenant-settings", "skills"],
+  SYSTEM_SKILLS_QUERY_KEY_BASE: ["tenant-settings", "skills-system"],
 }));
 
 import { SkillsTab } from "@/features/tenant-settings/components/tabs/SkillsTab";
 import {
+  useSystemSkills,
   useTenantSkillCreate,
   useTenantSkillDelete,
   useTenantSkillUpdate,
   useTenantSkills,
 } from "@/features/tenant-settings/hooks/useTenantSkills";
-import type { Skill, SkillListResponse } from "@/features/tenant-settings/types";
+import type {
+  Skill,
+  SkillListResponse,
+  SystemSkill,
+  SystemSkillListResponse,
+} from "@/features/tenant-settings/types";
 
 type MutationOverrides = Partial<{
   mutate: ReturnType<typeof vi.fn>;
@@ -70,6 +79,17 @@ function mockSkills(
   } as unknown as ReturnType<typeof useTenantSkills>);
 }
 
+function mockSystemSkills(
+  data: SystemSkillListResponse | undefined,
+  overrides: Partial<{ isLoading: boolean; error: Error | null }> = {},
+): void {
+  vi.mocked(useSystemSkills).mockReturnValue({
+    data,
+    isLoading: overrides.isLoading ?? false,
+    error: overrides.error ?? null,
+  } as unknown as ReturnType<typeof useSystemSkills>);
+}
+
 const SKILL_A: Skill = {
   id: "11111111-1111-1111-1111-111111111111",
   name: "release-notes",
@@ -79,9 +99,26 @@ const SKILL_A: Skill = {
   updated_at: "2026-06-13T00:00:00Z",
 };
 
+const SYS_REVIEW: SystemSkill = {
+  name: "code-review",
+  description: "Review a code snippet",
+  instructions: "Find concrete risks with severities",
+  has_script: false,
+  overridden: false,
+};
+
+const SYS_DIGEST: SystemSkill = {
+  name: "digest",
+  description: "Compute the canonical digest",
+  instructions: "Run run_skill_script('digest') and report stdout",
+  has_script: true,
+  overridden: false,
+};
+
 describe("SkillsTab (Sprint 57.114)", () => {
   beforeEach(() => {
     mockSkills({ skills: [SKILL_A] });
+    mockSystemSkills({ skills: [] });
     mockMutation(useTenantSkillCreate);
     mockMutation(useTenantSkillUpdate);
     mockMutation(useTenantSkillDelete);
@@ -236,5 +273,67 @@ describe("SkillsTab (Sprint 57.114)", () => {
     render(<SkillsTab tenantId="t1" />);
     fireEvent.click(screen.getByTestId("skills-add-btn"));
     expect(screen.getByTestId("skills-add-error")).toHaveTextContent(/quota reached/);
+  });
+});
+
+// === Sprint 57.119: System Skills read-only section + Preview modal ===
+
+describe("SkillsTab — System Skills + Preview (Sprint 57.119)", () => {
+  beforeEach(() => {
+    mockSkills({ skills: [SKILL_A] });
+    mockSystemSkills({ skills: [SYS_REVIEW, SYS_DIGEST] });
+    mockMutation(useTenantSkillCreate);
+    mockMutation(useTenantSkillUpdate);
+    mockMutation(useTenantSkillDelete);
+  });
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("renders the System Skills section with the bundled skills", () => {
+    render(<SkillsTab tenantId="t1" />);
+    expect(screen.getByTestId("system-skills-section")).toBeInTheDocument();
+    expect(screen.getByTestId("system-skills-row-digest")).toHaveTextContent("digest");
+    expect(screen.getByTestId("system-skills-row-code-review")).toHaveTextContent("code-review");
+  });
+
+  it("shows the script badge only on a skill that ships a bundled script", () => {
+    render(<SkillsTab tenantId="t1" />);
+    expect(screen.getByTestId("system-skill-script-badge-digest")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("system-skill-script-badge-code-review"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the shadowed tag when a system skill is overridden by a tenant skill", () => {
+    mockSystemSkills({ skills: [{ ...SYS_REVIEW, overridden: true }, SYS_DIGEST] });
+    render(<SkillsTab tenantId="t1" />);
+    expect(screen.getByTestId("system-skill-shadowed-code-review")).toBeInTheDocument();
+    expect(screen.queryByTestId("system-skill-shadowed-digest")).not.toBeInTheDocument();
+  });
+
+  it("Preview on a system skill opens the modal with its instructions", () => {
+    render(<SkillsTab tenantId="t1" />);
+    fireEvent.click(screen.getByTestId("system-skill-preview-btn-digest"));
+    expect(screen.getByTestId("skill-preview-modal")).toBeInTheDocument();
+    expect(screen.getByTestId("skill-preview-body")).toHaveTextContent(
+      "run_skill_script('digest')",
+    );
+  });
+
+  it("Preview on a tenant skill opens the modal; Close dismisses it", () => {
+    render(<SkillsTab tenantId="t1" />);
+    fireEvent.click(screen.getByTestId("skills-preview-btn-release-notes"));
+    expect(screen.getByTestId("skill-preview-body")).toHaveTextContent(
+      "Heading / Highlights / Upgrade notes",
+    );
+    fireEvent.click(screen.getByTestId("skill-preview-close-btn"));
+    expect(screen.queryByTestId("skill-preview-modal")).not.toBeInTheDocument();
+  });
+
+  it("renders the System Skills load-error state", () => {
+    mockSystemSkills(undefined, { error: new Error("HTTP 500: boom") });
+    render(<SkillsTab tenantId="t1" />);
+    expect(screen.getByTestId("system-skills-load-error")).toHaveTextContent(/boom/);
   });
 });
