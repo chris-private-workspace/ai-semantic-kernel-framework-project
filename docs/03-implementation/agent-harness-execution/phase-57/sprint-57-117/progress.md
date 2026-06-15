@@ -67,6 +67,19 @@
 
 **Commit**: `feat(skills, sprint-57-117): chat — Skills tab quota/size affordances (Day-2 FE)`.
 
-## Day 3 — (pending)
-## Day 3 — (pending)
+## Day 3 — Drive-through (real admin Skills tab + fresh backend, lowered env limits) — 2026-06-15
+
+**Clean restart (Risk Class E)**: killed stale backend PID 38660 (57.116 code) → port 8000 FREE + 0 remaining python (`Win32_Process` sweep, no `--reload`/spawn-worker orphans); restarted from repo-root with `$env:SKILLS_MAX_PER_TENANT=2` + `$env:SKILLS_MAX_INSTRUCTIONS_CHARS=200` (task `bb4gef2bk`) → startup complete + all-wired (fresh 57.117 process). Vite :3007 (PID 31616) left running.
+
+**Session**: dev-login `acme-skills`/jamie via a browser `fetch('/api/v1/auth/dev-login...')` (Vite proxy → cookie); `/auth/me` 200, roles `user,admin,platform_admin`. API pre-probe `GET /{tid}/skills` → **`max_skills=2`, `max_instructions_chars=200`** (the LOW env override is live), 1 existing skill (release-notes).
+
+**Drive (Playwright, real :3007 + real backend):** navigated `/tenant-settings` → tenant = acme-skills → clicked the **Skills** tab.
+
+- **Leg A (count quota) PASS** — the tab rendered **"1 / 2 skills"** + Add ENABLED (server `max_skills=2`); created a 2nd skill (`deploy-notes`) via the real Add form → the list re-fetched → **"2 / 2 skills" + "Skill limit reached" hint + "+ Add skill" [disabled]**. A forced API `POST /{tid}/skills` at 2/2 (browser cookie) → **409 "skill quota reached for this tenant"**. Screenshots: `artifacts/sprint-57-117-skills-1of2-add-enabled.png` (start) + `...-legA-2of2-add-disabled-hint.png` (at cap).
+- **Leg B (body-size) PASS** — opened the Add form (counter **"0 / 200"**); typed a **254-char** string into the instructions textarea → the browser **capped the value at 200** (`value.length==200`, `maxLength==200`, counter **"200 / 200"**). A forced API POST with **201-char** instructions → **422 "String should have at most 200 characters"** (Pydantic `max_length`). Screenshot: `artifacts/sprint-57-117-skills-legB-textarea-capped-200.png`.
+
+**Observed vs intended**: matched exactly — the count, the disable-at-cap + hint, and the textarea cap are all driven by the SERVER-sourced limits (the low env override surfaced through `SkillListResponse` into the UI, proving single-source, not a hardcoded FE constant); the 409 + 422 are real server rejections (the guardrails BLOCK, AP-4-safe, not decorative).
+
+**Cleanup**: deleted the drive-through `deploy-notes` skill (204) → acme-skills restored to 1 skill (release-notes). (Backend `bb4gef2bk` still runs with the low cap — to be restarted to defaults at closeout.)
+
 ## Day 4 — (pending)

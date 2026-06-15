@@ -68,14 +68,14 @@
 
 ## Day 3 — Drive-through (US-6) — real admin "Skills" tab + fresh backend (lowered env limit; Risk Class E clean restart)
 
-### 3.1 Clean restart + probe
-- [ ] Kill stale backend (`Stop-Process` + `Win32_Process` PID/PPID/StartTime orphan sweep — no `--reload` workers, sole port-8000 owner); restart from **repo-root** `PYTHONPATH=backend/src ... --env-file .env` with `SKILLS_MAX_PER_TENANT=2` + `SKILLS_MAX_INSTRUCTIONS_CHARS=200` set BEFORE start; startup-log all-wired; dev-login / a tenant-admin session for `acme-skills`; `GET /{tid}/skills` → `max_skills==2` + `max_instructions_chars==200` (the low limits are live)
+### 3.1 Clean restart + probe ✅
+- [x] Killed stale backend PID 38660 (57.116 code) via `Stop-Process`; port 8000 FREE + ZERO remaining python (`Win32_Process` sweep — no `--reload` workers / orphan spawn-workers, sole owner); restarted from **repo-root** `PYTHONPATH=backend/src python -m uvicorn api.main:app --env-file .env --host 0.0.0.0 --port 8000` with `$env:SKILLS_MAX_PER_TENANT=2` + `$env:SKILLS_MAX_INSTRUCTIONS_CHARS=200` set BEFORE start (task `bb4gef2bk`); startup-log "Application startup complete" + all-wired (fresh 57.117 process). dev-login `acme-skills`/jamie (roles user,admin,platform_admin); `GET /{tid}/skills` → **`max_skills==2` + `max_instructions_chars==200`** (the low limits are LIVE), count 1 (release-notes)
 
-### 3.2 Drive-through 2 legs (real admin Skills tab :3007 + real backend)
-- [ ] **Leg A (count quota) PASS**: create skills until the tenant has 2 → the Add control disables + a "limit reached" hint shows + "N / max" reads "2 / 2"; a forced API `POST /{tid}/skills` (same cookie) → **409**. `artifacts/sprint-57-117-legA-quota-add-disabled.png`
-- [ ] **Leg B (body-size) PASS**: attempt an `instructions` > 200 chars → the textarea caps typing at 200 (counter shows 200/200) + a forced over-cap API POST → **422** + the size error renders. `artifacts/sprint-57-117-legB-bodysize-422.png`
-- [ ] Each control driven (real backend, no fixture): the Add disable is from the server `max_skills`; the 409 + 422 are real server rejections (Drive-Through-Acceptance — the guardrails BLOCK, not decorate); observed-vs-intended + screenshots in progress.md
-  - DoD: BOTH legs PASS + the limits are server-sourced
+### 3.2 Drive-through 2 legs (real admin Skills tab :3007 + real backend + Playwright) ✅
+- [x] **Leg A (count quota) PASS**: real Skills tab showed "1 / 2 skills" + Add ENABLED → created a 2nd skill (`deploy-notes`) via the UI → list re-fetched → **"2 / 2 skills" + "Skill limit reached" hint + "+ Add skill" [disabled]**; a forced API `POST /{tid}/skills` (browser cookie, at 2/2) → **409 "skill quota reached for this tenant"**. `artifacts/sprint-57-117-skills-1of2-add-enabled.png` + `...-legA-2of2-add-disabled-hint.png`
+- [x] **Leg B (body-size) PASS**: typed a 254-char string into the instructions textarea → the browser **capped it at 200** (`value.length==200`, `maxLength==200`, counter **"200 / 200"**); a forced API POST with 201-char instructions → **422 "String should have at most 200 characters"**. `artifacts/sprint-57-117-skills-legB-textarea-capped-200.png`
+- [x] Each control driven (real backend, no fixture): the Add disable is from the server `max_skills=2`; the textarea cap from `max_instructions_chars=200`; the 409 + 422 are real server rejections (Drive-Through-Acceptance — the guardrails BLOCK, not decorate). Cleanup: `deploy-notes` deleted (204) → acme-skills back to 1 skill
+  - DoD: ✅ BOTH legs PASS + the limits are server-sourced (proven via the low env override visible in the UI)
 
 ---
 
