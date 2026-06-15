@@ -34,9 +34,10 @@
  *   - "metrics.query · 210ms" describeBlock output preserved
  *
  * Created: 2026-05-17 (Sprint 57.21 Day 4 §4.1)
- * Last Modified: 2026-05-23
+ * Last Modified: 2026-06-15
  *
  * Modification History (newest-first):
+ *   - 2026-06-15: Sprint 57.120 — +active_skill KV row (⚡ skill; reuse KV, no mockup CSS)
  *   - 2026-05-23: Sprint 57.30 Day 4 §D3 — verbatim re-point Tailwind → mockup .col/.spread/.thin-rule/.mono/.tnum + .btn outline/ghost
  *   - 2026-05-17: Initial creation (Sprint 57.21 Day 4 §4.1)
  *
@@ -177,6 +178,10 @@ export function InspectorTurn(): JSX.Element {
           mono
         />
         <KV k="cost" v={lastAgent.costUsd != null ? `$${lastAgent.costUsd.toFixed(4)}` : "—"} mono />
+        {/* Sprint 57.120: the force-loaded skill for this turn's loop (carried onto the
+            AgentTurn at turn_start). ⚡ matches the 57.116 user-turn chip; "—" when no
+            skill. Reuses the KV helper — no new mockup CSS / HEX / oklch. */}
+        <KV k="active_skill" v={lastAgent.activeSkill ? `⚡ ${lastAgent.activeSkill}` : "—"} />
         <KV k="trace_id" v={lastAgent.traceId ?? "—"} mono />
         <KV k="span_id" v={lastAgent.spanId ?? "—"} mono />
 
