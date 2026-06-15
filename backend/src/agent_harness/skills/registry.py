@@ -17,16 +17,17 @@ Description:
     only this spike — no DB, no tenant_id; per-tenant catalogs are deferred.
 
 Key Components:
-    - Skill: frozen value object (name / description / instructions)
-    - SkillRegistry: register / get / list + from_dir markdown loader
+    - Skill: frozen value object (name / description / instructions / optional script)
+    - SkillRegistry: register / get / list + from_dir markdown loader (+ sibling <stem>.py)
     - get_default_skill_registry(): module singleton over the bundled/ dir
     - render_catalog_block(skills): the "## Available Skills" system-prompt block
     - render_skill_instructions(skill): one skill's framed body (DRY: read_skill + force-load)
 
 Created: 2026-06-13 (Sprint 57.113)
-Last Modified: 2026-06-14
+Last Modified: 2026-06-15
 
 Modification History (newest-first):
+    - 2026-06-15: Sprint 57.118 — Skill.script + from_dir sibling-<stem>.py loader (bundled scripts)
     - 2026-06-14: Sprint 57.115 — add render_skill_instructions (DRY body helper)
     - 2026-06-13: Sprint 57.114 — add SkillRegistry.with_overlay (per-tenant overlay primitive)
     - 2026-06-13: Initial creation (Sprint 57.113) — Skills System first vertical
@@ -52,11 +53,19 @@ _logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class Skill:
-    """A loadable skill: a cheap name+description plus the full instruction body."""
+    """A loadable skill: a cheap name+description plus the full instruction body.
+
+    A SYSTEM-BUNDLED skill MAY also carry an executable ``script`` — the source of a
+    sibling ``<stem>.py`` next to its SKILL.md, git-authored + code-reviewed (the trust
+    boundary is supply-chain-at-authorship + sandbox-isolation-at-runtime). The model
+    runs it via the ``run_skill_script`` tool (Sprint 57.118). ``None`` for bundled
+    skills without a sibling script AND for tenant-overlay skills (text-only DB rows).
+    """
 
     name: str
     description: str
     instructions: str
+    script: str | None = None
 
 
 # === Frontmatter parsing ===
@@ -142,9 +151,25 @@ class SkillRegistry:
             if not name or not description or not body:
                 _logger.warning("skills: skipping %s (missing name/description/body)", md_path.name)
                 continue
+            # Sprint 57.118: a bundled skill MAY carry a sibling <stem>.py executable
+            # script (system-bundled only — git-authored + code-reviewed). run_skill_script
+            # runs THIS source via the SandboxBackend; read_skill stays text-only. A
+            # missing/unreadable sibling → script=None (the skill still loads, text-only).
+            script: str | None = None
+            script_path = md_path.with_suffix(".py")
+            if script_path.is_file():
+                try:
+                    script = script_path.read_text(encoding="utf-8")
+                except OSError as exc:  # pragma: no cover - defensive
+                    _logger.warning("skills: cannot read script %s: %s", script_path.name, exc)
             try:
                 registry.register(
-                    Skill(name=str(name), description=str(description), instructions=body)
+                    Skill(
+                        name=str(name),
+                        description=str(description),
+                        instructions=body,
+                        script=script,
+                    )
                 )
             except ValueError:
                 _logger.warning(

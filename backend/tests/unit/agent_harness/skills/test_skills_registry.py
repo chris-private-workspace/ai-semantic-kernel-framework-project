@@ -1,8 +1,8 @@
 """
 File: backend/tests/unit/agent_harness/skills/test_skills_registry.py
-Purpose: Unit tests for SkillRegistry, the frontmatter loader, and render_catalog_block.
+Purpose: Unit tests for SkillRegistry — frontmatter + sibling-script loaders + catalog block.
 Category: Tests
-Scope: Phase 57 / Sprint 57.113
+Scope: Phase 57 / Sprint 57.113 + 57.118 (Skill.script)
 Created: 2026-06-13 (Sprint 57.113)
 """
 
@@ -121,3 +121,55 @@ def test_render_catalog_block_lists_names_and_descriptions() -> None:
     assert "read_skill(name)" in block  # the lazy-load instruction
     assert "- code-review: Review code" in block
     assert "- summarize: Condense a thread" in block
+
+
+# === Sprint 57.118: Skill.script + the sibling-<stem>.py loader ===
+
+
+def test_skill_script_defaults_none() -> None:
+    # The tenant overlay constructs Skill(name, description, instructions) without a
+    # script (platform_layer/skills/service.py) — the field must default to None.
+    skill = Skill(name="a", description="d", instructions="i")
+    assert skill.script is None
+
+
+def test_from_dir_loads_sibling_script(tmp_path) -> None:
+    _write(tmp_path, "demo-skill.md", _VALID_MD)
+    _write(tmp_path, "demo-skill.py", "print('hello from the bundled script')\n")
+    reg = SkillRegistry.from_dir(tmp_path)
+    skill = reg.get("demo-skill")
+    assert skill is not None
+    assert skill.script == "print('hello from the bundled script')\n"
+
+
+def test_from_dir_no_sibling_script_is_none(tmp_path) -> None:
+    _write(tmp_path, "demo-skill.md", _VALID_MD)  # no sibling .py
+    reg = SkillRegistry.from_dir(tmp_path)
+    skill = reg.get("demo-skill")
+    assert skill is not None
+    assert skill.script is None
+
+
+def test_from_dir_lone_py_is_ignored(tmp_path) -> None:
+    # A .py with no matching .md is not a skill (from_dir globs *.md only).
+    _write(tmp_path, "orphan.py", "print('no skill here')\n")
+    reg = SkillRegistry.from_dir(tmp_path)
+    assert reg.list() == []
+
+
+def test_bundled_skills_have_no_script_by_default() -> None:
+    # code-review / summarize ship as text-only (no sibling .py) → script is None.
+    reg = get_default_skill_registry()
+    for name in ("code-review", "summarize"):
+        skill = reg.get(name)
+        assert skill is not None
+        assert skill.script is None
+
+
+def test_with_overlay_tenant_skills_have_no_script() -> None:
+    # The per-tenant overlay carries text-only DB rows → overlaid skills have script=None.
+    bundled = SkillRegistry()
+    bundled.register(Skill(name="bundled-a", description="d", instructions="i"))
+    overlaid = bundled.with_overlay([Skill(name="tenant-b", description="d", instructions="i")])
+    assert overlaid.get("tenant-b") is not None
+    assert overlaid.get("tenant-b").script is None  # type: ignore[union-attr]
