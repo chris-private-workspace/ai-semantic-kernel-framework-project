@@ -9,8 +9,11 @@ Re-exports TenantSkillService (per-tenant skill CRUD) + resolve_tenant_skill_reg
 from __future__ import annotations
 
 from platform_layer.skills.service import (
+    SKILLS_MAX_INSTRUCTIONS_CHARS,
+    SKILLS_MAX_PER_TENANT,
     DuplicateSkillError,
     SkillNotFoundError,
+    SkillQuotaExceededError,
     TenantSkillError,
     TenantSkillService,
     invalidate_tenant_skill_registry,
@@ -20,9 +23,12 @@ from platform_layer.skills.service import (
 )
 
 __all__ = [
+    "SKILLS_MAX_INSTRUCTIONS_CHARS",
+    "SKILLS_MAX_PER_TENANT",
     "TenantSkillError",
     "DuplicateSkillError",
     "SkillNotFoundError",
+    "SkillQuotaExceededError",
     "TenantSkillService",
     "tenant_skill_service",
     "resolve_tenant_skill_registry",

@@ -43,9 +43,10 @@ Key Components:
     - get_tenant / update_tenant (Sprint 57.3)
 
 Created: 2026-05-06 (Sprint 56.1 Day 1)
-Last Modified: 2026-05-10
+Last Modified: 2026-06-15
 
 Modification History:
+    - 2026-06-15: Sprint 57.117 — Skills quota: instructions max_length + SkillListResponse limits
     - 2026-06-13: Sprint 57.110 B4 — harness-policy +subagent_failure_policy + literal 422
     - 2026-06-12: Sprint 57.107 B3 — harness-policy +handoff_enabled/target_allowlist + 422 poles
     - 2026-06-03: Sprint 57.74 — add GET /stats fleet aggregate (closes AD-AdminTenants-Stats)
@@ -113,6 +114,8 @@ from platform_layer.identity.auth import (
     require_tenant_match_or_platform_admin,
 )
 from platform_layer.skills import (
+    SKILLS_MAX_INSTRUCTIONS_CHARS,
+    SKILLS_MAX_PER_TENANT,
     TenantSkillError,
     invalidate_tenant_skill_registry,
     tenant_skill_service,
@@ -1860,7 +1863,7 @@ class SkillCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str = Field(min_length=1, max_length=128)
     description: str = Field(min_length=1, max_length=512)
-    instructions: str = Field(min_length=1)
+    instructions: str = Field(min_length=1, max_length=SKILLS_MAX_INSTRUCTIONS_CHARS)
 
     @field_validator("name")
     @classmethod
@@ -1876,7 +1879,9 @@ class SkillUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str | None = Field(default=None, min_length=1, max_length=128)
     description: str | None = Field(default=None, min_length=1, max_length=512)
-    instructions: str | None = Field(default=None, min_length=1)
+    instructions: str | None = Field(
+        default=None, min_length=1, max_length=SKILLS_MAX_INSTRUCTIONS_CHARS
+    )
 
     @field_validator("name")
     @classmethod
@@ -1898,9 +1903,13 @@ class SkillResponse(BaseModel):
 
 
 class SkillListResponse(BaseModel):
-    """A tenant's custom skills."""
+    """A tenant's custom skills + the effective write-path limits (single-source for the FE)."""
 
     skills: list[SkillResponse]
+    # Sprint 57.117: the effective guardrails so the admin tab is single-source against the
+    # server (N/max + disable-Add at the cap + textarea maxLength), not a hardcoded FE mirror.
+    max_skills: int
+    max_instructions_chars: int
 
 
 def _project_skill(skill: TenantSkill) -> SkillResponse:
@@ -1923,7 +1932,11 @@ async def list_tenant_skills(
     """List a tenant's custom skills (read-only; no audit). 404 via _load_tenant_or_404."""
     await _load_tenant_or_404(db, tenant_id)
     rows = await tenant_skill_service.list_skills(db, tenant_id=tenant_id)
-    return SkillListResponse(skills=[_project_skill(row) for row in rows])
+    return SkillListResponse(
+        skills=[_project_skill(row) for row in rows],
+        max_skills=SKILLS_MAX_PER_TENANT,
+        max_instructions_chars=SKILLS_MAX_INSTRUCTIONS_CHARS,
+    )
 
 
 @router.post(
@@ -1940,8 +1953,9 @@ async def create_tenant_skill(
     """Create a custom skill for the tenant.
 
     - 401/403 via require_admin_platform_role; 404 (tenant) via _load_tenant_or_404
-    - 422 via extra="forbid" / non-kebab name / empty field
-    - 409 when (tenant, name) already exists (DuplicateSkillError)
+    - 422 via extra="forbid" / non-kebab name / empty field / instructions over the size cap
+    - 409 on a duplicate (tenant, name) (DuplicateSkillError) or the per-tenant quota
+      (SkillQuotaExceededError) — both via the shared TenantSkillError mapping below
     - 201 with the created skill; invalidates the resolver TTL cache.
     """
     await _load_tenant_or_404(db, tenant_id)

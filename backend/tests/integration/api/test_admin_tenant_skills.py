@@ -2,7 +2,7 @@
 File: backend/tests/integration/api/test_admin_tenant_skills.py
 Purpose: Integration tests — /admin/tenants/{id}/skills CRUD (Sprint 57.114 per-tenant catalog).
 Category: Tests / Integration / API (Skills System per-tenant catalog)
-Scope: Sprint 57.114 / US-4
+Scope: Sprint 57.114 / US-4 + 57.117 quota/body-size
 
 Description:
     Verifies the per-tenant Skills admin endpoints (mirrors the model-policy C1
@@ -14,6 +14,8 @@ Description:
     - DELETE: 204, 404 missing skill
     - Multi-tenant isolation (B never lists A's skill; cross-tenant PUT → 404)
     - The resolver TTL cache is invalidated by a create (next resolve reflects it)
+    - 57.117: 409 over the per-tenant quota, 422 oversized instructions, GET list
+      carries max_skills / max_instructions_chars
 """
 
 from __future__ import annotations
@@ -33,7 +35,11 @@ from infrastructure.db.models.audit import AuditLog
 from infrastructure.db.models.identity import Tenant, TenantPlan, TenantState
 from infrastructure.db.session import get_db_session
 from platform_layer.identity.auth import require_admin_platform_role
-from platform_layer.skills.service import resolve_tenant_skill_registry
+from platform_layer.skills.service import (
+    SKILLS_MAX_INSTRUCTIONS_CHARS,
+    SKILLS_MAX_PER_TENANT,
+    resolve_tenant_skill_registry,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -289,3 +295,47 @@ async def test_create_invalidates_resolver_cache(db_session: AsyncSession) -> No
     # The endpoint invalidated the cache → the next resolve reflects the new skill.
     after = await resolve_tenant_skill_registry(db_session, tenant.id)
     assert after.get("release-notes") is not None
+
+
+# === Sprint 57.117: quota + body-size + list limits ==========================
+
+
+async def test_create_over_quota_409(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A POST when the tenant is at SKILLS_MAX_PER_TENANT → 409 (SkillQuotaExceededError)."""
+    monkeypatch.setattr("platform_layer.skills.service.SKILLS_MAX_PER_TENANT", 2)
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        for n in range(2):  # fill to the cap — these succeed
+            ok = await ac.post(f"/api/v1/admin/tenants/{tenant.id}/skills", json=_payload(f"s-{n}"))
+            assert ok.status_code == 201, ok.text
+        over = await ac.post(f"/api/v1/admin/tenants/{tenant.id}/skills", json=_payload("over"))
+    assert over.status_code == 409, over.text
+
+
+async def test_create_oversized_instructions_422(db_session: AsyncSession) -> None:
+    """An instructions body over the SKILLS_MAX_INSTRUCTIONS_CHARS Pydantic cap → 422."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    body = _payload()
+    body["instructions"] = "x" * (SKILLS_MAX_INSTRUCTIONS_CHARS + 1)  # 1 over the cap
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.post(f"/api/v1/admin/tenants/{tenant.id}/skills", json=body)
+    assert resp.status_code == 422
+
+
+async def test_list_response_carries_limits(db_session: AsyncSession) -> None:
+    """GET list surfaces the effective limits (single-source for the FE)."""
+    tenant = await _seed_tenant(db_session, code=_unique_code())
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        listed = await ac.get(f"/api/v1/admin/tenants/{tenant.id}/skills")
+    assert listed.status_code == 200
+    body = listed.json()
+    assert body["max_skills"] == SKILLS_MAX_PER_TENANT
+    assert body["max_instructions_chars"] == SKILLS_MAX_INSTRUCTIONS_CHARS

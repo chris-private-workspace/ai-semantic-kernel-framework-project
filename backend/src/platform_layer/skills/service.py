@@ -25,6 +25,7 @@ Key Components:
 Created: 2026-06-13 (Sprint 57.114)
 
 Modification History:
+    - 2026-06-15: Sprint 57.117 — skill quota + body-size caps + SkillQuotaExceededError
     - 2026-06-13: Initial creation (Sprint 57.114 / US-2 + US-3)
 
 Related:
@@ -39,19 +40,41 @@ Related:
 
 from __future__ import annotations
 
+import os
 import time
 from datetime import datetime, timezone
 from typing import Callable
 from uuid import UUID
 
 from sqlalchemy import delete as sa_delete
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agent_harness.skills import Skill, SkillRegistry, get_default_skill_registry
 from infrastructure.db.models.skill import TenantSkill
 
 _DEFAULT_TTL_S = 60.0
+
+
+# === Per-tenant skill guardrails (env-overridable; the 57.109 CHAT_COMPACTION_* knob precedent) ===
+# Why: Sprint 57.114 shipped the per-tenant catalog with NO upper bounds — a tenant could
+# create unbounded skills, each with an unbounded `instructions` body (Text, min_length=1 only).
+# These two caps are the write-path guardrails (AD-Skills-Per-Tenant-Quota): the count quota is
+# enforced in create() (a typed error the admin POST endpoint already maps); the body-size cap is
+# the request-layer max_length (api/v1/admin/tenants.py reads SKILLS_MAX_INSTRUCTIONS_CHARS).
+# Module-level env read (restart-to-change, like CHAT_COMPACTION_*). A per-tenant CONFIGURABLE
+# quota (meta_data override) + a multi-worker shared cache-invalidation signal stay deferred.
+def _env_int(name: str, default: int) -> int:
+    """Read a positive int from the env; non-int / non-positive → the default."""
+    try:
+        value = int(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        return default
+    return value if value > 0 else default
+
+
+SKILLS_MAX_PER_TENANT = _env_int("SKILLS_MAX_PER_TENANT", 50)
+SKILLS_MAX_INSTRUCTIONS_CHARS = _env_int("SKILLS_MAX_INSTRUCTIONS_CHARS", 20_000)
 
 
 # === Typed errors (carry an HTTP status hint for the admin endpoints) ===
@@ -75,6 +98,11 @@ class DuplicateSkillError(TenantSkillError):
 class SkillNotFoundError(TenantSkillError):
     status_code = 404
     detail = "skill not found"
+
+
+class SkillQuotaExceededError(TenantSkillError):
+    status_code = 409
+    detail = "skill quota reached for this tenant"
 
 
 # === TenantSkillService: per-tenant skill CRUD ===
@@ -112,8 +140,21 @@ class TenantSkillService:
         description: str,
         instructions: str,
     ) -> TenantSkill:
-        """Create a skill. Raises DuplicateSkillError if (tenant_id, name) already exists."""
+        """Create a skill. Enforces the per-tenant quota + name uniqueness.
+
+        Raises SkillQuotaExceededError when the tenant is at SKILLS_MAX_PER_TENANT;
+        DuplicateSkillError if (tenant_id, name) already exists.
+        """
         await _set_tenant(db, str(tenant_id))
+        count = (
+            await db.execute(
+                select(func.count())
+                .select_from(TenantSkill)
+                .where(TenantSkill.tenant_id == tenant_id)
+            )
+        ).scalar_one()
+        if count >= SKILLS_MAX_PER_TENANT:
+            raise SkillQuotaExceededError()
         existing = (
             await db.execute(
                 select(TenantSkill).where(
@@ -280,6 +321,9 @@ __all__ = [
     "TenantSkillError",
     "DuplicateSkillError",
     "SkillNotFoundError",
+    "SkillQuotaExceededError",
+    "SKILLS_MAX_PER_TENANT",
+    "SKILLS_MAX_INSTRUCTIONS_CHARS",
     "TenantSkillService",
     "tenant_skill_service",
     "resolve_tenant_skill_registry",
