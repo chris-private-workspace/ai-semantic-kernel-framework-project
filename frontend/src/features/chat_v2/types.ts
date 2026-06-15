@@ -22,9 +22,10 @@
  *   Message removed — replaced by Turn. tsc compile gate surfaces consumer updates.
  *
  * Created: 2026-04-30 (Sprint 50.2 Day 3.2)
- * Last Modified: 2026-06-10
+ * Last Modified: 2026-06-15
  *
  * Modification History:
+ *   - 2026-06-15: Sprint 57.120 — AgentTurn +activeSkill? (Inspector active_skill row)
  *   - 2026-06-12: Sprint 57.107 B3 — Session now real-backend shaped (+handoffParentId +agentRole, title/agent nullable, drop domain) + SessionStatusUI +handed_off
  *   - 2026-06-11: Sprint 57.101 B1 — UserTurn +injected? (mid-run message_injected render tag)
  *   - 2026-06-10: Sprint 57.100 — HITLTurn +kind (pause kind from the approval_requested wire)
@@ -154,6 +155,10 @@ export type AgentTurn = {
   costUsd: number | null;
   traceId: string | null;
   spanId: string | null;
+  // Sprint 57.120: the force-loaded skill for this turn's loop (carried from the
+  // trigger UserTurn at turn_start), so the Inspector Turn tab can show an
+  // active_skill row alongside trace_id. Undefined when no skill was force-loaded.
+  activeSkill?: string;
 };
 
 export type HITLTurn = {

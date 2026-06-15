@@ -7,6 +7,7 @@
  * Created: 2026-05-17 (Sprint 57.21 Day 4 §4.1)
  *
  * Modification History:
+ *   - 2026-06-15: Sprint 57.120 — +active_skill row cases (⚡ set / "—" absent); null-dash count 6→7
  *   - 2026-06-03: Sprint 57.75 — Trace+Memory tabs now wired (A-5); replace ComingSoon assertions with empty states
  *   - 2026-06-03: Sprint 57.72 — Tree tab now renders InspectorTree (A-5c); replace ComingSoon-Tree assertion with empty + populated tree
  *   - 2026-05-17: Initial creation (Sprint 57.21 Day 4 §4.1)
@@ -108,8 +109,27 @@ describe("ChatInspector (Sprint 57.21 Day 4 §4.1)", () => {
     });
     render(<ChatInspector />);
     const dashes = screen.getAllByText("—");
-    // 6 fields nullable: tokens.in / tokens.out / tokens.thinking / cost / trace_id / span_id
-    expect(dashes.length).toBeGreaterThanOrEqual(6);
+    // 7 fields nullable: tokens.in / tokens.out / tokens.thinking / cost / trace_id /
+    // span_id / active_skill (Sprint 57.120 — makeAgentTurn default carries no skill)
+    expect(dashes.length).toBeGreaterThanOrEqual(7);
+  });
+
+  // Sprint 57.120: the Inspector Turn tab surfaces the force-loaded skill (carried
+  // onto the AgentTurn at turn_start) as an active_skill KV row.
+  test("InspectorTurn shows the active_skill row with ⚡ {skill} when set", () => {
+    useChatStore.setState({ turns: [makeAgentTurn({ activeSkill: "code-review" })] });
+    render(<ChatInspector />);
+    expect(screen.getByTestId("inspector-turn")).toBeInTheDocument();
+    expect(screen.getByText("active_skill")).toBeInTheDocument();
+    expect(screen.getByText("⚡ code-review")).toBeInTheDocument();
+  });
+
+  test("InspectorTurn shows active_skill '—' when the turn carries no skill", () => {
+    useChatStore.setState({ turns: [makeAgentTurn()] }); // default: no activeSkill
+    render(<ChatInspector />);
+    expect(screen.getByText("active_skill")).toBeInTheDocument();
+    // the only nullable-rendered field in the otherwise-populated default turn
+    expect(screen.getAllByText("—")).toHaveLength(1);
   });
 
   test("Block sequence renders 1 line per block with correct type label", () => {

@@ -32,9 +32,10 @@
  *   ALSO feeding the new Turn block render path for /chat-v2 mockup-fidelity.
  *
  * Created: 2026-04-30 (Sprint 50.2 Day 3.3)
- * Last Modified: 2026-06-12
+ * Last Modified: 2026-06-15
  *
  * Modification History:
+ *   - 2026-06-15: Sprint 57.120 — turn_start carries activeSkill onto AgentTurn (Inspector row)
  *   - 2026-06-13: Sprint 57.110 B4 — child guardrail_triggered projection (reason→text + action)
  *   - 2026-06-12: Sprint 57.108 — HITL tool/reason + turn traceId/spanId/tokens/duration captures
  *   - 2026-06-12: Sprint 57.107 B3 — +loadSessions (real GET /sessions → Session[]; replaces fixture)
@@ -77,6 +78,7 @@ import type {
   SubagentEntry,
   SubagentForkBlock,
   Turn,
+  UserTurn,
 } from "../types";
 
 /**
@@ -406,6 +408,16 @@ export const useChatStore = create<ChatStoreState>((set) => ({
           const turnSpan = [...s.spans]
             .reverse()
             .find((sp) => sp.spanType === "TURN" && sp.status === "running");
+          // Sprint 57.120: carry the loop's force-loaded skill onto the AgentTurn so
+          // the Inspector Turn tab can show an active_skill row (alongside trace_id).
+          // loop_start stamped it onto the trigger user turn just before this; the
+          // MOST-RECENT NON-INJECTED user turn IS that trigger — a 57.101 injected
+          // mid-run turn carries no skill and is skipped (so an injection doesn't
+          // clear the loop's skill), and a new no-skill loop's trigger has activeSkill
+          // undefined → no stale leak from a prior skilled loop.
+          const triggerSkill = [...s.turns]
+            .reverse()
+            .find((t): t is UserTurn => t.role === "user" && !t.injected)?.activeSkill;
           const newAgentTurn: AgentTurn = {
             role: "agent",
             id: nextTurnId(),
@@ -419,6 +431,7 @@ export const useChatStore = create<ChatStoreState>((set) => ({
             costUsd: null,
             traceId: ev.data.trace_id ?? null,
             spanId: turnSpan?.spanId ?? null,
+            activeSkill: triggerSkill,
           };
           return { ...s, rawEvents, turns: [...s.turns, newAgentTurn] };
         }
