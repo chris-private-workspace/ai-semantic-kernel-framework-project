@@ -1007,9 +1007,10 @@ class HITLPolicyUpsertRequest(BaseModel):
         # but a misconfigured `auto >= require` silently means "escalate the whole gray
         # band" with no operator feedback — fail loud (422) instead. The field_validator
         # above guarantees both are valid RiskLevel names before this runs.
-        if _RISK_ORDER[RiskLevel(self.auto_approve_max_risk)] >= _RISK_ORDER[
-            RiskLevel(self.require_approval_min_risk)
-        ]:
+        if (
+            _RISK_ORDER[RiskLevel(self.auto_approve_max_risk)]
+            >= _RISK_ORDER[RiskLevel(self.require_approval_min_risk)]
+        ):
             raise ValueError(
                 "auto_approve_max_risk must be strictly less than require_approval_min_risk"
             )
