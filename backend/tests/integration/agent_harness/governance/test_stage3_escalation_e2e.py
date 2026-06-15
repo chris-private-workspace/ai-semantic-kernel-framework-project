@@ -17,6 +17,7 @@ Description:
 Created: 2026-05-04 (Sprint 53.5 Day 2)
 
 Modification History:
+    - 2026-06-15: Sprint 57.122 — risk_level assertion HIGH→MEDIUM (policy-resolved risk)
     - 2026-05-04: Initial creation (Sprint 53.5 US-3 — closes AD-Cat9-4)
 """
 
@@ -365,7 +366,10 @@ async def test_stage3_approved_tool_runs_normally() -> None:
     req = hitl.requests[0]
     assert req.tenant_id == _TENANT_ID
     assert req.requester == "guardrails"
-    assert req.risk_level == RiskLevel.HIGH
+    # Sprint 57.122: the ApprovalRequest now carries the policy-resolved risk
+    # (sensitive_tool's ToolSpec.risk_level defaults LOW + the requires_approval
+    # MEDIUM-floor) instead of the pre-57.122 hardcoded RiskLevel.HIGH.
+    assert req.risk_level == RiskLevel.MEDIUM
     assert req.payload["tool_name"] == "sensitive_tool"
     assert req.payload["tool_arguments"] == {"x": 42}
 

@@ -42,9 +42,10 @@ Description:
     revisit if per-run override is needed.
 
 Created: 2026-04-30 (Sprint 50.1 Day 2.2)
-Last Modified: 2026-06-13
+Last Modified: 2026-06-15
 
 Modification History (newest-first):
+    - 2026-06-15: Sprint 57.122 — tool HITL reads tenant risk-threshold policy (load-bearing)
     - 2026-06-13: Sprint 57.111 A3 — _cat10_verify_gate threads real trace_state to the judge
     - 2026-06-12: Sprint 57.109 C2 — ContextCompacted yield carries summarize usage/model
     - 2026-06-12: Sprint 57.108 — 5 ApprovalRequested yields +reason= (tool site also +tool_name=)
@@ -168,7 +169,10 @@ from agent_harness._contracts.hitl import (
     ApprovalDecision,
     ApprovalRequest,
     DecisionType,
+    HITLPolicy,
     RiskLevel,
+    decide_tool_hitl,
+    resolve_tool_risk,
 )
 from agent_harness.context_mgmt import Compactor
 from agent_harness.error_handling import (
@@ -500,6 +504,48 @@ class AgentLoopImpl(AgentLoop):
         self._verification_escalate_on_max = verification_escalate_on_max
         # 57.101 B1 §between-turns injection (see ctor docstring above).
         self._message_inbox = message_inbox
+        # 57.122 §HITL policy read-side (AD-HITL-Policy-ReadSide-Potemkin-Phase58):
+        # the per-tenant HITLPolicy resolved ONCE per run (tenant_id is stable) +
+        # cached, so the tool-call HITL decision reads the tenant's risk thresholds
+        # without a DB round-trip per tool call. None until first Cat 9 tool check.
+        self._hitl_policy_cache: HITLPolicy | None = None
+
+    async def _resolve_hitl_policy(self, ctx: TraceContext) -> HITLPolicy:
+        """Resolve + cache the per-tenant HITLPolicy for this run (Sprint 57.122).
+
+        Reads ``hitl_manager.get_policy(tenant_id)`` (the production manager is wired
+        with the DBHITLPolicyStore — service_factory.py). Fail-open: any store error,
+        a missing manager, or a missing tenant_id falls back to the conservative
+        DEFAULT policy (auto=LOW / require=MEDIUM) = the pre-57.122 effective
+        behavior (a flagged tool floors to MEDIUM → escalates). Cached per run.
+        """
+        if self._hitl_policy_cache is not None:
+            return self._hitl_policy_cache
+        tenant_id = self._tenant_id or ctx.tenant_id
+        policy: HITLPolicy | None = None
+        if self._hitl_manager is not None and tenant_id is not None:
+            try:
+                policy = await self._hitl_manager.get_policy(tenant_id, trace_context=ctx)
+            except Exception:  # noqa: BLE001 — fail-open to the conservative default
+                policy = None
+        if policy is None:
+            policy = HITLPolicy(
+                tenant_id=tenant_id or ctx.tenant_id or uuid4(),
+                auto_approve_max_risk=RiskLevel.LOW,
+                require_approval_min_risk=RiskLevel.MEDIUM,
+            )
+        self._hitl_policy_cache = policy
+        return policy
+
+    def _resolve_tool_call_risk(self, tool_name: str, *, flagged: bool) -> RiskLevel:
+        """Resolve the effective risk of a tool call from its ToolSpec (57.122).
+
+        Reads ``ToolSpec.risk_level`` from the tool registry; ``resolve_tool_risk``
+        applies the per-rule flag MEDIUM-floor + the unknown-tool fallback.
+        """
+        spec = self._tool_registry.get(tool_name) if self._tool_registry is not None else None
+        spec_risk = spec.risk_level if spec is not None else None
+        return resolve_tool_risk(spec_risk, rule_requires_approval=flagged)
 
     async def _handle_tool_error(
         self,
@@ -878,48 +924,81 @@ class AgentLoopImpl(AgentLoop):
         """
         if self._guardrail_engine is not None:
             g_result = await self._guardrail_engine.check_tool_call(tc, trace_context=ctx)
-            if g_result.action != GuardrailAction.PASS:
-                # 53.5 US-3: ESCALATE → HITL pause + wait_for_decision when
-                # hitl_manager wired. APPROVED → continue (no block); REJECTED
-                # / ESCALATED / TIMEOUT → fall through to existing block path.
-                # Other non-PASS actions (BLOCK / SANITIZE / REROLL) keep 53.3
-                # baseline behavior (soft block, caller injects error ToolResult).
-                if g_result.action == GuardrailAction.ESCALATE and self._hitl_manager is not None:
-                    async for ev in self._cat9_hitl_branch(
-                        tc=tc,
-                        ctx=ctx,
-                        guardrail_reason=g_result.reason or "escalated",
-                        turn_count=turn_count,
-                        session_id=session_id,
-                        messages=messages,
-                        verification_attempts=verification_attempts,
-                    ):
-                        yield ev
-                    # _cat9_hitl_branch yields GuardrailTriggered(block) only
-                    # when rejected/timeout — when approved (blocking mode), it
-                    # returns without yielding so the caller flows to normal tool
-                    # exec. In deferred mode it yields LoopCompleted(awaiting_
-                    # approval) which the caller treats as a terminator.
-                    return
-
+            action = g_result.action
+            if action in (
+                GuardrailAction.BLOCK,
+                GuardrailAction.SANITIZE,
+                GuardrailAction.REROLL,
+            ):
+                # 53.3 baseline soft block — caller injects an error ToolResult so
+                # the LLM can adjust (only Tripwire terminates the loop on tools).
                 await self._audit_log_safe(
-                    event_type=f"guardrail.tool.{g_result.action.value}",
+                    event_type=f"guardrail.tool.{action.value}",
                     content={
                         "tool": tc.name,
-                        "action": g_result.action.value,
+                        "action": action.value,
                         "reason": g_result.reason or "",
                     },
                     ctx=ctx,
                 )
                 yield GuardrailTriggered(
                     guardrail_type="tool",
-                    action=g_result.action.value,
+                    action=action.value,
                     reason=g_result.reason or "blocked",
                     trace_context=ctx,
                 )
-                # Caller injects an error ToolResult after seeing this
-                # event; we don't yield LoopCompleted here (only Tripwire
-                # terminates the loop on tool calls — soft block continues).
+            elif action in (GuardrailAction.PASS, GuardrailAction.ESCALATE):
+                # 57.122 §HITL policy read-side (AD-HITL-Policy-ReadSide-Potemkin-
+                # Phase58): the tenant's HITLPolicy thresholds now DECIDE escalate
+                # vs auto-approve. `flagged` = the capability-matrix requires_approval
+                # signal (guardrail ESCALATE). Using the tool's ToolSpec.risk_level:
+                # a high-risk UNFLAGGED tool can now escalate (require_approval_min_
+                # risk) and a flagged LOW-risk tool can auto-approve (auto_approve_
+                # max_risk) — both previously ignored (a flat `if requires_approval:
+                # ESCALATE` + hardcoded HIGH). Backward-compatible under the DEFAULT
+                # policy (the flag floors risk to MEDIUM → still escalates).
+                flagged = action == GuardrailAction.ESCALATE
+                if self._hitl_manager is not None:
+                    risk = self._resolve_tool_call_risk(tc.name, flagged=flagged)
+                    policy = await self._resolve_hitl_policy(ctx)
+                    if decide_tool_hitl(risk, policy, rule_requires_approval=flagged):
+                        async for ev in self._cat9_hitl_branch(
+                            tc=tc,
+                            ctx=ctx,
+                            guardrail_reason=g_result.reason
+                            or ("escalated" if flagged else "risk threshold"),
+                            turn_count=turn_count,
+                            session_id=session_id,
+                            messages=messages,
+                            verification_attempts=verification_attempts,
+                            risk=risk,
+                        ):
+                            yield ev
+                        # _cat9_hitl_branch yields GuardrailTriggered(block) only
+                        # when rejected/timeout; when approved (blocking) it returns
+                        # without yielding (caller flows to normal tool exec); in
+                        # deferred mode it yields LoopCompleted(awaiting_approval).
+                        return
+                    # else: the tenant policy auto-approves this tool → fall through
+                    # to the tripwire check + normal tool execution (no event).
+                elif flagged:
+                    # ESCALATE but no HITL manager → fail-closed soft block (an
+                    # escalation that cannot be serviced must not silently run).
+                    await self._audit_log_safe(
+                        event_type=f"guardrail.tool.{action.value}",
+                        content={
+                            "tool": tc.name,
+                            "action": action.value,
+                            "reason": g_result.reason or "",
+                        },
+                        ctx=ctx,
+                    )
+                    yield GuardrailTriggered(
+                        guardrail_type="tool",
+                        action=action.value,
+                        reason=g_result.reason or "blocked",
+                        trace_context=ctx,
+                    )
 
         if self._tripwire is not None:
             if await self._tripwire.trigger_check(content=tc, trace_context=ctx):
@@ -950,6 +1029,7 @@ class AgentLoopImpl(AgentLoop):
         session_id: UUID | None = None,
         messages: list[Message] | None = None,
         verification_attempts: int = 0,
+        risk: RiskLevel | None = None,
     ) -> AsyncIterator[LoopEvent]:
         """Cat 9 ESCALATE → HITL pause (Sprint 53.5 US-3 + 57.88 US-1).
 
@@ -972,10 +1052,13 @@ class AgentLoopImpl(AgentLoop):
                 tenant_id wired (Cat 7); if any is missing the deferred branch
                 falls back to blocking mode (it cannot persist a checkpoint).
 
-        Risk level defaults to HIGH (escalation implies human review). Future
-        sprints may pull from RiskPolicy via a callable injected at ctor time;
-        keeping the default here avoids importing platform_layer/governance/risk
-        from agent_harness (per category-boundaries.md backwards-import rule).
+        Risk level: 57.122 threads the tenant-policy-resolved ``risk`` in from
+        _cat9_tool_check (ToolSpec.risk_level + the requires_approval MEDIUM-floor;
+        AD-HITL-Policy-ReadSide-Potemkin-Phase58) so the ApprovalRequest + reviewer
+        routing + SLA flow from the real risk. ``risk=None`` (no caller threads it)
+        falls back to HIGH (escalation implies human review) — the pre-57.122
+        default. This avoids importing platform_layer/governance/risk from
+        agent_harness (per category-boundaries.md backwards-import rule).
 
         Tenant + session context come from `self._tenant_id` and `ctx.session_id`.
         Both must be present; otherwise we fall back to the soft-block path
@@ -1004,7 +1087,7 @@ class AgentLoopImpl(AgentLoop):
             return
 
         request_id = uuid4()
-        risk_level = RiskLevel.HIGH  # ESCALATE default; see method docstring
+        risk_level = risk if risk is not None else RiskLevel.HIGH  # 57.122: policy-resolved
         sla_deadline = datetime.now(timezone.utc) + timedelta(seconds=self._hitl_timeout_s)
         approval_req = ApprovalRequest(
             request_id=request_id,
