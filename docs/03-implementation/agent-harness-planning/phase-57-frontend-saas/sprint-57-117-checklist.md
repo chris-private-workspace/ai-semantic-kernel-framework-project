@@ -81,12 +81,13 @@
 
 ## Day 4 — CHANGE-084 + closeout (NO design note — feature continuation)
 
-### 4.1 CHANGE-084
-- [ ] **`claudedocs/4-changes/feature-changes/CHANGE-084-skills-per-tenant-quota.md`** (1-page, incl. the 2-leg drive-through)
-- [ ] (NO design note — feature continuation of the 57.114 catalog + the 57.109 env-knob + the typed-error patterns; sprint-workflow §5.5 → design note is spike-only)
+### 4.1 CHANGE-084 ✅
+- [x] **`claudedocs/4-changes/feature-changes/CHANGE-084-skills-per-tenant-quota.md`** (1-page, incl. the 2-leg drive-through)
+- [x] (NO design note — feature continuation of the 57.114 catalog + the 57.109 env-knob + the typed-error patterns; sprint-workflow §5.5 → design note is spike-only)
 
 ### 4.2 Closeout
-- [ ] retrospective.md Q1-Q7 + calibration (`config-validation-hardening` 0.55 1st data point; ratio + KEEP/re-point note) + progress.md final
-- [ ] Navigators: CLAUDE.md Current-Sprint row + Last-Updated (minimal touch); MEMORY.md quality pointer + memory subfile `project_phase57_117_skills_per_tenant_quota.md`; next-phase-candidates — `AD-Skills-Per-Tenant-Quota` CLOSED + 57.117 carryover block (+ `AD-Config-Cache-MultiWorker-Invalidation` NEW + per-tenant-configurable-quota deferred) + remaining Skills ADs (118 bundled-scripts / 119 authoring-UI / 120 inspector-metadata / 121 slash-menu-mockup) carried; sprint-workflow matrix `config-validation-hardening` 0.55 1st-point add; 17.md — N/A (no new contract)
-- [ ] **Anti-pattern self-check** (retro Q5/Q7): AP-4 (drive-through proves the guardrails block — Add disabled from the server limit, real 409/422) · AP-2 (quota → create guard → endpoint map; size → request → 422; main flow) · AP-3 (quota/size in platform_layer.skills + api admin; FE in tenant-settings) · AP-6 (no speculative per-tenant-config / no multi-worker cache build) — target 0 violations
-- [ ] PR (push + open on user authorization); CI → merge on green
+- [x] retrospective.md Q1-Q7 + calibration (`config-validation-hardening` 0.55 1st data point; ratio ~0.95-1.0 IN band → KEEP) + progress.md final
+- [x] Final gate sweep: mypy 0/370 · run_all 10/10 (count 24) · full pytest **2630 passed, 5 skipped** (+7, 0 del) vs 2623 · Vitest 873 (+4) · mockup 51 holds
+- [x] Navigators: CLAUDE.md Current-Sprint row + Last-Updated (minimal touch); MEMORY.md quality pointer + memory subfile `project_phase57_117_skills_per_tenant_quota.md`; next-phase-candidates — `AD-Skills-Per-Tenant-Quota` CLOSED + 57.117 carryover block (+ `AD-Config-Cache-MultiWorker-Invalidation` NEW + per-tenant-configurable-quota deferred) + remaining Skills ADs (118 bundled-scripts / 119 authoring-UI / 120 inspector-metadata / 121 slash-menu-mockup) carried; sprint-workflow matrix `config-validation-hardening` 0.55 1st-point add; 17.md — N/A (no new contract)
+- [x] **Anti-pattern self-check** (retro Q5/Q7): AP-4 (drive-through proves the guardrails block — Add disabled from the server limit, real 409/422) · AP-2 (quota → create guard → endpoint map; size → request → 422; main flow) · AP-3 (quota/size in platform_layer.skills + api admin; FE in tenant-settings) · AP-6 (no speculative per-tenant-config / no multi-worker cache build) — **0 violations**
+- [ ] PR (push + open on user authorization); CI → merge on green (gh-verified)

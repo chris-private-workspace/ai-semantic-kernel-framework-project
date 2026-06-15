@@ -82,4 +82,14 @@
 
 **Cleanup**: deleted the drive-through `deploy-notes` skill (204) → acme-skills restored to 1 skill (release-notes). (Backend `bb4gef2bk` still runs with the low cap — to be restarted to defaults at closeout.)
 
-## Day 4 — (pending)
+## Day 4 — CHANGE-084 + closeout (NO design note — feature continuation) — 2026-06-15
+
+**CHANGE-084** (`claudedocs/4-changes/feature-changes/CHANGE-084-skills-per-tenant-quota.md`): NEW — Problem (57.114 unbounded write surface) / Root Cause / Solution (env constants + count guard + Pydantic `max_length` + list-response limits + FE surface) / Verification (gates + the 2-leg drive-through) / Impact. NO design note (feature continuation of the 57.114 catalog + the 57.109 env-knob + the typed-error patterns — sprint-workflow §5.5: design note is spike-only).
+
+**Final gate sweep** (closeout, after FE): mypy `src` **0/370** · `python scripts/lint/run_all.py` **10/10** (count 24, no codegen change) · full `pytest` **2630 passed, 5 skipped** (+7, 0 del) vs 2623 · FE Vitest **873 (+4)** vs 869 · mockup-fidelity **51** holds · `loop.py`/`events.py`/`sse.py`/`event_wire_schema`/codegen/migration UNTOUCHED.
+
+**Retrospective** (`retrospective.md`): Q1-Q7 + calibration — **`config-validation-hardening` 0.55 NEW 1st data point**, ratio **~0.95-1.0 IN band** (clean run; the only Day-2 surprise was a *simplification* — the hook needed no change, 1 FE file lighter than the plan). KEEP 0.55 pending 2-3 sprint validation. Parent-direct `agent_factor` 1.0. Anti-pattern audit: **0 violations** (AP-2 main-flow guards / AP-4 drive-through proves the guards block + the limit is server-sourced / AP-6 global default + Pydantic max_length, no speculative per-tenant-config / multi-worker build).
+
+**Navigators**: CLAUDE.md Current-Sprint row + Last-Updated (minimal touch) · MEMORY.md quality pointer + memory subfile `project_phase57_117_skills_per_tenant_quota.md` · next-phase-candidates — `AD-Skills-Per-Tenant-Quota` CLOSED (count quota + body-size) + `AD-Config-Cache-MultiWorker-Invalidation` NEW (its 3rd ask) + per-tenant-configurable-quota carried + the remaining 4 Skills ADs (118 bundled-scripts / 119 authoring-UI / 120 inspector-metadata / 121 slash-menu-mockup) carried · sprint-workflow matrix `config-validation-hardening` 0.55 1st-point add · 17.md N/A (no new contract).
+
+**PR**: push + open on user authorization → CI → merge on green (gh-verified MERGED before main sync, per `feedback_verify_pr_merged_via_gh_not_claim`).
