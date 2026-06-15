@@ -312,10 +312,79 @@ const HITLTurn = ({ turn }) => (
   </div>
 );
 
+// ============ Slash-command skill picker ============
+// Floats above the composer when the input starts with "/". Mirrors the ⌘K
+// CommandPalette design language: panel + subtle --bg-hover active row + kbd footer.
+// Presentational — the Composer owns the filter / activeIndex / keyboard.
+const SKILLS = [
+  { name: "code-review",   desc: "Review a diff or snippet for bugs and risks" },
+  { name: "summarize",     desc: "Condense a long thread into key points" },
+  { name: "digest",        desc: "Generate a daily activity digest" },
+  { name: "release-notes", desc: "Draft release notes from merged changes" },
+  { name: "rca-writeup",   desc: "Structure a root-cause analysis document" },
+];
+
+const SkillMenu = ({ skills, activeIndex, onSelect, onHover }) => (
+  <div className="skill-menu" role="listbox" aria-label="Skills">
+    <div className="skill-menu-list">
+      {skills.length === 0 ? (
+        <div className="skill-menu-empty">No matching skills</div>
+      ) : (
+        <>
+          <div className="skill-menu-group">Skills</div>
+          {skills.map((s, i) => (
+            <div
+              key={s.name}
+              role="option"
+              aria-selected={i === activeIndex}
+              className={"skill-menu-item" + (i === activeIndex ? " active" : "")}
+              onMouseEnter={() => onHover(i)}
+              // onMouseDown (not onClick) fires before the textarea blur — select
+              // without first losing composer focus.
+              onMouseDown={(e) => { e.preventDefault(); onSelect(s.name); }}
+            >
+              <span className="skill-menu-name">/{s.name}</span>
+              <span className="skill-menu-desc">{s.desc}</span>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+    {skills.length > 0 && (
+      <div className="skill-menu-foot">
+        <span><span className="kbd">↑↓</span> navigate</span>
+        <span><span className="kbd">↵</span> select</span>
+        <span><span className="kbd">ESC</span> close</span>
+        <span className="grow" />
+        <span>{skills.length} skill{skills.length === 1 ? "" : "s"}</span>
+      </div>
+    )}
+  </div>
+);
+
 // ============ Composer ============
 const Composer = () => {
   const [attachments, setAttachments] = useCs([]);
+  // Sprint 57.121: a controlled input drives the slash-command skill menu.
+  // Default "/" showcases the picker open in the prototype; clear it to type normally.
+  const [text, setText] = useCs("/");
+  const [activeIdx, setActiveIdx] = useCs(0);
+  const [escaped, setEscaped] = useCs(false); // ESC dismisses until the query changes
   const fileRef = useRcs(null);
+  // Slash parse: the menu opens while the input is a single leading "/token" (bare
+  // "/" or "/par", no space yet). A space (skill chosen) or ESC closes it.
+  const slashMatch = /^\/(\S*)$/.exec(text);
+  const query = slashMatch && !escaped ? slashMatch[1].toLowerCase() : null;
+  const menuOpen = query !== null;
+  const filtered = menuOpen ? SKILLS.filter(s => s.name.toLowerCase().includes(query)) : [];
+  const pickSkill = (name) => { setText(`/${name} `); setActiveIdx(0); setEscaped(false); };
+  const onSlashKey = (e) => {
+    if (!menuOpen || filtered.length === 0) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); setActiveIdx(i => Math.min(filtered.length - 1, i + 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIdx(i => Math.max(0, i - 1)); }
+    else if (e.key === "Enter") { e.preventDefault(); pickSkill(filtered[activeIdx].name); }
+    else if (e.key === "Escape") { e.preventDefault(); setEscaped(true); }
+  };
   const onPick = (e) => {
     const files = [...(e.target.files || [])];
     setAttachments(a => [...a, ...files.map(f => ({ name: f.name, size: f.size, kind: f.type.startsWith("image/") ? "image" : f.type.includes("pdf") ? "pdf" : f.type.includes("text") ? "text" : "file" }))]);
@@ -343,10 +412,21 @@ const Composer = () => {
             ))}
           </div>
         )}
+        {menuOpen && (
+          <SkillMenu
+            skills={filtered}
+            activeIndex={activeIdx}
+            onSelect={pickSkill}
+            onHover={setActiveIdx}
+          />
+        )}
         <textarea
           className="composer-input"
           rows="2"
-          placeholder={attachments.length ? "Add context or send…" : "Ask the agent — drag files in, paste images, or type. For example, “Investigate INC-4087 and propose an action plan”"}
+          value={text}
+          onChange={(e) => { setText(e.target.value); setActiveIdx(0); setEscaped(false); }}
+          onKeyDown={onSlashKey}
+          placeholder={attachments.length ? "Add context or send…" : "Ask the agent — type “/” for skills, drag files in, or describe a task…"}
         />
         <div className="composer-tools">
           <input ref={fileRef} type="file" multiple accept="image/*,.pdf,.txt,.md,.json,.yaml,.log,.csv" style={{ display: "none" }} onChange={onPick} />

@@ -9,6 +9,7 @@
  * select on click, and shows an empty-state row.
  *
  * Modification History:
+ *   - 2026-06-15: Sprint 57.121 — +group header / kbd footer / empty-no-footer / active-class (mockup re-point)
  *   - 2026-06-14: Initial creation (Sprint 57.115)
  */
 
@@ -58,5 +59,30 @@ describe("SkillSlashMenu (Sprint 57.115)", () => {
   it("renders an empty-state row when no skills match", () => {
     render(<SkillSlashMenu skills={[]} activeIndex={0} onSelect={vi.fn()} onHover={vi.fn()} />);
     expect(screen.getByTestId("skill-slash-empty")).toBeInTheDocument();
+  });
+
+  // Sprint 57.121: the mockup re-point added a "Skills" group header + a kbd footer.
+  it("renders the 'Skills' group header when skills are present", () => {
+    render(<SkillSlashMenu skills={SKILLS} activeIndex={0} onSelect={vi.fn()} onHover={vi.fn()} />);
+    expect(screen.getByText("Skills")).toBeInTheDocument();
+  });
+
+  it("renders the kbd footer with the skill count + keyboard hints", () => {
+    render(<SkillSlashMenu skills={SKILLS} activeIndex={0} onSelect={vi.fn()} onHover={vi.fn()} />);
+    expect(screen.getByText("2 skills")).toBeInTheDocument();
+    expect(screen.getByText(/navigate/)).toBeInTheDocument();
+    expect(screen.getByText(/select/)).toBeInTheDocument();
+    expect(screen.getByText(/close/)).toBeInTheDocument();
+  });
+
+  it("omits the footer on the empty state", () => {
+    render(<SkillSlashMenu skills={[]} activeIndex={0} onSelect={vi.fn()} onHover={vi.fn()} />);
+    expect(screen.queryByText(/navigate/)).not.toBeInTheDocument();
+  });
+
+  it("gives the activeIndex row the 'active' class", () => {
+    render(<SkillSlashMenu skills={SKILLS} activeIndex={1} onSelect={vi.fn()} onHover={vi.fn()} />);
+    expect(screen.getByTestId("skill-slash-item-release-notes")).toHaveClass("active");
+    expect(screen.getByTestId("skill-slash-item-code-review")).not.toHaveClass("active");
   });
 });

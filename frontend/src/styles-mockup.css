@@ -922,6 +922,8 @@ code, pre, .mono { font-family: var(--font-mono); }
   padding: 12px 24px;
 }
 .composer-inner {
+  /* anchor for the absolutely-positioned slash-command skill menu (.skill-menu) */
+  position: relative;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-2);
@@ -935,6 +937,51 @@ code, pre, .mono { font-family: var(--font-mono); }
 }
 .composer-input::placeholder { color: var(--fg-subtle); }
 .composer-tools { display: flex; align-items: center; gap: 6px; }
+
+/* Slash-command skill picker — floats above the composer when the input starts with "/".
+   Mirrors the ⌘K CommandPalette design language: panel + subtle --bg-hover active row + kbd footer. */
+.skill-menu {
+  position: absolute;
+  bottom: 100%; left: 0; right: 0;
+  margin-bottom: 6px;
+  max-height: 280px;
+  display: flex; flex-direction: column;
+  background: var(--bg-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  z-index: 30;
+}
+.skill-menu-list { overflow-y: auto; padding: 4px; }
+.skill-menu-group {
+  padding: 8px 12px 4px;
+  font-size: 10px; color: var(--fg-subtle);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  font-family: var(--font-mono);
+}
+.skill-menu-item {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.skill-menu-item.active { background: var(--bg-hover); }
+.skill-menu-name {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 500; color: var(--fg);
+}
+.skill-menu-desc { font-size: 11px; color: var(--fg-muted); }
+.skill-menu-empty {
+  padding: 18px 12px; text-align: center;
+  font-size: 12.5px; color: var(--fg-subtle);
+}
+.skill-menu-foot {
+  display: flex; gap: 14px; align-items: center;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+  font-size: 10.5px; color: var(--fg-subtle);
+  font-family: var(--font-mono);
+}
 
 /* ============== Loop Visualizer (loop-debug) ============== */
 .loop-canvas {
