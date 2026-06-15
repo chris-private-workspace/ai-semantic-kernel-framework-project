@@ -22,9 +22,10 @@ Lifecycle:
     each domain's mock_executor.py gets swapped.
 
 Created: 2026-04-30 (Sprint 51.0 Day 3)
-Last Modified: 2026-06-11
+Last Modified: 2026-06-15
 
 Modification History:
+    - 2026-06-15: Sprint 57.118 — opt-in skill_registry also registers run_skill_script (exec)
     - 2026-06-13: Sprint 57.113 — opt-in skill_registry (registers read_skill lazy-load tool)
     - 2026-06-12: Sprint 57.107 (B3) — opt-in handoff_targets (registers spec-only handoff)
     - 2026-06-11: Sprint 57.102 (B2a) — opt-in teammate_mailbox (registers send_to_parent)
@@ -45,7 +46,12 @@ from uuid import UUID
 
 from agent_harness._contracts import AgentSpec, SubagentFailurePolicy, ToolCall
 from agent_harness.observability import Tracer
-from agent_harness.skills import READ_SKILL_TOOL_SPEC, make_read_skill_handler
+from agent_harness.skills import (
+    READ_SKILL_TOOL_SPEC,
+    RUN_SKILL_SCRIPT_TOOL_SPEC,
+    make_read_skill_handler,
+    make_run_skill_script_handler,
+)
 from agent_harness.subagent import (
     make_handoff_spec,
     make_send_to_parent_tool,
@@ -292,9 +298,16 @@ def make_default_executor(
     # instructions on demand (the system prompt advertises them cheaply via
     # render_catalog_block). The chat path's registry-derived permission matrix
     # auto-grants a PASS rule (handler.py builds rules from registry.list()).
+    #
+    # Sprint 57.118: run_skill_script runs a system-bundled skill's SERVER-controlled
+    # executable script (Skill.script) via the existing SandboxBackend. The handler
+    # resolves default_sandbox() lazily (process-wide singleton in skills/tool.py) so
+    # this per-request build does not probe Docker. Same risk-blind matrix → auto-PASS.
     if skill_registry is not None:
         registry.register(READ_SKILL_TOOL_SPEC)
         handlers["read_skill"] = make_read_skill_handler(skill_registry)
+        registry.register(RUN_SKILL_SCRIPT_TOOL_SPEC)
+        handlers["run_skill_script"] = make_run_skill_script_handler(skill_registry)
 
     # Cat 11 (A-3a) subagent tools — FORK/TEAMMATE via task_spawn + one AS_TOOL
     # wrapper. HANDOFF is loop-intercepted (spec-only tool above; Sprint 57.107).

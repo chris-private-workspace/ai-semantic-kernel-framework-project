@@ -1,8 +1,8 @@
 """
 File: backend/tests/integration/api/test_skills_wiring.py
-Purpose: Integration tests for Sprint 57.113 Skills wiring (executor + prompt block + read_skill).
+Purpose: Integration tests for Skills wiring (executor + prompt + read_skill / run_skill_script).
 Category: Tests / integration / api
-Scope: Phase 57 / Sprint 57.113
+Scope: Phase 57 / Sprint 57.113 (read_skill) + 57.118 (run_skill_script)
 
 Description:
     Azure-call-free (the 57.64 keystone pattern): monkeypatch fake AZURE_OPENAI_*
@@ -11,19 +11,29 @@ Description:
     run() so the SSE flow is scripted.
 
     - Executor opt-in: make_default_executor(skill_registry=reg) registers read_skill
-      (in registry.list()); without a registry it is absent (AP-2/AP-4 negative guard).
+      + run_skill_script (in registry.list()); without a registry both are absent
+      (AP-2/AP-4 negative guard).
     - read_skill executes through the real ToolExecutorImpl returning the framed
       instructions.
+    - run_skill_script (57.118) runs the bundled 'digest' skill's script in a REAL
+      SubprocessSandbox and returns the computed sha256 (provably script-produced).
     - build_handler(skill_registry=reg) appends the catalog block to the loop's
       system prompt; build_handler(no registry) leaves it byte-identical (regression).
     - A scripted read_skill tool call ToolCallExecuted carries the skill instructions
       on the live chat SSE flow (the model-invoked lazy-load, end-to-end).
 
 Created: 2026-06-13 (Sprint 57.113)
+Last Modified: 2026-06-15
+
+Modification History (newest-first):
+    - 2026-06-15: Sprint 57.118 — run_skill_script registration + real-sandbox demo-script run
+    - 2026-06-13: Initial creation (Sprint 57.113)
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
 from uuid import uuid4
 
 import pytest
@@ -37,6 +47,8 @@ from agent_harness._contracts import (
 )
 from agent_harness._contracts.events import ToolCallExecuted
 from agent_harness.skills.registry import Skill, SkillRegistry, get_default_skill_registry
+from agent_harness.skills.tool import make_run_skill_script_handler
+from agent_harness.tools.sandbox import SubprocessSandbox
 from api.v1.chat.handler import DEMO_SYSTEM_PROMPT, build_handler
 from business_domain._register_all import make_default_executor
 
@@ -112,6 +124,19 @@ def test_make_default_executor_no_read_skill_without_registry() -> None:
     assert registry.get("read_skill") is None
 
 
+def test_make_default_executor_registers_run_skill_script_when_given() -> None:
+    # Sprint 57.118: the skill_registry opt-in also registers run_skill_script.
+    registry, _executor = make_default_executor(skill_registry=_small_registry())
+    assert registry.get("run_skill_script") is not None
+    assert any(s.name == "run_skill_script" for s in registry.list())
+
+
+def test_make_default_executor_no_run_skill_script_without_registry() -> None:
+    # AP-2/AP-4 negative guard: run_skill_script is present ONLY when a registry is wired.
+    registry, _executor = make_default_executor()
+    assert registry.get("run_skill_script") is None
+
+
 @pytest.mark.asyncio
 async def test_read_skill_executes_through_executor() -> None:
     _registry, executor = make_default_executor(skill_registry=_small_registry())
@@ -121,6 +146,26 @@ async def test_read_skill_executes_through_executor() -> None:
     assert res.success is True
     assert "# Skill: code-review" in res.content
     assert "Do the review." in res.content
+
+
+@pytest.mark.asyncio
+async def test_run_skill_script_runs_bundled_digest_in_real_sandbox() -> None:
+    """The bundled 'digest' skill's script runs in a REAL SubprocessSandbox and returns
+    the computed sha256 — a value the model cannot fabricate (the execution proof).
+
+    An explicit SubprocessSandbox is injected (runs on Windows + Docker-less CI,
+    deterministic) rather than the lazy default_sandbox() process-wide singleton.
+    """
+    handler = make_run_skill_script_handler(
+        get_default_skill_registry(), sandbox=SubprocessSandbox()
+    )
+    out = await handler(
+        ToolCall(id="d", name="run_skill_script", arguments={"skill_name": "digest"})
+    )
+    payload = json.loads(out)
+    expected = hashlib.sha256(b"agent-harness-bundled-skill").hexdigest()
+    assert payload["exit_code"] == 0
+    assert payload["stdout"].strip() == expected  # provably script-produced
 
 
 # ============================================================
