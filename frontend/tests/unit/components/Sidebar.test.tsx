@@ -5,18 +5,20 @@
  * Scope: Phase 57 / Sprint 57.8 US-1.2 Day 1
  *
  * Created: 2026-05-10 (Sprint 57.8 Day 1)
- * Last Modified: 2026-05-10
+ * Last Modified: 2026-06-15
  *
  * Modification History:
+ *   - 2026-06-15: Sprint 57.123 — tenant pill renders real authStore.tenant (not FIXTURE_TENANT)
  *   - 2026-05-16: Sprint 57.18 — 3 → 6 categories per routes.config 6-category refactor (US-C1)
  *   - 2026-05-10: Initial creation (Sprint 57.8 US-1.2 — Sidebar Vitest)
  */
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { Sidebar } from "@/components/Sidebar";
+import { useAuthStore } from "@/features/auth/store/authStore";
 import { useUIStore } from "@/store/uiStore";
 
 const renderWithRoute = (initialPath = "/cost-dashboard") =>
@@ -30,6 +32,25 @@ describe("Sidebar", () => {
   beforeEach(() => {
     useUIStore.setState({ sidebarCollapsed: false });
     localStorage.removeItem("ipa-ui-state");
+  });
+
+  afterEach(() => {
+    useAuthStore.setState({ status: "unknown", user: null, tenant: null, roles: [] });
+  });
+
+  test("tenant pill renders the real authStore tenant (name + `code · Plan` meta), not a fixture", () => {
+    useAuthStore.setState({
+      status: "authenticated",
+      user: { id: "u-1", email: "dan@acme.com", display_name: "Dan" },
+      tenant: { id: "t-1", name: "Globex EU", code: "globex-eu", plan: "enterprise", region: "eu-west-1" },
+      roles: ["admin"],
+    });
+    renderWithRoute();
+    expect(screen.getByText("Globex EU")).toBeInTheDocument();
+    expect(screen.getByText("globex-eu · Enterprise")).toBeInTheDocument();
+    // The hardcoded FIXTURE_TENANT is gone.
+    expect(screen.queryByText("acme-prod")).toBeNull();
+    expect(screen.queryByText(/tenant_01h9a2/)).toBeNull();
   });
 
   test("renders 6 category headers (Operations / Business / Governance / Observability / Resources / Admin) when expanded", () => {

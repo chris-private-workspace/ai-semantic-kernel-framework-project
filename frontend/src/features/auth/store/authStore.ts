@@ -16,9 +16,10 @@
  *   selective subscriptions keep those re-renders cheap.
  *
  * Created: 2026-05-10 (Sprint 57.13 US-A1)
- * Last Modified: 2026-05-10
+ * Last Modified: 2026-06-15
  *
  * Modification History:
+ *   - 2026-06-15: Sprint 57.123 — AuthTenant += plan + region (real /auth/me fields)
  *   - 2026-05-10: Initial creation (Sprint 57.13 US-A1)
  *
  * Related:
@@ -42,6 +43,10 @@ export interface AuthTenant {
   id: string;
   name: string;
   code: string;
+  /** Sprint 57.123: real Tenant display fields from /auth/me — replaces the
+   *  hardcoded chrome fixtures (sidebar meta plan badge + UserMenu region). */
+  plan: string;
+  region: string;
 }
 
 /** Mirrors backend AuthMeResponse (api/v1/auth.py). */

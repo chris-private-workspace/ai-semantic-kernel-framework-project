@@ -61,6 +61,7 @@
     "signOut": "Sign out",
     "language": "Language",
     "switchTenant": "Switch tenant",
+    "currentTenant": "Current tenant",
     "profile": "Profile",
     "mfa": "MFA settings",
     "preferences": "Preferences",

@@ -27,9 +27,10 @@
  *   headerActions prop: rendered between spacer and ⌘K (backward compat).
  *
  * Created: 2026-05-17 (Sprint 57.20 Day 1 US-B1)
- * Last Modified: 2026-05-23
+ * Last Modified: 2026-06-15
  *
  * Modification History:
+ *   - 2026-06-15: Sprint 57.123 — tenant pill reads authStore.tenant.name (drop "acme-prod" fixture)
  *   - 2026-05-23: Sprint 57.30 US-B3 — topbar icon size audit close 0 drift (D3 Day-0)
  *   - 2026-05-22: Sprint 57.29 US-B4 — verbatim re-point to mockup .topbar/.cmdk classes (drop Tailwind translation)
  *   - 2026-05-17: Initial creation (Sprint 57.20 Day 1) — mockup shell.jsx port
@@ -112,14 +113,15 @@ export const Topbar: FC<TopbarProps> = ({
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const roles = useAuthStore((s) => s.roles);
+  const tenant = useAuthStore((s) => s.tenant);
 
   const matchedRoute = ROUTES.find((r) => r.path === location.pathname);
   const derivedTitle = matchedRoute ? t(matchedRoute.nameKey, matchedRoute.name) : "";
   const title = pageTitle ?? derivedTitle;
   const pathPill = location.pathname;
 
-  // Tenant pill: fixture name + first role; AD-UserMenu-Tenant-Switch Sprint 57.21+ wires real tenant API
-  const tenantName = "acme-prod";
+  // Sprint 57.123: real tenant name (authStore) + first role; "—" fallback pre-bootstrap.
+  const tenantName = tenant?.name ?? "—";
   const roleLabel = roles[0] ?? "operator";
 
   const currentLng = i18n.resolvedLanguage ?? i18n.language;

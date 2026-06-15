@@ -31,7 +31,7 @@ Sprint 57.122 closed the flagship 載重 gap (`AD-HITL-Policy-ReadSide-Potemkin-
 - **`AD-HITL-Policy-Threshold-Validation`** (🆕) — the admin PUT should validate `auto_approve_max_risk < require_approval_min_risk`. The runtime is safe via escalate-first ordering, but a misconfigured overlap silently means "escalate". Own slice.
 - **`AD-DriveThrough-Deterministic-Tool-Trigger`** (🆕, process) — a drive-through needing a tool call should use a tool the LLM cannot self-answer (`python_sandbox` / data retrieval), NOT a trivial transform (`echo_tool` — gpt-5.2 answered it directly in 4/5 sessions = `0 tool calls`). Candidate for the drive-through playbook.
 - **`PermissionChecker` (Sprint 51.1) + `ToolSpec.hitl_policy`** are a PARALLEL HITL abstraction NOT wired into the loop (the live path is `guardrail_engine.check_tool_call` → `ToolGuardrail`) — a possible separate Potemkin to audit (NOT this slice).
-- Remaining C-class 主流量 Potemkin: **`AD-FE-Tenant-Display-Fixture-Phase58`** (sidebar tenant-switcher + header render fixture "acme-prod tenant_01h9a2 · Pro" regardless of the real logged-in tenant) + the 2026-06-06/07 operator-portal drive-through audit backlog.
+- Remaining C-class 主流量 Potemkin: ~~**`AD-FE-Tenant-Display-Fixture-Phase58`**~~ ✅ **SHIPPED Sprint 57.123** (chrome reads `authStore.tenant`; `/auth/me` += plan/region; UserMenu 3→1 collapse; CHANGE-090) + the 2026-06-06/07 operator-portal drive-through audit backlog.
 
 ---
 
@@ -215,7 +215,7 @@ Sprint 57.106 closed proposal §3.4 C3 (CHANGE-073 + design note 28). Per the 20
 
 Sprint 57.105 closed `AD-RBAC-DB-To-JWT-Wiring-Phase58` (see roadmap block above + CHANGE-072 + note 23 §5 RESOLVED). Per the 2026-06-12 interleave decision (RBAC → C3 → B3 → UX → C2 → B4, 1 UX slice per 2-3 harness slices), **next slice: C3** (per-tenant policy 面 + risky-action detector).
 
-- **`AD-FE-Tenant-Display-Fixture-Phase58`** (🆕 from the 57.105 drive-through) — the sidebar tenant-switcher + header tenant label render fixture **"acme-prod tenant_01h9a2 · Pro"** regardless of the real logged-in tenant (the 57.105 drive-through logged into `dt57105-rbac`; the Tenant Settings page itself showed the REAL tenant). FE tenant-display sourcing (authStore tenant → AppShell) is a scoped wiring task; pre-existing, NOT a 57.105 regression.
+- ~~**`AD-FE-Tenant-Display-Fixture-Phase58`**~~ ✅ **SHIPPED Sprint 57.123** (CHANGE-090) — the sidebar tenant-switcher + topbar tenant pill + UserMenu 3-tenant switcher rendered fixture **"acme-prod tenant_01h9a2 · Pro"** regardless of the real logged-in tenant. Fixed: `/auth/me` `AuthMeTenant` += plan + region (real `Tenant` cols, ALL 3 build sites) → FE `AuthTenant` auto-threads → the 3 components read `authStore.tenant`; the UserMenu collapses 3→1 to the single real current tenant. Drive-through PASS (chrome FOLLOWS session across 2 real logins). Residual (low-priority): the dev-login picker labels (dev-only tool, not 主流量) + the sidebar chevron/"Switch tenant" tooltip (mockup-fidelity) + `FIXTURE_UNREAD_COUNT` (separate non-tenant chrome fixture).
 - **`AD-Register-OIDC-User-Linkage-Phase58`** — still open (register-by-email vs callback-upsert-by-external_id second-user-row risk; why the 57.105 drive-through spine is password-login).
 - dev-login `_DEV_LOGIN_ROLES` hardcode — dev-only debt (prod 404), documented in CHANGE-072; folds into the OIDC-linkage slice when picked.
 - Claim staleness until re-login — **documented invariant** (no token refresh by design — AP-6 avoidance), not an open item.

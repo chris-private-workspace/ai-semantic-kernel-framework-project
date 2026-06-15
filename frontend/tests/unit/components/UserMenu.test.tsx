@@ -5,9 +5,10 @@
  * Scope: Phase 57 / Sprint 57.8 US-2 → Sprint 57.13 US-A1 (authStore) → Sprint 57.13 US-B3 (Radix)
  *
  * Created: 2026-05-10 (Sprint 57.8 Day 2)
- * Last Modified: 2026-05-10
+ * Last Modified: 2026-06-15
  *
  * Modification History:
+ *   - 2026-06-15: Sprint 57.123 — current-tenant test (single real tenant; no globex-eu/initech-jp fixtures)
  *   - 2026-05-10: Sprint 57.13 US-B5 — locale switcher test (both locales + persist + changeLanguage)
  *   - 2026-05-10: Sprint 57.13 US-B3 — Radix DropdownMenu (userEvent instead of fireEvent; role badge assertion)
  *   - 2026-05-10: Sprint 57.13 US-A1 — drive from authStore.user instead of a localStorage JWT; sign out → logout()
@@ -37,7 +38,7 @@ function setAuthed(
   useAuthStore.setState({
     status: "authenticated",
     user,
-    tenant: { id: "t-1", name: "Acme", code: "ACME" },
+    tenant: { id: "t-1", name: "Acme", code: "ACME", plan: "enterprise", region: "ap-east-1" },
     roles,
   });
 }
@@ -102,6 +103,25 @@ describe("UserMenu", () => {
     expect(screen.getByText("admin")).toBeInTheDocument(); // role badge
     expect(screen.getByRole("menuitem", { name: /Sign out/ })).toBeInTheDocument();
     expect(button).toHaveAttribute("aria-expanded", "true");
+  });
+
+  test("shows the single real current tenant (name + region), not the 3-tenant fixture", async () => {
+    const user = userEvent.setup();
+    setAuthed({ id: "u-1", email: "dan@acme.com", display_name: "Dan" }, ["admin"]);
+    renderMenu();
+    await user.click(screen.getByRole("button", { name: "User menu" }));
+
+    // The "Current tenant" section (relabelled from "Switch tenant") shows the
+    // real authStore tenant — name + region from /auth/me.
+    expect(screen.getByText("Current tenant")).toBeInTheDocument();
+    const tenantRow = screen.getByTestId("usermenu-current-tenant");
+    expect(tenantRow).toHaveTextContent("Acme");
+    expect(tenantRow).toHaveTextContent("ap-east-1");
+    expect(tenantRow).toHaveAttribute("aria-current", "true");
+
+    // The old 3-tenant fixtures are gone.
+    expect(screen.queryByText("globex-eu")).toBeNull();
+    expect(screen.queryByText("initech-jp")).toBeNull();
   });
 
   test("clicking Sign out calls logout() and closes the menu", async () => {

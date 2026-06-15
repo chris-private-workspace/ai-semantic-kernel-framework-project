@@ -5,6 +5,7 @@
  * Scope: Phase 57 / Sprint 57.13 US-A1
  *
  * Created: 2026-05-10 (Sprint 57.13 Day 1)
+ * Last Modified: 2026-06-15 (Sprint 57.123 — /auth/me payload carries tenant.plan + tenant.region)
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -13,7 +14,14 @@ import { useAuthStore } from "../../../src/features/auth/store/authStore";
 
 const ME_PAYLOAD = {
   user: { id: "00000000-0000-0000-0000-0000000000a1", email: "alice@acme.test", display_name: "Alice" },
-  tenant: { id: "00000000-0000-0000-0000-0000000000b1", name: "Acme Corp", code: "ACME" },
+  // Sprint 57.123: /auth/me now returns plan + region (real Tenant cols).
+  tenant: {
+    id: "00000000-0000-0000-0000-0000000000b1",
+    name: "Acme Corp",
+    code: "ACME",
+    plan: "enterprise",
+    region: "ap-east-1",
+  },
   roles: ["user", "admin"],
 };
 
@@ -49,6 +57,9 @@ describe("authStore", () => {
     expect(s.status).toBe("authenticated");
     expect(s.user).toEqual(ME_PAYLOAD.user);
     expect(s.tenant).toEqual(ME_PAYLOAD.tenant);
+    // Sprint 57.123: plan + region flow through to the store (chrome consumers).
+    expect(s.tenant?.plan).toBe("enterprise");
+    expect(s.tenant?.region).toBe("ap-east-1");
     expect(s.roles).toEqual(["user", "admin"]);
     // verifies it hit /auth/me with credentials included
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];

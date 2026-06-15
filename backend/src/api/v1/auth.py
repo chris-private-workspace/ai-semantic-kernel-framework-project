@@ -34,9 +34,10 @@ Description:
     real tenants.id (no more placeholder UUIDs).
 
 Created: 2026-05-09 (Sprint 57.7 Day 1 PM)
-Last Modified: 2026-06-12
+Last Modified: 2026-06-15
 
 Modification History (newest-first):
+    - 2026-06-15: Sprint 57.123 — AuthMeTenant += plan + region at all 3 build sites
     - 2026-06-12: Sprint 57.105 — callback + password-login roles claim DB-sourced at issue time
     - 2026-06-06: Sprint 57.86 — add POST /auth/password-login (local credentials; generic 401)
     - 2026-05-10: Sprint 57.13 US-A4 — add POST /auth/dev-login (dev-only fake login; 404 in prod)
@@ -68,7 +69,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_settings
 from infrastructure.db.audit_helper import append_audit
-from infrastructure.db.models.identity import Tenant, User
+from infrastructure.db.models.identity import Tenant, TenantPlan, User
 from infrastructure.db.session import get_db_session
 from platform_layer.identity.credentials import (
     CredentialsError,
@@ -135,6 +136,10 @@ class AuthMeTenant(BaseModel):
     id: PyUUID
     name: str
     code: str
+    # Sprint 57.123: real Tenant display fields for the app chrome (sidebar meta
+    # plan badge + UserMenu region row), replacing the hardcoded FIXTURE_TENANT.
+    plan: str
+    region: str
 
 
 class AuthMeResponse(BaseModel):
@@ -381,7 +386,13 @@ async def me(
 
     return AuthMeResponse(
         user=AuthMeUser(id=user.id, email=user.email, display_name=user.display_name),
-        tenant=AuthMeTenant(id=tenant.id, name=tenant.display_name, code=tenant.code),
+        tenant=AuthMeTenant(
+            id=tenant.id,
+            name=tenant.display_name,
+            code=tenant.code,
+            plan=tenant.plan.value,
+            region=tenant.region,
+        ),
         roles=roles,
     )
 
@@ -418,7 +429,16 @@ async def dev_login(
         await db.execute(select(Tenant).where(Tenant.code == tenant_code))
     ).scalar_one_or_none()
     if tenant is None:
-        tenant = Tenant(code=tenant_code, display_name=f"Dev Tenant ({tenant_code})")
+        # Sprint 57.123: set plan/region explicitly (the cols use server_default,
+        # so a freshly-constructed object has no Python-side value — accessing
+        # `.plan` before a DB round-trip would risk an async lazy-load when the
+        # /auth/me-style AuthMeTenant below reads it).
+        tenant = Tenant(
+            code=tenant_code,
+            display_name=f"Dev Tenant ({tenant_code})",
+            plan=TenantPlan.ENTERPRISE,
+            region="global",
+        )
         db.add(tenant)
         await db.flush()
 
@@ -447,7 +467,13 @@ async def dev_login(
     )
     body = AuthMeResponse(
         user=AuthMeUser(id=user.id, email=user.email, display_name=user.display_name),
-        tenant=AuthMeTenant(id=tenant.id, name=tenant.display_name, code=tenant.code),
+        tenant=AuthMeTenant(
+            id=tenant.id,
+            name=tenant.display_name,
+            code=tenant.code,
+            plan=tenant.plan.value,
+            region=tenant.region,
+        ),
         roles=list(_DEV_LOGIN_ROLES),
     ).model_dump(mode="json")
     response = JSONResponse(content=body)
@@ -508,7 +534,13 @@ async def issue_session(
     )
     body_out = AuthMeResponse(
         user=AuthMeUser(id=user.id, email=user.email, display_name=user.display_name),
-        tenant=AuthMeTenant(id=tenant.id, name=tenant.display_name, code=tenant.code),
+        tenant=AuthMeTenant(
+            id=tenant.id,
+            name=tenant.display_name,
+            code=tenant.code,
+            plan=tenant.plan.value,
+            region=tenant.region,
+        ),
         roles=roles,
     ).model_dump(mode="json")
     response = JSONResponse(content=body_out)

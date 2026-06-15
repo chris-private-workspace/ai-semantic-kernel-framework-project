@@ -25,9 +25,10 @@
  *   simplicity-first; extract when a 2nd consumer arrives (Sprint 57.31+).
  *
  * Created: 2026-05-10 (Sprint 57.8 Day 2)
- * Last Modified: 2026-05-23
+ * Last Modified: 2026-06-15
  *
  * Modification History (newest-first):
+ *   - 2026-06-15: Sprint 57.123 — collapse TENANT_FIXTURES → single real authStore.tenant + region
  *   - 2026-05-23: Sprint 57.30 US-B1+B2 — drop Radix DropdownMenu, port useDismiss verbatim (closes AD-UserMenu-Mockup-Structural-Deltas)
  *   - 2026-05-22: Sprint 57.29 US-B5 — verbatim re-point to mockup topbar-overlays.jsx UserMenu markup
  *   - 2026-05-17: Sprint 57.19 US-D3 — mockup port (tenant switch fixtures + nav items + role/region + theme toggle)
@@ -138,13 +139,6 @@ const itemRowStyle: CSSProperties = {
   gap: 10, padding: "7px 10px", borderRadius: 5, cursor: "pointer", fontSize: 12.5,
 };
 
-// Mockup fixture tenant list — replace with real API in Sprint 57.20+ (Cat 12 tenant feed).
-const TENANT_FIXTURES = [
-  { id: "t1", name: "acme-prod", region: "ap-east-1", active: true },
-  { id: "t2", name: "globex-eu", region: "eu-west-1", active: false },
-  { id: "t3", name: "initech-jp", region: "ap-northeast-1", active: false },
-];
-
 // Nav items (verbatim from mockup topbar-overlays.jsx lines 394-398)
 const NAV_ITEMS = [
   { icon: "user" as const,     labelKey: "userMenu.profile",     route: "/profile" },
@@ -160,6 +154,7 @@ export const UserMenu: FC = () => {
   const status = useAuthStore((s) => s.status);
   const user = useAuthStore((s) => s.user);
   const roles = useAuthStore((s) => s.roles);
+  const tenant = useAuthStore((s) => s.tenant);
 
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLButtonElement>(null);
@@ -180,8 +175,8 @@ export const UserMenu: FC = () => {
     void i18n.changeLanguage(id);
   };
 
-  // Active tenant region for the region info row
-  const activeTenant = TENANT_FIXTURES.find((tn) => tn.active);
+  // Sprint 57.123: the real current tenant (authStore) — feeds the region info row.
+  const activeTenant = tenant;
 
   // Close-and-do helper — every item closes the panel after firing its action.
   const closeAnd = (fn: () => void) => (): void => {
@@ -238,38 +233,36 @@ export const UserMenu: FC = () => {
             </div>
           </div>
 
-          {/* tenant switch section label (mockup line 364) */}
-          <div style={sectionLabelStyle}>{t("userMenu.switchTenant")}</div>
+          {/* current tenant section label (mockup line 364; Sprint 57.123 relabel —
+              single JWT-scoped tenant, no switch target → "Current tenant" not "Switch tenant") */}
+          <div style={sectionLabelStyle}>{t("userMenu.currentTenant")}</div>
 
-          {/* tenant list (mockup lines 367-389) */}
-          {TENANT_FIXTURES.map((tn) => (
+          {/* current tenant (Sprint 57.123: single real tenant from authStore — an
+              info row, NOT a switcher; the 3-tenant fixture is gone. Mockup active-row
+              visual kept; check mark = current selection) */}
+          {tenant && (
             <div
-              key={tn.id}
-              role="menuitem"
-              tabIndex={-1}
               className="row"
-              aria-current={tn.active ? "true" : undefined}
+              aria-current="true"
+              data-testid="usermenu-current-tenant"
               style={{
-                gap: 8, padding: "7px 10px", borderRadius: 5, cursor: "pointer",
-                background: tn.active ? "oklch(from var(--primary) l c h / 0.10)" : "transparent",
+                gap: 8, padding: "7px 10px", borderRadius: 5,
+                background: "oklch(from var(--primary) l c h / 0.10)",
               }}
-              onClick={closeAnd(() => { /* tenant switch wired Sprint 57.20+ */ })}
-              onKeyDown={onMenuItemKey}
             >
               <div style={{
                 width: 22, height: 22, borderRadius: 4,
-                background: tn.active ? "var(--primary)" : "var(--bg-3)",
-                color: tn.active ? "white" : "var(--fg-muted)",
+                background: "var(--primary)", color: "white",
                 fontSize: 10, fontWeight: 600,
                 display: "flex", alignItems: "center", justifyContent: "center",
-              }}>{tn.name[0].toUpperCase()}</div>
+              }}>{tenant.name.charAt(0).toUpperCase()}</div>
               <div className="col grow" style={{ gap: 1 }}>
-                <span style={{ fontSize: 12 }}>{tn.name}</span>
-                <span className="mono subtle" style={{ fontSize: 10 }}>{tn.region}</span>
+                <span style={{ fontSize: 12 }}>{tenant.name}</span>
+                <span className="mono subtle" style={{ fontSize: 10 }}>{tenant.region}</span>
               </div>
-              {tn.active && <Icon name="check" size={11} style={{ color: "var(--primary)" }} />}
+              <Icon name="check" size={11} style={{ color: "var(--primary)" }} />
             </div>
-          ))}
+          )}
 
           <div className="hr" style={{ margin: "4px 0" }} />
 

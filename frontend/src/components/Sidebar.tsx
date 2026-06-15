@@ -26,9 +26,10 @@
  *   collapse; i18n `nav.*` keys.
  *
  * Created: 2026-05-10 (Sprint 57.8 Day 1)
- * Last Modified: 2026-05-24
+ * Last Modified: 2026-06-15
  *
  * Modification History:
+ *   - 2026-06-15: Sprint 57.123 — tenant pill reads authStore.tenant (drop FIXTURE_TENANT)
  *   - 2026-05-24: FIX-009 — collapsed-state sidebar-head column-stack (toggle button no longer clipped past 56px boundary)
  *   - 2026-05-22: Sprint 57.29 US-B3 — verbatim re-point to mockup .sidebar/.nav-* classes (drop Tailwind translation)
  *   - 2026-05-17: Sprint 57.20 Day 1 — mockup shell.jsx port (tenant switcher + bottom user-card)
@@ -86,8 +87,9 @@ const FOOT_AVATAR_STYLE: CSSProperties = {
   justifyContent: "center",
 };
 
-// Sprint 57.20 fixture (matches mockup shell.jsx tenant-switcher); AD-UserMenu-Tenant-Switch Sprint 57.21+ wires real
-const FIXTURE_TENANT = { initial: "A", name: "acme-prod", meta: "tenant_01h9a2 · Pro" };
+// Sprint 57.123: title-case the raw plan value ("enterprise" → "Enterprise") for the meta badge.
+const formatPlan = (plan: string): string =>
+  plan ? plan.charAt(0).toUpperCase() + plan.slice(1) : "—";
 
 export const Sidebar: FC = () => {
   const { t } = useTranslation("common");
@@ -96,10 +98,17 @@ export const Sidebar: FC = () => {
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const roles = useAuthStore((s) => s.roles);
+  const tenant = useAuthStore((s) => s.tenant);
 
   const userDisplay = user?.display_name?.trim() || user?.email || t("sidebar.guest", "Guest");
   const userInitials = userDisplay.charAt(0).toUpperCase();
   const userRole = roles[0] ?? "operator";
+
+  // Sprint 57.123: real tenant (authStore) replaces the FIXTURE_TENANT — name +
+  // `{code} · {Plan}` meta. Defensive "—" fallback (chrome renders behind RequireAuth).
+  const tenantName = tenant?.name ?? "—";
+  const tenantInitial = tenant?.name?.charAt(0).toUpperCase() ?? "—";
+  const tenantMeta = tenant ? `${tenant.code} · ${formatPlan(tenant.plan)}` : "—";
 
   return (
     <aside
@@ -149,10 +158,10 @@ export const Sidebar: FC = () => {
           title={t("sidebar.tenantSwitcher", "Switch tenant")}
           data-testid="sidebar-tenant-switcher"
         >
-          <div className="tenant-avatar">{FIXTURE_TENANT.initial}</div>
+          <div className="tenant-avatar">{tenantInitial}</div>
           <div className="tenant-text grow" style={{ minWidth: 0 }}>
-            <div className="tenant-name">{FIXTURE_TENANT.name}</div>
-            <div className="tenant-meta">{FIXTURE_TENANT.meta}</div>
+            <div className="tenant-name">{tenantName}</div>
+            <div className="tenant-meta">{tenantMeta}</div>
           </div>
           <ChevronDown size={13} />
         </button>

@@ -61,6 +61,7 @@
     "signOut": "登出",
     "language": "語言",
     "switchTenant": "切換租戶",
+    "currentTenant": "目前租戶",
     "profile": "個人資料",
     "mfa": "MFA 設定",
     "preferences": "偏好設定",

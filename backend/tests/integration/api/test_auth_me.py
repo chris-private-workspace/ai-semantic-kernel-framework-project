@@ -17,7 +17,7 @@ Description:
     for the DB session) patterns.
 
 Created: 2026-05-10 (Sprint 57.13 Day 1)
-Last Modified: 2026-05-10
+Last Modified: 2026-06-15 (Sprint 57.123 — assert tenant.plan + tenant.region carry real DB values)
 """
 
 from __future__ import annotations
@@ -101,6 +101,9 @@ async def test_me_200_with_cookie(db_session: AsyncSession) -> None:
     assert body["tenant"]["id"] == str(tenant.id)
     assert body["tenant"]["name"] == "AuthMe Tenant"
     assert body["tenant"]["code"] == "AUTHME_T"
+    # Sprint 57.123: real Tenant display fields present (server defaults here).
+    assert body["tenant"]["plan"] == "enterprise"
+    assert body["tenant"]["region"] == "global"
     assert body["roles"] == ["user", "admin"]
 
 
@@ -116,6 +119,28 @@ async def test_me_200_with_bearer(db_session: AsyncSession) -> None:
     assert resp.status_code == 200, resp.text
     assert resp.json()["user"]["id"] == str(user.id)
     assert resp.json()["roles"] == ["user"]
+
+
+async def test_me_tenant_plan_and_region_are_real(db_session: AsyncSession) -> None:
+    """tenant.plan + tenant.region flow from the real Tenant columns, not a fixture.
+
+    Sprint 57.123: proves the chrome's plan badge + region row read live DB
+    values — seed a tenant, override region to a distinctive value, and assert
+    /auth/me returns it (a hardcoded "global" would fail this).
+    """
+    tenant = await seed_tenant(db_session, code="AUTHME_REGION", display_name="Region Tenant")
+    tenant.region = "ap-southeast-7"  # non-default → proves it's read from the DB
+    await db_session.flush()
+    user = await seed_user(db_session, tenant, email="r@authme.test")
+    token = _mgr().encode(sub=str(user.id), tenant_id=tenant.id, roles=["user"])
+    app = _build_app(db_session=db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200, resp.text
+    tenant_body = resp.json()["tenant"]
+    assert tenant_body["plan"] == "enterprise"
+    assert tenant_body["region"] == "ap-southeast-7"
 
 
 async def test_me_401_when_user_row_missing(db_session: AsyncSession) -> None:
