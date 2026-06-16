@@ -30,6 +30,7 @@
  * Created: 2026-05-17 (Sprint 57.21 Day 2 §2.1)
  *
  * Modification History:
+ *   - 2026-06-16: Sprint 57.130 — head renders terminated danger badge (LoopTerminated surface)
  *   - 2026-06-06: chat-v2 honest surface — role label "incident-responder"→"agent" (drop misleading fixture persona on real runs) (CHANGE-054)
  *   - 2026-05-23: Sprint 57.30 Day 3 §D1 — verbatim re-point Tailwind → mockup .turn/.turn-head/.badge/.badge.primary/.turn-body + .row inline-style for awaiting-approval
  *   - 2026-05-17: Initial extract from mockup L178-197 + Tailwind convert
@@ -70,6 +71,9 @@ export function AgentTurn({ turn }: { turn: AgentTurnType }): JSX.Element {
               awaiting approval
             </span>
           </span>
+        )}
+        {turn.terminated && (
+          <span className="badge danger">terminated · {turn.terminated.reason}</span>
         )}
       </div>
       <div className="turn-body">

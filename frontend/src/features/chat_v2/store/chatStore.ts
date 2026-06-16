@@ -17,6 +17,7 @@
  *     - tool_call_request  → defensive append ToolBlock if missing (rare path)
  *     - tool_call_result   → update matching ToolBlock status/output/durationMs
  *     - loop_end           → set status=completed + active turn stopReason
+ *     - loop_terminated    → flip pending tool→error + terminated badge + status=completed
  *     - approval_requested → push HITLTurn + update approvals dict (dual-emit)
  *     - approval_received  → update HITLTurn decision + approvals dict (dual-emit)
  *     - guardrail_triggered → rawEvents only (Phase-2+ may render warning)
@@ -32,9 +33,10 @@
  *   ALSO feeding the new Turn block render path for /chat-v2 mockup-fidelity.
  *
  * Created: 2026-04-30 (Sprint 50.2 Day 3.3)
- * Last Modified: 2026-06-15
+ * Last Modified: 2026-06-16
  *
  * Modification History:
+ *   - 2026-06-16: Sprint 57.130 — +loop_terminated case (flip pending tool→error + terminated badge)
  *   - 2026-06-16: Sprint 57.126 — +loadSessionHistory (fetch /events → replay) + user_message case
  *   - 2026-06-15: Sprint 57.120 — turn_start carries activeSkill onto AgentTurn (Inspector row)
  *   - 2026-06-13: Sprint 57.110 B4 — child guardrail_triggered projection (reason→text + action)
@@ -654,6 +656,39 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
               ...t,
               stopReason: ev.data.stop_reason,
               waiting: ev.data.stop_reason !== "end_turn",
+            })),
+          };
+        }
+
+        case "loop_terminated": {
+          // Sprint 57.130: a Cat-8 fatal terminate (ErrorTerminator) — the loop
+          // yields this then returns with NO loop_end. Surface it so the run stops
+          // hanging: (1) flip any dangling pending ToolBlock → error (the stuck-chip
+          // fix — a tool was mid-flight when the loop died, so its tool_call_result
+          // never arrived); (2) record turn.terminated (AgentTurn head shows a danger
+          // badge with the reason); (3) set the chat status terminal ("completed" —
+          // the proven loop_end unfreeze path, no new status enum) so the composer
+          // re-enables. Closes AD-LoopTerminated-Wire-Surface.
+          const termReason = ev.data.reason;
+          const termDetail = ev.data.detail;
+          return {
+            ...s,
+            rawEvents,
+            status: "completed",
+            turns: updateLastAgentTurn(s.turns, (t) => ({
+              ...t,
+              blocks: t.blocks.map((b) =>
+                b.type === "tool" && b.status === "pending"
+                  ? {
+                      ...b,
+                      status: "error",
+                      output: `terminated: ${termReason}`,
+                      isError: true,
+                    }
+                  : b,
+              ),
+              waiting: false,
+              terminated: { reason: termReason, detail: termDetail },
             })),
           };
         }

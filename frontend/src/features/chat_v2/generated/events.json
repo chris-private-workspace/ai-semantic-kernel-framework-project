@@ -9,6 +9,7 @@
     "llm_response",
     "loop_end",
     "loop_start",
+    "loop_terminated",
     "memory_accessed",
     "message_injected",
     "prompt_built",
@@ -155,6 +156,11 @@
     },
     "message_injected": {
       "text": "string"
+    },
+    "loop_terminated": {
+      "reason": "string",
+      "detail": "string | null",
+      "last_state_version": "number | null"
     }
   }
 }

@@ -15,7 +15,7 @@
  *   span_started / span_ended / memory_accessed events (Sprint 57.75 A-5).
  *
  * Created: 2026-06-02 (Sprint 57.67)
- * Modified: 2026-06-11 (Sprint 57.101 B1 — +message_injected; 23→24)
+ * Modified: 2026-06-16 (Sprint 57.130 — +loop_terminated; 24→25)
  */
 
 import { describe, expect, test } from "vitest";
@@ -23,8 +23,12 @@ import { describe, expect, test } from "vitest";
 import { KNOWN_LOOP_EVENT_TYPES } from "@/features/chat_v2/types";
 
 describe("generated SSE event schema (re-exported via chat_v2/types)", () => {
-  test("KNOWN_LOOP_EVENT_TYPES has exactly 24 wire-types", () => {
-    expect(KNOWN_LOOP_EVENT_TYPES.size).toBe(24);
+  test("KNOWN_LOOP_EVENT_TYPES has exactly 25 wire-types", () => {
+    expect(KNOWN_LOOP_EVENT_TYPES.size).toBe(25);
+  });
+
+  test("recognizes the loop_terminated event (Sprint 57.130)", () => {
+    expect(KNOWN_LOOP_EVENT_TYPES.has("loop_terminated")).toBe(true);
   });
 
   test("recognizes the subagent_child event (Sprint 57.96 Scope B)", () => {

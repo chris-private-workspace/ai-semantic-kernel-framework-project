@@ -15,6 +15,7 @@
  * Created: 2026-05-17 (Sprint 57.21 Day 1)
  *
  * Modification History:
+ *   - 2026-06-16: Sprint 57.130 — loop_terminated → flip pending tool + terminated record coverage
  *   - 2026-06-12: Sprint 57.108 — HITL tool/reason + traceId/spanId/tokens/duration capture coverage
  *   - 2026-06-11: Sprint 57.101 B1 — message_injected → UserTurn(injected) coverage
  *   - 2026-06-03: Sprint 57.75 — span_started/span_ended/memory_accessed → spans + memoryOps slice coverage
@@ -206,6 +207,15 @@ const messageInjected = (text: string): LoopEvent => ({
   data: { text },
 });
 
+// Sprint 57.130: a Cat-8 fatal terminate frame (reason + nullable detail/state).
+const loopTerminated = (
+  reason = "max_retries_exhausted",
+  detail: string | null = "tool failed 3×",
+): LoopEvent => ({
+  type: "loop_terminated",
+  data: { reason, detail, last_state_version: null },
+});
+
 const lastAgentTurn = (turns: Turn[]): AgentTurn => {
   for (let i = turns.length - 1; i >= 0; i--) {
     if (turns[i].role === "agent") return turns[i] as AgentTurn;
@@ -352,6 +362,47 @@ describe("chatStore.mergeEvent Turn block sequence (Sprint 57.21 Day 1)", () => 
     );
     const t = lastAgentTurn(useChatStore.getState().turns);
     expect(t.blocks.map((b) => b.type)).toEqual(["thinking", "tool"]);
+  });
+
+  // --- loop_terminated (Sprint 57.130) ------------------------------------
+
+  test("loop_terminated flips a dangling pending ToolBlock to error (stuck-chip fix)", () => {
+    useChatStore.getState().mergeEvent(turnStart());
+    // a tool was requested but never got a result — the loop died mid-tool.
+    useChatStore
+      .getState()
+      .mergeEvent(llmResponse({ toolCalls: [{ id: "tc-1", name: "metrics.query", arguments: {} }] }));
+    expect((lastAgentTurn(useChatStore.getState().turns).blocks[0] as ToolBlock).status).toBe(
+      "pending",
+    );
+    useChatStore.getState().mergeEvent(loopTerminated("max_retries_exhausted"));
+    const tool = lastAgentTurn(useChatStore.getState().turns).blocks[0] as ToolBlock;
+    expect(tool.status).toBe("error");
+    expect(tool.isError).toBe(true);
+    expect(tool.output).toContain("max_retries_exhausted");
+  });
+
+  test("loop_terminated records turn.terminated + sets status completed (composer unfreezes)", () => {
+    useChatStore.getState().mergeEvent(loopStart("sess-x"));
+    useChatStore.getState().mergeEvent(turnStart());
+    expect(useChatStore.getState().status).toBe("running");
+    useChatStore.getState().mergeEvent(loopTerminated("budget_exceeded", "token budget cap"));
+    const state = useChatStore.getState();
+    expect(state.status).toBe("completed");
+    const t = lastAgentTurn(state.turns);
+    expect(t.terminated).toEqual({ reason: "budget_exceeded", detail: "token budget cap" });
+    expect(t.waiting).toBe(false);
+  });
+
+  test("loop_terminated with no pending tool records terminated + preserves rawEvents (no crash)", () => {
+    useChatStore.getState().mergeEvent(turnStart());
+    useChatStore.getState().mergeEvent(llmResponse({ content: "partial answer" }));
+    useChatStore.getState().mergeEvent(loopTerminated("circuit_open", null));
+    const state = useChatStore.getState();
+    const t = lastAgentTurn(state.turns);
+    expect(t.terminated).toEqual({ reason: "circuit_open", detail: null });
+    expect(t.blocks.some((b) => b.type === "tool")).toBe(false);
+    expect(state.rawEvents.some((e) => e.type === "loop_terminated")).toBe(true);
   });
 
   // --- tool flow ----------------------------------------------------------

@@ -22,9 +22,10 @@
  *   Message removed — replaced by Turn. tsc compile gate surfaces consumer updates.
  *
  * Created: 2026-04-30 (Sprint 50.2 Day 3.2)
- * Last Modified: 2026-06-15
+ * Last Modified: 2026-06-16
  *
  * Modification History:
+ *   - 2026-06-16: Sprint 57.130 — AgentTurn +terminated? (LoopTerminated wire surface)
  *   - 2026-06-16: Sprint 57.126 — +UserMessageEvent (persist-only replay event; not a wire type)
  *   - 2026-06-15: Sprint 57.120 — AgentTurn +activeSkill? (Inspector active_skill row)
  *   - 2026-06-12: Sprint 57.107 B3 — Session now real-backend shaped (+handoffParentId +agentRole, title/agent nullable, drop domain) + SessionStatusUI +handed_off
@@ -63,7 +64,7 @@ export * from "./generated/loopEvents.generated";
 // KNOWN_LOOP_EVENT_TYPES / the codegen union). chatStore.loadSessionHistory
 // replays it through mergeEvent (a dedicated `user_message` case pushes the
 // UserTurn) so a historical session's user prompts reappear. Hand-written here
-// because it has no live wire schema entry (wire count stays 24).
+// because it has no live wire schema entry (it does not count toward the wire total).
 export type UserMessageEvent = {
   type: "user_message";
   data: { text: string };
@@ -173,6 +174,11 @@ export type AgentTurn = {
   // trigger UserTurn at turn_start), so the Inspector Turn tab can show an
   // active_skill row alongside trace_id. Undefined when no skill was force-loaded.
   activeSkill?: string;
+  // Sprint 57.130: set when a Cat-8 fatal terminate (LoopTerminated) ended this
+  // turn's loop (there is no loop_end). The head renders a danger badge with the
+  // reason + any dangling pending tool block flips to error. Undefined for a
+  // normally-completed turn.
+  terminated?: { reason: string; detail?: string | null };
 };
 
 export type HITLTurn = {

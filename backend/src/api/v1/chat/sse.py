@@ -34,9 +34,10 @@ Key Components:
     - format_sse_message(event_type, data) -> bytes
 
 Created: 2026-04-30 (Sprint 50.2 Day 1.3)
-Last Modified: 2026-06-14
+Last Modified: 2026-06-16
 
 Modification History (newest-first):
+    - 2026-06-16: Sprint 57.130 — serialize LoopTerminated → loop_terminated (24→25 wire)
     - 2026-06-14: Sprint 57.116 — loop_start +active_skill (default null; router overrides)
     - 2026-06-12: Sprint 57.108 — approval +tool_name/reason; llm_response +input/output tokens
     - 2026-06-11: Sprint 57.101 B1 — serialize MessageInjected → message_injected (between-turns)
@@ -87,6 +88,7 @@ from agent_harness._contracts import (
     LoopCompleted,
     LoopEvent,
     LoopStarted,
+    LoopTerminated,
     MemoryAccessed,
     MessageInjected,
     PromptBuilt,
@@ -475,6 +477,23 @@ def _serialize_inner(event: LoopEvent) -> dict[str, Any] | None:
                 "key": event.key,
                 "summary": event.summary,
                 "time_scale": event.time_scale,
+            },
+        }
+
+    # Sprint 57.130: LoopTerminated serializer — Cat 8 ErrorTerminator fatal
+    # terminate (budget_exceeded / circuit_open / fatal_exception /
+    # max_retries_exhausted), yielded from loop.py (:2939 hard / :3008 soft) then
+    # the loop returns. Previously dropped at the serializer (no isinstance branch)
+    # → the SSE stream ended with no terminal frame → the chat-v2 UI hung with a
+    # stuck pending tool chip + no reason. Mirrors tripwire_triggered (the sibling
+    # fatal-terminate event). Closes AD-LoopTerminated-Wire-Surface.
+    if isinstance(event, LoopTerminated):
+        return {
+            "type": "loop_terminated",
+            "data": {
+                "reason": event.reason,
+                "detail": event.detail,
+                "last_state_version": event.last_state_version,
             },
         }
 

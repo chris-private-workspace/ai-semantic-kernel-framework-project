@@ -8,16 +8,16 @@ Description:
     The declarative WIRE_SCHEMA (event_wire_schema.py) is the single source of
     truth that the frontend events.json + loopEvents.generated.ts are generated
     from. This test locks non-drift between WIRE_SCHEMA and the actual
-    `serialize_loop_event` output: for each of the 23 wired event classes it
+    `serialize_loop_event` output: for each wired event class it
     builds one representative instance, serializes it, and asserts the payload's
     `data` key set (minus the universal `trace_id`) equals the registry entry.
     Drift in EITHER direction (serializer adds/removes a field, or registry
-    drifts) fails this test. Also asserts the 3 unwired classes still raise
+    drifts) fails this test. Also asserts the 2 unwired classes still raise
     NotImplementedError, that Thinking still serializes to None, and that the
-    registry has exactly 23 entries.
+    registry has exactly 25 entries.
 
 Created: 2026-06-02 (Sprint 57.67)
-Last Modified: 2026-06-03 (Sprint 57.75 A-5c — wire SpanStarted/Ended + MemoryAccessed; 19→22)
+Last Modified: 2026-06-16 (Sprint 57.130 — wire LoopTerminated; 24→25)
 """
 
 from __future__ import annotations
@@ -130,19 +130,20 @@ WIRED_EVENT_INSTANCES: list[LoopEvent] = [
     ),
     # Sprint 57.101 B1 (Cat 1): a mid-run injected message drained at a turn boundary.
     MessageInjected(text="also check the db pool"),
+    # Sprint 57.130 (Cat 8): a fatal terminate now surfaced on the chat wire.
+    LoopTerminated(reason="max_retries_exhausted", detail="tool failed 3×", last_state_version=2),
 ]
 
-# Cat 8/1/12 events with no serializer branch (must raise NotImplementedError).
+# Cat 8/12 events with no serializer branch (must raise NotImplementedError).
 UNWIRED_EVENT_INSTANCES: list[LoopEvent] = [
     ErrorRetried(attempt=1, error_class="TimeoutError", backoff_ms=250.0),
-    LoopTerminated(reason="budget_exceeded"),
     MetricRecorded(metric_name="latency", value=1.0, labels={"k": "v"}),
 ]
 
 
 class TestWireSchemaParity:
-    def test_wire_schema_has_24_entries(self) -> None:
-        assert len(WIRE_SCHEMA) == 24
+    def test_wire_schema_has_25_entries(self) -> None:
+        assert len(WIRE_SCHEMA) == 25
 
     def test_base_fields_only_trace_id(self) -> None:
         # trace_id is the universal field injected by serialize_loop_event;

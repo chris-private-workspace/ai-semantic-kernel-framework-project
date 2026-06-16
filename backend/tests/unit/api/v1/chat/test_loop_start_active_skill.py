@@ -11,9 +11,10 @@ Description:
     chat router (router._stream_loop_events) injects the validated force-load name
     on the loop_start frame. These tests lock: the serializer default is present
     (required by the WIRE_SCHEMA parity guard), the registry declares the field,
-    and the 24 wire-TYPE count is unchanged (additive field, not a new type).
+    and active_skill is an additive field (not a new top-level wire type).
 
 Created: 2026-06-14 (Sprint 57.116)
+Modified: 2026-06-16 (Sprint 57.130 — wire count 24→25 via loop_terminated; renamed count test)
 """
 
 from __future__ import annotations
@@ -43,7 +44,9 @@ class TestLoopStartActiveSkill:
     def test_wire_schema_declares_active_skill(self) -> None:
         assert WIRE_SCHEMA["loop_start"]["active_skill"] == "string | null"
 
-    def test_wire_type_count_unchanged_24(self) -> None:
+    def test_active_skill_is_field_not_wire_type(self) -> None:
         """active_skill is a FIELD on loop_start, not a new top-level wire type."""
-        assert len(WIRE_SCHEMA) == 24
+        # Count is 25 as of Sprint 57.130 (loop_terminated added a wire type); the
+        # point here is only that active_skill itself is NOT a top-level wire type.
+        assert len(WIRE_SCHEMA) == 25
         assert "active_skill" not in WIRE_SCHEMA  # it is a field, not a type key

@@ -256,6 +256,16 @@ export interface MessageInjectedEvent {
   };
 }
 
+export interface LoopTerminatedEvent {
+  type: "loop_terminated";
+  data: {
+    trace_id?: string | null;
+    reason: string;
+    detail: string | null;
+    last_state_version: number | null;
+  };
+}
+
 export type LoopEvent =
   | LoopStartEvent
   | TurnStartEvent
@@ -280,7 +290,8 @@ export type LoopEvent =
   | SpanStartedEvent
   | SpanEndedEvent
   | MemoryAccessedEvent
-  | MessageInjectedEvent;
+  | MessageInjectedEvent
+  | LoopTerminatedEvent;
 
 export const KNOWN_LOOP_EVENT_TYPES = new Set<string>([
   "loop_start",
@@ -307,4 +318,5 @@ export const KNOWN_LOOP_EVENT_TYPES = new Set<string>([
   "span_ended",
   "memory_accessed",
   "message_injected",
+  "loop_terminated",
 ]);

@@ -1,6 +1,6 @@
 """
 File: backend/src/api/v1/chat/event_wire_schema.py
-Purpose: Declarative single-source wire-schema for the 22 chat SSE event types.
+Purpose: Declarative single-source wire-schema for the 25 chat SSE event types.
 Category: api/v1/chat
 Scope: Phase 57 / Sprint 57.67 (A-5b — event schema codegen)
 
@@ -27,16 +27,17 @@ Description:
     `frontend/src/features/chat_v2/types.ts` (reproduced verbatim).
 
 Key Components:
-    - WIRE_SCHEMA: 24 ordered wire-type → ordered {field: ts_type} entries.
+    - WIRE_SCHEMA: 25 ordered wire-type → ordered {field: ts_type} entries.
     - BASE_FIELDS: universal fields the wrapper adds to every frame (trace_id).
     - TOOL_CALL_ELEMENT_TYPE_NAME / TOOL_CALL_ELEMENT_FIELDS: the named
       `tool_calls` element TS type (mirrors types.ts `LLMToolCall`).
     - validate_ts_type(spec): pragmatic TS-type-string sanity check.
 
 Created: 2026-06-02 (Sprint 57.67)
-Last Modified: 2026-06-14
+Last Modified: 2026-06-16
 
 Modification History (newest-first):
+    - 2026-06-16: Sprint 57.130 — add loop_terminated wire-type (Cat 8 fatal-terminate) 24→25
     - 2026-06-14: Sprint 57.116 — loop_start +active_skill field (count 24 unchanged)
     - 2026-06-12: Sprint 57.108 — approval_requested +tool_name/reason; llm_response +in/out tokens
     - 2026-06-11: Sprint 57.101 — add message_injected wire-type (Cat 1 injection) 23→24
@@ -77,7 +78,7 @@ TOOL_CALL_ELEMENT_FIELDS: dict[str, str] = {
 }
 
 
-# === WIRE_SCHEMA: 24 ordered wire-type entries ==============================
+# === WIRE_SCHEMA: 25 ordered wire-type entries ==============================
 # Why: single declarative source of truth for the SSE event contract. Insertion
 # order of the outer dict = generated interface declaration order; insertion
 # order of each inner dict = generated interface FIELD order. Field NAME/SET is
@@ -225,6 +226,13 @@ WIRE_SCHEMA: dict[str, dict[str, str]] = {
     # Sprint 57.101 B1 (Cat 1): a mid-run injected message drained at a turn boundary.
     "message_injected": {
         "text": "string",
+    },
+    # Sprint 57.130 (Cat 8): a fatal terminate (ErrorTerminator) — surfaced so the
+    # chat-v2 UI shows a terminal reason + clears a stuck pending tool chip.
+    "loop_terminated": {
+        "reason": "string",
+        "detail": "string | null",
+        "last_state_version": "number | null",
     },
 }
 
