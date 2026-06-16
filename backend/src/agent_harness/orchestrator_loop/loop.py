@@ -45,6 +45,7 @@ Created: 2026-04-30 (Sprint 50.1 Day 2.2)
 Last Modified: 2026-06-16
 
 Modification History (newest-first):
+    - 2026-06-16: Sprint 57.129 — TOOL_USE branch persists tool round-trips to the ledger
     - 2026-06-16: Sprint 57.127 — multi-turn rehydration via MessageStore dep; serde → _contracts
     - 2026-06-15: Sprint 57.122 — tool HITL reads tenant risk-threshold policy (load-bearing)
     - 2026-06-13: Sprint 57.111 A3 — _cat10_verify_gate threads real trace_state to the judge
@@ -1905,10 +1906,13 @@ class AgentLoopImpl(AgentLoop):
 
     async def _persist_to_ledger(self, msgs: list[Message], *, turn_num: int) -> None:
         """Append NEW messages to the durable per-session ledger (best-effort,
-        no-op without a store). Sprint 57.127 — used by run() for the user prompt
-        at send start + the final assistant answer at end_turn so a follow-up send
-        rehydrates them. ONLY new messages are passed (never system / prior /
-        intra-turn tool round-trips — the final answer is the cross-send unit)."""
+        no-op without a store). Used for the user prompt at send start (57.127),
+        the final assistant answer at end_turn (57.127), and — since Sprint 57.129
+        (AD-ChatV2-Ledger-Tool-RoundTrips) — each turn's COMPLETE intra-turn tool
+        round-trip ([assistant tool_use, *tool results]) from the TOOL_USE branch,
+        so a follow-up send rehydrates the full tool context. ONLY new messages are
+        passed (never system / prior); the tool batch is passed as a complete,
+        well-formed unit, so the ledger never holds a tool_use without its result."""
         if self._message_store is not None and msgs:
             await self._message_store.append(msgs, turn_num=turn_num)
 
@@ -2772,6 +2776,14 @@ class AgentLoopImpl(AgentLoop):
                         return
 
                     # output_type == TOOL_USE
+                    # Sprint 57.129 (AD-ChatV2-Ledger-Tool-RoundTrips): mark where
+                    # this turn's tool round-trip begins so the COMPLETE batch
+                    # ([assistant tool_use, *tool results]) persists atomically at
+                    # the end of this branch — never the bare assistant tool_use
+                    # alone. A partial/failed turn that early-returns before the
+                    # persist (cat9/cat8 terminate, cancellation) leaves NO dangling
+                    # tool_use in the ledger.
+                    _tool_batch_start = len(messages)
                     # Append assistant message carrying the tool_calls so the
                     # next chat() round-trip can correlate tool_call_id.
                     messages.append(
@@ -3070,6 +3082,20 @@ class AgentLoopImpl(AgentLoop):
                     )
                     if post_tool_event is not None:
                         yield post_tool_event
+
+                    # Sprint 57.129 (AD-ChatV2-Ledger-Tool-RoundTrips): persist this
+                    # turn's COMPLETE tool round-trip ([assistant tool_use, *tool
+                    # results]) so a follow-up send rehydrates the full tool context
+                    # (e.g. "re-run that" / "what was the exact number?"). Reached
+                    # ONLY here — after every tool_call got a result + the post-tool
+                    # checkpoint — so the batch is always well-formed; the
+                    # early-return paths above (cat9/cat8 terminate, cancellation)
+                    # skip it → no dangling tool_use lands in the ledger. One atomic
+                    # append() (SAVEPOINT in DBMessageStore). The final answer is
+                    # persisted separately at end_turn (57.127); the verification
+                    # self-correction messages (a different branch that `continue`s
+                    # before here) are intentionally excluded.
+                    await self._persist_to_ledger(messages[_tool_batch_start:], turn_num=turn_count)
                 finally:
                     yield SpanEnded(
                         span_name="agent_loop.turn",
