@@ -35,6 +35,7 @@
  * Last Modified: 2026-06-15
  *
  * Modification History:
+ *   - 2026-06-16: Sprint 57.126 — +loadSessionHistory (fetch /events → replay) + user_message case
  *   - 2026-06-15: Sprint 57.120 — turn_start carries activeSkill onto AgentTurn (Inspector row)
  *   - 2026-06-13: Sprint 57.110 B4 — child guardrail_triggered projection (reason→text + action)
  *   - 2026-06-12: Sprint 57.108 — HITL tool/reason + turn traceId/spanId/tokens/duration captures
@@ -63,7 +64,11 @@ import { create } from "zustand";
 
 import type { ChildTurnEvent, SubagentNode } from "../../subagent/types";
 import type { VerificationEvent } from "../../verification/types";
-import { listSessions, type SessionListApiItem } from "../services/chatService";
+import {
+  fetchSessionEvents,
+  listSessions,
+  type SessionListApiItem,
+} from "../services/chatService";
 import type {
   AgentTurn,
   ApprovalEntry,
@@ -78,6 +83,7 @@ import type {
   SubagentEntry,
   SubagentForkBlock,
   Turn,
+  UserMessageEvent,
   UserTurn,
 } from "../types";
 
@@ -158,10 +164,16 @@ type ChatStoreState = {
   setSessions: (sessions: Session[]) => void;
   loadSessions: () => Promise<void>;
   setActiveSessionId: (id: string | null) => void;
+  // Sprint 57.126: fetch a clicked session's persisted transcript + replay it
+  // (conversation-only reset → mergeEvent each event → render historical turns).
+  loadSessionHistory: (sessionId: string) => Promise<void>;
   pivotSession: (newSessionId: string, banner: HandoffBanner) => void;
   dismissHandoffBanner: () => void;
   pushUserMessage: (content: string) => void;
-  mergeEvent: (ev: LoopEvent) => void;
+  // Sprint 57.126: param widened to include the persist-only UserMessageEvent so
+  // loadSessionHistory can replay user prompts through the SAME reducer (live
+  // callers pass LoopEvent — assignable to the wider input by contravariance).
+  mergeEvent: (ev: LoopEvent | UserMessageEvent) => void;
   appendVerification: (event: VerificationEvent) => void;
   clearVerifications: () => void;
   clearSubagents: () => void;
@@ -280,9 +292,10 @@ const updateLastAgentTurn = (
 
 /**
  * Sprint 57.69 A-3b slice 2: pure HANDOFF session-pivot transform. Shared by
- * BOTH the `agent_handoff` mergeEvent case and the `pivotSession` action (the
- * store factory exposes only `set`, no `get`, so the pivot logic must live in
- * a pure helper to avoid duplication).
+ * BOTH the `agent_handoff` mergeEvent case and the `pivotSession` action — it
+ * stays a pure (s) => state helper because the `agent_handoff` case only has the
+ * `s` draft (Sprint 57.126 added `get` to the factory for the async
+ * loadSessionHistory action, but this helper keeps no get-dependency).
  *
  * Preserves the sidebar `sessions` list + `mode`; keeps the accumulated
  * `rawEvents` audit log (caller passes the already-appended array); resets the
@@ -315,7 +328,7 @@ const applyPivot = (
   memoryOps: [],
 });
 
-export const useChatStore = create<ChatStoreState>((set) => ({
+export const useChatStore = create<ChatStoreState>((set, get) => ({
   ..._initial(),
   // Honest default: real_llm so a user who just opens the page and sends a
   // message gets the LIVE agent, not the offline echo mock. echo_demo stays
@@ -343,6 +356,55 @@ export const useChatStore = create<ChatStoreState>((set) => ({
 
   setActiveSessionId: (id) => set({ activeSessionId: id }),
 
+  // Sprint 57.126: replay a historical session's conversation. Fetches the
+  // persisted transcript (GET /events — agent-side events + the 57.126 user_message
+  // rows), resets ONLY the conversation slices (preserve `sessions` + `mode` — model
+  // on applyPivot, NOT reset() which nukes the sidebar list), then replays each
+  // {type, data} through mergeEvent in sequence_num order → pixel-identical
+  // historical turns. Setting `sessionId` makes the loaded session active so a
+  // follow-up continues it (send() keys off the store sessionId). Guards: skip the
+  // live running session (don't interrupt a stream); latest-clicked-wins.
+  loadSessionHistory: async (sessionId) => {
+    if (get().sessionId === sessionId && get().status === "running") return;
+    // Conversation-only reset (preserve sessions + mode); point both ids at the
+    // clicked session; zero the turn-id counter so replayed turn ids are fresh.
+    _turnCounter = 0;
+    set((s) => ({
+      ...s,
+      sessionId,
+      activeSessionId: sessionId,
+      turns: [],
+      status: "idle",
+      totalTurns: 0,
+      stopReason: null,
+      errorMessage: null,
+      currentModel: null,
+      handoffBanner: null,
+      rawEvents: [],
+      approvals: {},
+      verifications: [],
+      subagents: [],
+      spans: [],
+      memoryOps: [],
+    }));
+    let events;
+    try {
+      events = await fetchSessionEvents(sessionId);
+    } catch (err) {
+      set({ errorMessage: (err as Error).message });
+      return;
+    }
+    // Race guard: a newer click already re-pointed activeSessionId → drop this
+    // stale result rather than replay it onto the newer session.
+    if (get().activeSessionId !== sessionId) return;
+    // Defensive sort (the backend already orders by sequence_num) → faithful order.
+    const ordered = [...events].sort((a, b) => a.sequence_num - b.sequence_num);
+    const merge = get().mergeEvent;
+    for (const ev of ordered) {
+      merge({ type: ev.type, data: ev.data } as unknown as LoopEvent | UserMessageEvent);
+    }
+  },
+
   // Sprint 57.69: HANDOFF pivot — reset the conversation onto the child session.
   pivotSession: (newSessionId, banner) =>
     set((s) => applyPivot(s, newSessionId, banner, [...s.rawEvents])),
@@ -359,9 +421,28 @@ export const useChatStore = create<ChatStoreState>((set) => ({
 
   mergeEvent: (ev) =>
     set((s) => {
-      const rawEvents = [...s.rawEvents, ev];
+      // Sprint 57.126: ev may be the persist-only UserMessageEvent (replay) — it
+      // shares the {type, data} shape, so it is recorded in the LoopEvent[] audit
+      // log via a narrowing cast (rawEvents stays LoopEvent[] — no consumer ripple).
+      const rawEvents: LoopEvent[] = [...s.rawEvents, ev as LoopEvent];
 
       switch (ev.type) {
+        case "user_message": {
+          // Sprint 57.126: replay-only. The 57.126 backend persists the user's
+          // prompt as a user_message row per send (NEVER streamed live — the live UI
+          // uses pushUserMessage). Push a UserTurn so a replayed historical session
+          // shows the user's questions. It precedes loop_start in the stream → the
+          // loop_start active_skill stamping finds it (the chip reconstructs too).
+          return {
+            ...s,
+            rawEvents,
+            turns: [
+              ...s.turns,
+              { role: "user", id: nextTurnId(), at: nowIso(), text: ev.data.text },
+            ],
+          };
+        }
+
         case "loop_start": {
           // Sprint 57.69: a new turn cycle in the (possibly child) session
           // dismisses any handoff transition notice.

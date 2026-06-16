@@ -7,6 +7,7 @@
  * Created: 2026-05-17 (Sprint 57.21 Day 3 §3.1)
  *
  * Modification History:
+ *   - 2026-06-16: Sprint 57.126 — click now calls loadSessionHistory (mock fetchSessionEvents) + new trigger test
  *   - 2026-06-12: Sprint 57.107 B3 — converted fixture assertions to mock the store (real session data + loadSessions); +empty state + chain badge + no-DEMO-banner cases
  *   - 2026-05-17: Initial creation (Sprint 57.21 Day 3 §3.1)
  */
@@ -17,7 +18,15 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+// Sprint 57.126: a session click now calls loadSessionHistory → fetchSessionEvents.
+// Mock the service so the click/highlight assertions don't hit the network.
+vi.mock("@/features/chat_v2/services/chatService", () => ({
+  fetchSessionEvents: vi.fn(),
+  listSessions: vi.fn(),
+}));
+
 import { SessionList } from "@/features/chat_v2/components/SessionList";
+import { fetchSessionEvents } from "@/features/chat_v2/services/chatService";
 import { useChatStore } from "@/features/chat_v2/store/chatStore";
 import type { Session } from "@/features/chat_v2/types";
 
@@ -73,6 +82,8 @@ function seedSessions(sessions: Session[]): void {
 describe("SessionList (Sprint 57.107 B3 — real backend data)", () => {
   beforeEach(() => {
     useChatStore.getState().reset();
+    // Default to an empty transcript so a click's loadSessionHistory replay is a no-op.
+    vi.mocked(fetchSessionEvents).mockResolvedValue([]);
   });
   afterEach(() => {
     useChatStore.getState().reset();
@@ -142,6 +153,17 @@ describe("SessionList (Sprint 57.107 B3 — real backend data)", () => {
     expect(first.getAttribute("data-active")).toBe("false");
     expect(second.getAttribute("data-active")).toBe("true");
     expect(useChatStore.getState().activeSessionId).toBe("sess_hitl");
+  });
+
+  test("clicking a session triggers loadSessionHistory with its id (Sprint 57.126)", async () => {
+    const loadSessionHistory = vi.fn().mockResolvedValue(undefined);
+    seedSessions(SESSIONS);
+    useChatStore.setState({ loadSessionHistory });
+    const user = userEvent.setup();
+    render(<SessionList />);
+
+    await user.click(screen.getByTestId("session-item-sess_hitl"));
+    expect(loadSessionHistory).toHaveBeenCalledWith("sess_hitl");
   });
 
   test("status=running shows live-dot only (no badge)", () => {

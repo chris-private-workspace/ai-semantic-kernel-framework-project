@@ -34,6 +34,7 @@
  * Last Modified: 2026-06-12
  *
  * Modification History:
+ *   - 2026-06-16: Sprint 57.126 — session click → loadSessionHistory (replay) replaces setActiveSessionId
  *   - 2026-06-12: Sprint 57.107 B3 — real GET /sessions via loadSessions; drop fixture + DEMO banner; +handoff-chain badge + empty state
  *   - 2026-06-06: chat-v2 honest surface — wire "New session" → store.reset() (was a no-op button) + DEMO badge on section header (fixture list honesty) (CHANGE-054)
  *   - 2026-05-23: Sprint 57.30 Day 2 US-C2 — verbatim re-point to mockup page-chat.jsx L123-156 SessionList markup (.chat-list, .session-item, .session-title, .session-meta, .live-dot, .badge)
@@ -57,7 +58,10 @@ import type { Session } from "../types";
 
 function SessionItem({ session }: { session: Session }): JSX.Element {
   const activeSessionId = useChatStore((s) => s.activeSessionId);
-  const setActiveSessionId = useChatStore((s) => s.setActiveSessionId);
+  // Sprint 57.126: clicking a session now LOADS + replays its conversation (was
+  // setActiveSessionId — highlight-only, a soft Potemkin). loadSessionHistory sets
+  // activeSessionId itself, so the highlight still works.
+  const loadSessionHistory = useChatStore((s) => s.loadSessionHistory);
   const { t } = useTranslation("common");
   const isActive = activeSessionId === session.id;
   const title = session.title ?? t("chat.session.titleFallback");
@@ -67,11 +71,11 @@ function SessionItem({ session }: { session: Session }): JSX.Element {
       className="session-item"
       data-active={isActive}
       data-testid={`session-item-${session.id}`}
-      onClick={() => setActiveSessionId(session.id)}
+      onClick={() => void loadSessionHistory(session.id)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          setActiveSessionId(session.id);
+          void loadSessionHistory(session.id);
         }
       }}
       role="button"

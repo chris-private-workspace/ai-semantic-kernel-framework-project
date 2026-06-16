@@ -34,6 +34,7 @@
  * Last Modified: 2026-06-14
  *
  * Modification History (newest-first):
+ *   - 2026-06-16: Sprint 57.126 — +fetchSessionEvents (GET /sessions/{id}/events; history replay)
  *   - 2026-06-14: Sprint 57.115 — +force_load_skill on ChatRequestBody + fetchChatSkills (picker list)
  *   - 2026-06-12: Sprint 57.107 B3 — +listSessions (GET /sessions; real SessionList data)
  *   - 2026-06-11: Sprint 57.101 B1 — +injectMessage (POST /chat/{id}/inject; mid-run instruction)
@@ -117,6 +118,43 @@ export async function listSessions(): Promise<SessionListApiItem[]> {
   }
   const body = (await response.json()) as SessionListResponse;
   return body.sessions;
+}
+
+// === Sprint 57.126: session history replay ===============================
+// One persisted main-session SSE event (the 57.125 backend writer's row). `type`
+// + `data` are byte-identical to the live SSE frame (serialize_loop_event output),
+// PLUS the persist-only `user_message` row (57.126 — `data.text` is the user prompt)
+// → chatStore.loadSessionHistory replays each {type, data} through the SAME
+// mergeEvent reducer for a pixel-identical historical Turn stream.
+export type PersistedSessionEvent = {
+  type: string;
+  data: Record<string, unknown>;
+  sequence_num: number;
+  timestamp_ms: number;
+};
+
+export type SessionEventsResponse = {
+  events: PersistedSessionEvent[];
+};
+
+/**
+ * Sprint 57.126: fetch a session's persisted event transcript (tenant + user from
+ * the auth JWT via fetchWithAuth), ordered by sequence_num. A non-2xx throws so the
+ * caller can surface it; an unknown / cross-tenant / event-less session returns
+ * `{events: []}` (200) per the backend (never reveals cross-tenant existence).
+ */
+export async function fetchSessionEvents(
+  sessionId: string,
+): Promise<PersistedSessionEvent[]> {
+  const response = await fetchWithAuth(`/api/v1/sessions/${sessionId}/events`, {
+    method: "GET",
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`HTTP ${response.status}: ${text}`);
+  }
+  const body = (await response.json()) as SessionEventsResponse;
+  return body.events;
 }
 
 // Shared by streamChat + resumeChat: both consume the same SSE wire format,

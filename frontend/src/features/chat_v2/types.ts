@@ -25,6 +25,7 @@
  * Last Modified: 2026-06-15
  *
  * Modification History:
+ *   - 2026-06-16: Sprint 57.126 — +UserMessageEvent (persist-only replay event; not a wire type)
  *   - 2026-06-15: Sprint 57.120 — AgentTurn +activeSkill? (Inspector active_skill row)
  *   - 2026-06-12: Sprint 57.107 B3 — Session now real-backend shaped (+handoffParentId +agentRole, title/agent nullable, drop domain) + SessionStatusUI +handed_off
  *   - 2026-06-11: Sprint 57.101 B1 — UserTurn +injected? (mid-run message_injected render tag)
@@ -54,6 +55,19 @@
 // the generated file or hand-write the type here. Drift is gated by
 // scripts/lint/check_event_schema_sync.py + the pytest parity test.
 export * from "./generated/loopEvents.generated";
+
+// === Sprint 57.126: persist-only replay event (NOT a live wire type) ======
+// The 57.126 backend writer persists the user's prompt as a `user_message`
+// message_events row at the start of each send (the live UI shows it via
+// pushUserMessage, so it is NEVER streamed — it is NOT in event_wire_schema /
+// KNOWN_LOOP_EVENT_TYPES / the codegen union). chatStore.loadSessionHistory
+// replays it through mergeEvent (a dedicated `user_message` case pushes the
+// UserTurn) so a historical session's user prompts reappear. Hand-written here
+// because it has no live wire schema entry (wire count stays 24).
+export type UserMessageEvent = {
+  type: "user_message";
+  data: { text: string };
+};
 
 // === Sprint 57.21: Block discriminated union ==============================
 // 4 of 5 mockup block types ship Phase-1. Memory block (mockup L224-232)

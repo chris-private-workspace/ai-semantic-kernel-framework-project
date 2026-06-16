@@ -38,6 +38,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.5)
 Last Modified: 2026-06-16
 
 Modification History (newest-first):
+    - 2026-06-16: Sprint 57.126 — persist user_message row + main_seq seed from MAX (multi-turn)
     - 2026-06-16: Sprint 57.125 — persist main-session SSE events to message_events (replay)
     - 2026-06-14: Sprint 57.116 — inject confirmed active_skill onto the loop_start frame
     - 2026-06-14: Sprint 57.115 — GET /skills picker list + force_load_skill validate-and-pass
@@ -90,6 +91,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agent_harness._contracts import (
@@ -601,6 +603,28 @@ async def _persist_main_event(
         )
 
 
+# === _max_main_seq: seed the main transcript sequence across sends (Sprint 57.126) ===
+# Why: 57.125 started main_seq at 0 PER REQUEST, but a multi-turn session is multiple
+# POST /chat calls (one _stream_loop_events each). Two sends would both number their
+# rows from 1 → the reader's ORDER BY sequence_num scrambles the replay (the 57.125
+# probe only tested a single send). Seed from the session's current MAX so sequence_num
+# is globally monotonic per session. Sidechain rows key by subagent_id (≠ the main
+# session_id) → naturally excluded. db None / no rows → 0.
+async def _max_main_seq(
+    db: AsyncSession | None,
+    tenant_id: UUID,
+    session_id: UUID,
+) -> int:
+    """Return the highest persisted sequence_num for a session's MAIN transcript (0 if none)."""
+    if db is None:
+        return 0
+    stmt = select(func.coalesce(func.max(MessageEvent.sequence_num), 0)).where(
+        MessageEvent.session_id == session_id,
+        MessageEvent.tenant_id == tenant_id,
+    )
+    return int((await db.execute(stmt)).scalar_one())
+
+
 def _drain_subagent_frames(buffer: "list[LoopEvent] | None") -> list[bytes]:
     """Serialize + frame any buffered subagent events (SubagentSpawned/Completed).
 
@@ -669,11 +693,27 @@ async def _stream_loop_events(
     # Sprint 57.107 (US-4): per-sidechain monotonic sequence_num for the
     # message_events transcript rows (one counter per subagent_id).
     sidechain_seq: dict[UUID, int] = {}
-    # Sprint 57.125: per-request monotonic sequence_num for the MAIN-session
-    # message_events transcript (AD-ChatV2-Session-History-Replay backend). Keyed
-    # by the main session_id (distinct from the per-subagent sidechain_seq above).
-    main_seq = 0
+    # Sprint 57.125/57.126: monotonic sequence_num for the MAIN-session
+    # message_events transcript (AD-ChatV2-Session-History-Replay). Keyed by the
+    # main session_id (distinct from the per-subagent sidechain_seq above).
+    # Sprint 57.126: seed from the session's current MAX so the counter is globally
+    # monotonic across the multiple sends of a multi-turn session (57.125 reset to 0
+    # per request → multi-turn replay scrambled), then persist the inbound user
+    # prompt as the FIRST row of this send. Persist-only: the live UI shows the
+    # prompt via pushUserMessage so it is NOT yielded to the stream; the replay
+    # reader reconstructs the user turn from this row. It sits before loop_start so
+    # the 57.116/120 active_skill stamping reconstructs on replay too.
     main_transcript_on = os.environ.get("MAIN_TRANSCRIPT_OBSERVER", "true").lower() == "true"
+    main_seq = await _max_main_seq(db, tenant_id, session_id) if main_transcript_on else 0
+    if main_transcript_on and user_input:
+        main_seq += 1
+        await _persist_main_event(
+            {"type": "user_message", "data": {"text": user_input}},
+            db=db,
+            tenant_id=tenant_id,
+            session_id=session_id,
+            sequence_num=main_seq,
+        )
     # Sprint 57.109 (C2): accumulate the semantic summarize usage off
     # ContextCompacted events (compaction can trigger on multiple turns) for the
     # `_compaction` ledger enqueue + quota reconcile at LoopCompleted.
