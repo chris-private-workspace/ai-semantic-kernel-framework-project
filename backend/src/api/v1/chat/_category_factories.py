@@ -75,7 +75,14 @@ from agent_harness.memory.layers.tenant_layer import TenantLayer
 from agent_harness.memory.layers.user_layer import UserLayer
 from agent_harness.prompt_builder import PromptBuilder
 from agent_harness.prompt_builder.builder import DefaultPromptBuilder
-from agent_harness.state_mgmt import Checkpointer, DBCheckpointer, DefaultReducer, Reducer
+from agent_harness.state_mgmt import (
+    Checkpointer,
+    DBCheckpointer,
+    DBMessageStore,
+    DefaultReducer,
+    MessageStore,
+    Reducer,
+)
 from agent_harness.subagent import DefaultSubagentDispatcher
 from agent_harness.verification import VerifierRegistry
 from agent_harness.verification.llm_judge import LLMJudgeVerifier
@@ -322,6 +329,25 @@ def make_chat_state_deps(
     reducer: Reducer = DefaultReducer()
     checkpointer: Checkpointer = DBCheckpointer(db, session_id=session_id, tenant_id=tenant_id)
     return reducer, checkpointer
+
+
+def make_chat_message_store(
+    db: AsyncSession | None,
+    session_id: UUID | None,
+    tenant_id: UUID | None,
+) -> MessageStore | None:
+    """Cat 7: a DBMessageStore (per-session Cat-3 message ledger) when all three
+    inputs are present, else None.
+
+    Sprint 57.127 (AD-ChatV2-Live-MultiTurn-Context): the main chat loop self-loads
+    prior conversation from + persists new messages to this ledger so a follow-up
+    send keeps multi-turn context. Mirrors make_chat_state_deps' all-three-or-nothing
+    guard — None on legacy / test callers leaves the loop at single-turn baseline.
+    Subagent child loops are built WITHOUT a store (no rehydration / persistence).
+    """
+    if db is None or session_id is None or tenant_id is None:
+        return None
+    return DBMessageStore(db, session_id=session_id, tenant_id=tenant_id)
 
 
 def make_chat_error_deps() -> tuple[

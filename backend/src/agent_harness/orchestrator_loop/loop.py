@@ -42,9 +42,10 @@ Description:
     revisit if per-run override is needed.
 
 Created: 2026-04-30 (Sprint 50.1 Day 2.2)
-Last Modified: 2026-06-15
+Last Modified: 2026-06-16
 
 Modification History (newest-first):
+    - 2026-06-16: Sprint 57.127 — multi-turn rehydration via MessageStore dep; serde → _contracts
     - 2026-06-15: Sprint 57.122 — tool HITL reads tenant risk-threshold policy (load-bearing)
     - 2026-06-13: Sprint 57.111 A3 — _cat10_verify_gate threads real trace_state to the judge
     - 2026-06-12: Sprint 57.109 C2 — ContextCompacted yield carries summarize usage/model
@@ -174,6 +175,7 @@ from agent_harness._contracts.hitl import (
     decide_tool_hitl,
     resolve_tool_risk,
 )
+from agent_harness._contracts.message_serde import _message_from_dict, _message_to_dict
 from agent_harness.context_mgmt import Compactor
 from agent_harness.error_handling import (
     DefaultCircuitBreaker,
@@ -203,7 +205,7 @@ from agent_harness.output_parser import (
     classify_output,
 )
 from agent_harness.prompt_builder import PromptBuilder
-from agent_harness.state_mgmt import Checkpointer, Reducer
+from agent_harness.state_mgmt import Checkpointer, MessageStore, Reducer
 from agent_harness.tools import ToolExecutor, ToolRegistry  # public path per category-boundaries.md
 
 from ._abc import AgentLoop
@@ -236,91 +238,16 @@ if TYPE_CHECKING:
 VERIFICATION_FAILED_STOP_REASON = "verification_failed"
 
 
-# === Message <-> JSONB-safe dict (57.88 US-2 durable pause-resume) ===========
-# Why: the checkpointer (US-3 split) does NOT persist the messages buffer, and
-# this codebase has no `messages` DB table. To resume a deferred-HITL pause the
-# loop must rehydrate the conversation, so the deferred branch serializes the
-# in-memory buffer into the checkpoint's DurableState.metadata["resume_messages"]
-# (which the existing JSONB (de)serializer round-trips — no migration / no
-# Checkpointer signature change). ResumeService reads it back to rebuild
-# transient.messages.
-#
-# SPIKE NOTE (plan §9 open question): self-contained-in-checkpoint message
-# storage is a spike shortcut. A production system should persist messages in a
-# dedicated `messages` table (or a bounded conversation summary) to avoid
-# checkpoint bloat on long conversations. Tracked as the "checkpoint bloat"
-# open question for the Day-4 design note.
-#
-# Scope: the deferred-pause buffer holds plain assistant / tool / user / system
-# messages whose `content` is `str` (the loop appends str content for those
-# roles). The list[ContentBlock] content shape is round-tripped best-effort via
-# asdict but not exercised on the pause path this slice.
-def _message_to_dict(msg: Message) -> dict[str, Any]:
-    """Serialize a Message to a JSONB-safe dict (57.88 US-2)."""
-    content: Any
-    if isinstance(msg.content, str):
-        content = msg.content
-    else:
-        # list[ContentBlock] — best-effort (not on the pause happy-path).
-        content = [_content_block_to_dict(b) for b in msg.content]
-    return {
-        "role": msg.role,
-        "content": content,
-        "tool_calls": (
-            [
-                {"id": tc.id, "name": tc.name, "arguments": dict(tc.arguments)}
-                for tc in msg.tool_calls
-            ]
-            if msg.tool_calls
-            else None
-        ),
-        "tool_call_id": msg.tool_call_id,
-        "name": msg.name,
-    }
-
-
-def _content_block_to_dict(block: ContentBlock) -> dict[str, Any]:
-    """Serialize a ContentBlock to a JSONB-safe dict (best-effort, 57.88 US-2)."""
-    return {
-        "type": block.type,
-        "text": block.text,
-        "image_url": block.image_url,
-        "tool_use_id": block.tool_use_id,
-        "tool_use_name": block.tool_use_name,
-        "tool_use_input": block.tool_use_input,
-        "tool_result_for_id": block.tool_result_for_id,
-        "tool_result_content": block.tool_result_content,
-    }
-
-
-def _message_from_dict(data: dict[str, Any]) -> Message:
-    """Rebuild a Message from a `_message_to_dict` payload (57.88 US-2)."""
-    raw_content = data.get("content", "")
-    content: str | list[ContentBlock]
-    if isinstance(raw_content, list):
-        content = [ContentBlock(**{k: v for k, v in b.items()}) for b in raw_content]
-    else:
-        content = str(raw_content)
-    raw_calls = data.get("tool_calls")
-    tool_calls = (
-        [
-            ToolCall(
-                id=str(c.get("id", "")),
-                name=str(c.get("name", "")),
-                arguments=dict(c.get("arguments", {})),
-            )
-            for c in raw_calls
-        ]
-        if raw_calls
-        else None
-    )
-    return Message(
-        role=data.get("role", "user"),
-        content=content,
-        tool_calls=tool_calls,
-        tool_call_id=data.get("tool_call_id"),
-        name=data.get("name"),
-    )
+# === Message <-> JSONB serde — moved to _contracts/message_serde.py (57.127) ==
+# Why: the serde is now shared by TWO consumers — the deferred-HITL pause path
+# (`messages_from_metadata`, below; 57.88) AND the new `messages`-table ledger
+# (`state_mgmt.message_store.DBMessageStore`, 57.127 — live multi-turn
+# rehydration), which CLOSES the "production should use a dedicated `messages`
+# table" SPIKE NOTE this comment used to carry. Relocated to the `_contracts`
+# leaf so `state_mgmt` can import it WITHOUT importing this heavy loop module
+# (circular-import safety). `_message_to_dict` / `_message_from_dict` are
+# imported at the top of this file; `_content_block_to_dict` stays internal to
+# message_serde.
 
 
 def messages_from_metadata(metadata: dict[str, Any]) -> list[Message]:
@@ -398,6 +325,7 @@ class AgentLoopImpl(AgentLoop):
         prompt_builder: PromptBuilder | None = None,
         reducer: Reducer | None = None,
         checkpointer: Checkpointer | None = None,
+        message_store: MessageStore | None = None,
         tenant_id: UUID | None = None,
         error_policy: ErrorPolicy | None = None,
         retry_policy: RetryPolicyMatrix | None = None,
@@ -476,6 +404,10 @@ class AgentLoopImpl(AgentLoop):
         # compactor + prompt_builder LoopState building blocks.
         self._reducer = reducer
         self._checkpointer = checkpointer
+        # Sprint 57.127 (AD-ChatV2-Live-MultiTurn-Context): the per-session Cat-3
+        # message ledger. When None (subagent child loops / legacy callers) the
+        # loop neither rehydrates prior context nor persists — baseline behavior.
+        self._message_store = message_store
         self._tenant_id = tenant_id
         # 53.2 Day 3 Cat 8 integration: 5 opt-in deps. When any is None
         # the corresponding Cat 8 path is skipped (preserves 53.1
@@ -1971,6 +1903,15 @@ class AgentLoopImpl(AgentLoop):
         ):
             yield ev
 
+    async def _persist_to_ledger(self, msgs: list[Message], *, turn_num: int) -> None:
+        """Append NEW messages to the durable per-session ledger (best-effort,
+        no-op without a store). Sprint 57.127 — used by run() for the user prompt
+        at send start + the final assistant answer at end_turn so a follow-up send
+        rehydrates them. ONLY new messages are passed (never system / prior /
+        intra-turn tool round-trips — the final answer is the cross-send unit)."""
+        if self._message_store is not None and msgs:
+            await self._message_store.append(msgs, turn_num=turn_num)
+
     async def run(
         self,
         *,
@@ -1980,10 +1921,24 @@ class AgentLoopImpl(AgentLoop):
     ) -> AsyncIterator[LoopEvent]:
         """TAO main loop. Yields LoopEvent stream until terminated."""
         ctx = trace_context or TraceContext.create_root()
-        messages: list[Message] = []
+        # Sprint 57.127 (AD-ChatV2-Live-MultiTurn-Context): rehydrate prior
+        # conversation so a follow-up send keeps multi-turn context (the 57.126
+        # drive-through found turn 2 "its population?" could not resolve "it"→Paris).
+        # The injected MessageStore (bound to this session+tenant) self-loads the
+        # verbatim Cat-3 ledger; absent (subagent child loops / legacy callers) → []
+        # = today's single-turn behavior. system is reconstructed fresh each run
+        # (NEVER persisted); prior rows are NOT re-persisted.
+        prior_messages: list[Message] = (
+            await self._message_store.load() if self._message_store is not None else []
+        )
+        messages: list[Message] = list(prior_messages)
         if self._system_prompt:
-            messages.append(Message(role="system", content=self._system_prompt))
+            messages.insert(0, Message(role="system", content=self._system_prompt))
         messages.append(Message(role="user", content=user_input))
+        # Persist this send's user prompt immediately (turn 0) so the question is
+        # remembered even if the run fails before an answer (mirrors the 57.126
+        # message_events user_message persist). NEW only — never system / prior.
+        await self._persist_to_ledger([messages[-1]], turn_num=0)
 
         turn_count = 0
         tokens_used = 0
@@ -2728,6 +2683,13 @@ class AgentLoopImpl(AgentLoop):
 
                     # === stop_reason terminator =================================
                     if should_terminate_by_stop_reason(response):
+                        # Sprint 57.127: persist the final answer to the ledger
+                        # (it is NOT in `messages` — the loop ends without it) so a
+                        # follow-up send rehydrates it. Covers run() + resume().
+                        await self._persist_to_ledger(
+                            [Message(role="assistant", content=parsed.text)],
+                            turn_num=turn_count,
+                        )
                         yield LoopCompleted(
                             stop_reason=TerminationReason.END_TURN.value,
                             total_turns=turn_count,
@@ -2753,6 +2715,13 @@ class AgentLoopImpl(AgentLoop):
                     output_type = classify_output(response)
 
                     if output_type == OutputType.FINAL:
+                        # Sprint 57.127: persist the final answer to the ledger
+                        # (the FINAL branch ends without appending it to `messages`)
+                        # so a follow-up send rehydrates it. Covers run() + resume().
+                        await self._persist_to_ledger(
+                            [Message(role="assistant", content=parsed.text)],
+                            turn_num=turn_count,
+                        )
                         yield LoopCompleted(
                             stop_reason=TerminationReason.END_TURN.value,
                             total_turns=turn_count,

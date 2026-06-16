@@ -134,6 +134,7 @@ backend/src/agent_harness/_contracts/
 | `PositionStrategy` | `01-eleven-categories-spec.md` | 範疇 5 | `arrange(sections: PromptSections) -> list[Message]` — pure stateless rearrangement，no IO；3 concrete impls per 52.2 Day 1.4：`NaiveStrategy`（[system, memory, conv, user]）/ `LostInMiddleStrategy`（**default**；user message 同時錨點首尾）/ `ToolsAtEndStrategy`（messages + tools_position_hint marker；adapter 層 detach）— **52.2 Day 1.3 新增** |
 | `OutputParser` | `01-eleven-categories-spec.md` | 範疇 6 | `parse(response) -> ParsedOutput` |
 | `Checkpointer` | `01-eleven-categories-spec.md` | 範疇 7 | `save()` / `load()` / `time_travel()` |
+| `MessageStore` | `38-chatv2-multiturn-rehydration-spike.md` | 範疇 7 | `load() -> list[Message]` / `append(messages, *, turn_num) -> None` — per-session Cat-3 `Message` ledger; sibling to `Checkpointer`, bound to `(session_id, tenant_id)` at construction; the loop self-loads it at `run()` start for live multi-turn context (**Sprint 57.127**; impl `DBMessageStore`, best-effort SAVEPOINT, tenant-scoped) |
 | `Reducer` | `01-eleven-categories-spec.md` | 範疇 7 | `merge(state, update) -> state` |
 | `ErrorPolicy` | `01-eleven-categories-spec.md` | 範疇 8 | `should_retry()` / `classify()` |
 | `CircuitBreaker` | `01-eleven-categories-spec.md` | 範疇 8 | `record()` / `is_open()` |

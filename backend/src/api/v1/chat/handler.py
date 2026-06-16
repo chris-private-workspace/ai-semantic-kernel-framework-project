@@ -105,6 +105,7 @@ from ._category_factories import (
     make_chat_compactor,
     make_chat_error_deps,
     make_chat_memory_deps,
+    make_chat_message_store,
     make_chat_prompt_builder,
     make_chat_state_deps,
     make_chat_subagent_dispatcher,
@@ -536,6 +537,11 @@ def build_real_llm_handler(
     # 5-scope layers the tools read/write — one retrieval, no second instance.
     prompt_builder = make_chat_prompt_builder(chat_client, memory_retrieval=memory_retrieval)
     reducer, checkpointer = make_chat_state_deps(db, session_id, tenant_id)
+    # Sprint 57.127 (AD-ChatV2-Live-MultiTurn-Context): the per-session message
+    # ledger — the main chat loop rehydrates prior conversation from it + persists
+    # new messages (multi-turn context). None for legacy / test callers (missing
+    # db/session/tenant). Subagent child loops below are built WITHOUT a store.
+    message_store = make_chat_message_store(db, session_id, tenant_id)
     # Sprint 57.63 Day 2: Cat 8 (error handling) — the 5 deps activate
     # `_handle_tool_error` (classify → budget → terminator) on the production
     # tool path; always injected (no DB / env required to construct).
@@ -718,6 +724,7 @@ def build_real_llm_handler(
         prompt_builder=prompt_builder,
         reducer=reducer,
         checkpointer=checkpointer,
+        message_store=message_store,
         tenant_id=tenant_id,
         error_policy=error_policy,
         retry_policy=retry_policy,
