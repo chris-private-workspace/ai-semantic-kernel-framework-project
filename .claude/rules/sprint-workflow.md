@@ -4,10 +4,11 @@
 
 **Category**: Development Process
 **Created**: 2026-04-28
-**Last Modified**: 2026-05-31
+**Last Modified**: 2026-06-16
 **Status**: Active
 
 > **Modification History**
+> - 2026-06-16: chore(rules) — §Sprint Closeout post-merge status-flip rule: flip `PR-pending`→`MERGED` on the 2 current-status surfaces (CLAUDE.md Current Sprint row + next-phase head block) after gh-verified merge + interregnum Current-Sprint-row wording + historical-block sweep only if misleading (one done 2026-06-16 for 57.112-126)
 > - 2026-06-03: chore(rules) — Area-A (57.66-73) lessons fold-in: Prong-1 test-infra verify (AD-Day0-Prong1-TestInfra-File-Verify) + Prong-2 +2 drift rows (codegen-shape AD-Day0-Codegen-Existing-Shape-Capture / no-live-producer) + Risk Class E (stale --reload masks wiring; C-11 cost_ledger) + Risk Class C reinforce (AD-Source-DB-Call-Test-Isolation) + Before-Commit item 7 (agent-delegation: all gates + pin language + parent re-verify)
 > - 2026-05-31: REFACTOR-005 — extract per-sprint calibration history (matrix per-cell narration + §Scope-class MHist list + agent_factor activation history 57.42→57.62 + top calibration-retro entries) to calibration-log.md; kept active multiplier table + agent_factor Formula/Rollback/Escalation/Tracking rules (always-loaded file ~90k→~25k tok)
 > - 2026-05-29: Sprint 57.62 follow-up chore — mark §Common Risk Classes Risk Class A **RETIRED Sprint 55.6** (paths filter removed → docs-only PRs run full CI; stale touch-backend-ci.yml workaround description corrected; residual webhook-miss edge case noted)
@@ -622,7 +623,8 @@ retrospective.md 必須記錄：
 ### CLAUDE.md Update at Sprint Closeout — Minimal Touch
 
 **Allowed** ✅:
-- Update `Current Sprint` row (next sprint id + branch name) — 1 line
+- Update `Current Sprint` row — 1 line. **Two cases**: (i) a next sprint is selected → next sprint id + branch name; (ii) **rolling-discipline interregnum** (sprint merged, next NOT yet selected) → `**No active sprint** (awaiting next-phase selection) — last shipped Sprint XX.YY MERGED (PR #N, main <sha>)`, NOT a stale `PR-pending`
+- **Post-merge status flip** (codified 2026-06-16; closes the interregnum-staleness gap): closeout doc edits are written during Day 4 **before** the PR merges → they label the sprint `PR-pending` / `NOT pushed`. After a `gh`-verified merge, flip those labels → `MERGED (PR #N, main <sha>)` on the TWO current-status surfaces only — CLAUDE.md `Current Sprint` row + `next-phase-candidates.md` head carryover block. Older per-sprint carryover blocks are historical snapshots (each PR# is recoverable from its memory subfile + git log) — do a truthful batch `PR-pending → MERGED` sweep only if they accumulate misleadingly (one done 2026-06-16 for Sprint 57.112-126), not every closeout
 - Update `Last Updated` footer line — 1 line: `**Last Updated**: YYYY-MM-DD (Sprint XX.YY — short goal); see memory/ for sprint history`
 - Update `Phase` / `Roadmap` row IF milestone reached (e.g. V2 22/22 → SaaS Stage 1 1/3, Phase 57+ Frontend N/N+1)
 - Update `Tech Stack` / `Architecture` / `Branch Protection` rows IF actually changed (rare; e.g. CI policy change)
