@@ -59,6 +59,7 @@
 | `cc-source-blueprint-pause-resume-phases-20260608.md` | CC 源碼證偽：非 6-phase、無 durable resume | Active（local，未 commit）|
 | `v2-architecture-flow-visualization-20260607.md` | V2 架構 / 流程視覺化 | Active（local，未 commit）|
 | `runtime-verification-20260530.md` | V2 runtime 實證驗證（實驗證據）| 快照 |
+| `subagent-tree-relay-diagnostic-20260617.md` | `AD-Subagent-Child-Event-SSE-Relay` drive-through 診斷：node-level (57.95) + depth-1 (57.96) 已修；depth>1 = YAGNI-by-design | ✅ AD CLOSED |
 
 ## 群組 3｜Cat 10 Verification 量測
 
