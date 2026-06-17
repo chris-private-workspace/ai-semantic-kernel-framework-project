@@ -35,9 +35,12 @@ Closed `AD-ChatV2-Resume-Tool-RoundTrips` (57.129 carryover) + the sibling held-
 - Leg-2 (niche advanced path): labeled "unit + gate verified, NOT UI drive-through" — NOT claimed driven. Carryover logged. Faithful to the Drive-Through Acceptance constraint.
 
 ## Q7 — Carryover
-- **NEW** `AD-ChatV2-Resume-Replay-Drive-Through` (🟡) — a deterministic output/verification-escalate drive-through for Leg-2 (needs a controllable escalate phrase admin surface OR a verification-fail fixture; the real-LLM `confidential` trigger is non-deterministic + content-filter-prone).
+- **NEW** `AD-ChatV2-Resume-Replay-Drive-Through` (🟡) — a deterministic output/verification-escalate drive-through for Leg-2 (needs a controllable escalate phrase admin surface OR a verification-fail fixture; the real-LLM `confidential` trigger is non-deterministic + content-filter-prone). → **CLOSED 2026-06-17** (see §Follow-up below — the surface already existed; no code).
 - Pre-existing: `AD-Billing-Outbox-Drain-Test-Flake` (did NOT surface; backend change but unrelated).
 - Deferred infra (unchanged): `message_events`/`messages` consolidation; `turn_num` cross-send counter; pg_partman.
 
 ## Design Note Extract
 N/A — not a spike sprint (continuation of the 57.127/129 `messages` ledger; no new contract). NO design note.
+
+## Follow-up (2026-06-17) — Leg-2 drive-through CLOSED
+`AD-ChatV2-Resume-Replay-Drive-Through` is now CLOSED via a follow-up drive-through (no code change). The Q7 premise ("no admin endpoint exists for `escalate_output_phrases`; needs a new surface or fixture") was WRONG — `PUT /admin/tenants/{id}/harness-policy` already accepts `escalate_output_phrases` (`tenants.py:1671`; resolved + wired at `handler.py:588-642`). Setting it to the benign content-filter-safe word `paris` (instead of the non-deterministic `confidential`) gave a deterministic output-escalate trigger. Drove the real chat-v2 UI + real Azure LLM + real DB (session `e0ec3410…`): output-escalate pause (Rationale `output matched escalation phrase: 'paris'`, tool: —) → Approve → `_replay_approved_output` delivered `Paris` AND persisted it to the `messages` ledger AT RESUME (`seq=2 assistant "Paris"` — pre-fix this row would be missing); follow-up "how many letters" → `5` proved rehydration (POST sent no history). Leg-2 is now drive-through verified (was honestly gate-only). Evidence: `artifacts/drivethrough-leg2-output-escalate-PASS.md` + `.jpeg`. Lesson (reinforces 57.134): Day-0 grep the CONCEPT, not just the proposed storage key — the controllable surface already existed.
