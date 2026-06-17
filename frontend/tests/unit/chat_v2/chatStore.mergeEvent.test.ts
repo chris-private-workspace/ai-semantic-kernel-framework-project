@@ -52,6 +52,7 @@ const llmResponse = (opts: {
   toolCalls?: Array<{ id: string; name: string; arguments: Record<string, unknown> }>;
   inputTokens?: number;
   outputTokens?: number;
+  cachedInputTokens?: number;
 }): LoopEvent => ({
   type: "llm_response",
   data: {
@@ -61,6 +62,8 @@ const llmResponse = (opts: {
     // Sprint 57.108: per-call token actuals (omitted by default — old-frame shape).
     input_tokens: opts.inputTokens,
     output_tokens: opts.outputTokens,
+    // Sprint 57.133: per-turn prompt-cache-hit tokens (omitted by default — old-frame shape).
+    cached_input_tokens: opts.cachedInputTokens,
   },
 });
 
@@ -253,6 +256,7 @@ describe("chatStore.mergeEvent Turn block sequence (Sprint 57.21 Day 1)", () => 
     expect(t.tokensIn).toBeNull();
     expect(t.tokensOut).toBeNull();
     expect(t.costUsd).toBeNull();
+    expect(t.cachedInputTokens).toBeNull(); // Sprint 57.133: cached null until the first llm_response
     expect(t.model).toBeNull(); // Sprint 57.131: model null until the first llm_request
     expect(t.traceId).toBeNull();
   });
@@ -301,6 +305,25 @@ describe("chatStore.mergeEvent Turn block sequence (Sprint 57.21 Day 1)", () => 
     const t = lastAgentTurn(useChatStore.getState().turns);
     expect(t.tokensIn).toBe(100); // llm_request estimate preserved
     expect(t.tokensOut).toBeNull();
+  });
+
+  // Sprint 57.133: per-turn prompt-cache-hit tokens captured from llm_response (same 0-guard).
+  test("llm_response cached_input_tokens populates AgentTurn.cachedInputTokens (Sprint 57.133)", () => {
+    useChatStore.getState().mergeEvent(turnStart());
+    useChatStore
+      .getState()
+      .mergeEvent(llmResponse({ content: "hi", inputTokens: 1200, cachedInputTokens: 600 }));
+    const t = lastAgentTurn(useChatStore.getState().turns);
+    expect(t.cachedInputTokens).toBe(600);
+  });
+
+  test("llm_response without cached_input_tokens keeps prior cached value (old frames; Sprint 57.133)", () => {
+    useChatStore.getState().mergeEvent(turnStart());
+    useChatStore.getState().mergeEvent(llmResponse({ content: "a", cachedInputTokens: 600 }));
+    // a later frame omits cached (old-frame / unmeasured 0) → prior 600 preserved
+    useChatStore.getState().mergeEvent(llmResponse({ content: "b" }));
+    const t = lastAgentTurn(useChatStore.getState().turns);
+    expect(t.cachedInputTokens).toBe(600);
   });
 
   test("message_injected appends a UserTurn tagged injected (Sprint 57.101 B1)", () => {

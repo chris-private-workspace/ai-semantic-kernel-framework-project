@@ -513,6 +513,9 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
             tokensOut: null,
             tokensThinking: null,
             costUsd: null,
+            // Sprint 57.133: null until this turn's first llm_response carries actual
+            // cache-hit tokens (turn_start fires before any llm_response).
+            cachedInputTokens: null,
             // Sprint 57.131: null until this turn's first llm_request stamps the model
             // (turn_start fires BEFORE llm_request, so the model isn't known yet).
             model: null,
@@ -597,6 +600,12 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
                 blocks: newBlocks,
                 tokensIn: ev.data.input_tokens > 0 ? ev.data.input_tokens : t.tokensIn,
                 tokensOut: ev.data.output_tokens > 0 ? ev.data.output_tokens : t.tokensOut,
+                // Sprint 57.133: per-turn prompt-cache-hit tokens (same 0-guard — an
+                // old frame / unmeasured 0 must not clobber a real prior count).
+                cachedInputTokens:
+                  ev.data.cached_input_tokens > 0
+                    ? ev.data.cached_input_tokens
+                    : t.cachedInputTokens,
               };
             }),
           };

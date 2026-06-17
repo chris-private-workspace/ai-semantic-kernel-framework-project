@@ -7,6 +7,7 @@
  * Created: 2026-05-17 (Sprint 57.21 Day 4 §4.1)
  *
  * Modification History:
+ *   - 2026-06-17: Sprint 57.133 — +tokens.cached / cache_hit row cases; makeAgentTurn +cachedInputTokens
  *   - 2026-06-17: Sprint 57.131 — +model row cases (set / "—" absent); makeAgentTurn +model; dash count 7→8
  *   - 2026-06-15: Sprint 57.120 — +active_skill row cases (⚡ set / "—" absent); null-dash count 6→7
  *   - 2026-06-03: Sprint 57.75 — Trace+Memory tabs now wired (A-5); replace ComingSoon assertions with empty states
@@ -61,6 +62,7 @@ function makeAgentTurn(overrides: Partial<AgentTurn> = {}): AgentTurn {
     tokensOut: 186,
     tokensThinking: 412,
     costUsd: 0.0142,
+    cachedInputTokens: 7410, // Sprint 57.133: 7410/14820 → cache_hit 50%
     model: "azure/gpt-5.2",
     traceId: "6f3a.b2k1",
     spanId: "a04.zp2",
@@ -92,6 +94,8 @@ describe("ChatInspector (Sprint 57.21 Day 4 §4.1)", () => {
     expect(screen.getByText("186")).toBeInTheDocument();
     expect(screen.getByText("412")).toBeInTheDocument();
     expect(screen.getByText("$0.0142")).toBeInTheDocument();
+    expect(screen.getByText("7,410")).toBeInTheDocument(); // Sprint 57.133: tokens.cached
+    expect(screen.getByText("50%")).toBeInTheDocument(); // Sprint 57.133: derived cache_hit (7410/14820)
     expect(screen.getByText("azure/gpt-5.2")).toBeInTheDocument(); // Sprint 57.131: model row
     expect(screen.getByText("6f3a.b2k1")).toBeInTheDocument();
     expect(screen.getByText("a04.zp2")).toBeInTheDocument();
@@ -105,6 +109,7 @@ describe("ChatInspector (Sprint 57.21 Day 4 §4.1)", () => {
           tokensOut: null,
           tokensThinking: null,
           costUsd: null,
+          cachedInputTokens: null,
           model: null,
           traceId: null,
           spanId: null,
@@ -113,8 +118,9 @@ describe("ChatInspector (Sprint 57.21 Day 4 §4.1)", () => {
     });
     render(<ChatInspector />);
     const dashes = screen.getAllByText("—");
-    // 8 fields nullable: tokens.in / tokens.out / tokens.thinking / cost / model
-    // (Sprint 57.131) / trace_id / span_id / active_skill (Sprint 57.120 — default no skill)
+    // 10 fields render "—" here: tokens.in / out / thinking / cost / tokens.cached +
+    // cache_hit (Sprint 57.133 — cache_hit "—" because both cached & tokensIn null) /
+    // model (Sprint 57.131) / trace_id / span_id / active_skill (Sprint 57.120 — default no skill)
     expect(dashes.length).toBeGreaterThanOrEqual(7);
   });
 
@@ -151,6 +157,26 @@ describe("ChatInspector (Sprint 57.21 Day 4 §4.1)", () => {
     expect(screen.getByText("model")).toBeInTheDocument();
     // 2 dashes now: model (this turn) + active_skill (default carries no skill)
     expect(screen.getAllByText("—")).toHaveLength(2);
+  });
+
+  // Sprint 57.133: the Inspector Turn tab surfaces per-turn prompt-cache economics —
+  // actual cache-hit tokens (tokens.cached) + a derived cache_hit (cachedInputTokens / tokensIn).
+  test("InspectorTurn shows tokens.cached + derived cache_hit when set", () => {
+    useChatStore.setState({ turns: [makeAgentTurn({ cachedInputTokens: 7410, tokensIn: 14820 })] });
+    render(<ChatInspector />);
+    expect(screen.getByText("tokens.cached")).toBeInTheDocument();
+    expect(screen.getByText("7,410")).toBeInTheDocument();
+    expect(screen.getByText("cache_hit")).toBeInTheDocument();
+    expect(screen.getByText("50%")).toBeInTheDocument(); // 7410 / 14820 = 50%
+  });
+
+  test("InspectorTurn shows tokens.cached / cache_hit '—' when cachedInputTokens null", () => {
+    useChatStore.setState({ turns: [makeAgentTurn({ cachedInputTokens: null })] });
+    render(<ChatInspector />);
+    expect(screen.getByText("tokens.cached")).toBeInTheDocument();
+    expect(screen.getByText("cache_hit")).toBeInTheDocument();
+    // 3 dashes: tokens.cached + cache_hit (cached null → derived "—") + active_skill (default no skill)
+    expect(screen.getAllByText("—")).toHaveLength(3);
   });
 
   test("Block sequence renders 1 line per block with correct type label", () => {

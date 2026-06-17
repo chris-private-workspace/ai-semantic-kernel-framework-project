@@ -169,6 +169,12 @@ export type AgentTurn = {
   tokensOut: number | null;
   tokensThinking: number | null;
   costUsd: number | null;
+  // Sprint 57.133: actual prompt-cache-hit tokens for this turn (captured from
+  // llm_response.cached_input_tokens with the same 0-guard as tokensIn/Out). null
+  // until the turn's first llm_response. Surfaced as the Inspector Turn tab
+  // `tokens.cached` KV row + a derived `cache_hit` (cachedInputTokens / tokensIn);
+  // closes the token-sweep leg of AD-ChatV2-Inspector-Turn-Metadata-Wire.
+  cachedInputTokens: number | null;
   // Sprint 57.131: the LLM model that ran this turn (captured from llm_request.model
   // in the same mergeEvent case that sets tokensIn). null until the turn's first
   // llm_request fires (turn_start initializes it null; a multi-call turn keeps the

@@ -8,8 +8,9 @@
  *   Mockup L392-417 (InspectorTurn) + L419-432 (KV + EventLine helpers).
  *   Picks the most-recent AgentTurn from chatStore.turns and renders:
  *     - Section header: "Turn N · stop_reason" (font-mono uppercase)
- *     - 8 KV rows: stop_reason / duration / tokens.in/out/thinking /
- *                  cost / trace_id / span_id (placeholder "—" when null)
+ *     - 12 KV rows: stop_reason / duration / tokens.in/out/thinking /
+ *                  tokens.cached / cache_hit (derived) / cost / model /
+ *                  active_skill / trace_id / span_id (placeholder "—" when null)
  *     - .thin-rule divider
  *     - "Block sequence" header + 1 EventLine per block (color dot +
  *       type label + descriptive text)
@@ -34,9 +35,10 @@
  *   - "metrics.query · 210ms" describeBlock output preserved
  *
  * Created: 2026-05-17 (Sprint 57.21 Day 4 §4.1)
- * Last Modified: 2026-06-15
+ * Last Modified: 2026-06-17
  *
  * Modification History (newest-first):
+ *   - 2026-06-17: Sprint 57.133 — +tokens.cached + derived cache_hit KV rows (reuse KV, no mockup CSS)
  *   - 2026-06-15: Sprint 57.120 — +active_skill KV row (⚡ skill; reuse KV, no mockup CSS)
  *   - 2026-05-23: Sprint 57.30 Day 4 §D3 — verbatim re-point Tailwind → mockup .col/.spread/.thin-rule/.mono/.tnum + .btn outline/ghost
  *   - 2026-05-17: Initial creation (Sprint 57.21 Day 4 §4.1)
@@ -148,6 +150,14 @@ export function InspectorTurn(): JSX.Element {
   const turnNumber = turns.filter((t) => t.role === "agent").indexOf(lastAgent) + 1;
   const durationLabel = lastAgent.durationMs != null ? `${(lastAgent.durationMs / 1000).toFixed(2)}s` : "—";
   const stopReason = lastAgent.stopReason ?? "—";
+  // Sprint 57.133: per-turn cache-hit rate, derived from the two token fields already
+  // on the turn (cachedInputTokens / tokensIn) — no new store state. "—" until both
+  // are known; rounded integer %. The wire's loop_end.cache_hit_rate is cumulative; we
+  // want per-turn, so derive locally.
+  const cacheHitLabel =
+    lastAgent.cachedInputTokens != null && lastAgent.tokensIn != null && lastAgent.tokensIn > 0
+      ? `${Math.round((lastAgent.cachedInputTokens / lastAgent.tokensIn) * 100)}%`
+      : "—";
 
   return (
     <div data-testid="inspector-turn" style={{ padding: "12px 16px" }}>
@@ -177,6 +187,16 @@ export function InspectorTurn(): JSX.Element {
           v={lastAgent.tokensThinking != null ? lastAgent.tokensThinking.toLocaleString() : "—"}
           mono
         />
+        {/* Sprint 57.133: per-turn prompt-cache economics — actual cache-hit tokens
+            (from llm_response.cached_input_tokens) + a derived cache_hit rate. Reuses
+            the KV helper + .mono — no new mockup CSS / HEX / oklch. "—" until the first
+            llm_response. Closes the token-sweep leg of AD-ChatV2-Inspector-Turn-Metadata-Wire. */}
+        <KV
+          k="tokens.cached"
+          v={lastAgent.cachedInputTokens != null ? lastAgent.cachedInputTokens.toLocaleString() : "—"}
+          mono
+        />
+        <KV k="cache_hit" v={cacheHitLabel} mono />
         <KV k="cost" v={lastAgent.costUsd != null ? `$${lastAgent.costUsd.toFixed(4)}` : "—"} mono />
         {/* Sprint 57.131: the LLM model that ran this turn (captured at llm_request,
             alongside tokens). Reuses the KV helper + .mono (a technical identifier, like
