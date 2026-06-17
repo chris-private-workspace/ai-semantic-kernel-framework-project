@@ -27,11 +27,14 @@ Description:
 Key Components:
     - RetentionStats — (messages, events, cutoff); apply=deleted, dry_run=matched counts
     - apply_transcript_retention(db, tenant_id, retention_days, *, now, dry_run) -> RetentionStats
+    - SweepStats — (tenants_processed, tenants_failed, total_messages, total_events)
+    - run_transcript_retention_sweep(session_factory, *, now) -> SweepStats (all-tenant sweep)
 
 Created: 2026-06-17 (Sprint 57.134)
 Last Modified: 2026-06-17
 
 Modification History (newest-first):
+    - 2026-06-17: Sprint 57.135 — add run_transcript_retention_sweep + SweepStats (scheduled job)
     - 2026-06-17: Initial creation (Sprint 57.134) — apply/preview on tenants.retention_days
 
 Related:
@@ -43,6 +46,7 @@ Related:
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any
@@ -51,7 +55,9 @@ from uuid import UUID
 from sqlalchemy import delete, func, select, text
 
 if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -119,3 +125,79 @@ async def _count_older(db: AsyncSession, model: Any, tenant_id: UUID, cutoff: da
         .where(model.tenant_id == tenant_id, model.created_at < cutoff)
     )
     return int(result.scalar_one() or 0)
+
+
+@dataclass(frozen=True)
+class SweepStats:
+    """Outcome of one scheduled retention sweep across all tenants (the job's drain_once analog)."""
+
+    tenants_processed: int
+    tenants_failed: int
+    total_messages: int
+    total_events: int
+
+
+# === run_transcript_retention_sweep: the scheduled job's per-cycle unit of work ===
+# Why: Sprint 57.134 shipped a MANUAL per-tenant apply (admin POST). The scheduled job
+# (Sprint 57.135) needs a sweep that enforces retention across ALL tenants automatically.
+# This is the testable analog of BillingOutboxDrainer.drain_once() — one sweep cycle.
+# Each tenant runs in its OWN transaction (apply → audit → commit) and is fail-open
+# (a flake on one tenant must not abort the rest). Reuses apply_transcript_retention
+# (the delete primitive) + append_audit (system user_id=None).
+async def run_transcript_retention_sweep(
+    session_factory: async_sessionmaker[AsyncSession],
+    *,
+    now: datetime | None = None,
+) -> SweepStats:
+    """Enforce per-tenant transcript retention across ALL tenants (one sweep cycle).
+
+    Enumerates every tenant's (id, retention_days) and, for each, opens a fresh session,
+    deletes its expired transcripts (apply_transcript_retention), writes a system audit row
+    (tenant_transcript_retention_scheduled, user_id=None), and commits — per-tenant txn so a
+    SET LOCAL app.tenant_id + delete + audit is isolated. Fail-open per tenant: a per-tenant
+    exception is logged and the sweep continues (tenants_failed += 1). `now` is injectable for
+    deterministic tests. Returns aggregate SweepStats.
+    """
+    # Local imports keep this module import-light + avoid an import cycle (audit_helper /
+    # identity both sit above platform_layer in the import graph at module load).
+    from infrastructure.db.audit_helper import append_audit
+    from infrastructure.db.models.identity import Tenant
+
+    # Enumerate all tenants in a short read session. The `tenants` registry is NOT
+    # tenant-RLS'd (it IS the tenant list), so a plain (non-tenant) session reads it.
+    async with session_factory() as read_db:
+        rows = (await read_db.execute(select(Tenant.id, Tenant.retention_days))).all()
+
+    processed = failed = total_messages = total_events = 0
+    for tenant_id, retention_days in rows:
+        try:
+            async with session_factory() as db:
+                stats = await apply_transcript_retention(db, tenant_id, retention_days, now=now)
+                await append_audit(
+                    db,
+                    tenant_id=tenant_id,
+                    operation="tenant_transcript_retention_scheduled",
+                    resource_type="tenant",
+                    resource_id=str(tenant_id),
+                    operation_data={
+                        "retention_days": retention_days,
+                        "cutoff": stats.cutoff.isoformat(),
+                        "deleted_messages": stats.messages,
+                        "deleted_events": stats.events,
+                    },
+                    user_id=None,
+                    operation_result="success",
+                )
+                await db.commit()
+            processed += 1
+            total_messages += stats.messages
+            total_events += stats.events
+        except Exception:  # noqa: BLE001 — fail-open per tenant: one flake must not abort the sweep
+            logger.exception("transcript retention sweep failed for tenant %s", tenant_id)
+            failed += 1
+    return SweepStats(
+        tenants_processed=processed,
+        tenants_failed=failed,
+        total_messages=total_messages,
+        total_events=total_events,
+    )

@@ -17,6 +17,7 @@ Description:
 Created: 2026-05-08 (Sprint 57.6 Day 1)
 
 Modification History:
+    - 2026-06-17: Sprint 57.135 — transcript-retention job default-off + start-enabled tests
     - 2026-06-07: FIX-028 — add test_lifespan_wires_sla_recorder (sla-report 500 regression)
     - 2026-05-31: FIX-022 — add test_lifespan_wires_pricing_loader_from_yaml (§5.1 H1)
     - 2026-05-08: Sprint 57.6 US-2 — initial creation (closes AD-Reality-2)
@@ -29,8 +30,12 @@ Related:
 
 from __future__ import annotations
 
+import asyncio
+from types import SimpleNamespace
+from typing import Any
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -110,3 +115,46 @@ def test_lifespan_wires_sla_recorder() -> None:
             ), "lifespan startup did not install SLAMetricRecorder"
     finally:
         reset_sla_recorder()
+
+
+async def test_transcript_retention_job_default_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sprint 57.135: the destructive retention job is OFF by default (env unset → no task)."""
+    from api.main import _start_transcript_retention_job
+
+    monkeypatch.delenv("TRANSCRIPT_RETENTION_JOB_ENABLED", raising=False)
+    app: Any = SimpleNamespace(state=SimpleNamespace())
+    await _start_transcript_retention_job(app)
+    assert getattr(app.state, "transcript_retention_task", None) is None
+    assert getattr(app.state, "transcript_retention_stop", None) is None
+
+
+async def test_transcript_retention_job_starts_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sprint 57.135: TRANSCRIPT_RETENTION_JOB_ENABLED=true → a poll-loop task is created.
+
+    The poll loop is patched to a no-op that blocks on stop_event so NO real sweep runs against
+    the DB; we assert the task + stop event land on app.state, then signal shutdown to clean up.
+    """
+    import api.main as main_mod
+    from api.main import _start_transcript_retention_job
+
+    started = asyncio.Event()
+
+    async def fake_loop(session_factory: Any, interval_s: int, stop_event: asyncio.Event) -> None:
+        started.set()
+        await stop_event.wait()  # block until shutdown (mirrors a real poll loop)
+
+    monkeypatch.setattr(main_mod, "_transcript_retention_poll_loop", fake_loop)
+    monkeypatch.setenv("TRANSCRIPT_RETENTION_JOB_ENABLED", "true")
+    monkeypatch.setenv("TRANSCRIPT_RETENTION_JOB_INTERVAL_S", "3600")
+
+    app: Any = SimpleNamespace(state=SimpleNamespace())
+    await _start_transcript_retention_job(app)
+
+    task = getattr(app.state, "transcript_retention_task", None)
+    stop = getattr(app.state, "transcript_retention_stop", None)
+    assert task is not None, "job enabled but no task created"
+    assert isinstance(stop, asyncio.Event)
+    # Cleanup: let the fake loop start, then signal stop + await the task (no orphan task).
+    await asyncio.wait_for(started.wait(), timeout=1)
+    stop.set()
+    await asyncio.wait_for(task, timeout=1)

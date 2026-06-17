@@ -24,9 +24,10 @@ Description:
     - Static / CORS config (depends on frontend deploy decision; Phase 55)
 
 Created: 2026-04-29 (Sprint 49.4 Day 5)
-Last Modified: 2026-06-07
+Last Modified: 2026-06-17
 
 Modification History (newest-first):
+    - 2026-06-17: Sprint 57.135 — scheduled transcript-retention sweep job (billing-drainer mirror)
     - 2026-06-13: Sprint 57.112 — mount mfa router (TOTP enroll/confirm/verify; IAM Block C)
     - 2026-06-07: FIX-028 — _wire_sla_recorder() at startup (sla-report 500 fix; twin of FIX-022)
     - 2026-06-05: Sprint 57.81 — _wire_error_budget() at startup (B-7 RedisBudgetStore wiring)
@@ -89,6 +90,8 @@ from platform_layer.observability import (
 )
 
 if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
     from platform_layer.billing.billing_outbox import BillingOutboxDrainer
 
 logger = logging.getLogger(__name__)
@@ -336,6 +339,67 @@ async def _start_billing_outbox_drainer(app: FastAPI) -> None:
         logger.warning("api.main: billing outbox drainer not started (fail-open)", exc_info=True)
 
 
+async def _transcript_retention_poll_loop(
+    session_factory: "async_sessionmaker[AsyncSession]",
+    interval_s: int,
+    stop_event: asyncio.Event,
+) -> None:
+    """Run the per-tenant transcript-retention sweep every interval_s until stop_event is set.
+
+    Fail-open: a sweep-cycle exception is logged and the loop continues (a transient DB flake
+    must never kill the poller). The sweep runs ONCE at start, then every interval; the interval
+    sleep is interrupted by stop_event for prompt shutdown. Mirrors _billing_outbox_poll_loop.
+    """
+    from platform_layer.transcripts.retention import run_transcript_retention_sweep
+
+    while not stop_event.is_set():
+        try:
+            stats = await run_transcript_retention_sweep(session_factory)
+            if stats.total_messages or stats.total_events or stats.tenants_failed:
+                logger.info(
+                    "api.main: transcript retention sweep — tenants=%d failed=%d "
+                    "messages_deleted=%d events_deleted=%d",
+                    stats.tenants_processed,
+                    stats.tenants_failed,
+                    stats.total_messages,
+                    stats.total_events,
+                )
+        except Exception:  # noqa: BLE001 — fail-open: a flake must not kill the poller
+            logger.exception("api.main: transcript retention sweep cycle failed")
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=interval_s)
+        except (TimeoutError, asyncio.TimeoutError):
+            pass  # interval elapsed → next cycle
+
+
+async def _start_transcript_retention_job(app: FastAPI) -> None:
+    """Start the background transcript-retention sweep poll loop (fail-open, DEFAULT OFF).
+
+    Sprint 57.135 (57.134 follow-on #1): auto-enforces per-tenant transcript retention by
+    deleting messages + message_events older than each tenant's tenants.retention_days every
+    TRANSCRIPT_RETENTION_JOB_INTERVAL_S (default 86400 = daily). DESTRUCTIVE, so it is OPT-IN:
+    disabled unless TRANSCRIPT_RETENTION_JOB_ENABLED=true (read as a plain env flag to dodge the
+    get_settings() lru_cache timing trap, mirroring the billing drainer). The task + stop event
+    are stored on app.state for shutdown cancellation.
+    """
+    if os.environ.get("TRANSCRIPT_RETENTION_JOB_ENABLED", "false").lower() != "true":
+        logger.info("api.main: transcript retention job disabled (env; default off)")
+        return
+    try:
+        from infrastructure.db.engine import get_session_factory
+
+        interval_s = int(os.environ.get("TRANSCRIPT_RETENTION_JOB_INTERVAL_S", "86400"))
+        stop_event = asyncio.Event()
+        task = asyncio.create_task(
+            _transcript_retention_poll_loop(get_session_factory(), interval_s, stop_event)
+        )
+        app.state.transcript_retention_stop = stop_event
+        app.state.transcript_retention_task = task
+        logger.info("api.main: transcript retention job started (interval=%ds)", interval_s)
+    except Exception:  # noqa: BLE001 — fail-open: never block startup on the job
+        logger.warning("api.main: transcript retention job not started (fail-open)", exc_info=True)
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Startup: load .env + structured logging + OTel SDK. Shutdown: flush + dispose engine."""
@@ -351,6 +415,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     _wire_sla_recorder()
     _wire_billing_outbox()
     await _start_billing_outbox_drainer(app)
+    await _start_transcript_retention_job(app)
     logger.info("api.main: startup complete")
     try:
         yield
@@ -366,6 +431,17 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
                 await asyncio.wait_for(_drainer_task, timeout=10)
             except (TimeoutError, asyncio.TimeoutError, asyncio.CancelledError):
                 _drainer_task.cancel()
+        # Sprint 57.135: stop the transcript-retention sweep poller (same lifecycle as
+        # the billing drainer above) before OTel + engine teardown — the poller uses the DB.
+        _ret_stop = getattr(app.state, "transcript_retention_stop", None)
+        _ret_task = getattr(app.state, "transcript_retention_task", None)
+        if _ret_stop is not None:
+            _ret_stop.set()
+        if _ret_task is not None:
+            try:
+                await asyncio.wait_for(_ret_task, timeout=10)
+            except (TimeoutError, asyncio.TimeoutError, asyncio.CancelledError):
+                _ret_task.cancel()
         await shutdown_opentelemetry()
         await dispose_engine()
         logger.info("api.main: shutdown complete")
