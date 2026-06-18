@@ -60,6 +60,8 @@
 | `v2-architecture-flow-visualization-20260607.md` | V2 架構 / 流程視覺化 | Active（local，未 commit）|
 | `runtime-verification-20260530.md` | V2 runtime 實證驗證（實驗證據）| 快照 |
 | `subagent-tree-relay-diagnostic-20260617.md` | `AD-Subagent-Child-Event-SSE-Relay` drive-through 診斷：node-level (57.95) + depth-1 (57.96) 已修；depth>1 = YAGNI-by-design | ✅ AD CLOSED |
+| `chat-v2-agent-loop-capability-drivethrough-20260618.md` | chat-v2 主流量 agent loop 子能力多輪 drive-through（工具/subagent/verification/HITL/escalate 暫停/handoff/injection/long-run/compaction）+ CC 長運行誠實評估（§3 三缺口）| Active |
+| `task-primitive-thin-spike-eval-20260618.md` | 缺口①評估：顯式 task primitive（類 CC TodoWrite）—— 推薦做 thin spike（DB-backed store + rehydrate + drive-through gate）；非冗餘、非邊際、與 max_turns/調度器缺口正交 | Active（評估） |
 
 ## 群組 3｜Cat 10 Verification 量測
 
