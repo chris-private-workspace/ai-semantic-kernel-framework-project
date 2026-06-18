@@ -4,6 +4,11 @@ Purpose: python_sandbox built-in tool (ToolSpec + handler).
 Category: 範疇 2 (Tool Layer)
 Scope: Phase 51 / Sprint 51.1 Day 3.4
 Created: 2026-04-30
+Last Modified: 2026-06-18
+
+Modification History (newest-first):
+    - 2026-06-18: FIX-033 — description: script-not-REPL must-print() + numpy-available hint
+    - 2026-04-30: Initial creation (Sprint 51.1 Day 3.4)
 """
 
 from __future__ import annotations
@@ -27,10 +32,13 @@ ToolHandler = Callable[[ToolCall], Awaitable[str]]
 PYTHON_SANDBOX_SPEC: ToolSpec = ToolSpec(
     name="python_sandbox",
     description=(
-        "Execute Python code in a wall-time / memory-limited subprocess. "
-        "Returns JSON with stdout / stderr / exit_code / duration_seconds / "
-        "killed_by_timeout. Use for ad-hoc computation; not for filesystem "
-        "or network side-effects (best-effort isolation; Phase 53.x adds Docker)."
+        "Execute Python code in an isolated, wall-time / memory-limited sandbox "
+        "(Docker container when available). Returns JSON with stdout / stderr / "
+        "exit_code / duration_seconds / killed_by_timeout. IMPORTANT: the code "
+        "runs as a SCRIPT (python <file>), NOT a REPL — a bare final expression "
+        "is NOT shown. You MUST call print() on any value you want to read back "
+        "in stdout. numpy is available. Use for ad-hoc computation; not for "
+        "filesystem or network side-effects."
     ),
     input_schema={
         "type": "object",

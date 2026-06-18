@@ -22,9 +22,10 @@ Lifecycle:
     each domain's mock_executor.py gets swapped.
 
 Created: 2026-04-30 (Sprint 51.0 Day 3)
-Last Modified: 2026-06-15
+Last Modified: 2026-06-18
 
 Modification History:
+    - 2026-06-18: FIX-033 — chat python_sandbox → Docker default_sandbox() (Win Selector fail)
     - 2026-06-15: Sprint 57.118 — opt-in skill_registry also registers run_skill_script (exec)
     - 2026-06-13: Sprint 57.113 — opt-in skill_registry (registers read_skill lazy-load tool)
     - 2026-06-12: Sprint 57.107 (B3) — opt-in handoff_targets (registers spec-only handoff)
@@ -66,6 +67,7 @@ from agent_harness.tools import (
 )
 from agent_harness.tools.echo_tool import ECHO_TOOL_SPEC, echo_handler
 from agent_harness.tools.note_tool import NOTE_TOOL_SPEC, note_handler
+from agent_harness.tools.sandbox import SandboxBackend, default_sandbox
 
 from ._service_factory import BusinessServiceFactory
 
@@ -81,6 +83,27 @@ from .rootcause.tools import register_rootcause_tools
 
 # Default mock backend URL (overridable per-call)
 DEFAULT_MOCK_URL = "http://localhost:8001"
+
+
+# === Shared python_sandbox backend (Docker when reachable) ===================
+# Why (drive-through 2026-06-18 / FIX-033): the chat 主流量 wired python_sandbox to the
+# LEGACY SubprocessSandbox (register_builtin_tools default). On Windows uvicorn's
+# SelectorEventLoop, SubprocessSandbox.execute's asyncio.create_subprocess_exec raises
+# NotImplementedError (empty message) at 0ms -> surfaced as "unknown tool error", so
+# python_sandbox never ran on chat. default_sandbox() returns DockerSandbox when the
+# daemon is reachable (loop-agnostic: docker SDK via asyncio.to_thread) and falls back to
+# SubprocessSandbox on hosts without Docker (CI parity preserved). W4P-3 audit already
+# mandates Docker for production; SubprocessSandbox is "decorative on Windows".
+# Process-wide singleton (mirrors skills/tool.py) probes Docker once, not per request.
+_shared_sandbox_singleton: SandboxBackend | None = None
+
+
+def _get_shared_sandbox() -> SandboxBackend:
+    """Return the process-wide python_sandbox backend (Docker when reachable, else Subprocess)."""
+    global _shared_sandbox_singleton
+    if _shared_sandbox_singleton is None:
+        _shared_sandbox_singleton = default_sandbox()
+    return _shared_sandbox_singleton
 
 
 def register_all_business_tools(
@@ -262,6 +285,7 @@ def make_default_executor(
             handlers,
             memory_retrieval=memory_retrieval,
             memory_layers=widened_layers,
+            sandbox_backend=_get_shared_sandbox(),
         )
     else:
         # echo_tool (50.1 built-in for bring-up tests; migrated out of _inmemory in 51.1)

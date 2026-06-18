@@ -33,6 +33,12 @@ RUN apt-get update \
 RUN useradd --uid 65534 --no-create-home --shell /bin/false sandbox \
     || true  # tolerate distros where uid 65534 already exists as nobody
 
+# numpy: LLM-generated analysis code reaches for numpy by default. Without it,
+# python_sandbox runs but every numpy script fails ModuleNotFoundError (FIX-033
+# drive-through 2026-06-18). Installed as root (before USER drop); read-only
+# runtime rootfs still allows import from system site-packages.
+RUN pip install --no-cache-dir numpy
+
 # /sandbox holds the user code at runtime, mounted at exec time.
 WORKDIR /sandbox
 
