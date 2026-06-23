@@ -668,6 +668,12 @@ def build_real_llm_handler(
         if policy.verification_escalate_on_max is not None
         else settings.chat_verification_escalate_on_max
     )
+    # Sprint 57.136: in-loop correction-context strategy (settings-only — no
+    # per-tenant override, anti-AP-6). Unknown value → "keep" (byte-identical to
+    # pre-57.136). See AgentLoopImpl correction_context_strategy.
+    correction_context_strategy = settings.chat_verification_correction_strategy
+    if correction_context_strategy not in ("keep", "summarize"):
+        correction_context_strategy = "keep"
     verifier_registry: VerifierRegistry | None = None
     if verification_mode == "enabled":
         verifier_registry = make_chat_verifier_registry(profile.cheap, judge_template)
@@ -694,6 +700,9 @@ def build_real_llm_handler(
         # Effective only with a registry + hitl_manager; default False = A1.
         # Sprint 57.106 (C3): per-tenant override (falls back to the env setting).
         verification_escalate_on_max=verification_escalate_on_max,
+        # Sprint 57.136 §correction-context hygiene: keep (default) re-shows the
+        # failed answer; summarize drops it to break self-conditioning.
+        correction_context_strategy=correction_context_strategy,
         # Sprint 57.101 B1: the between-turns injection inbox (None = no-op drain).
         message_inbox=message_inbox,
         # Sprint 57.71 (A-4 Tier 0): inject the router's real OTelTracer so the

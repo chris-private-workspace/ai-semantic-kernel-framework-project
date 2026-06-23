@@ -1,0 +1,77 @@
+# Golden dataset for the correction-context hygiene A/B (Sprint 57.136).
+#
+# Each case is a fail-prone turn: a `prompt`, a deliberately FLAWED `failed_answer` (the
+# kind the output_quality judge rejects — wrong / incomplete / off-topic), and the verifier
+# `reason` + `suggested_correction` the loop's _build_correction_block would carry.
+#
+# The benchmark reproduces the loop's 2620 correction-context construction for each arm:
+#   - keep:      [user(prompt), assistant(failed_answer), user(correction_block)]
+#   - summarize: [user(prompt),                            user(correction_block)]
+# then measures whether the retry answer (real LLM) repeats the failed answer's vocabulary
+# (self-conditioning) and whether it now passes the real output_quality judge.
+#
+# The flawed answers are "plausible-but-wrong" on purpose: under `keep` the model re-reads
+# them and MAY anchor on the mistake; under `summarize` it only sees the corrective feedback.
+#
+# Consumed by: backend/scripts/benchmark_correction_hygiene.py :: load_cases
+
+cases:
+  - id: ch-01
+    prompt: "List the three primary additive (RGB) colors."
+    failed_answer: "The three primary colors are red, blue, and yellow."
+    reason: "lists the subtractive primaries (red/blue/yellow), not the additive RGB asked for"
+    suggested_correction: "give the additive primaries: red, green, blue"
+
+  - id: ch-02
+    prompt: "Write a one-sentence summary of photosynthesis that names its inputs and outputs."
+    failed_answer: "Photosynthesis is a process that happens in plants."
+    reason: "too vague — names no inputs (light, CO2, water) or outputs (glucose, oxygen)"
+    suggested_correction: "name the inputs (light, CO2, water) and outputs (glucose, oxygen)"
+
+  - id: ch-03
+    prompt: "What is the time complexity of binary search on a sorted array of n items?"
+    failed_answer: "Binary search runs in O(n) time because it scans the array."
+    reason: "wrong complexity and wrong mechanism — binary search halves the range, not scans"
+    suggested_correction: "state O(log n) and explain it halves the search range each step"
+
+  - id: ch-04
+    prompt: "Give the chemical formula for table salt."
+    failed_answer: "The formula for table salt is H2O."
+    reason: "H2O is water; table salt (sodium chloride) is NaCl"
+    suggested_correction: "give NaCl (sodium chloride)"
+
+  - id: ch-05
+    prompt: "In one sentence, what does the HTTP 404 status code mean?"
+    failed_answer: "HTTP 404 means the server had an internal error."
+    reason: "confuses 404 (not found) with 500 (internal server error)"
+    suggested_correction: "404 means the requested resource was not found on the server"
+
+  - id: ch-06
+    prompt: "Name the largest planet in our solar system."
+    failed_answer: "The largest planet in our solar system is Saturn."
+    reason: "incorrect — Jupiter is the largest planet, not Saturn"
+    suggested_correction: "the answer is Jupiter"
+
+  - id: ch-07
+    prompt: "Convert 0°C to Fahrenheit and show the result."
+    failed_answer: "0 degrees Celsius is 0 degrees Fahrenheit."
+    reason: "wrong conversion — 0°C is 32°F (F = C * 9/5 + 32)"
+    suggested_correction: "compute F = 0*9/5 + 32 = 32°F"
+
+  - id: ch-08
+    prompt: "Write a Python expression that returns the last element of a list named items."
+    failed_answer: "Use items[0] to get the last element."
+    reason: "items[0] is the FIRST element; the last is items[-1]"
+    suggested_correction: "use items[-1]"
+
+  - id: ch-09
+    prompt: "Summarize what a database index is for, in one sentence."
+    failed_answer: "A database index is used to encrypt the data in the table."
+    reason: "off-topic — an index speeds up lookups, it does not encrypt data"
+    suggested_correction: "an index speeds up row lookups by avoiding a full table scan"
+
+  - id: ch-10
+    prompt: "What year did the first human land on the Moon?"
+    failed_answer: "The first human landed on the Moon in 1959."
+    reason: "factually wrong — the first crewed Moon landing was 1969 (Apollo 11)"
+    suggested_correction: "the year was 1969 (Apollo 11)"

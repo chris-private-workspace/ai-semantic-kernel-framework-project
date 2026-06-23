@@ -1,0 +1,23 @@
+{
+  "total": 10,
+  "keep": {
+    "strategy": "keep",
+    "n": 10,
+    "retry_passes": 10,
+    "retry_pass_rate": 1.0,
+    "repeat_error_rate": 0.2073678861788618,
+    "mean_prompt_tokens": 80
+  },
+  "summarize": {
+    "strategy": "summarize",
+    "n": 10,
+    "retry_passes": 10,
+    "retry_pass_rate": 1.0,
+    "repeat_error_rate": 0.1647143179765131,
+    "mean_prompt_tokens": 62.8
+  },
+  "repeat_delta": -0.042653568202348696,
+  "pass_delta": 0.0,
+  "token_delta": -17.200000000000003,
+  "summarize_recommended": false
+}

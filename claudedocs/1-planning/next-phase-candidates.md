@@ -24,6 +24,59 @@ It condenses the user's "5-point deepening discussion" into 3 workflows and a re
 
 ---
 
+## 🔬 Research-Derived Candidates (2026-06-22) — the 8 opportunities × already-shipped reconciliation
+
+**Provenance**: the three 2026-06-22 deep-research docs — [`5-status/ai-agent-harness-consolidated-analysis-20260622.md`](../5-status/ai-agent-harness-consolidated-analysis-20260622.md) §5 (the 8 ranked opportunities) + [`...-market-research-panorama-20260622.md`](../5-status/ai-agent-harness-market-research-panorama-20260622.md) (14 claim-level findings) + [`...-research-vs-v2-mapping-20260622.md`](../5-status/ai-agent-harness-research-vs-v2-mapping-20260622.md) — reconciled against the already-shipped harness-deepening 10-slice set (57.98–57.111) + ABC 15-item gaps + Skills epic + chat-v2. Reconciliation run 2026-06-23 (3 Explore-mapped + direct re-read of `loop.py` / `risky_action_detector.py` / `llm_judge.py` + templates).
+
+**Why this block exists**: the research is a NEW input (2026-06-22) that landed AFTER the 10-slice set finished shipping (6/13). The two pre-existing planning lines (harness-deepening + ABC) were verified **mutually consistent, no rework** (the 10 slices map 1:1 to 57.98–57.111 with zero order drift; ABC keys A/B closed, C uneven). The only un-reconciled surface was "new research ↔ already-shipped" — that is this block. **None of the 8 is a redo of shipped work**; 3 are *tensions with shipped designs* (the real "方向不一致" risk the user worried about), 2 are *partially covered*, 3 are *net-new*.
+
+> **Verification honesty**: the 3 tension items below are **code-grounded (file:line read 2026-06-23), NOT drive-through** — the structural risk is confirmed; the *effect magnitude* + *remedy efficacy* need a real-LLM thin spike before any `loop.py` change. Per evidence-first discipline, these are registered as candidates, NOT as remedies to apply.
+
+### ⚠️ Tensions with already-shipped designs (highest reconciliation value)
+
+- **`AD-Verification-Retry-Context-SelfConditioning`** (research #6; Cat 8/10; tension with **A1 57.98**) — ✅ **CLOSED Sprint 57.136** (PR-pending). Thin spike shipped the pluggable `correction_context_strategy` ∈ {`keep` default / `summarize` drop} + a permanent real-LLM A/B harness; the 2-turn self-conditioning effect was measured **directionally real but immaterial** (repeat −4.3pp < 5% threshold; both arms 100% retry-pass) → `keep` stays default, `summarize` is an env opt-in lever, #6 = low-risk. CHANGE-103 + design note `40-verification-correction-hygiene-design.md`. Follow-up: per-tenant strategy → `AD-Verification-Correction-Strategy-PerTenant-Phase58` (C3 seam). Detail: `memory/project_phase57_136_verification_correction_hygiene.md`. *(Original finding, preserved:)* **CONFIRMED real (code-grounded)**: on a failed verification the loop appends the *failed assistant answer verbatim* then a correction message and continues — `loop.py:2620` (`messages.append(Message(role="assistant", content=parsed.text))`), self-documented at `_build_correction_block` docstring (`loop.py:299-301`: *"the conversation — including the just-failed assistant answer — is already in `messages`"*). The next correction turn's context therefore carries the model's own failed output → exactly the self-conditioning shape research §7 warns about (model sees its failure → tends to repeat it). **Calibrate (do NOT overclaim)**: the self-conditioning evidence (arXiv 2509.09677) is from 2000+-step single-task runs; here `max_correction_attempts=2` (only 2 extra turns) and the correction block is an *explicit* "failed verification / please retry" framing (partial mitigation). Effect size at 2-turn horizon is **unmeasured in this repo**. A3 (57.111 trace-aware judge) does NOT address this — it makes the *judge* smarter, not the *corrector's* context. **Remedy direction (needs spike first)**: on `outcome=="correct"`, append the correction feedback WITHOUT the verbatim failed answer (or compress it) — watch LLM-API role-pairing legality after removing the assistant message. ← **recommended first spike** (証據優先: construct fail-then-retry with real Azure, A/B "keep failed answer vs remove" on retry quality).
+- **`AD-Guardrail-Detect-To-Restrict`** (research #3; Cat 9; tension with **C3 57.106**). **CONFIRMED regex-based (code-grounded)**: `risky_action_detector.py:64-79` is a regex deny-list (`re.compile` :103, `pattern.search` :132). The detector's OWN MHist (`:31`) is the live evidence for research's "detect→restrict" thesis: *"Sprint 57.110 B4 — +os.popen/os.spawn*/os.exec* (dt found the popen bypass)"* — a child agent rewrote a blocked `os.system` as `os.popen` and slipped through, forcing another pattern (cat-and-mouse). **Calibrate**: python_sandbox already runs under Docker isolation (FIX-033) = partial structural restriction; the detector is a supplementary ESCALATE-to-human layer, not the sole defense. So the directional insight holds (don't treat the regex detector as a primary boundary) but urgency is **medium**, not high.
+- **`AD-Verification-KeyCondition-PerTask`** (research #8; Cat 10; refine **A3 57.111**). **Partially done (code-grounded)**: `output_quality.txt` is already structured (4 explicit failure-modes: refuses / incoherent / empty / contradicts-trace) — NOT an open-ended "is this good?" score. Research #8's key-condition verifier (EMNLP2024) means *extracting per-task must-satisfy conditions and checking each* — the current templates are a generic failure-mode list, not per-task condition extraction. "Refinable" is accurate; **priority low**.
+
+### 🟡 Partially covered
+
+- **`AD-Context-Layered-Compaction-ACON`** (research #4; Cat 4). C2 (57.109) shipped compaction on the cheap tier — a *different axis* (cheaper model, same single-layer 75%/turn>30 trigger). Research #4 is *layered* compaction (tool-result clearing first, ACON 26–54% target band). Conditional reference already in `cc-long-running-loop-source-analysis-20260619.md`. Not a redo of C2.
+
+### 🟢 Already identified
+
+- **Explicit task primitive (DAG, not flat list)** (research #1; Cat 1/3/7). Already has a standalone eval: [`5-status/task-primitive-thin-spike-eval-20260618.md`](../5-status/task-primitive-thin-spike-eval-20260618.md) (recommends thin spike to measure load-bearing; not redundant with max_turns/scheduler). No new AD — track under that eval.
+
+### 🆕 Net-new directions
+
+- **`AD-Eval-PassK-Reliability-Harness`** (research #2; Cat 12). reliability≠capability (pass^k vs pass@1). Drive-through today is pass@1-style single-run. **V2's trace-persistence is one of the few cheap places to generate enterprise multi-tenant pass^k / fault-injection data** (research §6 explicitly flags this as the scarce-data opportunity).
+- **`AD-Observability-OTel-GenAI-Schema`** (research #5; Cat 12). Cat 12 uses a self-authored wrapper, not the CNCF-backed OTel GenAI semantic conventions. Standardization candidate (interop with external observability stacks).
+- **`AD-Tool-Description-Lint-Reflection`** (research #7; Cat 2). No tool-description lint + no structured-error reflection on tool failure (research 2.3/2.4: tool-desc quality ~40% impact self-reported; structured reflection improves retry).
+
+### 🛡️守住不要動 (reverse-direction guard — do NOT weaken these to chase research)
+
+Two places where **V2 is already stronger than the research exemplars** (research §5):
+- **Durable, governable HITL pause** (heavier than LangGraph/CC — the correct multi-tenant-SaaS choice). Don't simplify to match lighter exemplars.
+- **5-scope memory isolation** (stricter than CC's single `MEMORY.md`). If/when learning from ACE memory-scoring, do NOT weaken the scope isolation.
+
+### Recommended next move (NOT a plan — selection-gated per the Selection Rule above)
+
+1. ~~`AD-Verification-Retry-Context-SelfConditioning`~~ — ✅ **DONE Sprint 57.136** (keep-default verdict; #6 low-risk at 2 turns; `summarize` env lever shipped).
+2. `AD-Guardrail-Detect-To-Restrict` — medium urgency (Docker already partial). ← **now the highest-tension open item**.
+3. The 3 net-new (`PassK` / `OTel` / `Tool-Lint`) — independent of `loop.py`, can interleave per §4.4 of the proposal.
+4. `AD-Verification-KeyCondition-PerTask` — low priority refinement.
+
+---
+
+## 🆕 Sprint 57.136 Carryover — verification correction-context hygiene spike SHIPPED → **closes `AD-Verification-Retry-Context-SelfConditioning` (research #6)**
+
+Sprint 57.136 (PR-pending; branch from `main` `074362c4`). Parameterized the in-loop verification correction branch (`loop.py:2645`) via `correction_context_strategy` ∈ {`keep` default = byte-identical / `summarize` = drop the failed answer to break self-conditioning}, wired through `CHAT_VERIFICATION_CORRECTION_STRATEGY` settings (config:142 → handler.py:673-676/705), + a permanent real-LLM A/B harness (`scripts/benchmark_correction_hygiene.py` + 10-case fixture + 15 CI-safe tests). **A/B verdict KEEP** (real Azure, 10 cases × 2 arms): repeat_error_rate −0.043 / tokens −17.2 / both arms 100% retry-pass → directionally real but **< 5% materiality threshold** → `keep` stays default, `summarize` env opt-in lever, #6 low-risk at the 2-turn horizon. Backend-only, NO migration / NO new wire event / NO frontend. pytest 2765+5skip (+18) · mypy 0/374 · run_all 10/10. Drive-through PASS (backend runtime: real handler→loop + controlled fail-once proved wiring + drop; UI: chat-v2 ×2 real Azure proved main-flow/gate/no-regression). CHANGE-103 + design note 40. Detail: `memory/project_phase57_136_verification_correction_hygiene.md`.
+
+**Follow-on (open)**:
+- **`AD-Verification-Correction-Strategy-PerTenant-Phase58`** — per-tenant `correction_context_strategy` via the C3 `harness_policy` seam (OUT this sprint — anti-AP-6; settings/env-only shipped).
+- **Self-conditioning at >2 correction turns + production-distribution magnitude** — the harness is permanent + re-runnable on a larger / adversarial fixture if a future sprint wants a tighter number (design note 40 §4).
+
+---
+
 ## 🆕 Sprint 57.135 Carryover — scheduled transcript-retention background job SHIPPED → **closes 57.134 follow-on #1**
 
 Sprint 57.135 **MERGED** (PR #317, main `d5a572c2`; CI all-green; branch from `main` `c98b6368`). A scheduled background job auto-enforces per-tenant transcript retention: `run_transcript_retention_sweep` (enumerate all tenants → per-tenant `apply_transcript_retention` + audit + commit, fail-open) in `retention.py` + `_transcript_retention_poll_loop`/`_start_transcript_retention_job` + lifespan startup/shutdown wiring in `api/main.py`, mirroring the billing-outbox drainer. **DEFAULT OFF** (destructive opt-in via `TRANSCRIPT_RETENTION_JOB_ENABLED`, vs billing default-ON; interval `TRANSCRIPT_RETENTION_JOB_INTERVAL_S` default 86400). Backend-only, NO migration. +6 tests. mypy 0/374 · run_all 10/10 · pytest 2747+5skip (+6). **Drive-through PASS** (real backend PID 43144 + real DB; background job = runtime verification, no UI): startup sweep `tenants=5000 failed=0 messages_deleted=1`, throwaway tenant MESSAGES 2→1 + SCHEDULED_AUDITS=1, default-OFF re-confirmed. NEW class `scheduled-job-mirror-spike` 0.55→0.85 (1st pt ~1.4-1.5 over; ceremony-not-code-accelerated). CHANGE-102, no design note. (This branch also carries the subagent-AD-closure docs as commit 1.) Detail: `memory/project_phase57_135_scheduled_transcript_retention.md`.

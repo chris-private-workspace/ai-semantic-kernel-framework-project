@@ -13,8 +13,12 @@ Description:
       the next chat() request.
     - FAIL at the budget → LoopCompleted(stop_reason="verification_failed").
     - verifier_registry None → the gate is skipped (byte-identical to pre-57.98).
+    - Sprint 57.136: correction_context_strategy keep|summarize — keep re-shows the
+      failed answer (default, byte-identical); summarize drops it (self-conditioning
+      break); unknown value falls back to keep.
 
 Created: 2026-06-10 (Sprint 57.98 A1)
+Last Modified: 2026-06-23 (Sprint 57.136 — correction-context hygiene tests)
 
 Related:
     - backend/src/agent_harness/orchestrator_loop/loop.py (_cat10_verify_gate)
@@ -193,7 +197,11 @@ def _registry(*verifiers: Verifier) -> VerifierRegistry:
 
 
 def _build_loop(
-    *, texts: list[str], verifier_registry: VerifierRegistry | None, max_attempts: int = 2
+    *,
+    texts: list[str],
+    verifier_registry: VerifierRegistry | None,
+    max_attempts: int = 2,
+    correction_context_strategy: str = "keep",
 ) -> tuple[FakeChatClient, AgentLoopImpl]:
     chat = FakeChatClient(texts)
     registry = ToolRegistryImpl()
@@ -204,6 +212,7 @@ def _build_loop(
         tool_registry=registry,
         verifier_registry=verifier_registry,
         max_correction_attempts=max_attempts,
+        correction_context_strategy=correction_context_strategy,
     )
     return chat, loop
 
@@ -295,3 +304,65 @@ async def test_gate_skipped_when_empty_registry() -> None:
     completed = [e for e in events if isinstance(e, LoopCompleted)]
     assert completed[-1].stop_reason == TerminationReason.END_TURN.value
     assert chat._idx == 1
+
+
+# === Sprint 57.136: correction-context hygiene (keep vs summarize) ===========
+
+
+async def test_correction_keep_includes_failed_answer() -> None:
+    # "keep" (default): the failed answer is re-shown to the model on the retry turn
+    # (pre-57.136 byte-identical). This is the rollback-guarantee arm.
+    chat, loop = _build_loop(
+        texts=["bad answer", "good answer"],
+        verifier_registry=_registry(_BadWordVerifier(marker="bad")),
+        correction_context_strategy="keep",
+    )
+    await _drive(loop)
+
+    second_request = chat.request_messages[1]
+    # The failed answer IS present as an assistant turn.
+    assert any(m.role == "assistant" and m.content == "bad answer" for m in second_request)
+    # The correction feedback IS present as a user turn.
+    user_texts = [m.content for m in second_request if m.role == "user"]
+    assert any("failed verification" in (t or "") for t in user_texts)
+
+
+async def test_correction_summarize_drops_failed_answer() -> None:
+    # "summarize": the just-failed answer text is DROPPED (self-conditioning break),
+    # but the correction feedback (reasons + suggested_correction) is still shown,
+    # and the loop still converges (consecutive-user role-pairing is legal for Azure).
+    chat, loop = _build_loop(
+        texts=["bad answer", "good answer"],
+        verifier_registry=_registry(_BadWordVerifier(marker="bad")),
+        correction_context_strategy="summarize",
+    )
+    events = await _drive(loop)
+
+    second_request = chat.request_messages[1]
+    # No assistant turn carrying the failed answer was appended (dropped).
+    assert not any(m.role == "assistant" and m.content == "bad answer" for m in second_request)
+    # The correction feedback (reasons + suggested_correction) IS present.
+    user_texts = [m.content for m in second_request if m.role == "user"]
+    assert any("failed verification" in (t or "") for t in user_texts)
+    assert any("remove it" in (t or "") for t in user_texts)  # suggested_correction
+    # The loop still re-answered and converged (no crash on consecutive user turns).
+    passed = [e for e in events if isinstance(e, VerificationPassed)]
+    completed = [e for e in events if isinstance(e, LoopCompleted)]
+    assert len(passed) == 1
+    assert completed[-1].stop_reason == TerminationReason.END_TURN.value
+    assert chat._idx == 2
+
+
+async def test_correction_unknown_strategy_falls_back_to_keep() -> None:
+    # Any non-"summarize" value behaves as "keep" (the loop's defensive default;
+    # the handler also validates env → keep, so this is the second safety layer).
+    chat, loop = _build_loop(
+        texts=["bad answer", "good answer"],
+        verifier_registry=_registry(_BadWordVerifier(marker="bad")),
+        correction_context_strategy="banana",
+    )
+    await _drive(loop)
+
+    second_request = chat.request_messages[1]
+    # Unknown → keep → the failed answer is re-shown (NOT dropped).
+    assert any(m.role == "assistant" and m.content == "bad answer" for m in second_request)

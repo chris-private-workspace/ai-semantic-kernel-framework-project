@@ -45,6 +45,7 @@ Created: 2026-04-30 (Sprint 50.1 Day 2.2)
 Last Modified: 2026-06-17
 
 Modification History (newest-first):
+    - 2026-06-23: Sprint 57.136 — correction-context strategy: summarize drops failed answer
     - 2026-06-17: Sprint 57.132 — resume() persists tool round-trip + held-answer replay to ledger
     - 2026-06-16: Sprint 57.129 — TOOL_USE branch persists tool round-trips to the ledger
     - 2026-06-16: Sprint 57.127 — multi-turn rehydration via MessageStore dep; serde → _contracts
@@ -371,6 +372,17 @@ class AgentLoopImpl(AgentLoop):
         # flag). Default False → the A1 terminal is byte-identical (the toggle
         # gates it; resume() drives the same gated _run_turns).
         verification_escalate_on_max: bool = False,
+        # Sprint 57.136 §Verification correction-context hygiene: what the in-loop
+        # Cat 10 correction turn re-shows the model after a "correct" verdict.
+        # "keep" (default) re-appends the failed answer + the feedback (pre-57.136
+        # byte-identical). "summarize" DROPS the failed answer text — only the
+        # correction_block (reasons + suggested_correction, no answer quote) is
+        # re-shown — to break self-conditioning (the model re-answers without
+        # re-reading its own failed attempt). Azure accepts the resulting
+        # consecutive user turns (adapter forwards verbatim; cf. 57.101 injection).
+        # Settings-only (no per-tenant override — anti-AP-6). Any non-"summarize"
+        # value behaves as "keep".
+        correction_context_strategy: str = "keep",
         # 57.101 B1 §between-turns injection: an optional message inbox the loop
         # drains at the TOP of each turn (before the between-turns guardrail), so a
         # mid-run injected message joins the conversation at the NEXT turn boundary
@@ -436,6 +448,8 @@ class AgentLoopImpl(AgentLoop):
         self._max_correction_attempts = max_correction_attempts
         # 57.99 A2 §Verification-ESCALATE (see ctor docstring above).
         self._verification_escalate_on_max = verification_escalate_on_max
+        # 57.136 §correction-context hygiene (see ctor docstring above).
+        self._correction_context_strategy = correction_context_strategy
         # 57.101 B1 §between-turns injection (see ctor docstring above).
         self._message_inbox = message_inbox
         # 57.122 §HITL policy read-side (AD-HITL-Policy-ReadSide-Potemkin-Phase58):
@@ -2615,9 +2629,21 @@ class AgentLoopImpl(AgentLoop):
                         if verdict.verif_model:
                             verif_model = verdict.verif_model
                         if verdict.outcome == "correct":
-                            # In-loop critique: append the failed answer + the
-                            # correction feedback, then re-answer as the NEXT turn.
-                            messages.append(Message(role="assistant", content=parsed.text))
+                            # In-loop critique: append the correction feedback, then
+                            # re-answer as the NEXT turn. Sprint 57.136: under the
+                            # "summarize" strategy the just-failed answer text is
+                            # DROPPED (not re-appended) to break self-conditioning —
+                            # the correction_block (reasons + suggested_correction, no
+                            # answer quote) is self-sufficient, and Azure accepts the
+                            # resulting consecutive user turns (adapter forwards
+                            # verbatim; cf. 57.101 injection). Under "keep" (default,
+                            # any non-"summarize" value) the failed answer is
+                            # re-appended — pre-57.136 byte-identical. A provider
+                            # strict on role alternation would append a withheld
+                            # placeholder assistant turn here instead of dropping
+                            # (not needed for Azure).
+                            if self._correction_context_strategy != "summarize":
+                                messages.append(Message(role="assistant", content=parsed.text))
                             messages.append(
                                 Message(role="user", content=verdict.correction_block or "")
                             )

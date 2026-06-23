@@ -8,6 +8,7 @@ Per project rules (.claude/rules/code-quality.md): always use Pydantic
 Settings (not raw os.environ) so type-safe + validation + .env support.
 
 Modification History (newest-first):
+    - 2026-06-23: Sprint 57.136 — add chat_verification_correction_strategy (keep|summarize)
     - 2026-06-13: Sprint 57.112 — add mfa_issuer_name + mfa_challenge_ttl_minutes (IAM Block C MFA)
     - 2026-06-10: Sprint 57.99 A2 — add chat_verification_escalate_on_max (default OFF)
     - 2026-05-10: Sprint 57.13 US-A1 — fix oidc_redirect_uri + frontend_base_url + cookie_secure
@@ -131,6 +132,14 @@ class Settings(BaseSettings):
     # on chat_verification_mode == "enabled" + a wired hitl_manager (no pause
     # possible without HITL). Default False preserves the A1 terminal byte-identical.
     chat_verification_escalate_on_max: bool = False
+    # Sprint 57.136 §Verification correction-context hygiene: what the in-loop
+    # Cat 10 correction turn re-shows the model after a failed verdict. "keep"
+    # (default) re-appends the failed answer + the feedback (pre-57.136 byte-
+    # identical). "summarize" DROPS the failed answer text (keeps only the
+    # reasons+suggestion feedback) to break self-conditioning. An unknown value
+    # falls back to "keep" (the handler validates). Env:
+    # CHAT_VERIFICATION_CORRECTION_STRATEGY.
+    chat_verification_correction_strategy: str = "keep"
 
     # ---- Sprint 57.112 IAM Block C MFA (TOTP) -----------------------
     # mfa_issuer_name: the otpauth:// issuer label shown in the user's authenticator

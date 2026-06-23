@@ -83,6 +83,9 @@ def _force_verification_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
             # Sprint 57.99 A2: the MAIN real_llm loop now reads this toggle too;
             # the stub must mirror real Settings (default OFF = A1 byte-identical).
             chat_verification_escalate_on_max=False,
+            # Sprint 57.136: the real_llm loop reads the correction-context strategy too;
+            # the stub mirrors real Settings (default "keep" = byte-identical).
+            chat_verification_correction_strategy="keep",
         ),
     )
 
