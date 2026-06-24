@@ -54,7 +54,9 @@ from uuid import UUID
 
 from agent_harness.context_mgmt import Compactor
 from agent_harness.context_mgmt.cache_manager import InMemoryCacheManager
+from agent_harness.context_mgmt.compactor.chained import ChainedCompactor
 from agent_harness.context_mgmt.compactor.hybrid import HybridCompactor
+from agent_harness.context_mgmt.compactor.preclear import PreClearCompactor
 from agent_harness.context_mgmt.compactor.semantic import SemanticCompactor
 from agent_harness.context_mgmt.compactor.structural import StructuralCompactor
 from agent_harness.context_mgmt.token_counter.tiktoken_counter import TiktokenCounter
@@ -140,6 +142,24 @@ def _compaction_keep_recent_turns() -> int:
     return keep if keep >= 1 else _DEFAULT_KEEP_RECENT_TURNS
 
 
+def _compaction_preclear_ratio() -> float:
+    """Resolve the ACON tool-result preclear trigger ratio (CHAT_COMPACTION_PRECLEAR_RATIO).
+
+    Sprint 57.139 (#4 layered compaction): when set to a valid (0, 1) value the
+    factory prepends a cheap, LLM-free PreClearCompactor (tool-result clearing)
+    that fires at this LOWER ratio so the expensive semantic stage may be
+    deferred. DEFAULT unset / 0 / invalid → OFF (the factory returns the bare
+    HybridCompactor — byte-identical to pre-57.139 behaviour). Evidence-first:
+    the harness sets the enable recommendation; default stays OFF.
+    """
+    raw = os.environ.get("CHAT_COMPACTION_PRECLEAR_RATIO", "")
+    try:
+        ratio = float(raw) if raw else 0.0
+    except ValueError:
+        return 0.0
+    return ratio if 0.0 < ratio < 1.0 else 0.0
+
+
 def make_chat_compactor(chat_client: ChatClient) -> Compactor:
     """Cat 4: HybridCompactor (structural-first, semantic fallback).
 
@@ -157,7 +177,7 @@ def make_chat_compactor(chat_client: ChatClient) -> Compactor:
     """
     budget = _compaction_token_budget()
     keep_recent = _compaction_keep_recent_turns()
-    return HybridCompactor(
+    hybrid = HybridCompactor(
         structural=StructuralCompactor(
             keep_recent_turns=keep_recent,
             token_budget=budget,
@@ -172,6 +192,28 @@ def make_chat_compactor(chat_client: ChatClient) -> Compactor:
         token_budget=budget,
         token_threshold_ratio=_CHAT_TOKEN_THRESHOLD_RATIO,
     )
+
+    # Sprint 57.139 (#4 layered compaction): when the preclear ratio is enabled,
+    # prepend a cheap, LLM-free tool-result clearing layer that fires EARLIER
+    # (lower ratio) so the expensive semantic stage in `hybrid` may be deferred.
+    # DEFAULT (ratio unset/0) → return the bare hybrid, byte-identical to the
+    # pre-57.139 path. The PreClearCompactor counts post-mask tokens with its own
+    # TiktokenCounter (the chat-flow counter) so the threaded hybrid sees the
+    # real reduction via should_compact.
+    preclear_ratio = _compaction_preclear_ratio()
+    if preclear_ratio > 0.0:
+        return ChainedCompactor(
+            compactors=[
+                PreClearCompactor(
+                    token_counter=TiktokenCounter(model="gpt-4o"),
+                    preclear_ratio=preclear_ratio,
+                    keep_recent_turns=keep_recent,
+                    token_budget=budget,
+                ),
+                hybrid,
+            ]
+        )
+    return hybrid
 
 
 def make_chat_prompt_builder(
