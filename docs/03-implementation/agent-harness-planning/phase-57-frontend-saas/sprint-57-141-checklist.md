@@ -100,4 +100,4 @@ _(Pure-offline measurement harness → the real-Azure run IS the drive-through, 
 - [x] Final gate sweep: mypy src 380/0 · pytest 2859+5skip · v2 lints 21 · black --check unchanged · flake8 clean · LLM-SDK-leak clean · Vitest/mockup/build UNTOUCHED ✓
 - [x] Navigators: CLAUDE.md Current-Sprint + Last-Updated · MEMORY.md pointer + subfile · next-phase-candidates (CLOSED research #2; next #5) · sprint-workflow matrix (`passk-reliability-spike` row) ✓
 - [x] Anti-pattern self-check (retro Q5): AP-2/3/4/6/8/11 no violations; v2 lint tests 21 pass ✓
-- [ ] **Commit** → ⏳ PR push + open → CI → merge: PENDING USER CONFIRMATION (push is outward-facing) → post-merge status flip after gh-verified MERGED
+- [x] **Commit** local `ad813fa4` (15 files, +2048; explicit-staged sprint files only — README.md w/ user's concurrent user-interrupt edit LEFT for the user; pre-existing untracked + AGENTS.md deletion untouched) → ⏳ PR push + open → CI → merge: **PENDING USER CONFIRMATION** (push is outward-facing) → post-merge status flip after gh-verified MERGED
