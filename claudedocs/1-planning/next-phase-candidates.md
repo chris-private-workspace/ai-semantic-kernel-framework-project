@@ -60,10 +60,18 @@ Two places where **V2 is already stronger than the research exemplars** (researc
 
 ### Recommended next move (NOT a plan — selection-gated per the Selection Rule above)
 
-1. ~~`AD-Verification-Retry-Context-SelfConditioning`~~ — ✅ **DONE Sprint 57.136** (keep-default verdict; #6 low-risk at 2 turns; `summarize` env lever shipped).
-2. ~~`AD-Guardrail-Detect-To-Restrict`~~ — ✅ **DONE Sprint 57.137** (60% regex escape / 100% Docker containment measured; env-gated fail-closed lever shipped; detector reframed). Both highest-tension items now closed.
-3. The 3 net-new (`PassK` / `OTel` / `Tool-Lint`) — independent of `loop.py`, can interleave per §4.4 of the proposal. ← **now the highest-value open block** (all 3 tension items closed; these are net-new capability).
-4. `AD-Verification-KeyCondition-PerTask` — low priority refinement.
+This list follows the canonical research §5 ranked order (#6 → #3 → #8 → #4 → #1 → #2 → #5 → #7); work the next un-done item unless the user selects otherwise.
+
+1. ~~#6 `AD-Verification-Retry-Context-SelfConditioning`~~ — ✅ **DONE Sprint 57.136** (keep-default verdict; #6 low-risk at 2 turns; `summarize` env lever shipped).
+2. ~~#3 `AD-Guardrail-Detect-To-Restrict`~~ — ✅ **DONE Sprint 57.137** (60% regex escape / 100% Docker containment measured; env-gated fail-closed lever shipped; detector reframed).
+3. **#8 `AD-Verification-KeyCondition-PerTask`** — ← **next per the ranked order**. Refine A3 (57.111): extract per-task must-satisfy conditions and check each, vs the current generic failure-mode list (`output_quality.txt`). Reconciliation assessment notes it as "partially done / refinable"; rank position is #3 in the canonical order regardless.
+4. #4 `AD-Context-Layered-Compaction-ACON` — layered compaction (tool-result clearing first, ACON 26–54% target band); a different axis from C2 (57.109)'s cheap-tier single-layer compaction.
+5. #1 Explicit task primitive (DAG) — already has a standalone thin-spike eval (`5-status/task-primitive-thin-spike-eval-20260618.md`); start there.
+6. #2 `AD-Eval-PassK-Reliability-Harness` — net-new; reliability≠capability (pass^k vs pass@1); independent of `loop.py`.
+7. #5 `AD-Observability-OTel-GenAI-Schema` — net-new; CNCF OTel GenAI semantic conventions vs the self-authored wrapper; independent of `loop.py`.
+8. #7 `AD-Tool-Description-Lint-Reflection` — net-new; tool-desc lint + structured-error reflection on tool failure; independent of `loop.py`.
+
+> #2/#5/#7 are independent of `loop.py` and can interleave per §4.4 of the proposal IF a higher-ranked item is blocked — but the default is to follow the ranked order above.
 
 ---
 
