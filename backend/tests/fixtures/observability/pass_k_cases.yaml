@@ -1,0 +1,93 @@
+# pass^k reliability corpus (Sprint 57.141, research #2).
+#
+# Difficulty-graded so the pass^k < pass@1 divergence hypothesis is observable on the
+# multistep cases (research: reliability degrades super-linearly with task length).
+# oracle_type:
+#   rules  — `expected` is a list of acceptable answer substrings (normalized contains; zero judge noise)
+#   judge  — `expected[0]` is a correctness criterion graded by the cheap-tier LLM judge
+# perturbations — paraphrases of `input` for the ε (perturbation) axis.
+#
+# category ∈ {easy, multistep, tool_use}. The shipped corpus is easy + multistep
+# (reasoning-only — DB-free, robust); tool_use is schema-supported but deferred from
+# this corpus (would need mock-tool determinism; see design note 45 §Open).
+
+cases:
+  - id: mult-17-23
+    input: "What is 17 multiplied by 23?"
+    oracle_type: rules
+    expected: ["391"]
+    category: easy
+    perturbations:
+      - "Multiply 17 by 23."
+      - "What is the product of 17 and 23?"
+
+  - id: capital-france
+    input: "What is the capital of France?"
+    oracle_type: rules
+    expected: ["Paris"]
+    category: easy
+
+  - id: symbol-gold
+    input: "What is the chemical symbol for gold?"
+    oracle_type: rules
+    expected: ["Au"]
+    category: easy
+
+  - id: continents
+    input: "How many continents are there on Earth? Give only the number or word."
+    oracle_type: rules
+    expected: ["7", "seven"]
+    category: easy
+
+  - id: percent-15-200
+    input: "What is 15% of 200? Give only the final number."
+    oracle_type: rules
+    expected: ["30"]
+    category: easy
+
+  - id: sum-then-triple
+    input: "Add 12 and 8, then multiply the result by 3. Give only the final number."
+    oracle_type: rules
+    expected: ["60"]
+    category: multistep
+    perturbations:
+      - "Compute (12 + 8) * 3 and report just the number."
+      - "First sum 12 and 8, then triple that. What is the result?"
+
+  - id: first-five-primes
+    input: "List the first five prime numbers in ascending order, comma-separated."
+    oracle_type: rules
+    expected: ["2, 3, 5, 7, 11"]
+    category: multistep
+
+  - id: avg-speed
+    input: "A train travels 60 km in 1.5 hours. What is its average speed in km/h? Give only the number."
+    oracle_type: rules
+    expected: ["40"]
+    category: multistep
+
+  - id: rectangle-perimeter
+    input: "A rectangle is 7 by 4. What is its perimeter? Give only the number."
+    oracle_type: rules
+    expected: ["22"]
+    category: multistep
+
+  - id: reverse-word
+    input: "Reverse the word 'reliability' and give only the reversed string."
+    oracle_type: rules
+    expected: ["ytilibailer"]
+    category: multistep
+
+  - id: define-idempotent
+    input: "In one sentence, define 'idempotent' in computing."
+    oracle_type: judge
+    expected:
+      - "The output correctly conveys that applying the operation multiple times yields the same result as applying it once (no additional effect on repetition)."
+    category: easy
+
+  - id: explain-nondeterminism
+    input: "In two sentences, explain why repeated runs of an LLM agent on the same prompt can give different results."
+    oracle_type: judge
+    expected:
+      - "The output attributes run-to-run variation to a real cause such as sampling/temperature, nondeterminism, or model/tool variability (not a hallucinated reason)."
+    category: multistep
