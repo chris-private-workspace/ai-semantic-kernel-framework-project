@@ -1,0 +1,78 @@
+{
+  "total": 6,
+  "mean_tool_clear_reduction": 0.3372198555534937,
+  "mean_structural_reduction": 0.3372198555534937,
+  "mean_semantic_reduction": 0.40647496905597724,
+  "in_acon_band": true,
+  "semantic_deferred_rate": 0.6666666666666666,
+  "semantic_ran": true,
+  "preclear_recommended": true,
+  "results": [
+    {
+      "id": "tool-heavy-long",
+      "l0_tokens": 12351,
+      "l1_tool_clear": 5456,
+      "l2_structural": 5456,
+      "l3_semantic": 5236,
+      "tool_clear_reduction": 0.5582543923568942,
+      "structural_reduction": 0.5582543923568942,
+      "semantic_reduction": 0.576066715245729,
+      "semantic_deferred": true
+    },
+    {
+      "id": "tool-heavy-mid",
+      "l0_tokens": 5131,
+      "l1_tool_clear": 3376,
+      "l2_structural": 3376,
+      "l3_semantic": 3293,
+      "tool_clear_reduction": 0.3420385889690119,
+      "structural_reduction": 0.3420385889690119,
+      "semantic_reduction": 0.35821477294874293,
+      "semantic_deferred": true
+    },
+    {
+      "id": "balanced",
+      "l0_tokens": 5243,
+      "l1_tool_clear": 3313,
+      "l2_structural": 3313,
+      "l3_semantic": 2730,
+      "tool_clear_reduction": 0.3681098607667366,
+      "structural_reduction": 0.3681098607667366,
+      "semantic_reduction": 0.47930574098798395,
+      "semantic_deferred": true
+    },
+    {
+      "id": "text-heavy",
+      "l0_tokens": 3691,
+      "l1_tool_clear": 3283,
+      "l2_structural": 3283,
+      "l3_semantic": 2414,
+      "tool_clear_reduction": 0.11053914928203738,
+      "structural_reduction": 0.11053914928203738,
+      "semantic_reduction": 0.3459767000812788,
+      "semantic_deferred": false
+    },
+    {
+      "id": "rehydrated-deep",
+      "l0_tokens": 12547,
+      "l1_tool_clear": 4462,
+      "l2_structural": 4462,
+      "l3_semantic": 4024,
+      "tool_clear_reduction": 0.6443771419462819,
+      "structural_reduction": 0.6443771419462819,
+      "semantic_reduction": 0.6792858850721288,
+      "semantic_deferred": true
+    },
+    {
+      "id": "single-turn-noop",
+      "l0_tokens": 4032,
+      "l1_tool_clear": 4032,
+      "l2_structural": 4032,
+      "l3_semantic": 4032,
+      "tool_clear_reduction": 0.0,
+      "structural_reduction": 0.0,
+      "semantic_reduction": 0.0,
+      "semantic_deferred": false
+    }
+  ]
+}

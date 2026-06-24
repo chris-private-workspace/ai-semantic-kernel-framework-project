@@ -1,0 +1,67 @@
+# Layered-compaction corpus (Sprint 57.139, #4 AD-Context-Layered-Compaction-ACON).
+#
+# Each case is a tool-heavy transcript SPEC (built into real Messages by
+# benchmark_layered_compaction.build_transcript): per user turn →
+# user(text) + assistant(tool_call) + tool(result blob).
+#
+# The harness measures, with a REAL TiktokenCounter, the token reduction from
+# each compaction layer (tool-clear-only / structural / semantic) to test
+# research #4's "tool-result clearing reclaims 26-54% (ACON band) and defers
+# the expensive semantic summary" hypothesis.
+#
+# Cases span the spectrum (tool-heavy → text-heavy) plus a single-user-turn
+# NO-OP that demonstrates the user-anchored masker limitation
+# (D-masker-user-anchored → AD-Compaction-ToolAnchored-Preclear-Phase58).
+#
+# Schema: id, n_user_turns, tool_result_chars (required);
+#         user_text_chars (default 40), assistant_text_chars (default 0),
+#         keep_recent (default 5), note (optional).
+
+cases:
+  - id: tool-heavy-long
+    n_user_turns: 12
+    tool_result_chars: 2000
+    user_text_chars: 40
+    assistant_text_chars: 0
+    keep_recent: 5
+    note: "deep tool-heavy history; most tokens in old tool results → high tool-clear yield"
+
+  - id: tool-heavy-mid
+    n_user_turns: 8
+    tool_result_chars: 1200
+    user_text_chars: 60
+    assistant_text_chars: 80
+    keep_recent: 5
+    note: "moderate history + small assistant text"
+
+  - id: balanced
+    n_user_turns: 10
+    tool_result_chars: 800
+    user_text_chars: 400
+    assistant_text_chars: 400
+    keep_recent: 5
+    note: "tool results balanced against user/assistant prose"
+
+  - id: text-heavy
+    n_user_turns: 8
+    tool_result_chars: 300
+    user_text_chars: 1500
+    assistant_text_chars: 800
+    keep_recent: 5
+    note: "prose-dominated; tool results a small fraction → low tool-clear yield"
+
+  - id: rehydrated-deep
+    n_user_turns: 16
+    tool_result_chars: 1500
+    user_text_chars: 50
+    assistant_text_chars: 40
+    keep_recent: 5
+    note: "long rehydrated session — the genuine long-running target"
+
+  - id: single-turn-noop
+    n_user_turns: 1
+    tool_result_chars: 8000
+    user_text_chars: 40
+    assistant_text_chars: 0
+    keep_recent: 5
+    note: "ONE user turn + a huge tool result → masker NO-OPs (user-anchored limitation demo)"
