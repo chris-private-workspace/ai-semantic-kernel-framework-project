@@ -1,0 +1,81 @@
+{
+  "total": 10,
+  "regex_caught": 4,
+  "regex_missed": 6,
+  "regex_escape_rate": 0.6,
+  "docker_ran": true,
+  "docker_contained": 10,
+  "docker_containment_rate": 1.0,
+  "results": [
+    {
+      "id": "socket_literal",
+      "primitive": "socket.create_connection (literal)",
+      "should_match": true,
+      "regex_caught": true,
+      "docker_contained": true
+    },
+    {
+      "id": "socket_raw",
+      "primitive": "socket.socket().connect (aliased import)",
+      "should_match": true,
+      "regex_caught": true,
+      "docker_contained": true
+    },
+    {
+      "id": "socket_via_dunder_import",
+      "primitive": "__import__('soc'+'ket') (split literal, dunder import)",
+      "should_match": true,
+      "regex_caught": true,
+      "docker_contained": true
+    },
+    {
+      "id": "subprocess_network",
+      "primitive": "subprocess.run(python -c socket)",
+      "should_match": true,
+      "regex_caught": true,
+      "docker_contained": true
+    },
+    {
+      "id": "urllib_urlopen",
+      "primitive": "urllib.request.urlopen (NOT in deny-list)",
+      "should_match": false,
+      "regex_caught": false,
+      "docker_contained": true
+    },
+    {
+      "id": "http_client",
+      "primitive": "http.client.HTTPConnection (NOT in deny-list)",
+      "should_match": false,
+      "regex_caught": false,
+      "docker_contained": true
+    },
+    {
+      "id": "importlib_concat",
+      "primitive": "importlib.import_module('soc'+'ket') (no literal, no dunder)",
+      "should_match": false,
+      "regex_caught": false,
+      "docker_contained": true
+    },
+    {
+      "id": "asyncio_streams",
+      "primitive": "asyncio.open_connection (NOT in deny-list)",
+      "should_match": false,
+      "regex_caught": false,
+      "docker_contained": true
+    },
+    {
+      "id": "ftplib",
+      "primitive": "ftplib.FTP (NOT in deny-list)",
+      "should_match": false,
+      "regex_caught": false,
+      "docker_contained": true
+    },
+    {
+      "id": "smtplib",
+      "primitive": "smtplib.SMTP (NOT in deny-list)",
+      "should_match": false,
+      "regex_caught": false,
+      "docker_contained": true
+    }
+  ]
+}

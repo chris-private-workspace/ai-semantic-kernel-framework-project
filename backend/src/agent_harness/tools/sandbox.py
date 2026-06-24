@@ -67,9 +67,10 @@ Owner: 01-eleven-categories-spec.md §範疇 2
 Single-source: 17.md §2.1
 
 Created: 2026-04-30 (Sprint 51.1 Day 3.1)
-Last Modified: 2026-05-01
+Last Modified: 2026-06-24
 
 Modification History (newest-first):
+    - 2026-06-24: Sprint 57.137 — fail-closed isolation gate + is_structurally_isolated property
     - 2026-05-01: Sprint 52.5 P0 #17 (W4P-3 audit): add DockerSandbox
       class with --memory --cpus --network=none --read-only --cap-drop=ALL
       hardening; add default_sandbox() factory; mark SubprocessSandbox
@@ -124,6 +125,20 @@ class SandboxBackend(ABC):
         memory_mb: int,
         network_blocked: bool = True,
     ) -> SandboxResult: ...
+
+    @property
+    def is_structurally_isolated(self) -> bool:
+        """Whether this backend STRUCTURALLY contains host-touching code.
+
+        Sprint 57.137 (AD-Guardrail-Detect-To-Restrict / research #3): the
+        SANDBOX_REQUIRE_ISOLATION fail-closed gate reads this property (NOT
+        isinstance — provider-neutral) to decide whether python_sandbox may run.
+        Default False is the CONSERVATIVE assumption: a backend must opt IN to
+        claiming structural isolation. SubprocessSandbox inherits False (its
+        "isolation" is decorative on Windows — W4P-3 audit); DockerSandbox and
+        _FailClosedSandbox override to True.
+        """
+        return False
 
 
 class SubprocessSandbox(SandboxBackend):
@@ -239,6 +254,13 @@ class DockerSandbox(SandboxBackend):
     reachable daemon raise on first `execute()` call (callers should
     use `default_sandbox()` to fall back to SubprocessSandbox).
     """
+
+    @property
+    def is_structurally_isolated(self) -> bool:
+        # Real container isolation: network none / read-only rootfs / cap-drop
+        # ALL / non-root / no bind mounts (see class docstring). This is the
+        # structural boundary the SANDBOX_REQUIRE_ISOLATION gate requires.
+        return True
 
     def __init__(
         self,
@@ -392,18 +414,66 @@ class DockerSandbox(SandboxBackend):
 
 
 # =====================================================================
+# _FailClosedSandbox — Sprint 57.137 (AD-Guardrail-Detect-To-Restrict)
+# =====================================================================
+# Why: research #3 (detect→restrict) — the regex deny-list (RiskyActionDetector)
+# is a losing cat-and-mouse; the security boundary must be the STRUCTURAL sandbox.
+# When SANDBOX_REQUIRE_ISOLATION is set and no isolating backend is available
+# (Docker unreachable), python_sandbox must NOT silently degrade to the
+# production-unsafe SubprocessSandbox — it gets THIS instead, which runs NOTHING
+# and returns a clear, auditable refusal. Visible-but-refusing (the tool stays
+# registered so the operator/LLM see a precise error) over silent tool absence.
+
+
+class _FailClosedSandbox(SandboxBackend):
+    """Refusing sandbox: runs no code; every execute() returns a refusal result."""
+
+    @property
+    def is_structurally_isolated(self) -> bool:
+        # Vacuously isolated — it executes no code at all.
+        return True
+
+    async def execute(
+        self,
+        code: str,  # noqa: ARG002 — refuses without running; args ignored by design
+        *,
+        timeout_seconds: float,  # noqa: ARG002
+        memory_mb: int,  # noqa: ARG002
+        network_blocked: bool = True,  # noqa: ARG002
+    ) -> SandboxResult:
+        return SandboxResult(
+            stdout="",
+            stderr=(
+                "execution refused: structural isolation required "
+                "(SANDBOX_REQUIRE_ISOLATION=true) but no isolating sandbox backend "
+                "is available (Docker daemon unreachable). python_sandbox will not "
+                "run arbitrary code on a non-isolating backend."
+            ),
+            exit_code=1,
+            duration_seconds=0.0,
+            killed_by_timeout=False,
+        )
+
+
+# =====================================================================
 # Factory — choose Docker when reachable, else fall back to Subprocess
 # =====================================================================
 
 
-def default_sandbox(*, image: str | None = None) -> SandboxBackend:
-    """Return DockerSandbox if Docker daemon reachable, else SubprocessSandbox.
+def default_sandbox(*, require_isolation: bool = False, image: str | None = None) -> SandboxBackend:
+    """Return DockerSandbox if Docker daemon reachable, else fall back.
 
     Production deployments MUST run with Docker reachable (per
     .claude/rules/observability-instrumentation.md + W4P-3 audit).
-    SubprocessSandbox fallback is for CI / test environments without
-    Docker-in-Docker capability — it logs a WARNING so misconfigurations
-    surface in operator logs.
+
+    Sprint 57.137 (AD-Guardrail-Detect-To-Restrict): the fallback is now
+    gated by `require_isolation` (← `SANDBOX_REQUIRE_ISOLATION` env via the
+    chat handler):
+      - Docker reachable → DockerSandbox (unchanged).
+      - Docker unreachable + require_isolation → _FailClosedSandbox (FAIL-CLOSED:
+        refuses execution rather than silently running unisolated code).
+      - Docker unreachable + not require_isolation → SubprocessSandbox (the
+        dev/CI path, DEFAULT — logs a WARNING; unchanged from pre-57.137).
     """
     import logging
 
@@ -416,10 +486,20 @@ def default_sandbox(*, image: str | None = None) -> SandboxBackend:
         client.ping()
         return DockerSandbox(image=image, client=client)
     except Exception as exc:  # noqa: BLE001
+        if require_isolation:
+            logger.error(
+                "DockerSandbox unavailable (%s: %s) and SANDBOX_REQUIRE_ISOLATION "
+                "is set — failing closed: python_sandbox will REFUSE to run (no "
+                "unisolated execution of arbitrary code).",
+                type(exc).__name__,
+                exc,
+            )
+            return _FailClosedSandbox()
         logger.warning(
             "DockerSandbox unavailable (%s: %s); falling back to "
             "SubprocessSandbox. NOT production-safe — per W4P-3 audit, "
-            "Windows hosts get effectively no isolation.",
+            "Windows hosts get effectively no isolation. Set "
+            "SANDBOX_REQUIRE_ISOLATION=true to fail closed instead.",
             type(exc).__name__,
             exc,
         )

@@ -135,3 +135,92 @@ async def test_python_sandbox_handler_uses_defaults() -> None:
     payload = json.loads(raw)
     assert payload["exit_code"] == 0
     assert "ok" in payload["stdout"]
+
+
+# === Sprint 57.137: structural isolation property + fail-closed gate =========
+# (AD-Guardrail-Detect-To-Restrict / research #3)
+
+
+def _fake_docker_module(*, reachable: bool) -> object:
+    """Build a stand-in `docker` module so default_sandbox() is testable whether
+    or not a real Docker daemon is present (overrides sys.modules['docker'])."""
+    import types
+
+    mod = types.ModuleType("docker")
+
+    if reachable:
+
+        class _Client:
+            def ping(self) -> bool:
+                return True
+
+        mod.from_env = lambda *a, **k: _Client()  # type: ignore[attr-defined]
+    else:
+
+        def _boom(*a: object, **k: object) -> object:
+            raise RuntimeError("docker daemon unreachable (test)")
+
+        mod.from_env = _boom  # type: ignore[attr-defined]
+    return mod
+
+
+def test_is_structurally_isolated_property() -> None:
+    """Docker → True, Subprocess → False (conservative default), FailClosed → True (vacuous)."""
+    from agent_harness.tools.sandbox import DockerSandbox, _FailClosedSandbox
+
+    assert SubprocessSandbox().is_structurally_isolated is False
+    # DockerSandbox.__init__ only stores the injected client → property needs no daemon.
+    assert DockerSandbox(client=object()).is_structurally_isolated is True
+    assert _FailClosedSandbox().is_structurally_isolated is True
+
+
+def test_default_sandbox_docker_reachable_returns_docker(monkeypatch: pytest.MonkeyPatch) -> None:
+    import sys
+
+    from agent_harness.tools.sandbox import DockerSandbox, default_sandbox
+
+    monkeypatch.setitem(sys.modules, "docker", _fake_docker_module(reachable=True))
+    assert isinstance(default_sandbox(), DockerSandbox)
+    # require_isolation is irrelevant when Docker IS reachable.
+    assert isinstance(default_sandbox(require_isolation=True), DockerSandbox)
+
+
+def test_default_sandbox_unreachable_no_require_returns_subprocess(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Docker down + require_isolation=False → SubprocessSandbox (dev/CI path, unchanged)."""
+    import sys
+
+    from agent_harness.tools.sandbox import default_sandbox
+
+    monkeypatch.setitem(sys.modules, "docker", _fake_docker_module(reachable=False))
+    assert isinstance(default_sandbox(require_isolation=False), SubprocessSandbox)
+
+
+def test_default_sandbox_unreachable_require_isolation_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Docker down + require_isolation=True → _FailClosedSandbox (NOT SubprocessSandbox)."""
+    import sys
+
+    from agent_harness.tools.sandbox import _FailClosedSandbox, default_sandbox
+
+    monkeypatch.setitem(sys.modules, "docker", _fake_docker_module(reachable=False))
+    result = default_sandbox(require_isolation=True)
+    assert isinstance(result, _FailClosedSandbox)
+    assert not isinstance(result, SubprocessSandbox)
+
+
+@pytest.mark.asyncio
+async def test_failclosed_sandbox_refuses_execution() -> None:
+    """_FailClosedSandbox runs NOTHING — returns a clear refusal result."""
+    from agent_harness.tools.sandbox import _FailClosedSandbox
+
+    result = await _FailClosedSandbox().execute(
+        "print('should never run')", timeout_seconds=5, memory_mb=128
+    )
+    assert result.exit_code == 1
+    assert result.stdout == ""
+    assert "execution refused" in result.stderr
+    assert "SANDBOX_REQUIRE_ISOLATION" in result.stderr
+    assert result.killed_by_timeout is False

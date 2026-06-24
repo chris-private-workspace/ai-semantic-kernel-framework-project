@@ -8,6 +8,7 @@ Per project rules (.claude/rules/code-quality.md): always use Pydantic
 Settings (not raw os.environ) so type-safe + validation + .env support.
 
 Modification History (newest-first):
+    - 2026-06-24: Sprint 57.137 — add sandbox_require_isolation (fail-closed python_sandbox)
     - 2026-06-23: Sprint 57.136 — add chat_verification_correction_strategy (keep|summarize)
     - 2026-06-13: Sprint 57.112 — add mfa_issuer_name + mfa_challenge_ttl_minutes (IAM Block C MFA)
     - 2026-06-10: Sprint 57.99 A2 — add chat_verification_escalate_on_max (default OFF)
@@ -140,6 +141,13 @@ class Settings(BaseSettings):
     # falls back to "keep" (the handler validates). Env:
     # CHAT_VERIFICATION_CORRECTION_STRATEGY.
     chat_verification_correction_strategy: str = "keep"
+    # Sprint 57.137 §sandbox detect→restrict (AD-Guardrail-Detect-To-Restrict):
+    # when True, python_sandbox FAILS CLOSED if no structurally-isolating backend
+    # (DockerSandbox) is available — it refuses to run rather than silently
+    # degrading to the production-unsafe SubprocessSandbox. Default False keeps the
+    # dev/CI SubprocessSandbox fallback (byte-unchanged); production opts in.
+    # Env: SANDBOX_REQUIRE_ISOLATION.
+    sandbox_require_isolation: bool = False
 
     # ---- Sprint 57.112 IAM Block C MFA (TOTP) -----------------------
     # mfa_issuer_name: the otpauth:// issuer label shown in the user's authenticator

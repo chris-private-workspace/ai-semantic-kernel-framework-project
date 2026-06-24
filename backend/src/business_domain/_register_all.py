@@ -99,10 +99,20 @@ _shared_sandbox_singleton: SandboxBackend | None = None
 
 
 def _get_shared_sandbox() -> SandboxBackend:
-    """Return the process-wide python_sandbox backend (Docker when reachable, else Subprocess)."""
+    """Return the process-wide python_sandbox backend (Docker when reachable, else fallback).
+
+    Sprint 57.137 (AD-Guardrail-Detect-To-Restrict): reads SANDBOX_REQUIRE_ISOLATION
+    — when set, a Docker-less host fails closed (refusing _FailClosedSandbox) instead
+    of silently degrading to the production-unsafe SubprocessSandbox. Default OFF
+    keeps the dev/CI fallback byte-unchanged.
+    """
     global _shared_sandbox_singleton
     if _shared_sandbox_singleton is None:
-        _shared_sandbox_singleton = default_sandbox()
+        from core.config import get_settings
+
+        _shared_sandbox_singleton = default_sandbox(
+            require_isolation=get_settings().sandbox_require_isolation
+        )
     return _shared_sandbox_singleton
 
 

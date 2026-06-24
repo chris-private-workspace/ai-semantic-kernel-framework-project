@@ -20,14 +20,30 @@ Description:
     register this guardrail (zero-cost off). Patterns are pre-compiled at ctor;
     the admin PUT validates compile + count/length caps before they reach here.
 
+Security model (Sprint 57.137 reframe — AD-Guardrail-Detect-To-Restrict / research #3):
+    This regex deny-list is an ESCALATE-for-VISIBILITY layer, NOT the security
+    boundary. A blocklist of code patterns is a losing cat-and-mouse (57.110's
+    drive-through caught a child rewriting a blocked os.system as os.popen → a new
+    pattern had to be added; equivalent encodings — getattr / importlib / split
+    literals / unlisted egress primitives like urllib/http.client — are unbounded;
+    measured escape rate 60% in benchmark_sandbox_escape). The actual boundary is
+    the STRUCTURAL python_sandbox isolation (DockerSandbox: network none / read-only
+    rootfs / cap-drop ALL / non-root / no bind mounts — measured 100% containment),
+    made MANDATORY by the SANDBOX_REQUIRE_ISOLATION fail-closed gate (sandbox.py /
+    default_sandbox). This detector's residual value is (a) a human SEES a flagged
+    attempt (ESCALATE → HITL) and (b) per-tenant extra_patterns flag tenant-specific
+    args — neither is a containment guarantee. Do NOT treat the patterns as a
+    primary defense or expand them in a pattern-chasing arms race.
+
 Key Components:
     - RiskyActionDetector: Guardrail (guardrail_type=TOOL); ctor takes extra_patterns
     - DEFAULT_SANDBOX_PATTERNS: conservative builtin deny-list (regex, word-bounded)
 
 Created: 2026-06-12 (Sprint 57.106)
-Last Modified: 2026-06-13
+Last Modified: 2026-06-24
 
 Modification History (newest-first):
+    - 2026-06-24: Sprint 57.137 — reframe as ESCALATE-visibility not boundary (no behavior change)
     - 2026-06-13: Sprint 57.110 B4 — +os.popen/os.spawn*/os.exec* (dt found the popen bypass)
     - 2026-06-12: Initial creation (Sprint 57.106 C3) — risky-action TOOL guardrail
 
@@ -61,6 +77,9 @@ from agent_harness.guardrails._abc import (
 # design — the detector ESCALATEs into a human approval, it never BLOCKs, so a
 # legitimate hit costs one click. Near-misses (evaluate(, execute_query() do NOT
 # match (\b + literal '(' anchoring); see test_risky_action_detector.py.
+# NOTE (Sprint 57.137): this list is intentionally INCOMPLETE — a visibility
+# tripwire, NOT an exhaustive boundary (measured 60% escape; see module docstring
+# §Security model). Containment is DockerSandbox's job; do NOT pattern-chase here.
 DEFAULT_SANDBOX_PATTERNS: tuple[str, ...] = (
     r"\bos\.system\s*\(",
     # Sprint 57.110 (B4 dt D-DAY3-1): the 57.110 drive-through showed a child
