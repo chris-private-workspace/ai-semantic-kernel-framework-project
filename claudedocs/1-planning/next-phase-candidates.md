@@ -44,7 +44,7 @@ It condenses the user's "5-point deepening discussion" into 3 workflows and a re
 
 ### 🟢 Already identified
 
-- **Explicit task primitive (DAG, not flat list)** (research #1; Cat 1/3/7). Already has a standalone eval: [`5-status/task-primitive-thin-spike-eval-20260618.md`](../5-status/task-primitive-thin-spike-eval-20260618.md) (recommends thin spike to measure load-bearing; not redundant with max_turns/scheduler). No new AD — track under that eval.
+- ~~**Explicit task primitive (linear list)** (research #1; Cat 1/2/3/5/7/12)~~ — ✅ **DONE Sprint 57.140** (the LINEAR primitive thin spike; DAG deferred). `write_todos` tool + `session_todos` durable store (migration 0031) + run-start `## Active Plan` re-injection + `todos_updated` wire + chat-v2 Todos tab. **Drive-through STRONG PASS** — agent proactively planned (3 todos) + cross-send rehydrated + added a 4th (4/4); AP-4 "ignores the list" risk FALSIFIED. Carryover: `AD-TaskPrimitive-DAG-Phase58` (the DAG evolution) + `AD-TaskPrimitive-Scheduler-Phase58` (research #3 cross-burst auto-continue — its prerequisite durable spine is now shipped) + `AD-TaskPrimitive-Saturation-DriveThrough-Phase58` (5+-send test).
 
 ### 🆕 Net-new directions
 
@@ -66,8 +66,8 @@ This list follows the canonical research §5 ranked order (#6 → #3 → #8 → 
 2. ~~#3 `AD-Guardrail-Detect-To-Restrict`~~ — ✅ **DONE Sprint 57.137** (60% regex escape / 100% Docker containment measured; env-gated fail-closed lever shipped; detector reframed).
 3. ~~#8 `AD-Verification-KeyCondition-PerTask`~~ — ✅ **DONE Sprint 57.138** (key_condition template + A/B; gain +16.67pp on instruction_violation but 20% FP → net tie → keep output_quality default, key_condition = opt-in; #8 directionally real, low-priority refinement confirmed).
 4. ~~#4 `AD-Context-Layered-Compaction-ACON`~~ — ✅ **DONE Sprint 57.139** (tool-result preclear layer + per-layer yield harness; mean tool_clear 33.72% IN ACON band + 66.67% semantic-deferral → keep default OFF, preclear = selectable opt-in; follow-ons `AD-Compaction-ToolAnchored-Preclear-Phase58` + `AD-Compaction-Preclear-PerTenant-Phase58`).
-5. **#1 Explicit task primitive (DAG)** — ← **next per the ranked order**. Already has a standalone thin-spike eval (`5-status/task-primitive-thin-spike-eval-20260618.md`); start there.
-6. #2 `AD-Eval-PassK-Reliability-Harness` — net-new; reliability≠capability (pass^k vs pass@1); independent of `loop.py`.
+5. ~~#1 Explicit task primitive (linear)~~ — ✅ **DONE Sprint 57.140** (LINEAR primitive; `write_todos` + `session_todos` store + run-start re-injection + chat-v2 Todos tab; drive-through STRONG PASS — proactive plan + cross-send rehydration; AP-4 risk FALSIFIED; DAG / scheduler deferred to Phase 58).
+6. **#2 `AD-Eval-PassK-Reliability-Harness`** — ← **next per the ranked order**; net-new; reliability≠capability (pass^k vs pass@1); independent of `loop.py`. (Or the user may pick #3 cross-burst scheduler now that its task-primitive prerequisite is shipped.)
 7. #5 `AD-Observability-OTel-GenAI-Schema` — net-new; CNCF OTel GenAI semantic conventions vs the self-authored wrapper; independent of `loop.py`.
 8. #7 `AD-Tool-Description-Lint-Reflection` — net-new; tool-desc lint + structured-error reflection on tool failure; independent of `loop.py`.
 

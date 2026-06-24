@@ -25,6 +25,7 @@ Created: 2026-04-30 (Sprint 51.0 Day 3)
 Last Modified: 2026-06-18
 
 Modification History:
+    - 2026-06-24: Sprint 57.140 — opt-in todo_store (registers write_todos task-primitive tool)
     - 2026-06-18: FIX-033 — chat python_sandbox → Docker default_sandbox() (Win Selector fail)
     - 2026-06-15: Sprint 57.118 — opt-in skill_registry also registers run_skill_script (exec)
     - 2026-06-13: Sprint 57.113 — opt-in skill_registry (registers read_skill lazy-load tool)
@@ -59,10 +60,12 @@ from agent_harness.subagent import (
     make_task_spawn_tool,
 )
 from agent_harness.tools import (
+    WRITE_TODOS_SPEC,
     ToolExecutorImpl,
     ToolHandler,
     ToolRegistry,
     ToolRegistryImpl,
+    make_write_todos_handler,
     register_builtin_tools,
 )
 from agent_harness.tools.echo_tool import ECHO_TOOL_SPEC, echo_handler
@@ -74,6 +77,7 @@ from ._service_factory import BusinessServiceFactory
 if TYPE_CHECKING:
     from agent_harness.memory import MemoryLayer, MemoryRetrieval
     from agent_harness.skills import SkillRegistry
+    from agent_harness.state_mgmt import TodoStore
     from agent_harness.subagent import DefaultSubagentDispatcher, MailboxStore
 from .audit_domain.tools import register_audit_tools
 from .correlation.tools import register_correlation_tools
@@ -222,6 +226,7 @@ def make_default_executor(
     handoff_targets: Sequence[str] | None = None,
     subagent_failure_policy: SubagentFailurePolicy = "fail_soft",
     skill_registry: "SkillRegistry | None" = None,
+    todo_store: "TodoStore | None" = None,
 ) -> tuple[ToolRegistryImpl, ToolExecutorImpl]:
     """Build a registry+executor pair with echo_tool + 18 business tools (19 total).
 
@@ -343,6 +348,15 @@ def make_default_executor(
         handlers["read_skill"] = make_read_skill_handler(skill_registry)
         registry.register(RUN_SKILL_SCRIPT_TOOL_SPEC)
         handlers["run_skill_script"] = make_run_skill_script_handler(skill_registry)
+
+    # Sprint 57.140: the write_todos task-primitive tool (opt-in). When a per-request
+    # session todo store is supplied (make_chat_todo_store, all-three-or-nothing), the
+    # agent records/updates a whole structured plan that survives across sends (the
+    # durable task spine). risk=LOW + destructive=False → the registry-derived matrix
+    # auto-PASSes it (no HITL prompt), so the agent maintains the list freely in-loop.
+    if todo_store is not None:
+        registry.register(WRITE_TODOS_SPEC)
+        handlers["write_todos"] = make_write_todos_handler(todo_store)
 
     # Cat 11 (A-3a) subagent tools — FORK/TEAMMATE via task_spawn + one AS_TOOL
     # wrapper. HANDOFF is loop-intercepted (spec-only tool above; Sprint 57.107).

@@ -110,6 +110,7 @@ WIRE_TYPE_TO_INTERFACE: dict[str, str] = {
     "memory_accessed": "MemoryAccessedEvent",
     "message_injected": "MessageInjectedEvent",
     "loop_terminated": "LoopTerminatedEvent",
+    "todos_updated": "TodosUpdatedEvent",
 }
 
 

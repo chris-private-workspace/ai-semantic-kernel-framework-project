@@ -45,6 +45,10 @@ from agent_harness.tools.search_tools import (
     WebSearchConfigError,
     make_web_search_handler,
 )
+from agent_harness.tools.todo_tools import (
+    WRITE_TODOS_SPEC,
+    make_write_todos_handler,
+)
 
 ToolHandler = (
     Callable[[ToolCall], Awaitable[str | dict[str, Any]]]
@@ -135,6 +139,7 @@ __all__ = [
     "ToolRegistry",
     "ToolRegistryImpl",
     "WEB_SEARCH_SPEC",
+    "WRITE_TODOS_SPEC",
     "WebSearchConfigError",
     "echo_handler",
     "make_echo_executor",
@@ -143,6 +148,7 @@ __all__ = [
     "make_python_sandbox_handler",
     "make_request_approval_handler",
     "make_web_search_handler",
+    "make_write_todos_handler",
     "memory_placeholder_handler",
     "register_builtin_tools",
     "request_approval_handler",

@@ -1,6 +1,6 @@
 """
 File: backend/src/api/v1/chat/event_wire_schema.py
-Purpose: Declarative single-source wire-schema for the 25 chat SSE event types.
+Purpose: Declarative single-source wire-schema for the 26 chat SSE event types.
 Category: api/v1/chat
 Scope: Phase 57 / Sprint 57.67 (A-5b — event schema codegen)
 
@@ -27,7 +27,7 @@ Description:
     `frontend/src/features/chat_v2/types.ts` (reproduced verbatim).
 
 Key Components:
-    - WIRE_SCHEMA: 25 ordered wire-type → ordered {field: ts_type} entries.
+    - WIRE_SCHEMA: 26 ordered wire-type → ordered {field: ts_type} entries.
     - BASE_FIELDS: universal fields the wrapper adds to every frame (trace_id).
     - TOOL_CALL_ELEMENT_TYPE_NAME / TOOL_CALL_ELEMENT_FIELDS: the named
       `tool_calls` element TS type (mirrors types.ts `LLMToolCall`).
@@ -37,6 +37,7 @@ Created: 2026-06-02 (Sprint 57.67)
 Last Modified: 2026-06-16
 
 Modification History (newest-first):
+    - 2026-06-24: Sprint 57.140 — add todos_updated wire-type (Cat 1 task primitive) 25→26
     - 2026-06-16: Sprint 57.130 — add loop_terminated wire-type (Cat 8 fatal-terminate) 24→25
     - 2026-06-14: Sprint 57.116 — loop_start +active_skill field (count 24 unchanged)
     - 2026-06-12: Sprint 57.108 — approval_requested +tool_name/reason; llm_response +in/out tokens
@@ -78,7 +79,7 @@ TOOL_CALL_ELEMENT_FIELDS: dict[str, str] = {
 }
 
 
-# === WIRE_SCHEMA: 25 ordered wire-type entries ==============================
+# === WIRE_SCHEMA: 26 ordered wire-type entries ==============================
 # Why: single declarative source of truth for the SSE event contract. Insertion
 # order of the outer dict = generated interface declaration order; insertion
 # order of each inner dict = generated interface FIELD order. Field NAME/SET is
@@ -234,6 +235,13 @@ WIRE_SCHEMA: dict[str, dict[str, str]] = {
         "detail": "string | null",
         "last_state_version": "number | null",
     },
+    # Sprint 57.140 (Cat 1 → 12): the whole todo list after a write_todos call —
+    # feeds the chat-v2 Inspector "Todos" panel (research #1 task primitive). Each
+    # item is {id, title, status}; typed as a generic object array on the wire (the
+    # FE narrows to a hand-written TodoItem) to avoid a 2nd named codegen element.
+    "todos_updated": {
+        "todos": "Record<string, unknown>[]",
+    },
 }
 
 
@@ -253,6 +261,7 @@ _RECOGNIZED_TS_TYPES: frozenset[str] = frozenset(
         "string | null",
         "number | null",
         "Record<string, unknown>",
+        "Record<string, unknown>[]",
     }
 )
 

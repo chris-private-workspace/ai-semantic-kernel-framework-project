@@ -127,6 +127,18 @@ export type MemoryOp = {
   at: number;
 };
 
+/**
+ * Sprint 57.140 Inspector Todos tab: one structured plan item, narrowed from the
+ * wire `todos_updated` event's generic `Record<string, unknown>[]` (the wire avoids
+ * a 2nd named codegen element; the FE owns this hand-written shape). status drives
+ * the per-row badge color.
+ */
+export type TodoItem = {
+  id: string;
+  title: string;
+  status: "pending" | "in_progress" | "completed";
+};
+
 type ChatStoreState = {
   // Session metadata (preserved)
   sessionId: string | null;
@@ -159,6 +171,10 @@ type ChatStoreState = {
   // Sprint 57.75: Inspector Trace + Memory derived slices (from SSE span/memory events)
   spans: SpanNode[];
   memoryOps: MemoryOp[];
+
+  // Sprint 57.140: the current durable todo list (research #1 task primitive),
+  // replaced wholesale on each todos_updated SSE event; feeds the Inspector Todos tab.
+  todos: TodoItem[];
 
   // Actions
   setMode: (m: ChatMode) => void;
@@ -201,6 +217,7 @@ const _initial = (): Pick<
   | "subagents"
   | "spans"
   | "memoryOps"
+  | "todos"
 > => ({
   sessionId: null,
   status: "idle",
@@ -218,12 +235,20 @@ const _initial = (): Pick<
   subagents: [],
   spans: [],
   memoryOps: [],
+  todos: [],
 });
 
 let _turnCounter = 0;
 const nextTurnId = (): string => `t_${++_turnCounter}`;
 
 const nowIso = (): string => new Date().toISOString();
+
+// Sprint 57.140: narrow a wire `todos_updated` item's generic status to TodoItem's
+// union (unknown / malformed → "pending"), mirroring the backend serde tolerance.
+const narrowTodoStatus = (raw: unknown): TodoItem["status"] => {
+  const text = String(raw ?? "");
+  return text === "in_progress" || text === "completed" ? text : "pending";
+};
 
 /**
  * Sprint 57.107 B3: map the backend session status (active | handed_off |
@@ -329,6 +354,7 @@ const applyPivot = (
   subagents: [],
   spans: [],
   memoryOps: [],
+  todos: [],
 });
 
 export const useChatStore = create<ChatStoreState>((set, get) => ({
@@ -389,6 +415,7 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
       subagents: [],
       spans: [],
       memoryOps: [],
+      todos: [],
     }));
     let events;
     try {
@@ -545,6 +572,19 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
               },
             ],
           };
+        }
+
+        case "todos_updated": {
+          // Sprint 57.140 (research #1 task primitive): the agent updated its
+          // structured plan via write_todos. The wire carries the WHOLE list
+          // (replace-whole-list); narrow each generic object to TodoItem (the wire
+          // avoids a 2nd named codegen element). Feeds the Inspector Todos tab.
+          const todos: TodoItem[] = ev.data.todos.map((t) => ({
+            id: String(t.id ?? ""),
+            title: String(t.title ?? ""),
+            status: narrowTodoStatus(t.status),
+          }));
+          return { ...s, rawEvents, todos };
         }
 
         case "llm_request": {

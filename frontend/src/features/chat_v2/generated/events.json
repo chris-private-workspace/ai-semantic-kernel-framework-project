@@ -19,6 +19,7 @@
     "subagent_child",
     "subagent_completed",
     "subagent_spawned",
+    "todos_updated",
     "tool_call_request",
     "tool_call_result",
     "tripwire_triggered",
@@ -161,6 +162,9 @@
       "reason": "string",
       "detail": "string | null",
       "last_state_version": "number | null"
+    },
+    "todos_updated": {
+      "todos": "Record<string, unknown>[]"
     }
   }
 }

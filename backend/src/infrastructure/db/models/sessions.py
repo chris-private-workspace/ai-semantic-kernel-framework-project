@@ -32,6 +32,7 @@ Created: 2026-04-29 (Sprint 49.2 Day 2.1)
 Last Modified: 2026-06-02
 
 Modification History:
+    - 2026-06-24: Sprint 57.140 — add SessionTodos (per-session durable todo list, task primitive)
     - 2026-06-12: Sprint 57.107 B3 — add parent_session_id + is_sidechain (subagent transcripts)
     - 2026-06-02: Sprint 57.68 A-3b — add Session.handoff_parent_id FK + index (HANDOFF linkage)
     - 2026-04-29: Initial creation (Sprint 49.2 Day 2.1)
@@ -267,4 +268,51 @@ class MessageEvent(Base, TenantScopedMixin):
     )
 
 
-__all__ = ["Session", "Message", "MessageEvent"]
+# =====================================================================
+# SessionTodos - per-session durable todo list (NOT partitioned, 1 row/session)
+# =====================================================================
+class SessionTodos(Base, TenantScopedMixin):
+    """Per-session structured todo list (the explicit task primitive, Sprint 57.140).
+
+    One row per session (UNIQUE session_id) holding the whole list as JSONB —
+    `write_todos` replaces the whole list (CC TodoWrite semantics) via an upsert
+    on session_id. NOT partitioned (low volume: 1 row/session) and tenant-scoped
+    (TenantScopedMixin → tenant_id NOT NULL + RLS). Per 09-db-schema-design.md
+    Group 2 (Sessions & Conversations); migration 0031_session_todos.
+    """
+
+    __tablename__ = "session_todos"
+
+    id: Mapped[PyUUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    session_id: Mapped[PyUUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("sessions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    # The whole todo list as JSONB: [{"id","title","status"}, ...].
+    todos: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default=text("'[]'::jsonb"),
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        # One todo row per session (the upsert conflict target).
+        UniqueConstraint("session_id", name="uq_session_todos_session"),
+        Index("idx_session_todos_tenant_session", "tenant_id", "session_id"),
+    )
+
+
+__all__ = ["Session", "Message", "MessageEvent", "SessionTodos"]

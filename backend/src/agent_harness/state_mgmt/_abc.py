@@ -20,6 +20,7 @@ Created: 2026-04-29 (Sprint 49.1)
 Last Modified: 2026-06-16
 
 Modification History (newest-first):
+    - 2026-06-24: Sprint 57.140 — add TodoStore ABC (per-session durable todo list)
     - 2026-06-16: Sprint 57.127 — add MessageStore ABC (per-session message ledger)
 """
 
@@ -29,6 +30,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from agent_harness._contracts import LoopState, Message, StateVersion, TraceContext
+from agent_harness._contracts.todo import Todo
 
 
 class Checkpointer(ABC):
@@ -86,6 +88,35 @@ class MessageStore(ABC):
     async def append(self, messages: list[Message], *, turn_num: int) -> None:
         """Append NEW messages to the ledger (sequence_num continues from the
         session MAX). Best-effort — a persistence failure MUST NOT break the loop."""
+        ...
+
+
+class TodoStore(ABC):
+    """Persists + rehydrates the per-session durable todo list (Sprint 57.140).
+
+    The explicit task primitive (CC `TodoWrite`-like): the agent writes a whole
+    structured plan via the Cat-2 `write_todos` tool; this store persists it so a
+    follow-up send rehydrates "what's left / what's done" — the durable task spine
+    free-text plans lack across multiple 8-turn sends. An impl is bound to one
+    (session_id, tenant_id) at construction (mirrors MessageStore / Checkpointer);
+    `replace` overwrites the whole list (CC replace-whole-list semantics), `load`
+    returns the current list. Provider-neutral — operates only on the Cat-3 `Todo`
+    dataclass (no provider / DB type in this contract).
+
+    Distinct from MessageStore (the verbatim conversation ledger the loop rehydrates)
+    and from `task_spawn` (Cat 11 subagent DISPATCH — orthogonal; the name avoids
+    `task` deliberately): this is structured, durable, updatable TASK STATE.
+    """
+
+    @abstractmethod
+    async def load(self) -> list[Todo]:
+        """Return the bound session's current todo list (empty if none / on error)."""
+        ...
+
+    @abstractmethod
+    async def replace(self, todos: list[Todo]) -> None:
+        """Overwrite the bound session's whole todo list (upsert; best-effort —
+        a persistence failure MUST NOT break the loop)."""
         ...
 
 
