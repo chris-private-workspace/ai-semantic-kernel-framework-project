@@ -14,10 +14,10 @@ Description:
     Drift in EITHER direction (serializer adds/removes a field, or registry
     drifts) fails this test. Also asserts the 2 unwired classes still raise
     NotImplementedError, that Thinking still serializes to None, and that the
-    registry has exactly 25 entries.
+    registry has exactly 26 entries.
 
 Created: 2026-06-02 (Sprint 57.67)
-Last Modified: 2026-06-16 (Sprint 57.130 — wire LoopTerminated; 24→25)
+Last Modified: 2026-06-24 (Sprint 57.140 — wire todos_updated; 25→26)
 """
 
 from __future__ import annotations
@@ -50,6 +50,7 @@ from agent_harness._contracts import (
     SubagentCompleted,
     SubagentSpawned,
     Thinking,
+    TodosUpdated,
     ToolCall,
     ToolCallExecuted,
     ToolCallFailed,
@@ -59,6 +60,7 @@ from agent_harness._contracts import (
     VerificationFailed,
     VerificationPassed,
 )
+from agent_harness._contracts.todo import Todo
 from api.v1.chat.event_wire_schema import BASE_FIELDS, WIRE_SCHEMA
 from api.v1.chat.sse import serialize_loop_event
 
@@ -132,6 +134,8 @@ WIRED_EVENT_INSTANCES: list[LoopEvent] = [
     MessageInjected(text="also check the db pool"),
     # Sprint 57.130 (Cat 8): a fatal terminate now surfaced on the chat wire.
     LoopTerminated(reason="max_retries_exhausted", detail="tool failed 3×", last_state_version=2),
+    # Sprint 57.140 (Cat 1 → 12): the whole todo list after a write_todos call.
+    TodosUpdated(todos=(Todo(id="1", title="research", status="in_progress"),)),
 ]
 
 # Cat 8/12 events with no serializer branch (must raise NotImplementedError).
@@ -142,8 +146,8 @@ UNWIRED_EVENT_INSTANCES: list[LoopEvent] = [
 
 
 class TestWireSchemaParity:
-    def test_wire_schema_has_25_entries(self) -> None:
-        assert len(WIRE_SCHEMA) == 25
+    def test_wire_schema_has_26_entries(self) -> None:
+        assert len(WIRE_SCHEMA) == 26
 
     def test_base_fields_only_trace_id(self) -> None:
         # trace_id is the universal field injected by serialize_loop_event;

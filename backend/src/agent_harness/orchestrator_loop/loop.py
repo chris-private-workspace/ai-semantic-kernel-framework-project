@@ -157,6 +157,7 @@ from agent_harness._contracts import (
     StateCheckpointed,
     StateVersion,
     Thinking,
+    TodosUpdated,
     ToolCall,
     ToolCallExecuted,
     ToolCallFailed,
@@ -179,6 +180,7 @@ from agent_harness._contracts.hitl import (
     resolve_tool_risk,
 )
 from agent_harness._contracts.message_serde import _message_from_dict, _message_to_dict
+from agent_harness._contracts.todo import render_active_plan
 from agent_harness.context_mgmt import Compactor
 from agent_harness.error_handling import (
     DefaultCircuitBreaker,
@@ -208,7 +210,7 @@ from agent_harness.output_parser import (
     classify_output,
 )
 from agent_harness.prompt_builder import PromptBuilder
-from agent_harness.state_mgmt import Checkpointer, MessageStore, Reducer
+from agent_harness.state_mgmt import Checkpointer, MessageStore, Reducer, TodoStore
 from agent_harness.tools import ToolExecutor, ToolRegistry  # public path per category-boundaries.md
 
 from ._abc import AgentLoop
@@ -329,6 +331,7 @@ class AgentLoopImpl(AgentLoop):
         reducer: Reducer | None = None,
         checkpointer: Checkpointer | None = None,
         message_store: MessageStore | None = None,
+        todo_store: TodoStore | None = None,
         tenant_id: UUID | None = None,
         error_policy: ErrorPolicy | None = None,
         retry_policy: RetryPolicyMatrix | None = None,
@@ -422,6 +425,10 @@ class AgentLoopImpl(AgentLoop):
         # message ledger. When None (subagent child loops / legacy callers) the
         # loop neither rehydrates prior context nor persists — baseline behavior.
         self._message_store = message_store
+        # Sprint 57.140 (research #1 task primitive): the per-session durable todo
+        # store. When None (subagent child loops / legacy callers) the loop emits no
+        # TodosUpdated — the agent's write_todos calls simply have no panel to feed.
+        self._todo_store = todo_store
         self._tenant_id = tenant_id
         # 53.2 Day 3 Cat 8 integration: 5 opt-in deps. When any is None
         # the corresponding Cat 8 path is skipped (preserves 53.1
@@ -1953,7 +1960,16 @@ class AgentLoopImpl(AgentLoop):
         )
         messages: list[Message] = list(prior_messages)
         if self._system_prompt:
-            messages.insert(0, Message(role="system", content=self._system_prompt))
+            system_content = self._system_prompt
+            # Sprint 57.140 (research #1): re-inject the current durable todo list at
+            # run start so the agent re-focuses on "what's left / what's done" after a
+            # new send / compaction (the cross-send increment a free-text plan lacks).
+            # Loaded fresh each run; absent store / empty list → no '## Active Plan'.
+            if self._todo_store is not None:
+                active_todos = await self._todo_store.load()
+                if active_todos:
+                    system_content = f"{system_content}\n\n{render_active_plan(active_todos)}"
+            messages.insert(0, Message(role="system", content=system_content))
         messages.append(Message(role="user", content=user_input))
         # Persist this send's user prompt immediately (turn 0) so the question is
         # remembered even if the run fails before an answer (mirrors the 57.126
@@ -3080,6 +3096,16 @@ class AgentLoopImpl(AgentLoop):
                                 result_content=tool_content,
                                 trace_context=ctx,
                             )
+                            # Sprint 57.140 (research #1): after a successful
+                            # write_todos call, re-read the durable list + emit
+                            # TodosUpdated so the chat-v2 Todos panel re-renders the
+                            # plan as the agent maintains it. Name-coupled to the
+                            # builtin tool (the only writer of the todo store).
+                            if tc.name == "write_todos" and self._todo_store is not None:
+                                yield TodosUpdated(
+                                    todos=tuple(await self._todo_store.load()),
+                                    trace_context=ctx,
+                                )
                         else:
                             yield ToolCallFailed(
                                 tool_call_id=tc.id,

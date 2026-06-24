@@ -266,6 +266,14 @@ export interface LoopTerminatedEvent {
   };
 }
 
+export interface TodosUpdatedEvent {
+  type: "todos_updated";
+  data: {
+    trace_id?: string | null;
+    todos: Record<string, unknown>[];
+  };
+}
+
 export type LoopEvent =
   | LoopStartEvent
   | TurnStartEvent
@@ -291,7 +299,8 @@ export type LoopEvent =
   | SpanEndedEvent
   | MemoryAccessedEvent
   | MessageInjectedEvent
-  | LoopTerminatedEvent;
+  | LoopTerminatedEvent
+  | TodosUpdatedEvent;
 
 export const KNOWN_LOOP_EVENT_TYPES = new Set<string>([
   "loop_start",
@@ -319,4 +328,5 @@ export const KNOWN_LOOP_EVENT_TYPES = new Set<string>([
   "memory_accessed",
   "message_injected",
   "loop_terminated",
+  "todos_updated",
 ]);

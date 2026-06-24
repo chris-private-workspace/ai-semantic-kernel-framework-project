@@ -55,6 +55,7 @@ from uuid import UUID, uuid4
 
 from agent_harness._contracts.chat import Message
 from agent_harness._contracts.observability import TraceContext
+from agent_harness._contracts.todo import Todo
 
 
 @dataclass(frozen=True)
@@ -443,6 +444,18 @@ class MessageInjected(LoopEvent):
     """
 
     text: str = ""
+
+
+@dataclass(frozen=True)
+class TodosUpdated(LoopEvent):
+    """Sprint 57.140: emitted by Cat 1 after a successful `write_todos` tool call —
+    carries the WHOLE current todo list so the chat-v2 Todos panel re-renders the
+    structured plan (pending / in_progress / completed) as the agent maintains it.
+    The durable task primitive's visibility half (research #1). `todos` is the full
+    list (replace-whole-list); the SSE serializer flattens each Todo to a dict.
+    """
+
+    todos: tuple[Todo, ...] = field(default_factory=tuple)
 
 
 # === Category 12: Observability ============================================

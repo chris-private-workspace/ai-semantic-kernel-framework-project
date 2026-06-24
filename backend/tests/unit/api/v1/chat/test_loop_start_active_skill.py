@@ -46,7 +46,7 @@ class TestLoopStartActiveSkill:
 
     def test_active_skill_is_field_not_wire_type(self) -> None:
         """active_skill is a FIELD on loop_start, not a new top-level wire type."""
-        # Count is 25 as of Sprint 57.130 (loop_terminated added a wire type); the
+        # Count is 26 as of Sprint 57.140 (todos_updated added a wire type); the
         # point here is only that active_skill itself is NOT a top-level wire type.
-        assert len(WIRE_SCHEMA) == 25
+        assert len(WIRE_SCHEMA) == 26
         assert "active_skill" not in WIRE_SCHEMA  # it is a field, not a type key

@@ -81,9 +81,11 @@ from agent_harness.state_mgmt import (
     Checkpointer,
     DBCheckpointer,
     DBMessageStore,
+    DBTodoStore,
     DefaultReducer,
     MessageStore,
     Reducer,
+    TodoStore,
 )
 from agent_harness.subagent import DefaultSubagentDispatcher
 from agent_harness.verification import VerifierRegistry
@@ -390,6 +392,26 @@ def make_chat_message_store(
     if db is None or session_id is None or tenant_id is None:
         return None
     return DBMessageStore(db, session_id=session_id, tenant_id=tenant_id)
+
+
+def make_chat_todo_store(
+    db: AsyncSession | None,
+    session_id: UUID | None,
+    tenant_id: UUID | None,
+) -> TodoStore | None:
+    """Cat 7: a DBTodoStore (per-session durable todo list) when all three inputs
+    are present, else None.
+
+    Sprint 57.140 (research #1 task primitive): the chat loop's `write_todos` tool
+    persists a structured plan here + the loop re-injects it at run-start so a
+    follow-up send rehydrates "what's left / what's done". Mirrors
+    make_chat_message_store's all-three-or-nothing guard — None on legacy / test
+    callers leaves the loop without the task primitive (the agent still works,
+    just with no durable plan). Subagent child loops are built WITHOUT a store.
+    """
+    if db is None or session_id is None or tenant_id is None:
+        return None
+    return DBTodoStore(db, session_id=session_id, tenant_id=tenant_id)
 
 
 def make_chat_error_deps() -> tuple[

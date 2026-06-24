@@ -99,6 +99,7 @@ from agent_harness._contracts import (
     SubagentCompleted,
     SubagentSpawned,
     Thinking,
+    TodosUpdated,
     ToolCallExecuted,
     ToolCallFailed,
     ToolCallRequested,
@@ -107,6 +108,7 @@ from agent_harness._contracts import (
     VerificationFailed,
     VerificationPassed,
 )
+from agent_harness._contracts.todo import todos_to_jsonb
 
 
 def serialize_loop_event(event: LoopEvent) -> dict[str, Any] | None:
@@ -248,6 +250,15 @@ def _serialize_inner(event: LoopEvent) -> dict[str, Any] | None:
         return {
             "type": "message_injected",
             "data": {"text": event.text},
+        }
+
+    # Sprint 57.140 (Cat 1 → 12): the whole todo list after a write_todos call,
+    # so the chat-v2 Todos panel re-renders the structured plan as the agent
+    # maintains it (research #1 task primitive). Each Todo flattened to a dict.
+    if isinstance(event, TodosUpdated):
+        return {
+            "type": "todos_updated",
+            "data": {"todos": todos_to_jsonb(list(event.todos))},
         }
 
     # Sprint 53.5 US-2: HITL approval events. Loop emits ApprovalRequested when

@@ -29,6 +29,7 @@
  * Last Modified: 2026-05-23
  *
  * Modification History (newest-first):
+ *   - 2026-06-24: Sprint 57.140 — add 5th "Todos" tab (research #1 task primitive; existing mockup classes, no new CSS)
  *   - 2026-06-03: Sprint 57.75 — wire Trace + Memory tabs (A-5); all 4 tabs now real (closes -Trace/-Memory-Phase2)
  *   - 2026-06-03: Sprint 57.72 — wire Tree tab to InspectorTree (A-5c); Trace/Memory stay ComingSoon
  *   - 2026-05-23: Sprint 57.30 Day 4 §D3 — verbatim re-point shared Tabs primitive → mockup .chat-inspector + inline .tabs/.tab buttons (a11y role="tab"/aria-selected preserved)
@@ -53,22 +54,27 @@
 import { useState } from "react";
 
 import { InspectorMemory } from "./InspectorMemory";
+import { InspectorTodos } from "./InspectorTodos";
 import { InspectorTrace } from "./InspectorTrace";
 import { InspectorTree } from "./InspectorTree";
 import { InspectorTurn } from "./InspectorTurn";
 
-type InspectorTabId = "turn" | "trace" | "memory" | "tree";
+type InspectorTabId = "turn" | "trace" | "memory" | "tree" | "todos";
 
 interface TabItem {
   id: InspectorTabId;
   label: string;
 }
 
+// Sprint 57.140: "Todos" is a NEW tab for the explicit task primitive (research
+// #1) — a feature the reference mockup doesn't cover. It reuses existing mockup
+// .tab / .badge classes (no new CSS), so styles-mockup.css stays byte-identical.
 const TAB_ITEMS: TabItem[] = [
   { id: "turn", label: "Turn" },
   { id: "trace", label: "Trace" },
   { id: "memory", label: "Memory" },
   { id: "tree", label: "Tree" },
+  { id: "todos", label: "Todos" },
 ];
 
 export function ChatInspector(): JSX.Element {
@@ -101,6 +107,7 @@ export function ChatInspector(): JSX.Element {
       {tab === "trace" && <InspectorTrace />}
       {tab === "memory" && <InspectorMemory />}
       {tab === "tree" && <InspectorTree />}
+      {tab === "todos" && <InspectorTodos />}
     </aside>
   );
 }

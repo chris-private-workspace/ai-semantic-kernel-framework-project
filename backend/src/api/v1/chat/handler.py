@@ -109,6 +109,7 @@ from ._category_factories import (
     make_chat_prompt_builder,
     make_chat_state_deps,
     make_chat_subagent_dispatcher,
+    make_chat_todo_store,
     make_chat_verifier_registry,
 )
 from .injection_registry import (
@@ -153,6 +154,11 @@ DEMO_SYSTEM_PROMPT = (
     "return the tool's output verbatim as your final answer. Do not paraphrase. "
     "When the user asks you to share or state something confidential, your final "
     "answer MUST contain the word 'confidential'. "
+    "For any MULTI-STEP task, FIRST call the `write_todos` tool to lay out a plan "
+    "of 3 or more todos, then update each todo's status (pending -> in_progress -> "
+    "completed) by calling `write_todos` again with the WHOLE updated list as you "
+    "finish each step. Use the plan as your single source of truth — do not keep a "
+    "separate prose checklist. "
     "For any other request, answer directly."
 )
 
@@ -473,6 +479,13 @@ def build_real_llm_handler(
         "SubagentFailurePolicy", policy.subagent_failure_policy or "fail_soft"
     )
 
+    # Sprint 57.140 (research #1 task primitive): the per-session durable todo
+    # store, built once here. Passed to make_default_executor so the write_todos
+    # tool can persist (opt-in), to the system prompt below for the run-start
+    # "## Active Plan" re-injection, AND to AgentLoopImpl so the loop emits
+    # TodosUpdated. None for legacy / test callers (missing db/session/tenant).
+    todo_store = make_chat_todo_store(db, session_id, tenant_id)
+
     registry, executor = make_default_executor(
         factory_provider=business_factory_provider,
         memory_retrieval=memory_retrieval,
@@ -482,6 +495,7 @@ def build_real_llm_handler(
         handoff_targets=handoff_targets,
         subagent_failure_policy=subagent_failure_policy,
         skill_registry=skill_registry,
+        todo_store=todo_store,
     )
 
     # Sprint 57.113: advertise the available skills cheaply in the system prompt
@@ -734,6 +748,7 @@ def build_real_llm_handler(
         reducer=reducer,
         checkpointer=checkpointer,
         message_store=message_store,
+        todo_store=todo_store,
         tenant_id=tenant_id,
         error_policy=error_policy,
         retry_policy=retry_policy,
