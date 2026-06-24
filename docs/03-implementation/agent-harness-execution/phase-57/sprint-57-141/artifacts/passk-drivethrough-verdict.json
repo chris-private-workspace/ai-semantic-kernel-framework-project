@@ -1,0 +1,28 @@
+{
+  "total_cases": 12,
+  "k": 3,
+  "pass_at_1": 1.0,
+  "pass_k": 1.0,
+  "divergence": 0.0,
+  "divergence_notable": false,
+  "answer_consistency": 0.75,
+  "tool_seq_consistency": 1.0,
+  "lambda_fault_rate": 0.2,
+  "lambda_degradation": 0.5,
+  "epsilon_cases": 2,
+  "epsilon_instability": 0.0,
+  "per_category": {
+    "easy": {
+      "n": 6.0,
+      "pass_at_1": 1.0,
+      "pass_k": 1.0
+    },
+    "multistep": {
+      "n": 6.0,
+      "pass_at_1": 1.0,
+      "pass_k": 1.0
+    }
+  },
+  "total_runs": 90,
+  "total_tokens": 94373
+}
