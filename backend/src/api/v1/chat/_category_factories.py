@@ -388,10 +388,15 @@ def make_chat_message_store(
     send keeps multi-turn context. Mirrors make_chat_state_deps' all-three-or-nothing
     guard — None on legacy / test callers leaves the loop at single-turn baseline.
     Subagent child loops are built WITHOUT a store (no rehydration / persistence).
+
+    Sprint 57.143 (AD-UserStop-Resume-Context): the store opens its OWN tenant-scoped
+    session per load/append (durable appends survive a user-Stop request rollback), so
+    it takes the session factory, not the request `db`. `db` is kept only as the
+    all-three-present signal (mirrors the memory-layer factories' `del db` precedent).
     """
     if db is None or session_id is None or tenant_id is None:
         return None
-    return DBMessageStore(db, session_id=session_id, tenant_id=tenant_id)
+    return DBMessageStore(get_session_factory(), session_id=session_id, tenant_id=tenant_id)
 
 
 def make_chat_todo_store(

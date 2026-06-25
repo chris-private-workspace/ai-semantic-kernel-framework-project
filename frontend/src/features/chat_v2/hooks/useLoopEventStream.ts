@@ -38,7 +38,7 @@
  */
 
 import { useCallback, useRef } from "react";
-import { injectMessage, resumeChat, streamChat } from "../services/chatService";
+import { cancelSession, injectMessage, resumeChat, streamChat } from "../services/chatService";
 import { useChatStore } from "../store/chatStore";
 
 export type UseLoopEventStream = {
@@ -149,6 +149,12 @@ export function useLoopEventStream(): UseLoopEventStream {
   const cancel = useCallback(() => {
     abortRef.current?.abort();
     setStatus("cancelled");
+    // Sprint 57.143 (AD-UserStop-Resume-Context): also tell the server so it records
+    // a `[Request interrupted by user]` marker (the abort alone only closes the SSE;
+    // the marker makes a later "continue" send coherent). Fire-and-forget — a cancel
+    // API failure must NOT change the UI cancelled state.
+    const { sessionId: sid } = useChatStore.getState();
+    if (sid) void cancelSession(sid).catch(() => {});
   }, [setStatus]);
 
   return { send, resume, inject, cancel, isRunning: status === "running" };

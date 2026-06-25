@@ -255,6 +255,24 @@ export async function injectMessage(sessionId: string, message: string): Promise
 }
 
 /**
+ * Sprint 57.143 (AD-UserStop-Resume-Context): tell the server a running session was
+ * stopped by the user. POST /api/v1/chat/sessions/{sessionId}/cancel flips the
+ * session to cancelled AND records a `[Request interrupted by user]` marker in the
+ * message ledger, so a follow-up "continue" send rehydrates a coherent transcript.
+ * Called fire-and-forget from the Stop handler (the client also aborts the SSE for an
+ * immediate stop); a non-2xx throws so the caller may choose to surface / ignore it.
+ */
+export async function cancelSession(sessionId: string): Promise<void> {
+  const response = await fetchWithAuth(`/api/v1/chat/sessions/${sessionId}/cancel`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`HTTP ${response.status}: ${text}`);
+  }
+}
+
+/**
  * Read a `text/event-stream` Response body to completion, parsing each SSE
  * frame and dispatching valid LoopEvents to onEvent. Aborts cleanly (no further
  * onEvent) when the signal fires; other read errors route to onError. Shared by

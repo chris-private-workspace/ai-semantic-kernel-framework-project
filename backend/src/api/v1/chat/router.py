@@ -35,9 +35,10 @@ Description:
     actual loop run lives in the worker.
 
 Created: 2026-04-30 (Sprint 50.2 Day 1.5)
-Last Modified: 2026-06-16
+Last Modified: 2026-06-25
 
 Modification History (newest-first):
+    - 2026-06-25: Sprint 57.143 — cancel persists interrupt marker (AD-UserStop-Resume-Context)
     - 2026-06-16: Sprint 57.128 — persist post-resume SSE events to message_events (resume replay)
     - 2026-06-16: Sprint 57.126 — persist user_message row + main_seq seed from MAX (multi-turn)
     - 2026-06-16: Sprint 57.125 — persist main-session SSE events to message_events (replay)
@@ -113,9 +114,11 @@ from agent_harness._contracts.events import (
 )
 from agent_harness.observability._abc import Tracer
 from agent_harness.orchestrator_loop import AgentLoop
+from agent_harness.state_mgmt import DBMessageStore
 from business_domain._service_factory import BusinessServiceFactory
 from core.config import get_settings
 from infrastructure.db.audit_helper import append_audit
+from infrastructure.db.engine import get_session_factory
 from infrastructure.db.models.sessions import MessageEvent
 from infrastructure.db.repositories import SessionRepository, ToolCallRepository
 from infrastructure.db.session import get_db_session
@@ -162,6 +165,11 @@ from .sse import format_sse_message, serialize_loop_event
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+# Sprint 57.143 (AD-UserStop-Resume-Context): the marker persisted to the Cat-3
+# ledger when a user Stops a run mid-execution (cancel_session), mirroring Claude
+# Code's INTERRUPT_MESSAGE so a "continue" send sees a coherent interrupted transcript.
+INTERRUPT_MARKER = "[Request interrupted by user]"
 
 # FIX-022 §6.2 (runtime-verification 2026-05-30): fallback model identity used for
 # cost-ledger pricing when a LoopCompleted event carries no model (early-termination
@@ -1173,6 +1181,14 @@ async def cancel_session(
 
     Same 404-on-cross-tenant rule as get_session — never reveal cross-tenant
     session existence.
+
+    Sprint 57.143 (AD-UserStop-Resume-Context): also record a `[Request interrupted
+    by user]` marker in the Cat-3 message ledger so a follow-up "continue" send
+    rehydrates a coherent transcript (the agent sees it was cut off, not two
+    back-to-back user turns). The interrupted SSE run's own request txn is being
+    torn down by the client disconnect, so the marker is persisted via DBMessageStore's
+    OWN committed tenant-scoped session (the same durability fix as the turn-0 prompt).
+    Best-effort: a marker-persist failure must NOT fail the 204.
     """
     registry = get_default_registry()
     found = await registry.cancel(current_tenant, session_id)
@@ -1180,6 +1196,19 @@ async def cancel_session(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Session {session_id} not found.",
+        )
+
+    store = DBMessageStore(get_session_factory(), session_id=session_id, tenant_id=current_tenant)
+    try:
+        await store.append(
+            [Message(role="assistant", content=INTERRUPT_MARKER)],
+            turn_num=0,
+        )
+    except Exception:  # noqa: BLE001 — marker persist is best-effort; never fail the cancel
+        logger.exception(
+            "chat session %s/%s: interrupt-marker persist failed (best-effort)",
+            current_tenant,
+            session_id,
         )
 
 
