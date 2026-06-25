@@ -1,0 +1,35 @@
+{
+  "mode": "real",
+  "total_spans": 3,
+  "genai_spans": 2,
+  "conformant_spans": 2,
+  "conformance_ratio": 1.0,
+  "chat_has_usage_tokens": true,
+  "chat_has_finish_reasons": true,
+  "spans": [
+    {
+      "span_name": "chat gpt-5.2",
+      "operation": "chat",
+      "is_genai": true,
+      "violations": [],
+      "has_usage_tokens": true,
+      "has_finish_reasons": true
+    },
+    {
+      "span_name": "agent_loop.turn",
+      "operation": null,
+      "is_genai": false,
+      "violations": [],
+      "has_usage_tokens": false,
+      "has_finish_reasons": false
+    },
+    {
+      "span_name": "invoke_agent",
+      "operation": "invoke_agent",
+      "is_genai": true,
+      "violations": [],
+      "has_usage_tokens": false,
+      "has_finish_reasons": false
+    }
+  ]
+}

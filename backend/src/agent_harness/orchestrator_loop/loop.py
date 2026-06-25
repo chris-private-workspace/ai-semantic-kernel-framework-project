@@ -42,9 +42,10 @@ Description:
     revisit if per-run override is needed.
 
 Created: 2026-04-30 (Sprint 50.1 Day 2.2)
-Last Modified: 2026-06-17
+Last Modified: 2026-06-25
 
 Modification History (newest-first):
+    - 2026-06-25: Sprint 57.142 — llm_call span +finish_reason → gen_ai.response.finish_reasons
     - 2026-06-23: Sprint 57.136 — correction-context strategy: summarize drops failed answer
     - 2026-06-17: Sprint 57.132 — resume() persists tool round-trip + held-answer replay to ledger
     - 2026-06-16: Sprint 57.129 — TOOL_USE branch persists tool round-trips to the ledger
@@ -2474,6 +2475,10 @@ class AgentLoopImpl(AgentLoop):
                                     response.usage.cached_input_tokens
                                 )
                                 llm_attrs["total_tokens"] = response.usage.total_tokens
+                            # finish_reason → gen_ai.response.finish_reasons at the OTel
+                            # boundary (Sprint 57.142, research #5 B2): 1:1 with the
+                            # while-true loop stop_reason. Span-only; the tracer maps it.
+                            llm_attrs["finish_reason"] = response.stop_reason.value
                         finally:
                             yield SpanEnded(
                                 span_name="agent_loop.llm_call",

@@ -1,0 +1,37 @@
+# OTel GenAI semantic-conventions conformance spec (Sprint 57.142, research #5).
+# Pinned CNCF GenAI semconv snapshot: 2026-06-25 stable subset.
+# Used by scripts/benchmark_otel_conformance.py + test_genai_semconv.py to assert the
+# EXPORTED spans (real OTel SDK) carry the required gen_ai.* keys per operation.
+
+operations:
+  chat:
+    # span name must be `chat {model}`; the bespoke agent_loop.llm_call span maps here.
+    span_name_prefix: chat
+    required:                       # always present (knowable at span start)
+      - gen_ai.operation.name
+      - gen_ai.request.model
+    expected_on_completed:         # post-response (asserted on a COMPLETED chat span)
+      - gen_ai.usage.input_tokens
+      - gen_ai.usage.output_tokens
+      - gen_ai.response.finish_reasons
+
+  execute_tool:
+    # span name must be `execute_tool {name}`; the bespoke agent_loop.tool.{name} span maps here.
+    span_name_prefix: execute_tool
+    required:
+      - gen_ai.operation.name
+      - gen_ai.tool.name
+
+  invoke_agent:
+    # span name `invoke_agent`; the bespoke agent_loop.run span maps here.
+    span_name_prefix: invoke_agent
+    required:
+      - gen_ai.operation.name
+
+# Bespoke keys that MUST be translated away — their presence on a GenAI span is a bug.
+forbidden_on_genai_span:
+  - model
+  - prompt_tokens
+  - completion_tokens
+  - tool
+  - finish_reason
