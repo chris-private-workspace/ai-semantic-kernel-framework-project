@@ -84,7 +84,10 @@ SPEC_GET_RESULTS = ToolSpec(
     input_schema={
         "type": "object",
         "properties": {
-            "patrol_id": {"type": "string"},
+            "patrol_id": {
+                "type": "string",
+                "description": "Id of the stored patrol result to fetch.",
+            },
         },
         "required": ["patrol_id"],
     },
@@ -106,6 +109,7 @@ SPEC_SCHEDULE = ToolSpec(
                 "type": "array",
                 "items": {"type": "string"},
                 "minItems": 1,
+                "description": "Server ids to patrol on this schedule.",
             },
         },
         "required": ["cron", "scope"],
@@ -123,7 +127,10 @@ SPEC_CANCEL = ToolSpec(
     input_schema={
         "type": "object",
         "properties": {
-            "schedule_id": {"type": "string"},
+            "schedule_id": {
+                "type": "string",
+                "description": "Id of the scheduled patrol to cancel.",
+            },
         },
         "required": ["schedule_id"],
     },

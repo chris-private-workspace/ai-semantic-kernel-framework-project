@@ -52,11 +52,31 @@ SPEC_QUERY_LOGS = ToolSpec(
     input_schema={
         "type": "object",
         "properties": {
-            "time_range_start": {"type": "string", "format": "date-time"},
-            "time_range_end": {"type": "string", "format": "date-time"},
-            "action_filter": {"type": "string"},
-            "user_id_filter": {"type": "string"},
-            "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 20},
+            "time_range_start": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Optional ISO 8601 start of the time range.",
+            },
+            "time_range_end": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Optional ISO 8601 end of the time range.",
+            },
+            "action_filter": {
+                "type": "string",
+                "description": "Optional action-type filter.",
+            },
+            "user_id_filter": {
+                "type": "string",
+                "description": "Optional user id filter.",
+            },
+            "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200,
+                "default": 20,
+                "description": "Max number of log entries to return (1-200).",
+            },
         },
     },
     annotations=ToolAnnotations(read_only=True),
@@ -72,8 +92,15 @@ SPEC_GENERATE_REPORT = ToolSpec(
     input_schema={
         "type": "object",
         "properties": {
-            "template": {"type": "string"},
-            "params": {"type": "object", "additionalProperties": True},
+            "template": {
+                "type": "string",
+                "description": "Report template name (e.g., compliance_quarterly).",
+            },
+            "params": {
+                "type": "object",
+                "additionalProperties": True,
+                "description": "Optional template parameters.",
+            },
         },
         "required": ["template"],
     },
@@ -90,8 +117,16 @@ SPEC_FLAG_ANOMALY = ToolSpec(
     input_schema={
         "type": "object",
         "properties": {
-            "record_id": {"type": "string"},
-            "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+            "record_id": {
+                "type": "string",
+                "description": "Id of the audit record to flag.",
+            },
+            "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500,
+                "description": "Reason the record is flagged for human review.",
+            },
         },
         "required": ["record_id", "reason"],
     },

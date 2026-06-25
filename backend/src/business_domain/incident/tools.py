@@ -56,13 +56,23 @@ SPEC_CREATE = ToolSpec(
     input_schema={
         "type": "object",
         "properties": {
-            "title": {"type": "string", "minLength": 1, "maxLength": 512},
+            "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512,
+                "description": "Short incident title.",
+            },
             "severity": {
                 "type": "string",
                 "enum": ["low", "medium", "high", "critical"],
                 "default": "high",
+                "description": "Incident severity (low / medium / high / critical).",
             },
-            "alert_ids": {"type": "array", "items": {"type": "string"}},
+            "alert_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Optional alert ids to link to this incident.",
+            },
         },
         "required": ["title"],
     },
@@ -79,10 +89,14 @@ SPEC_UPDATE_STATUS = ToolSpec(
     input_schema={
         "type": "object",
         "properties": {
-            "incident_id": {"type": "string"},
+            "incident_id": {
+                "type": "string",
+                "description": "Id of the incident to update.",
+            },
             "status": {
                 "type": "string",
                 "enum": ["open", "investigating", "resolved", "closed"],
+                "description": "New status (open / investigating / resolved / closed).",
             },
         },
         "required": ["incident_id", "status"],
@@ -103,8 +117,16 @@ SPEC_CLOSE = ToolSpec(
     input_schema={
         "type": "object",
         "properties": {
-            "incident_id": {"type": "string"},
-            "resolution": {"type": "string", "minLength": 1, "maxLength": 1000},
+            "incident_id": {
+                "type": "string",
+                "description": "Id of the incident to close.",
+            },
+            "resolution": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000,
+                "description": "Resolution note describing how the incident was resolved.",
+            },
         },
         "required": ["incident_id", "resolution"],
     },
@@ -120,7 +142,12 @@ SPEC_GET = ToolSpec(
     description="Fetch a single incident by id.",
     input_schema={
         "type": "object",
-        "properties": {"incident_id": {"type": "string"}},
+        "properties": {
+            "incident_id": {
+                "type": "string",
+                "description": "Id of the incident to fetch.",
+            }
+        },
         "required": ["incident_id"],
     },
     annotations=ToolAnnotations(read_only=True, idempotent=True),
@@ -139,12 +166,20 @@ SPEC_LIST = ToolSpec(
             "severity": {
                 "type": "string",
                 "enum": ["low", "medium", "high", "critical"],
+                "description": "Optional severity filter (low / medium / high / critical).",
             },
             "status": {
                 "type": "string",
                 "enum": ["open", "investigating", "resolved", "closed"],
+                "description": "Optional status filter (open / investigating / resolved / closed).",
             },
-            "limit": {"type": "integer", "minimum": 1, "maximum": 100, "default": 20},
+            "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100,
+                "default": 20,
+                "description": "Max number of incidents to return (1-100).",
+            },
         },
     },
     annotations=ToolAnnotations(read_only=True),

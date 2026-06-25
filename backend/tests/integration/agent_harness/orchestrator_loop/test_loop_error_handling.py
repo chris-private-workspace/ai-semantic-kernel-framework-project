@@ -125,6 +125,28 @@ class FakeChatClient(ChatClient):
         )
 
 
+class _RecordingFakeChatClient(FakeChatClient):
+    """FakeChatClient that records the messages it receives each turn, so a test can
+    assert what the LLM actually sees (Sprint 57.144 — the structured-reflection tool
+    message)."""
+
+    def __init__(self, tool_name: str = "fake_tool") -> None:
+        super().__init__(tool_name)
+        self.seen_messages: list[list[Message]] = []
+
+    async def chat(
+        self,
+        request: ChatRequest,
+        *,
+        cache_breakpoints: list[CacheBreakpoint] | None = None,
+        trace_context: TraceContext | None = None,
+    ) -> ChatResponse:
+        self.seen_messages.append(list(request.messages))
+        return await super().chat(
+            request, cache_breakpoints=cache_breakpoints, trace_context=trace_context
+        )
+
+
 def _make_failing_loop_components(
     exc_type: type[BaseException],
 ) -> tuple[ToolRegistryImpl, ToolExecutorImpl]:
@@ -186,6 +208,56 @@ class TestLLMRecoverable:
         assert len(completes) == 1
         assert completes[0].stop_reason == "end_turn"
         assert not any(isinstance(e, LoopTerminated) for e in events)
+
+    @pytest.mark.asyncio
+    async def test_structured_reflection_reaches_llm_when_lever_on(
+        self, session_id, trace_ctx, monkeypatch
+    ) -> None:
+        """Sprint 57.144 US-2 (research #7 Half B): with the lever ON, the LLM-visible
+        tool message (content, NOT error) carries the typed diagnosis end-to-end through
+        the loop. A ConnectionError → executor catches → FAILED_API reflection."""
+        monkeypatch.setenv("CHAT_TOOL_ERROR_REFLECTION", "1")
+        registry, executor = _make_failing_loop_components(ConnectionError)
+        chat = _RecordingFakeChatClient()
+        loop = AgentLoopImpl(
+            chat_client=chat,
+            output_parser=OutputParserImpl(),
+            tool_executor=executor,
+            tool_registry=registry,
+            error_policy=DefaultErrorPolicy(),
+        )
+        async for _ in loop.run(
+            session_id=session_id, user_input="call fake_tool", trace_context=trace_ctx
+        ):
+            pass
+        tool_msgs = [m for msgs in chat.seen_messages for m in msgs if m.role == "tool"]
+        assert tool_msgs, "expected a tool-role message fed back to the LLM"
+        joined = " ".join(str(m.content) for m in tool_msgs)
+        assert "tool execution failed (external/API error)" in joined
+
+    @pytest.mark.asyncio
+    async def test_no_reflection_in_llm_message_when_lever_off(
+        self, session_id, trace_ctx, monkeypatch
+    ) -> None:
+        """Byte-identical default: lever OFF → the soft-failure tool message content is
+        empty (pre-57.144 behavior), no taxonomy text leaks into the LLM context."""
+        monkeypatch.delenv("CHAT_TOOL_ERROR_REFLECTION", raising=False)
+        registry, executor = _make_failing_loop_components(ConnectionError)
+        chat = _RecordingFakeChatClient()
+        loop = AgentLoopImpl(
+            chat_client=chat,
+            output_parser=OutputParserImpl(),
+            tool_executor=executor,
+            tool_registry=registry,
+            error_policy=DefaultErrorPolicy(),
+        )
+        async for _ in loop.run(
+            session_id=session_id, user_input="call fake_tool", trace_context=trace_ctx
+        ):
+            pass
+        tool_msgs = [m for msgs in chat.seen_messages for m in msgs if m.role == "tool"]
+        joined = " ".join(str(m.content) for m in tool_msgs)
+        assert "tool execution failed" not in joined  # content="" today
 
 
 class TestFatalTermination:

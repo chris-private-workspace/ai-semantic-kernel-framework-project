@@ -147,3 +147,9 @@ class ToolResult:
     # None when ToolResult.success=True OR when failure is non-exception
     # (e.g. permission denied / schema mismatch / unknown tool).
     error_class: str | None = None
+    # Sprint 57.144 US-2 (research #7 Half B): structured-error reflection taxonomy
+    # (ErrorTaxonomy.value — "parameter"/"wrong_tool"/"failed_api"/"invocation"/
+    # "unknown"). Set ONLY when the CHAT_TOOL_ERROR_REFLECTION lever is on; stored as
+    # str (not the enum) so this contract takes no dependency on tools/_error_taxonomy.
+    # Orthogonal to error_class (which feeds the Cat 8 retry decision).
+    error_taxonomy: str | None = None

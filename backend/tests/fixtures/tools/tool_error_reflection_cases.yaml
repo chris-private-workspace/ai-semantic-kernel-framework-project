@@ -1,0 +1,108 @@
+# Tool-error reflection A/B corpus (Sprint 57.144, research #7 Half B).
+# Each case = a fail-prone tool call. The harness shows the model EITHER the raw error
+# (plain arm) OR render_reflection(classify_tool_error(...)) (reflection arm), then judges
+# whether the model's next step correctly recovers per `success_criterion`.
+# Text is intentionally innocuous (no content-filter triggers).
+#
+# Keys: id / user_prompt / tool_name / bad_call (JSON args, optional) / error_class (FQ
+# exception class, "" for non-exception) / is_schema_error / is_unknown_tool / raw_error /
+# success_criterion.
+
+cases:
+  - id: missing_required_param
+    user_prompt: "Find what the team remembered about the project deadline."
+    tool_name: memory_search
+    bad_call: '{"scopes": ["user"]}'
+    error_class: ""
+    is_schema_error: true
+    is_unknown_tool: false
+    raw_error: "schema mismatch: query: 'query' is a required property"
+    success_criterion: >
+      The response supplies the missing required 'query' argument (or states it will add a
+      query) — it does NOT retry the identical call unchanged and does NOT treat this as an
+      external/network failure.
+
+  - id: wrong_param_type
+    user_prompt: "Search the web for five recent articles on renewable energy."
+    tool_name: web_search
+    bad_call: '{"query": "renewable energy", "top_k": "five"}'
+    error_class: ""
+    is_schema_error: true
+    is_unknown_tool: false
+    raw_error: "schema mismatch: top_k: 'five' is not of type 'integer'"
+    success_criterion: >
+      The response corrects the 'top_k' argument to an integer (e.g. 5) — it addresses the
+      argument type, not an external failure.
+
+  - id: unknown_tool_name
+    user_prompt: "Look up the current weather in Taipei."
+    tool_name: get_weather
+    bad_call: '{"city": "Taipei"}'
+    error_class: ""
+    is_schema_error: false
+    is_unknown_tool: true
+    raw_error: "unknown tool: get_weather"
+    success_criterion: >
+      The response recognizes that 'get_weather' is not an available tool and proposes using
+      a DIFFERENT/valid tool (or asks which tools are available) — it does NOT keep calling
+      the same nonexistent tool.
+
+  - id: api_connection_refused
+    user_prompt: "Search the web for today's top technology news."
+    tool_name: web_search
+    bad_call: '{"query": "top technology news today"}'
+    error_class: "aiohttp.ClientConnectionError"
+    is_schema_error: false
+    is_unknown_tool: false
+    raw_error: "Cannot connect to host api.example.com: connection refused"
+    success_criterion: >
+      The response treats this as a transient EXTERNAL/network problem (e.g. retry, wait, or
+      use an alternate source) — it does NOT conclude that its own arguments were wrong.
+
+  - id: api_timeout
+    user_prompt: "Search the web for the population of Tokyo."
+    tool_name: web_search
+    bad_call: '{"query": "population of Tokyo"}'
+    error_class: "asyncio.TimeoutError"
+    is_schema_error: false
+    is_unknown_tool: false
+    raw_error: "Request timed out after 30 seconds"
+    success_criterion: >
+      The response treats this as a transient timeout / external slowness (retry or adapt) —
+      it does NOT blame its own arguments or give up by claiming the query was malformed.
+
+  - id: generic_handler_error
+    user_prompt: "Compute the average of the numbers in my dataset."
+    tool_name: python_sandbox
+    bad_call: '{"code": "print(sum(xs)/len(xs))"}'
+    error_class: "builtins.NameError"
+    is_schema_error: false
+    is_unknown_tool: false
+    raw_error: "NameError: name 'xs' is not defined"
+    success_criterion: >
+      The response fixes the code so the variable is defined (e.g. defines or loads the data
+      before using it) — it addresses the code/argument, not an external system.
+
+  - id: missing_title_business_tool
+    user_prompt: "Open an incident for the database outage at high severity."
+    tool_name: mock_incident_create
+    bad_call: '{"severity": "high"}'
+    error_class: ""
+    is_schema_error: true
+    is_unknown_tool: false
+    raw_error: "schema mismatch: title: 'title' is a required property"
+    success_criterion: >
+      The response supplies the missing required 'title' argument (e.g. a short incident
+      title) — it addresses the argument, not an external failure.
+
+  - id: api_ssl_error
+    user_prompt: "Search the web for the latest currency exchange rates."
+    tool_name: web_search
+    bad_call: '{"query": "latest currency exchange rates"}'
+    error_class: "ssl.SSLCertVerificationError"
+    is_schema_error: false
+    is_unknown_tool: false
+    raw_error: "certificate verify failed: unable to get local issuer certificate"
+    success_criterion: >
+      The response treats this as an external connectivity / certificate problem (retry or
+      use an alternate source) — it does NOT conclude its own arguments were malformed.

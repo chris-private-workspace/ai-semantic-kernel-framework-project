@@ -74,6 +74,7 @@ WRITE_TODOS_SPEC: ToolSpec = ToolSpec(
         "properties": {
             "todos": {
                 "type": "array",
+                "description": "The complete task plan (replaces the previous list).",
                 "items": {
                     "type": "object",
                     "properties": {

@@ -322,3 +322,83 @@ async def test_no_handler_registered_returns_error() -> None:
     result = await exe.execute(_call("orphan"))
     assert result.success is False
     assert "no handler" in (result.error or "")
+
+
+# === Sprint 57.144 (research #7 Half B): structured-error reflection ========
+# The CHAT_TOOL_ERROR_REFLECTION lever gates whether failure ToolResults carry a
+# typed diagnosis in `content` (the LLM-visible field) + `error_taxonomy`. OFF =
+# byte-identical pre-57.144 behavior (content="" on these soft-failure paths).
+
+
+@pytest.mark.asyncio
+async def test_reflection_off_handler_exception_byte_identical(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("CHAT_TOOL_ERROR_REFLECTION", raising=False)
+    reg = ToolRegistryImpl()
+    reg.register(_spec("boom"))
+    exe = ToolExecutorImpl(registry=reg, handlers={"boom": _explode_handler})
+
+    result = await exe.execute(_call("boom"))
+    assert result.success is False
+    assert result.content == ""  # today's behavior preserved
+    assert result.error_taxonomy is None
+    assert result.error_class == "builtins.RuntimeError"  # still set for Cat 8
+
+
+@pytest.mark.asyncio
+async def test_reflection_on_handler_exception_enriched(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CHAT_TOOL_ERROR_REFLECTION", "1")
+    reg = ToolRegistryImpl()
+    reg.register(_spec("boom"))
+    exe = ToolExecutorImpl(registry=reg, handlers={"boom": _explode_handler})
+
+    result = await exe.execute(_call("boom"))
+    assert result.success is False
+    assert result.error_taxonomy == "invocation"  # generic handler exception
+    assert "tool invocation error" in result.content
+    assert "boom" in result.content  # the raw error is preserved
+    assert result.error_class == "builtins.RuntimeError"  # Cat 8 retry signal intact
+
+
+@pytest.mark.asyncio
+async def test_reflection_on_unknown_tool_is_wrong_tool(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CHAT_TOOL_ERROR_REFLECTION", "1")
+    reg = ToolRegistryImpl()
+    exe = ToolExecutorImpl(registry=reg, handlers={})
+
+    result = await exe.execute(_call("nonexistent"))
+    assert result.error_taxonomy == "wrong_tool"
+    assert "wrong-tool error" in result.content
+
+
+@pytest.mark.asyncio
+async def test_reflection_on_schema_invalid_is_parameter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CHAT_TOOL_ERROR_REFLECTION", "1")
+    reg = ToolRegistryImpl()
+    reg.register(_spec("strict"))  # default schema requires "q"
+    exe = ToolExecutorImpl(registry=reg, handlers={"strict": _ok_handler})
+
+    bad = ToolCall(id="c1", name="strict", arguments={"wrong": 1})  # missing "q"
+    result = await exe.execute(bad)
+    assert result.error_taxonomy == "parameter"
+    assert "parameter error" in result.content
+
+
+@pytest.mark.asyncio
+async def test_reflection_off_unknown_tool_byte_identical(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("CHAT_TOOL_ERROR_REFLECTION", raising=False)
+    reg = ToolRegistryImpl()
+    exe = ToolExecutorImpl(registry=reg, handlers={})
+
+    result = await exe.execute(_call("nonexistent"))
+    assert result.content == ""  # today's behavior preserved
+    assert result.error_taxonomy is None

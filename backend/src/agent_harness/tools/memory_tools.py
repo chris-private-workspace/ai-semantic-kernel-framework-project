@@ -129,7 +129,11 @@ MEMORY_SEARCH_SPEC: ToolSpec = ToolSpec(
     input_schema={
         "type": "object",
         "properties": {
-            "query": {"type": "string", "minLength": 1},
+            "query": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Natural-language search query for relevant memories.",
+            },
             "scopes": {
                 "type": "array",
                 "items": {
@@ -137,6 +141,7 @@ MEMORY_SEARCH_SPEC: ToolSpec = ToolSpec(
                     "enum": ["system", "tenant", "role", "user", "session"],
                 },
                 "default": ["session", "user", "tenant"],
+                "description": "Optional memory layers to search (see enum for the 5 scopes).",
             },
             "time_scales": {
                 "type": "array",
@@ -145,8 +150,15 @@ MEMORY_SEARCH_SPEC: ToolSpec = ToolSpec(
                     "enum": ["short_term", "long_term", "semantic"],
                 },
                 "default": ["long_term"],
+                "description": "Optional time-scale axes to search (see enum).",
             },
-            "top_k": {"type": "integer", "minimum": 1, "maximum": 50, "default": 5},
+            "top_k": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 50,
+                "default": 5,
+                "description": "Max number of ranked hints to return (1-50).",
+            },
         },
         "required": ["query"],
     },
@@ -172,18 +184,28 @@ MEMORY_WRITE_SPEC: ToolSpec = ToolSpec(
                 "enum": ["session", "user", "tenant", "role"],
                 "description": "Target memory layer (system layer is read-only).",
             },
-            "key": {"type": "string", "minLength": 1},
-            "content": {"type": "string", "minLength": 1},
+            "key": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Unique key identifying this memory entry.",
+            },
+            "content": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The memory content to persist.",
+            },
             "time_scale": {
                 "type": "string",
                 "enum": ["short_term", "long_term", "semantic"],
                 "default": "long_term",
+                "description": "Retention time scale (short_term / long_term / semantic).",
             },
             "confidence": {
                 "type": "number",
                 "minimum": 0.0,
                 "maximum": 1.0,
                 "default": 0.5,
+                "description": "Confidence score for this entry (0.0-1.0).",
             },
         },
         "required": ["scope", "key", "content"],
