@@ -41,6 +41,7 @@ Created: 2026-04-30 (Sprint 51.1 Day 2.2)
 Last Modified: 2026-06-16
 
 Modification History (newest-first):
+    - 2026-06-25: Sprint 57.144 — _build_failure adds error reflection (research #7 Half B)
     - 2026-06-16: Sprint 57.124 — remove PermissionChecker gating (single source = loop _cat9)
     - 2026-04-30: Initial creation (Sprint 51.1 Day 2.2) — full pipeline:
       registry lookup + permission + JSONSchema validate + tracer span +
@@ -84,6 +85,11 @@ from agent_harness.observability import (
 )
 
 from ._abc import ToolExecutor, ToolRegistry
+from ._error_taxonomy import (
+    classify_tool_error,
+    render_reflection,
+    tool_error_reflection_enabled,
+)
 
 #: Tool handler protocol — accepts EITHER ``(call)`` or ``(call, context)``.
 #:
@@ -233,11 +239,11 @@ class ToolExecutorImpl(ToolExecutor):
                 # type as fully-qualified class name so DefaultErrorPolicy
                 # can classify by string in soft-failure path (without
                 # access to the original exception object).
-                return ToolResult(
-                    tool_call_id=call.id,
-                    tool_name=call.name,
-                    success=False,
-                    content="",
+                # Sprint 57.144 US-2 (research #7 Half B): _build_failure adds the
+                # structured-reflection content + taxonomy when the lever is on
+                # (lever OFF → content="" + error_class set = byte-identical to before).
+                return self._build_failure(
+                    call,
                     error=str(exc),
                     error_class=f"{type(exc).__module__}.{type(exc).__name__}",
                 )
@@ -367,12 +373,53 @@ class ToolExecutorImpl(ToolExecutor):
             {"tool_name": call.name, "status": status},
             trace_context,
         )
+        # Sprint 57.144 US-2: enrich via _build_failure. Map the status to the
+        # taxonomy signals (schema_invalid → parameter; unknown → wrong-tool).
+        return self._build_failure(
+            call,
+            error=error,
+            is_schema_error=(status == "schema_invalid"),
+            is_unknown_tool=(status == "unknown"),
+        )
+
+    def _build_failure(
+        self,
+        call: ToolCall,
+        *,
+        error: str,
+        error_class: str | None = None,
+        is_schema_error: bool = False,
+        is_unknown_tool: bool = False,
+    ) -> ToolResult:
+        """Construct a failed ToolResult, enriched with structured-error reflection.
+
+        Sprint 57.144 US-2 (research #7 Half B): the single failure-result builder for
+        BOTH the handler-exception path and `_fail` (schema / unknown-tool). When the
+        CHAT_TOOL_ERROR_REFLECTION lever is ON, the LLM-visible `content` carries a
+        typed diagnosis (the loop renders `content`, not `error` — so the failure is no
+        longer an empty observation) and `error_taxonomy` is set. When OFF, content=""
+        + error/error_class only = byte-identical to the pre-57.144 behavior. Orthogonal
+        to the Cat 8 ErrorClass retry decision (which reads `error_class`).
+        """
+        content = ""
+        taxonomy_value: str | None = None
+        if tool_error_reflection_enabled():
+            taxonomy = classify_tool_error(
+                error_class=error_class,
+                error_msg=error,
+                is_schema_error=is_schema_error,
+                is_unknown_tool=is_unknown_tool,
+            )
+            content = render_reflection(taxonomy, error)
+            taxonomy_value = taxonomy.value
         return ToolResult(
             tool_call_id=call.id,
             tool_name=call.name,
             success=False,
-            content="",
+            content=content,
             error=error,
+            error_class=error_class,
+            error_taxonomy=taxonomy_value,
         )
 
     def _safe_emit(

@@ -9,6 +9,7 @@ Category: Cross-cutting / DevOps tooling
 Scope: Sprint 53.7 US-1 (closes AD-Lint-1) / Sprint 55.3 (adds 7th lint via AD-Cat7-1)
 
 Modification History:
+    - 2026-06-25: Sprint 57.144 — add 11th lint check_tool_descriptions (research #7 Half A)
     - 2026-06-02: Sprint 57.67 — add 10th lint check_event_schema_sync (A-5b codegen parity)
     - 2026-05-08: Sprint 57.6 Day 3 — add 9th lint check_ap4_frontend_placeholder (closes AD-Reality-5)
     - 2026-05-06: Sprint 56.1 Day 4 — add 8th lint check_rls_policies (closes US-5)
@@ -82,6 +83,10 @@ LINTS: list[tuple[str, list[str]]] = [
     # Sprint 57.67 (A-5b): SSE event-schema codegen parity — fails if the
     # committed FE generated artifacts drift from the wire-schema registry.
     ("check_event_schema_sync.py", []),
+    # Sprint 57.144 (research #7, Half A): every ToolSpec needs a non-empty,
+    # placeholder-free description >= MIN_DESCRIPTION_LEN + a description on every
+    # input_schema property — a guardrail against tool-description rot.
+    ("check_tool_descriptions.py", ["--root", "backend/src"]),
 ]
 
 

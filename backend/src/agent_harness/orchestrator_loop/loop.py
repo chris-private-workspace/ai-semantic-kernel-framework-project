@@ -45,6 +45,7 @@ Created: 2026-04-30 (Sprint 50.1 Day 2.2)
 Last Modified: 2026-06-25
 
 Modification History (newest-first):
+    - 2026-06-25: Sprint 57.144 — rare tool-error path routes via Cat 2 taxonomy (research #7 B2)
     - 2026-06-25: Sprint 57.142 — llm_call span +finish_reason → gen_ai.response.finish_reasons
     - 2026-06-23: Sprint 57.136 — correction-context strategy: summarize drops failed answer
     - 2026-06-17: Sprint 57.132 — resume() persists tool round-trip + held-answer replay to ledger
@@ -212,7 +213,13 @@ from agent_harness.output_parser import (
 )
 from agent_harness.prompt_builder import PromptBuilder
 from agent_harness.state_mgmt import Checkpointer, MessageStore, Reducer, TodoStore
-from agent_harness.tools import ToolExecutor, ToolRegistry  # public path per category-boundaries.md
+from agent_harness.tools import (  # public path per category-boundaries.md
+    ToolExecutor,
+    ToolRegistry,
+    classify_tool_error,
+    render_reflection,
+    tool_error_reflection_enabled,
+)
 
 from ._abc import AgentLoop
 from ._metrics import LoopMetricsAccumulator
@@ -3018,14 +3025,31 @@ class AgentLoopImpl(AgentLoop):
                                 # Synthesize LLM-recoverable error ToolResult so the
                                 # LLM sees the failure on next turn and can self-correct
                                 # (Cat 8 §LLM-recoverable; Anthropic / LangGraph pattern).
-                                # Note: ToolResult is now imported at module top (53.3 Day
-                                # 4).
+                                # Sprint 57.144 US-3 (research #7 Half B, B2 full coverage):
+                                # this is the RARE path where the executor ITSELF raised
+                                # (the dominant handler-exception path is enriched inside
+                                # ToolExecutorImpl._build_failure). Route it through the SAME
+                                # Cat 2 taxonomy when the lever is on so both paths agree;
+                                # byte-identical default ("Error: …") when off.
+                                if tool_error_reflection_enabled():
+                                    _tax = classify_tool_error(
+                                        error_class=(
+                                            f"{type(exc).__module__}.{type(exc).__name__}"
+                                        ),
+                                        error_msg=repr(exc),
+                                    )
+                                    _err_content = render_reflection(_tax, repr(exc))
+                                    _err_taxonomy: str | None = _tax.value
+                                else:
+                                    _err_content = f"Error: {exc!r}. Please adjust your approach."
+                                    _err_taxonomy = None
                                 result = ToolResult(
                                     tool_call_id=tc.id,
                                     tool_name=tc.name,
-                                    content=f"Error: {exc!r}. Please adjust your approach.",
+                                    content=_err_content,
                                     success=False,
                                     error=repr(exc),
+                                    error_taxonomy=_err_taxonomy,
                                     duration_ms=0.0,
                                 )
 

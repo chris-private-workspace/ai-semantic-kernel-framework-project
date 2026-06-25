@@ -15,6 +15,12 @@ from typing import Any
 # (memory_search/write/placeholder) supply the 2-arg form.
 from agent_harness._contracts import ExecutionContext, ToolCall
 from agent_harness.tools._abc import ToolExecutor, ToolRegistry
+from agent_harness.tools._error_taxonomy import (
+    ErrorTaxonomy,
+    classify_tool_error,
+    render_reflection,
+    tool_error_reflection_enabled,
+)
 from agent_harness.tools.echo_tool import ECHO_TOOL_SPEC, echo_handler, make_echo_executor
 from agent_harness.tools.exec_tools import (
     PYTHON_SANDBOX_SPEC,
@@ -125,6 +131,7 @@ def register_builtin_tools(
 
 __all__ = [
     "ECHO_TOOL_SPEC",
+    "ErrorTaxonomy",
     "MEMORY_SEARCH_SPEC",
     "MEMORY_TOOL_SPECS",
     "MEMORY_WRITE_SPEC",
@@ -141,6 +148,7 @@ __all__ = [
     "WEB_SEARCH_SPEC",
     "WRITE_TODOS_SPEC",
     "WebSearchConfigError",
+    "classify_tool_error",
     "echo_handler",
     "make_echo_executor",
     "make_memory_search_handler",
@@ -151,5 +159,7 @@ __all__ = [
     "make_write_todos_handler",
     "memory_placeholder_handler",
     "register_builtin_tools",
+    "render_reflection",
     "request_approval_handler",
+    "tool_error_reflection_enabled",
 ]

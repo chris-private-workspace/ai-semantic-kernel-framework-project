@@ -54,6 +54,7 @@ SPEC_ANALYZE = ToolSpec(
                 "type": "array",
                 "items": {"type": "string"},
                 "minItems": 1,
+                "description": "Alert ids to analyze for correlation chains.",
             },
         },
         "required": ["alert_ids"],
@@ -71,7 +72,10 @@ SPEC_FIND_ROOT_CAUSE = ToolSpec(
     input_schema={
         "type": "object",
         "properties": {
-            "incident_id": {"type": "string"},
+            "incident_id": {
+                "type": "string",
+                "description": "Id of the incident to find root-cause candidates for.",
+            },
         },
         "required": ["incident_id"],
     },
@@ -88,8 +92,17 @@ SPEC_GET_RELATED = ToolSpec(
     input_schema={
         "type": "object",
         "properties": {
-            "alert_id": {"type": "string"},
-            "depth": {"type": "integer", "minimum": 1, "maximum": 3, "default": 1},
+            "alert_id": {
+                "type": "string",
+                "description": "Id of the alert to find related alerts for.",
+            },
+            "depth": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3,
+                "default": 1,
+                "description": "Traversal depth for related alerts (1-3).",
+            },
         },
         "required": ["alert_id"],
     },

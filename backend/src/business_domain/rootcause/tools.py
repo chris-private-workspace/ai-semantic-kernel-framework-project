@@ -53,7 +53,10 @@ SPEC_DIAGNOSE = ToolSpec(
     input_schema={
         "type": "object",
         "properties": {
-            "incident_id": {"type": "string"},
+            "incident_id": {
+                "type": "string",
+                "description": "Id of the incident to diagnose.",
+            },
         },
         "required": ["incident_id"],
     },
@@ -70,7 +73,10 @@ SPEC_SUGGEST_FIX = ToolSpec(
     input_schema={
         "type": "object",
         "properties": {
-            "incident_id": {"type": "string"},
+            "incident_id": {
+                "type": "string",
+                "description": "Id of the incident to propose a fix for.",
+            },
         },
         "required": ["incident_id"],
     },
@@ -91,8 +97,15 @@ SPEC_APPLY_FIX = ToolSpec(
     input_schema={
         "type": "object",
         "properties": {
-            "fix_id": {"type": "string"},
-            "dry_run": {"type": "boolean", "default": True},
+            "fix_id": {
+                "type": "string",
+                "description": "Id of the previously suggested fix to apply.",
+            },
+            "dry_run": {
+                "type": "boolean",
+                "default": True,
+                "description": "If true (default), record intent without mutating.",
+            },
         },
         "required": ["fix_id"],
     },
