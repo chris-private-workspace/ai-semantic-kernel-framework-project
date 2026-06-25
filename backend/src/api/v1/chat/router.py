@@ -1198,9 +1198,7 @@ async def cancel_session(
             detail=f"Session {session_id} not found.",
         )
 
-    store = DBMessageStore(
-        get_session_factory(), session_id=session_id, tenant_id=current_tenant
-    )
+    store = DBMessageStore(get_session_factory(), session_id=session_id, tenant_id=current_tenant)
     try:
         await store.append(
             [Message(role="assistant", content=INTERRUPT_MARKER)],
