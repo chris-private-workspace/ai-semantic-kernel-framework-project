@@ -159,6 +159,10 @@ DEMO_SYSTEM_PROMPT = (
     "completed) by calling `write_todos` again with the WHOLE updated list as you "
     "finish each step. Use the plan as your single source of truth — do not keep a "
     "separate prose checklist. "
+    "For questions about company knowledge or internal documents, FIRST call "
+    "the `knowledge_search` tool, then ground your answer in the returned "
+    "snippets and cite their source paths. Do not answer company-knowledge "
+    "questions from memory alone. "
     "For any other request, answer directly."
 )
 
@@ -486,6 +490,12 @@ def build_real_llm_handler(
     # TodosUpdated. None for legacy / test callers (missing db/session/tenant).
     todo_store = make_chat_todo_store(db, session_id, tenant_id)
 
+    # Sprint 57.145: the first real external data-source connector. The
+    # knowledge_search tool reads a configured docs folder (settings.knowledge_docs_root,
+    # default = in-repo planning docs; prod overrides via env). Threaded as an opt-in
+    # root string; make_default_executor skips registration if the root is missing.
+    knowledge_root = get_settings().knowledge_docs_root or None
+
     registry, executor = make_default_executor(
         factory_provider=business_factory_provider,
         memory_retrieval=memory_retrieval,
@@ -496,6 +506,7 @@ def build_real_llm_handler(
         subagent_failure_policy=subagent_failure_policy,
         skill_registry=skill_registry,
         todo_store=todo_store,
+        knowledge_root=knowledge_root,
     )
 
     # Sprint 57.113: advertise the available skills cheaply in the system prompt

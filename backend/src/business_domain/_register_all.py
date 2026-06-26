@@ -25,6 +25,7 @@ Created: 2026-04-30 (Sprint 51.0 Day 3)
 Last Modified: 2026-06-18
 
 Modification History:
+    - 2026-06-26: Sprint 57.145 — opt-in knowledge_root (registers knowledge_search tool)
     - 2026-06-24: Sprint 57.140 — opt-in todo_store (registers write_todos task-primitive tool)
     - 2026-06-18: FIX-033 — chat python_sandbox → Docker default_sandbox() (Win Selector fail)
     - 2026-06-15: Sprint 57.118 — opt-in skill_registry also registers run_skill_script (exec)
@@ -82,6 +83,7 @@ if TYPE_CHECKING:
 from .audit_domain.tools import register_audit_tools
 from .correlation.tools import register_correlation_tools
 from .incident.tools import register_incident_tools
+from .knowledge import register_knowledge_tools
 from .patrol.tools import register_patrol_tools
 from .rootcause.tools import register_rootcause_tools
 
@@ -227,6 +229,7 @@ def make_default_executor(
     subagent_failure_policy: SubagentFailurePolicy = "fail_soft",
     skill_registry: "SkillRegistry | None" = None,
     todo_store: "TodoStore | None" = None,
+    knowledge_root: str | None = None,
 ) -> tuple[ToolRegistryImpl, ToolExecutorImpl]:
     """Build a registry+executor pair with echo_tool + 18 business tools (19 total).
 
@@ -357,6 +360,19 @@ def make_default_executor(
     if todo_store is not None:
         registry.register(WRITE_TODOS_SPEC)
         handlers["write_todos"] = make_write_todos_handler(todo_store)
+
+    # Sprint 57.145: the knowledge_search tool — the platform's FIRST real external
+    # data-source connector (opt-in). When a knowledge_root is supplied, register a
+    # read-only search tool over a LocalDocsConnector(root). risk=LOW + read_only →
+    # the registry-derived matrix auto-PASSes it (no HITL), so the agent searches the
+    # company docs folder freely and grounds answers in real snippets + source paths.
+    # A missing/invalid root (connector raises ValueError) → skip registration so the
+    # agent degrades gracefully (knowledge_search absent), never breaking the build.
+    if knowledge_root:
+        try:
+            register_knowledge_tools(registry, handlers, docs_root=knowledge_root)
+        except ValueError:
+            pass
 
     # Cat 11 (A-3a) subagent tools — FORK/TEAMMATE via task_spawn + one AS_TOOL
     # wrapper. HANDOFF is loop-intercepted (spec-only tool above; Sprint 57.107).

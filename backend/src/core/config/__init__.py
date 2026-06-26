@@ -8,6 +8,7 @@ Per project rules (.claude/rules/code-quality.md): always use Pydantic
 Settings (not raw os.environ) so type-safe + validation + .env support.
 
 Modification History (newest-first):
+    - 2026-06-26: Sprint 57.145 — add knowledge_docs_root (first real knowledge connector)
     - 2026-06-24: Sprint 57.137 — add sandbox_require_isolation (fail-closed python_sandbox)
     - 2026-06-23: Sprint 57.136 — add chat_verification_correction_strategy (keep|summarize)
     - 2026-06-13: Sprint 57.112 — add mfa_issuer_name + mfa_challenge_ttl_minutes (IAM Block C MFA)
@@ -24,9 +25,17 @@ Modification History (newest-first):
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Sprint 57.145: default knowledge_docs_root = the in-repo planning docs folder
+# (real content, zero setup for the drive-through). parents[4]: config → core →
+# src → backend → repo root. Prod overrides via env KNOWLEDGE_DOCS_ROOT.
+_DEFAULT_KNOWLEDGE_DOCS_ROOT = str(
+    Path(__file__).resolve().parents[4] / "docs" / "03-implementation" / "agent-harness-planning"
+)
 
 
 class Settings(BaseSettings):
@@ -148,6 +157,13 @@ class Settings(BaseSettings):
     # dev/CI SubprocessSandbox fallback (byte-unchanged); production opts in.
     # Env: SANDBOX_REQUIRE_ISOLATION.
     sandbox_require_isolation: bool = False
+
+    # ---- Sprint 57.145 knowledge connector (first real external source) -
+    # Root folder the knowledge_search tool reads (.md/.txt, recursive). Default =
+    # in-repo planning docs (real content, zero setup); prod overrides to a company
+    # docs folder. A missing/empty root → make_default_executor skips registration
+    # (knowledge_search absent, agent degrades gracefully). Env: KNOWLEDGE_DOCS_ROOT.
+    knowledge_docs_root: str = _DEFAULT_KNOWLEDGE_DOCS_ROOT
 
     # ---- Sprint 57.112 IAM Block C MFA (TOTP) -----------------------
     # mfa_issuer_name: the otpauth:// issuer label shown in the user's authenticator
