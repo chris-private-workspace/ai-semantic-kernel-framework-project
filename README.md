@@ -2,13 +2,13 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/Status-MVP%20Complete-success)
-![Version](https://img.shields.io/badge/Version-1.0.0-blue)
-![Tests](https://img.shields.io/badge/Tests-812%20Passing-brightgreen)
+![Status](https://img.shields.io/badge/Status-V2_Active-success)
+![Phase](https://img.shields.io/badge/Phase-57_SaaS_Frontend-blueviolet)
+![Tests](https://img.shields.io/badge/Tests-2930_backend_%2B_922_frontend-brightgreen)
 ![Coverage](https://img.shields.io/badge/Coverage-80%25+-green)
 ![License](https://img.shields.io/badge/License-Proprietary-red)
 
-**Enterprise-grade AI Agent Orchestration Platform built on Microsoft Agent Framework**
+**Enterprise AI agent platform — server-side TAO/ReAct agent harness · 11+1 categories · LLM-provider-neutral**
 
 [English](#) | [繁體中文](#)
 
@@ -16,46 +16,55 @@
 
 ---
 
-## ⚡ V2 — Phase 49 Foundation (ACTIVE as of 2026-04-29)
+## ⚡ V2 — Phase 57 (SaaS Frontend, ongoing as of 2026-06)
 
-> **The README content below describes V1 (Phase 1-48). V1 is now archived
-> and frozen.** V2 is the active development direction.
+> **V1 (Phase 1-48) is archived and frozen** in `archived/v1-phase1-48/`.
+> V2 is the active platform. The V1 sections further below are preserved
+> for historical reference only.
+
+V2 is a ground-up rebuild around an 11+1-category **server-side agent harness**
+(not a patch of V1). It is **not** built on Microsoft Agent Framework — MAF was
+archived with V1; V2 is **LLM-provider-neutral** (CI-enforced).
 
 | Item | V1 (frozen) | V2 (active) |
 |------|-------------|-------------|
-| Architecture | MAF + Claude SDK hybrid orchestrator | TAO/ReAct agent harness, 11+1 categories, LLM-provider-neutral |
-| Source location | `archived/v1-phase1-48/` (READ-ONLY) | `backend/`, `frontend/` (rebuilt during Sprint 49.1+) |
-| Git tag | `v1-final-phase48` | _(none yet — V2 still in foundation phase)_ |
-| Real alignment | ~27% (audited 2026-04) | Targeting ~75% by Phase 55 (~5.5 months) |
+| Architecture | MAF + Claude SDK hybrid orchestrator | TAO/ReAct agent harness · 11+1 categories · LLM-provider-neutral (CI-enforced) |
+| Source location | `archived/v1-phase1-48/` (READ-ONLY) | `backend/`, `frontend/` (active V2 codebase) |
+| Status | `v1-final-phase48` — MVP complete | V2 core **22/22 ✅** + SaaS Stage 1 **3/3 ✅** + Phase 57 frontend **ongoing** |
+| Maturity | ~27% real alignment (audited 2026-04) | 11+1 categories all **Level 4** (Cat 9 Level 5) · multi-tenant 3-rule isolation |
 
-### V2 launch references
+### V2 references
 
+- **Project memory / navigation** (start here): [`CLAUDE.md`](CLAUDE.md)
 - **V2 vision**: [`docs/03-implementation/agent-harness-planning/00-v2-vision.md`](docs/03-implementation/agent-harness-planning/00-v2-vision.md)
 - **11+1 categories spec**: [`docs/03-implementation/agent-harness-planning/01-eleven-categories-spec.md`](docs/03-implementation/agent-harness-planning/01-eleven-categories-spec.md)
-- **22-sprint roadmap**: [`docs/03-implementation/agent-harness-planning/06-phase-roadmap.md`](docs/03-implementation/agent-harness-planning/06-phase-roadmap.md)
+- **Phase roadmap**: [`docs/03-implementation/agent-harness-planning/06-phase-roadmap.md`](docs/03-implementation/agent-harness-planning/06-phase-roadmap.md)
 - **Highest-level principles** (server-side / LLM-neutrality / CC reference): [`docs/03-implementation/agent-harness-planning/10-server-side-philosophy.md`](docs/03-implementation/agent-harness-planning/10-server-side-philosophy.md)
 - **V1 archive notes**: [`archived/v1-phase1-48/README.md`](archived/v1-phase1-48/README.md)
-- **Project memory**: [`CLAUDE.md`](CLAUDE.md) (V2 high-level navigation)
 
-### How to bring up V2 dev environment
-
-V2 backend / frontend skeleton is built incrementally during Sprint 49.1
-(Phase 49 Foundation). Once Sprint 49.1 lands:
+### Dev environment
 
 ```bash
-# Start dev infrastructure (PostgreSQL / Redis / RabbitMQ / Qdrant)
+# Unified dev manager (recommended) — see CLAUDE.md §Development Commands
+python scripts/dev.py status              # show service status
+python scripts/dev.py start               # start all (backend / frontend / infra)
+python scripts/dev.py start backend       # or a single service
+python scripts/dev.py logs docker -f      # tail infra logs
+
+# Infra only (PostgreSQL / Redis / RabbitMQ)
 docker compose -f docker-compose.dev.yml up -d
 
-# Backend (Python 3.11+, FastAPI)
-cd backend && pip install -e ".[dev]" && uvicorn src.main:app --port 8001
-
-# Frontend (React 18, Vite 5)
+# Frontend (React 18 + Vite)
 cd frontend && npm install && npm run dev
 ```
 
-> **Until Sprint 49.1 finishes**, `backend/` and `frontend/` directories
-> at root are intentionally absent — V1 was just archived. Sprint 49.1
-> rebuilds them as V2 skeleton.
+| Service | Port |
+|---------|------|
+| Backend (FastAPI, `backend/src/api/main.py`) | 8000 |
+| Frontend (React 18 + Vite) | 3005 |
+| PostgreSQL | 5432 |
+| Redis | 6379 |
+| RabbitMQ | 5672 / 15672 |
 
 ---
 
@@ -63,8 +72,9 @@ cd frontend && npm install && npm run dev
 
 > **The sections below describe V1 as it stood at the time of archive.**
 > They are preserved for historical reference only. V1 is no longer
-> being developed. Status badges above (MVP Complete, 812 tests, etc.)
-> reflect V1 final state, NOT current V2 status.
+> being developed. The badges + overview at the top now reflect **current
+> V2 status**; the V1 stats below (285 story points, 6 sprints, 812 tests,
+> MAF) are the V1-final snapshot.
 
 ---
 
