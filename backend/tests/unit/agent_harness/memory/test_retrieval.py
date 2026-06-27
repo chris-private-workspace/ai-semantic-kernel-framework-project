@@ -28,6 +28,8 @@ class _StubLayer(MemoryLayer):
         self.last_user_id: UUID | None = None
         self.last_tenant_id: UUID | None = None
         self.last_time_scales: tuple[str, ...] | None = None
+        self.last_query: str | None = None
+        self.last_max_hints: int | None = None
         self.read_count = 0
 
     async def read(
@@ -44,6 +46,8 @@ class _StubLayer(MemoryLayer):
         self.last_user_id = user_id
         self.last_tenant_id = tenant_id
         self.last_time_scales = tuple(time_scales)
+        self.last_query = query
+        self.last_max_hints = max_hints
         return list(self._hints)
 
     async def write(self, **kwargs: object) -> UUID:
@@ -216,3 +220,59 @@ async def test_search_returns_empty_for_unmapped_scopes() -> None:
         scopes=("user", "tenant"),
     )
     assert out == []
+
+
+# --- Sprint 57.148: profile() always-on user-scope pull (memory-formation S1) ---
+
+
+@pytest.mark.asyncio
+async def test_profile_returns_empty_without_tenant_or_user() -> None:
+    """Zero-trust: profile() never dispatches without both tenant_id and user_id."""
+    from agent_harness.memory.retrieval import MemoryRetrieval
+
+    user_layer = _StubLayer(MemoryScope.USER, [_hint(layer="user")])
+    r = MemoryRetrieval({"user": user_layer})
+
+    assert await r.profile(tenant_id=None, user_id=uuid4()) == []
+    assert await r.profile(tenant_id=uuid4(), user_id=None) == []
+    assert user_layer.read_count == 0  # never dispatched
+
+
+@pytest.mark.asyncio
+async def test_profile_returns_empty_without_user_layer() -> None:
+    from agent_harness.memory.retrieval import MemoryRetrieval
+
+    r = MemoryRetrieval({"tenant": _StubLayer(MemoryScope.TENANT, [_hint(layer="tenant")])})
+    assert await r.profile(tenant_id=uuid4(), user_id=uuid4()) == []
+
+
+@pytest.mark.asyncio
+async def test_profile_pulls_user_layer_long_term_with_wildcard_query() -> None:
+    """profile() is NOT query-gated: wildcard ('') + long_term-only to the user layer."""
+    from agent_harness.memory.retrieval import MemoryRetrieval
+
+    user_layer = _StubLayer(MemoryScope.USER, [_hint(layer="user", summary="name is Chris")])
+    r = MemoryRetrieval({"user": user_layer})
+
+    out = await r.profile(tenant_id=uuid4(), user_id=uuid4(), top_k=7)
+
+    assert [h.summary for h in out] == ["name is Chris"]
+    assert user_layer.last_query == ""  # wildcard — surfaces regardless of the message
+    assert user_layer.last_time_scales == ("long_term",)
+    assert user_layer.last_max_hints == 7  # top_k passed through
+    assert user_layer.last_user_id is not None  # user-scoped (not session)
+
+
+@pytest.mark.asyncio
+async def test_profile_only_dispatches_user_layer() -> None:
+    """profile() is user-scope only — it never touches tenant / session layers."""
+    from agent_harness.memory.retrieval import MemoryRetrieval
+
+    user_layer = _StubLayer(MemoryScope.USER, [_hint(layer="user")])
+    tenant_layer = _StubLayer(MemoryScope.TENANT, [_hint(layer="tenant")])
+    r = MemoryRetrieval({"user": user_layer, "tenant": tenant_layer})
+
+    await r.profile(tenant_id=uuid4(), user_id=uuid4())
+
+    assert user_layer.read_count == 1
+    assert tenant_layer.read_count == 0

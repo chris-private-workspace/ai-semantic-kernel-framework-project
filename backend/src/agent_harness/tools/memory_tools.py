@@ -36,6 +36,7 @@ Owner: 範疇 3 (Memory) — handlers route into Cat 3 layers; 範疇 2 (Tool La
        owns the spec registration.
 
 Modification History:
+    - 2026-06-27 (Sprint 57.148): add MEMORY_FORMATION_NUDGE (memory-formation Slice 1)
     - 2026-05-01 (Sprint 52.5 Day 9 P0 #18): handlers switch to dual-arity
       (call, context) protocol. tenant_id / user_id / session_id sourced
       from ExecutionContext. Forged args rejected before tool execution.
@@ -218,6 +219,24 @@ MEMORY_WRITE_SPEC: ToolSpec = ToolSpec(
 )
 
 MEMORY_TOOL_SPECS: tuple[ToolSpec, ...] = (MEMORY_SEARCH_SPEC, MEMORY_WRITE_SPEC)
+
+
+# Sprint 57.148 (memory-formation Slice 1): the chat system-prompt nudge that
+# makes the platform actually remember the user across sessions (CC-memory-file
+# equivalent). The agent calls memory_write(scope='user') when the user states
+# durable self-facts; the PromptBuilder's always-on profile() then surfaces them
+# every future turn. Appended to the chat system prompt ONLY when the memory
+# tools are wired (handler gates on memory_retrieval is not None) so the echo /
+# no-memory path is byte-identical.
+MEMORY_FORMATION_NUDGE = (
+    "## Remembering the user\n"
+    "When the user shares a durable fact about themselves — their name, role, "
+    "team, current project, or a stable preference — call the memory_write tool "
+    "with scope='user' and time_scale='long_term' so you remember it in future "
+    "conversations. Use a short stable key (e.g. 'identity' or 'preferences') and "
+    "store one clear fact per call. Do not store transient or one-off details, and "
+    "do not ask for permission first — just record durable facts as they come up."
+)
 
 
 # ---------------------------------------------------------------------------

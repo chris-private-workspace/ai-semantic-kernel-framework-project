@@ -236,3 +236,102 @@ async def test_no_process_wide_cache(
     await builder.build(state=state3, tenant_id=tenant_id)
 
     assert mock_search.call_count == 3
+
+
+# ---------------------------------------------------------------------------
+# Sprint 57.148 (memory-formation Slice 1): always-on user-profile injection.
+# search() is ILIKE query-gated — it surfaces a user fact ONLY when the current
+# message keyword-matches it, so a "who am I?" question retrieves nothing.
+# profile() pulls the user's standing durable facts regardless of the query.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def builder_with_profile() -> tuple[DefaultPromptBuilder, AsyncMock, AsyncMock]:
+    """Builder whose search() AND profile() are mocked independently."""
+    retrieval = MemoryRetrieval(layers={})
+    mock_search = AsyncMock(return_value=[])
+    mock_profile = AsyncMock(return_value=[])
+    retrieval.search = mock_search  # type: ignore[method-assign]
+    retrieval.profile = mock_profile  # type: ignore[method-assign]
+    builder = DefaultPromptBuilder(
+        memory_retrieval=retrieval,
+        cache_manager=InMemoryCacheManager(),
+        token_counter=GenericApproxCounter(),
+    )
+    return builder, mock_search, mock_profile
+
+
+@pytest.mark.asyncio
+async def test_profile_injected_even_when_query_mismatches(
+    builder_with_profile: tuple[DefaultPromptBuilder, AsyncMock, AsyncMock],
+) -> None:
+    """The headline fix: identity surfaces although the message shares no keyword."""
+    builder, mock_search, mock_profile = builder_with_profile
+    mock_search.return_value = []  # query-gated path finds nothing for "who am I?"
+    mock_profile.return_value = [
+        make_memory_hint(layer="user", summary="name is Chris, building the knowledge connector"),
+    ]
+    tenant_id = uuid4()
+    user_id = uuid4()
+    state = make_state(
+        messages=[msg("user", "你知道我是誰嗎?")], tenant_id=tenant_id, user_id=user_id
+    )
+
+    artifact = await builder.build(state=state, tenant_id=tenant_id, user_id=user_id)
+
+    content = " ".join(str(m.content) for m in artifact.messages)
+    assert "name is Chris" in content
+    mock_profile.assert_awaited_once()
+    assert mock_profile.await_args.kwargs["user_id"] == user_id
+    assert mock_profile.await_args.kwargs["tenant_id"] == tenant_id
+
+
+@pytest.mark.asyncio
+async def test_profile_not_pulled_without_user_id(
+    builder_with_profile: tuple[DefaultPromptBuilder, AsyncMock, AsyncMock],
+) -> None:
+    """No user_id (anonymous / legacy caller) → profile() never dispatched."""
+    builder, _mock_search, mock_profile = builder_with_profile
+    tenant_id = uuid4()
+    state = make_state(messages=[msg("user", "hi")], tenant_id=tenant_id)  # user_id None
+
+    await builder.build(state=state, tenant_id=tenant_id)
+
+    mock_profile.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_profile_deduped_against_query_gated_hints(
+    builder_with_profile: tuple[DefaultPromptBuilder, AsyncMock, AsyncMock],
+) -> None:
+    """A fact returned by BOTH search and profile renders once (dedup by hint_id)."""
+    builder, mock_search, mock_profile = builder_with_profile
+    shared = make_memory_hint(layer="user", summary="name is Chris")
+    mock_search.return_value = [shared]
+    mock_profile.return_value = [shared]
+    tenant_id = uuid4()
+    user_id = uuid4()
+    state = make_state(messages=[msg("user", "Chris")], tenant_id=tenant_id, user_id=user_id)
+
+    artifact = await builder.build(state=state, tenant_id=tenant_id, user_id=user_id)
+
+    user_msg = next(m for m in artifact.messages if m.metadata.get("memory_layer") == "user")
+    assert str(user_msg.content).count("name is Chris") == 1
+
+
+@pytest.mark.asyncio
+async def test_profile_failure_degrades_gracefully(
+    builder_with_profile: tuple[DefaultPromptBuilder, AsyncMock, AsyncMock],
+) -> None:
+    """profile() raising must not crash build() (W3-2 degrade theme)."""
+    builder, mock_search, mock_profile = builder_with_profile
+    mock_search.return_value = []
+    mock_profile.side_effect = RuntimeError("DB down")
+    tenant_id = uuid4()
+    user_id = uuid4()
+    state = make_state(messages=[msg("user", "q")], tenant_id=tenant_id, user_id=user_id)
+
+    artifact = await builder.build(state=state, tenant_id=tenant_id, user_id=user_id)
+
+    assert any(m.role == "system" for m in artifact.messages)

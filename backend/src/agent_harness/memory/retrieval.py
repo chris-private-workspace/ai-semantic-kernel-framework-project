@@ -23,8 +23,18 @@ Description:
     - "semantic" axis is a stub in 51.2; concrete layers return empty
       until CARRY-026 ships Qdrant integration.
 
+    Always-on profile (Sprint 57.148):
+    - profile() pulls a user's STANDING durable facts (user-scope long_term)
+      regardless of the query — the always-injected identity path the
+      PromptBuilder uses so a "who am I?" question recalls facts even when it
+      shares no keyword with them. search() stays query-gated (ILIKE).
+
 Owner: 01-eleven-categories-spec.md §範疇 3 (Memory)
 Created: 2026-04-30 (Sprint 51.2 Day 3.1)
+Last Modified: 2026-06-27
+
+Modification History (newest-first):
+    - 2026-06-27: Sprint 57.148 — add profile() always-on user-scope pull (memory-formation Slice 1)
 """
 
 from __future__ import annotations
@@ -113,6 +123,44 @@ class MemoryRetrieval:
             reverse=True,
         )
         return merged[:top_k]
+
+    async def profile(
+        self,
+        *,
+        tenant_id: UUID | None = None,
+        user_id: UUID | None = None,
+        top_k: int = 5,
+        trace_context: TraceContext | None = None,
+    ) -> list[MemoryHint]:
+        """Always-on user-scope durable-fact pull (NOT query-gated).
+
+        Unlike search(), which ILIKE-matches hints against the current user
+        message, profile() retrieves a user's STANDING identity / preference
+        facts regardless of the message — the equivalent of Claude Code's
+        always-injected memory. The PromptBuilder calls it every turn so a
+        "who am I?" question recalls the facts even when the question shares no
+        keyword with them.
+
+        Scope: user layer, long_term axis only (the durable facts). Returns []
+        when tenant_id / user_id is None (zero-trust) or the user layer is
+        absent. Hints come back confidence-ordered (UserLayer.read), capped at
+        top_k. The wildcard empty query relies on UserLayer.read's ILIKE '%%'
+        matching all of the user's rows — search()'s caller-side empty-query
+        guard (PromptBuilder._inject_memory_layers) is intentionally bypassed.
+        """
+        if tenant_id is None or user_id is None:
+            return []
+        layer = self._layers.get("user")
+        if layer is None:
+            return []
+        return await layer.read(
+            query="",
+            tenant_id=tenant_id,
+            user_id=user_id,
+            time_scales=("long_term",),
+            max_hints=top_k,
+            trace_context=trace_context,
+        )
 
 
 __all__ = ["MemoryRetrieval"]

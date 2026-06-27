@@ -39,6 +39,7 @@ Created: 2026-05-01 (Sprint 52.2 Day 1.6)
 Last Modified: 2026-06-04
 
 Modification History (newest-first):
+    - 2026-06-27: Sprint 57.148 — always-on user-identity inject via profile() (memory-formation S1)
     - 2026-06-04: Sprint 57.80 — pending-tool-turn skips user re-anchor (tool-chat convergence)
     - 2026-06-04: Sprint 57.80 — tool-call adjacency invariant after arrange() (orphan-tool 400)
     - 2026-06-03: Sprint 57.75 A-5c — add layer_metadata["memory_accesses"] per-hint detail
@@ -193,6 +194,7 @@ class DefaultPromptBuilder(PromptBuilder):
         default_cache_policy: CachePolicy | None = None,
         system_role_text: str | None = None,
         max_memory_tokens: int = 2000,
+        profile_top_k: int = 5,
     ) -> None:
         self._memory_retrieval = memory_retrieval
         self._cache_manager = cache_manager
@@ -206,6 +208,7 @@ class DefaultPromptBuilder(PromptBuilder):
         )
         self._system_role_text = system_role_text or SYSTEM_ROLE_TEMPLATE
         self._max_memory_tokens = max_memory_tokens
+        self._profile_top_k = profile_top_k
 
     async def build(
         self,
@@ -250,6 +253,37 @@ class DefaultPromptBuilder(PromptBuilder):
                 query=query_text,
                 trace_context=child_ctx,
             )
+            # Sprint 57.148 (memory-formation Slice 1): always-on user-identity
+            # injection. _inject_memory_layers above is ILIKE query-gated — it
+            # surfaces a user-scope fact ONLY when the current message keyword-
+            # matches it, so a "who am I?" question retrieves nothing. profile()
+            # pulls the user's STANDING durable facts regardless of the query and
+            # PREPENDS them into the user layer (deduped by hint_id) so identity
+            # is always present — the equivalent of CC's always-injected memory.
+            # The merged set is still capped by _apply_memory_budget just below.
+            # Degrade per the W3-2 theme: a profile() failure never crashes build.
+            if user_id is not None:
+                try:
+                    profile_hints = await self._memory_retrieval.profile(
+                        tenant_id=tenant_id,
+                        user_id=user_id,
+                        top_k=self._profile_top_k,
+                        trace_context=child_ctx,
+                    )
+                except Exception as exc:  # pragma: no cover - defensive degrade path
+                    _logger.warning(
+                        "MemoryRetrieval.profile failed (tenant=%s); skip identity inject: %s",
+                        tenant_id,
+                        exc,
+                    )
+                    profile_hints = []
+                if profile_hints:
+                    existing_user = memory_layers.get("user", [])
+                    seen = {h.hint_id for h in profile_hints}
+                    memory_layers["user"] = [
+                        *profile_hints,
+                        *(h for h in existing_user if h.hint_id not in seen),
+                    ]
             # Sprint 57.65 (A-1 Tier2): cap the rendered memory block to
             # max_memory_tokens (drop lowest-confidence / oldest first). The cap
             # applies to the memory block only — system / tools / conversation

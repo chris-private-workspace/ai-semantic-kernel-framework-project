@@ -48,6 +48,7 @@ from agent_harness._contracts import (
 from agent_harness._contracts.events import ToolCallExecuted
 from agent_harness.skills.registry import Skill, SkillRegistry, get_default_skill_registry
 from agent_harness.skills.tool import make_run_skill_script_handler
+from agent_harness.tools.memory_tools import MEMORY_FORMATION_NUDGE
 from agent_harness.tools.sandbox import SubprocessSandbox
 from api.v1.chat.handler import DEMO_SYSTEM_PROMPT, build_handler
 from business_domain._register_all import make_default_executor
@@ -186,11 +187,17 @@ def test_build_handler_appends_skills_block_to_system_prompt(
 
 
 def test_build_handler_no_block_without_registry(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Regression: with no skill registry the system prompt is byte-identical (no block).
+    # Regression: with no skill registry, NO skills catalog block is appended (the base
+    # is unchanged). Sprint 57.148: the memory-formation nudge IS appended on the real_llm
+    # path (memory tools are always wired) so the prompt is DEMO + nudge, NOT byte-identical
+    # to DEMO — the skills block specifically must stay absent.
     _set_fake_azure(monkeypatch)
     loop = build_handler("real_llm", "hello")
-    assert loop._system_prompt == DEMO_SYSTEM_PROMPT  # type: ignore[attr-defined]
-    assert "## Available Skills" not in loop._system_prompt  # type: ignore[attr-defined]
+    sp = loop._system_prompt  # type: ignore[attr-defined]
+    assert sp.startswith(DEMO_SYSTEM_PROMPT)  # base role unchanged
+    assert "## Available Skills" not in sp  # no skills catalog block
+    assert "read_skill(name)" not in sp
+    assert MEMORY_FORMATION_NUDGE in sp  # 57.148: memory-formation nudge expected on real path
 
 
 # ============================================================

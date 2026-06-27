@@ -95,6 +95,7 @@ from agent_harness.orchestrator_loop import AgentLoopImpl
 from agent_harness.output_parser import OutputParserImpl
 from agent_harness.skills import render_catalog_block, render_skill_instructions
 from agent_harness.subagent import MailboxStore
+from agent_harness.tools.memory_tools import MEMORY_FORMATION_NUDGE
 from agent_harness.verification.templates import list_templates
 from business_domain._register_all import make_default_executor
 from core.config import get_settings
@@ -542,6 +543,16 @@ def build_real_llm_handler(
                 f"this request. Follow its instructions:\n\n"
                 f"{render_skill_instructions(forced_skill)}"
             )
+
+    # Sprint 57.148 (memory-formation Slice 1): nudge the agent to persist
+    # durable user facts via memory_write(scope='user'). Rides the SAME proven
+    # system_prompt seam as the skills catalog (the loop prepends it as the
+    # system message — loop.py:1970 — so it reaches the LLM). Gated on the memory
+    # tools being wired (memory_retrieval not None) so the no-memory path is
+    # byte-identical. The PromptBuilder's always-on profile() then surfaces the
+    # stored facts every future turn (cross-session recall).
+    if memory_retrieval is not None:
+        system_prompt = f"{system_prompt}\n\n{MEMORY_FORMATION_NUDGE}"
 
     # Sprint 57.2 US-3 (closes AD-Cat9-1-WireDetectors): production
     # handler wires GuardrailEngine with default 4-detector chain (PII +

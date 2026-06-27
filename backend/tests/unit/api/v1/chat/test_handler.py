@@ -16,6 +16,7 @@ import pytest
 
 from agent_harness._contracts import SubagentBudget
 from agent_harness.orchestrator_loop import AgentLoopImpl
+from agent_harness.tools.memory_tools import MEMORY_FORMATION_NUDGE
 from api.v1.chat.handler import (
     build_echo_demo_handler,
     build_handler,
@@ -92,6 +93,28 @@ def _force_verification_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
             knowledge_docs_root="",
         ),
     )
+
+
+# --- Sprint 57.148: memory-formation nudge on the system_prompt seam -----------
+
+
+def test_real_llm_handler_includes_memory_formation_nudge(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The nudge rides the proven system_prompt seam when the memory tools are wired."""
+    _set_azure_env(monkeypatch, strong="strong-deploy")
+    _force_verification_enabled(monkeypatch)
+
+    loop = build_real_llm_handler()
+
+    assert MEMORY_FORMATION_NUDGE in loop._system_prompt  # type: ignore[attr-defined]
+
+
+def test_echo_demo_handler_omits_memory_formation_nudge() -> None:
+    """The no-memory echo path is byte-identical — no formation nudge."""
+    loop = build_echo_demo_handler(message="hi")
+
+    assert MEMORY_FORMATION_NUDGE not in loop._system_prompt  # type: ignore[attr-defined]
 
 
 def test_build_real_llm_routes_cheap_to_verifier_action_to_loop(

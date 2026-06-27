@@ -245,3 +245,27 @@ async def test_extraction_worker_no_cross_tenant_pollution() -> None:
     assert len(new_ids) == 1
     assert user_layer.write_calls[0]["tenant_id"] == tenant_a
     assert user_layer.write_calls[0]["user_id"] == user_a
+
+
+@pytest.mark.asyncio
+@pytest.mark.multi_tenant
+async def test_profile_pull_isolated_by_tenant() -> None:
+    """Sprint 57.148: profile() (always-on, empty query) still enforces the tenant filter.
+
+    The wildcard empty query must NOT bypass isolation — tenant B's profile pull
+    returns 0 rows belonging to tenant A despite the query matching everything.
+    """
+    layer = _TenantStubLayer(MemoryScope.USER)
+    tenant_a = uuid4()
+    tenant_b = uuid4()
+    user_a = uuid4()
+    user_b = uuid4()
+
+    await layer.write(content="name is Chris", tenant_id=tenant_a, user_id=user_a)
+
+    retrieval = MemoryRetrieval({"user": layer})
+    a_hints = await retrieval.profile(tenant_id=tenant_a, user_id=user_a)
+    b_hints = await retrieval.profile(tenant_id=tenant_b, user_id=user_b)
+
+    assert [h.summary for h in a_hints] == ["name is Chris"]  # owner sees it
+    assert b_hints == []  # other tenant → 0 leak despite the wildcard query
