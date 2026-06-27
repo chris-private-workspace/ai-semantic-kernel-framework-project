@@ -96,6 +96,32 @@ def test_snippet_contains_match_and_source(tmp_path: Path) -> None:
     assert hits[0].source == "doc.md"
 
 
+def test_snippet_returns_whole_section_not_one_line(tmp_path: Path) -> None:
+    """Sprint 57.146: a hit returns the whole ## section body (heading + paragraph),
+    not just the matched line ± 1 — fixes the 57.145 R2 over-search."""
+    doc = (
+        "# Doc Title\n"
+        "intro line\n"
+        "\n"
+        "## Section A\n"
+        "first detail about widgets\n"
+        "second detail about widgets\n"
+        "third detail about widgets\n"
+        "\n"
+        "## Section B\n"
+        "unrelated gadget content\n"
+    )
+    _write(tmp_path, "doc.md", doc)
+    hits = LocalDocsConnector(tmp_path).search("widgets", top_k=1)
+    assert hits
+    snip = hits[0].snippet
+    assert "## Section A" in snip  # heading included
+    assert "first detail about widgets" in snip
+    assert "second detail about widgets" in snip
+    assert "third detail about widgets" in snip  # whole section, not one line
+    assert "gadget" not in snip  # must NOT bleed into Section B
+
+
 def test_symlink_escape_rejected(tmp_path: Path) -> None:
     """A symlink inside root that resolves OUTSIDE root must be excluded (path-safety)."""
     outside = tmp_path / "outside"

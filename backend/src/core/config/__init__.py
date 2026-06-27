@@ -8,6 +8,7 @@ Per project rules (.claude/rules/code-quality.md): always use Pydantic
 Settings (not raw os.environ) so type-safe + validation + .env support.
 
 Modification History (newest-first):
+    - 2026-06-27: Sprint 57.146 — add knowledge_vector_enabled + qdrant_url (vector search)
     - 2026-06-26: Sprint 57.145 — add knowledge_docs_root (first real knowledge connector)
     - 2026-06-24: Sprint 57.137 — add sandbox_require_isolation (fail-closed python_sandbox)
     - 2026-06-23: Sprint 57.136 — add chat_verification_correction_strategy (keep|summarize)
@@ -164,6 +165,16 @@ class Settings(BaseSettings):
     # docs folder. A missing/empty root → make_default_executor skips registration
     # (knowledge_search absent, agent degrades gracefully). Env: KNOWLEDGE_DOCS_ROOT.
     knowledge_docs_root: str = _DEFAULT_KNOWLEDGE_DOCS_ROOT
+
+    # ---- Sprint 57.146 knowledge embedding / Qdrant vector search ---
+    # When True (default False): knowledge_search retrieves by semantic similarity
+    # (Azure embeddings + Qdrant) with a fail-soft keyword fallback. Requires
+    # AZURE_OPENAI_EMBEDDING_DEPLOYMENT + a reachable Qdrant. OFF → 57.145 keyword
+    # path byte-identical, zero added startup cost. Env: KNOWLEDGE_VECTOR_ENABLED.
+    knowledge_vector_enabled: bool = False
+    # Qdrant connection URL for the knowledge vector index (dev container on 6333).
+    # Env: QDRANT_URL.
+    qdrant_url: str = "http://localhost:6333"
 
     # ---- Sprint 57.112 IAM Block C MFA (TOTP) -----------------------
     # mfa_issuer_name: the otpauth:// issuer label shown in the user's authenticator

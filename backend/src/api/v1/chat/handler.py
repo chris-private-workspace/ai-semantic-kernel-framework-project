@@ -495,6 +495,12 @@ def build_real_llm_handler(
     # default = in-repo planning docs; prod overrides via env). Threaded as an opt-in
     # root string; make_default_executor skips registration if the root is missing.
     knowledge_root = get_settings().knowledge_docs_root or None
+    # Sprint 57.146: when KNOWLEDGE_VECTOR_ENABLED + an embedding deployment + Qdrant
+    # are configured, the process-wide vector index makes knowledge_search semantic
+    # (keyword fail-soft fallback). None (flag off / unconfigured) → 57.145 keyword.
+    from api.v1.chat.knowledge_index import get_knowledge_vector_index
+
+    knowledge_vector_index = get_knowledge_vector_index()
 
     registry, executor = make_default_executor(
         factory_provider=business_factory_provider,
@@ -507,6 +513,7 @@ def build_real_llm_handler(
         skill_registry=skill_registry,
         todo_store=todo_store,
         knowledge_root=knowledge_root,
+        knowledge_vector_index=knowledge_vector_index,
     )
 
     # Sprint 57.113: advertise the available skills cheaply in the system prompt

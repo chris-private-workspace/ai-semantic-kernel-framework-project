@@ -400,6 +400,29 @@ async def _start_transcript_retention_job(app: FastAPI) -> None:
         logger.warning("api.main: transcript retention job not started (fail-open)", exc_info=True)
 
 
+async def _ingest_knowledge(app: FastAPI) -> None:
+    """Idempotently embed the knowledge docs into Qdrant at startup (fail-soft).
+
+    Sprint 57.146: when KNOWLEDGE_VECTOR_ENABLED + an embedding deployment + a
+    reachable Qdrant are configured, get_knowledge_vector_index() returns the
+    process-wide index and we ingest the section vectors once (idempotent —
+    skipped when the collection already holds the expected count). Flag off /
+    unconfigured → None → skip (zero added startup cost). Any Azure / Qdrant error
+    is logged + swallowed so the agent degrades to the keyword path rather than
+    blocking startup (mirrors _wire_pricing_loader's fail-soft philosophy).
+    """
+    try:
+        from api.v1.chat.knowledge_index import get_knowledge_vector_index
+
+        index = get_knowledge_vector_index()
+        if index is None:
+            return
+        count = await index.ingest()
+        logger.info("api.main: knowledge vector index ready (%d sections)", count)
+    except Exception:  # noqa: BLE001 — fail-soft: never block startup on ingest
+        logger.warning("api.main: knowledge vector ingest skipped (fail-soft)", exc_info=True)
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Startup: load .env + structured logging + OTel SDK. Shutdown: flush + dispose engine."""
@@ -416,6 +439,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     _wire_billing_outbox()
     await _start_billing_outbox_drainer(app)
     await _start_transcript_retention_job(app)
+    await _ingest_knowledge(app)
     logger.info("api.main: startup complete")
     try:
         yield

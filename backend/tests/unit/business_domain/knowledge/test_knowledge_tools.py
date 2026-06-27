@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -19,7 +20,7 @@ from business_domain.knowledge import (
     make_knowledge_search_handler,
     register_knowledge_tools,
 )
-from business_domain.knowledge.connector import LocalDocsConnector
+from business_domain.knowledge.connector import KnowledgeHit, LocalDocsConnector
 
 
 def _write(root: Path, rel: str, content: str) -> None:
@@ -93,3 +94,43 @@ def test_register_missing_root_raises(tmp_path: Path) -> None:
     handlers: dict[str, ToolHandler] = {}
     with pytest.raises(ValueError):
         register_knowledge_tools(registry, handlers, docs_root=tmp_path / "nope")
+
+
+class _FakeVectorIndex:
+    """Stand-in for KnowledgeVectorIndex.search (Sprint 57.146)."""
+
+    def __init__(self, hits: list[KnowledgeHit] | None = None, *, raises: bool = False) -> None:
+        self._hits = hits or []
+        self._raises = raises
+
+    async def search(self, query: str, top_k: int = 5) -> list[KnowledgeHit]:
+        if self._raises:
+            raise RuntimeError("qdrant down")
+        return self._hits
+
+
+@pytest.mark.asyncio
+async def test_handler_uses_vector_index_when_present(tmp_path: Path) -> None:
+    _write(tmp_path, "kw.md", "keyword only term")  # keyword would match this
+    fake = _FakeVectorIndex(
+        [KnowledgeHit(source="vec.md", snippet="semantic section body", score=0.91)]
+    )
+    handler = make_knowledge_search_handler(LocalDocsConnector(tmp_path), cast(Any, fake))
+    out = await handler(ToolCall(id="v1", name="knowledge_search", arguments={"query": "anything"}))
+    payload = json.loads(out)
+    assert payload["count"] == 1
+    assert payload["hits"][0]["source"] == "vec.md"  # vector result, NOT keyword kw.md
+    assert "semantic section body" in payload["hits"][0]["snippet"]
+
+
+@pytest.mark.asyncio
+async def test_handler_fails_soft_to_keyword_on_vector_error(tmp_path: Path) -> None:
+    _write(tmp_path, "kw.md", "# Doc\nthe keyword fallback term here")
+    fake = _FakeVectorIndex(raises=True)
+    handler = make_knowledge_search_handler(LocalDocsConnector(tmp_path), cast(Any, fake))
+    out = await handler(
+        ToolCall(id="v2", name="knowledge_search", arguments={"query": "keyword fallback"})
+    )
+    payload = json.loads(out)
+    assert payload["count"] == 1
+    assert payload["hits"][0]["source"] == "kw.md"  # fell back to the keyword connector

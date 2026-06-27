@@ -102,3 +102,11 @@ pyotp>=2.9,<3.0
 # already imported transitively (guardrails/tool/capability_matrix.py) but
 # never declared — declared now (the from_dir loader depends on it directly).
 PyYAML>=6.0,<7.0
+
+# ---- Sprint 57.146 US-3: knowledge embedding/Qdrant vector search -----------
+# qdrant-client wraps the dev Qdrant container (docker-compose.dev.yml:74) for the
+# knowledge vector index (infrastructure/vector/qdrant_client.py). >=1.12 gives the
+# query_points API (the deprecated `search` was removed by 1.17). Closes the
+# CARRY-026 Qdrant-client deferral for the KB use case. Embeddings reuse the openai
+# SDK (already declared) via adapters/azure_openai/embeddings.py — no new LLM dep.
+qdrant-client>=1.12,<2.0

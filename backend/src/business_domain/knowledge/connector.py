@@ -19,9 +19,10 @@ Key Components:
     - LocalDocsConnector: reads + keyword-searches a docs root
 
 Created: 2026-06-26 (Sprint 57.145)
-Last Modified: 2026-06-26
+Last Modified: 2026-06-27
 
 Modification History (newest-first):
+    - 2026-06-27: Sprint 57.146 — section-aware snippet (reuse split_sections; fixes R2 over-search)
     - 2026-06-26: Sprint 57.145 Day 3 — tokenize query OR-match (fix: multi-word → 0 hits)
     - 2026-06-26: Initial creation (Sprint 57.145) — first real connector
       (AD-Knowledge-Connector-First-Real-Source)
@@ -35,6 +36,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+
+from .chunking import split_sections
 
 # Only plain-text document types in Slice 1; PDF/Office parsing is a later slice.
 _SUFFIXES = frozenset({".md", ".txt"})
@@ -155,7 +158,25 @@ class LocalDocsConnector:
             return 0.0, ""
         # Multi-token relevance bonus: reward docs matching more distinct tokens.
         bonus = 0.01 * (len(matched) - 1)
-        return tier + bonus, self._build_snippet(lines, match_idx)
+        return tier + bonus, self._section_snippet(text, lines, match_idx)
+
+    def _section_snippet(self, text: str, lines: list[str], match_idx: int) -> str:
+        """Return the ## section containing the matched line (richer than ±1 line).
+
+        Sprint 57.146: fixes the 57.145 R2 over-search — the snippet is now the
+        whole markdown section body (heading + paragraph), so the agent gets
+        enough context to answer in ONE search. Falls back to the matched line ±
+        context window if no section boundary covers the match.
+        """
+        if match_idx < 0:
+            return ""
+        chosen = ""
+        for section in split_sections(text):
+            if section.start_line <= match_idx:
+                chosen = section.body
+            else:
+                break
+        return chosen or self._build_snippet(lines, match_idx)
 
     def _build_snippet(self, lines: list[str], match_idx: int) -> str:
         """Matched line ± context, trimmed to a max length."""

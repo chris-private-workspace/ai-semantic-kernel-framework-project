@@ -57,6 +57,14 @@ class AzureOpenAIConfig(BaseSettings):
         default="",
         description="Tenant-defined deployment name (used in API calls)",
     )
+    # Sprint 57.146: embeddings deployment (text-embedding-3-*), separate from the
+    # chat deployment_name. Shares endpoint / api_key / api_version above. Env
+    # AZURE_OPENAI_DEPLOYMENT_EMBEDDING (prefix + field name; matches the existing
+    # AZURE_OPENAI_DEPLOYMENT_NAME convention).
+    deployment_embedding: str = Field(
+        default="",
+        description="Azure embedding deployment name (env AZURE_OPENAI_DEPLOYMENT_EMBEDDING)",
+    )
 
     # -- model identity (for pricing / capability) -------------------------
 
@@ -96,3 +104,7 @@ class AzureOpenAIConfig(BaseSettings):
     def is_configured(self) -> bool:
         """Returns True if minimum required env vars are present."""
         return bool(self.api_key and self.endpoint and self.deployment_name)
+
+    def is_embedding_configured(self) -> bool:
+        """Returns True if embeddings can run (shared connection + embedding deployment)."""
+        return bool(self.api_key and self.endpoint and self.deployment_embedding)

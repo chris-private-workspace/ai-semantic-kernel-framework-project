@@ -18,9 +18,10 @@ Key Components:
     - register_knowledge_tools(): registers spec + handler over a docs root
 
 Created: 2026-06-26 (Sprint 57.145)
-Last Modified: 2026-06-26
+Last Modified: 2026-06-27
 
 Modification History (newest-first):
+    - 2026-06-27: Sprint 57.146 — opt-in vector_index (semantic-primary, keyword fail-soft fallback)
     - 2026-06-26: Initial creation (Sprint 57.145) — first real connector tool
       (AD-Knowledge-Connector-First-Real-Source)
 
@@ -32,7 +33,9 @@ Related:
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from agent_harness._contracts import (
     ConcurrencyPolicy,
@@ -44,7 +47,12 @@ from agent_harness._contracts import (
 )
 from agent_harness.tools import ToolHandler, ToolRegistry
 
-from .connector import LocalDocsConnector
+from .connector import KnowledgeHit, LocalDocsConnector
+
+if TYPE_CHECKING:
+    from .vector_index import KnowledgeVectorIndex
+
+logger = logging.getLogger(__name__)
 
 KNOWLEDGE_SEARCH_SPEC: ToolSpec = ToolSpec(
     name="knowledge_search",
@@ -80,8 +88,17 @@ KNOWLEDGE_SEARCH_SPEC: ToolSpec = ToolSpec(
 )
 
 
-def make_knowledge_search_handler(connector: LocalDocsConnector) -> ToolHandler:
-    """Build a single-arity (ToolCall) -> str handler over a real docs connector."""
+def make_knowledge_search_handler(
+    connector: LocalDocsConnector,
+    vector_index: "KnowledgeVectorIndex | None" = None,
+) -> ToolHandler:
+    """Build a single-arity (ToolCall) -> str handler over a real docs connector.
+
+    Sprint 57.146: when a vector_index is supplied the handler retrieves by
+    semantic similarity (embedding + Qdrant); on ANY embedding/Qdrant error it
+    fails soft to the keyword connector so the tool never goes dark. None →
+    57.145 keyword behavior, byte-identical.
+    """
 
     async def handler(call: ToolCall) -> str:
         args = dict(call.arguments)
@@ -93,7 +110,18 @@ def make_knowledge_search_handler(connector: LocalDocsConnector) -> ToolHandler:
             top_k = 5
         if not query:
             return json.dumps({"hits": [], "count": 0, "note": "empty query"})
-        hits = connector.search(query, top_k=top_k)
+        hits: list[KnowledgeHit]
+        if vector_index is not None:
+            try:
+                hits = await vector_index.search(query, top_k=top_k)
+            except Exception:  # noqa: BLE001 — fail-soft to keyword on embedding/Qdrant error
+                logger.warning(
+                    "knowledge_search vector path failed; falling back to keyword",
+                    exc_info=True,
+                )
+                hits = connector.search(query, top_k=top_k)
+        else:
+            hits = connector.search(query, top_k=top_k)
         return json.dumps(
             {
                 "hits": [
@@ -112,13 +140,16 @@ def register_knowledge_tools(
     handlers: dict[str, ToolHandler],
     *,
     docs_root: Path | str,
+    vector_index: "KnowledgeVectorIndex | None" = None,
 ) -> None:
     """Register the REAL knowledge_search tool backed by a LocalDocsConnector(docs_root).
 
     Mirrors the per-domain register_*_tools shape: mutates the shared (registry,
     handlers). The connector is built once here; a missing root raises clearly so
     the caller (make_default_executor opt-in) can decide to skip registration.
+    Sprint 57.146: an optional vector_index makes the handler semantic-primary
+    (keyword fail-soft fallback).
     """
     connector = LocalDocsConnector(docs_root)
     registry.register(KNOWLEDGE_SEARCH_SPEC)
-    handlers["knowledge_search"] = make_knowledge_search_handler(connector)
+    handlers["knowledge_search"] = make_knowledge_search_handler(connector, vector_index)

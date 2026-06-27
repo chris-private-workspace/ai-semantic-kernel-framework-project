@@ -80,6 +80,8 @@ if TYPE_CHECKING:
     from agent_harness.skills import SkillRegistry
     from agent_harness.state_mgmt import TodoStore
     from agent_harness.subagent import DefaultSubagentDispatcher, MailboxStore
+
+    from .knowledge.vector_index import KnowledgeVectorIndex
 from .audit_domain.tools import register_audit_tools
 from .correlation.tools import register_correlation_tools
 from .incident.tools import register_incident_tools
@@ -230,6 +232,7 @@ def make_default_executor(
     skill_registry: "SkillRegistry | None" = None,
     todo_store: "TodoStore | None" = None,
     knowledge_root: str | None = None,
+    knowledge_vector_index: "KnowledgeVectorIndex | None" = None,
 ) -> tuple[ToolRegistryImpl, ToolExecutorImpl]:
     """Build a registry+executor pair with echo_tool + 18 business tools (19 total).
 
@@ -370,7 +373,12 @@ def make_default_executor(
     # agent degrades gracefully (knowledge_search absent), never breaking the build.
     if knowledge_root:
         try:
-            register_knowledge_tools(registry, handlers, docs_root=knowledge_root)
+            register_knowledge_tools(
+                registry,
+                handlers,
+                docs_root=knowledge_root,
+                vector_index=knowledge_vector_index,
+            )
         except ValueError:
             pass
 
