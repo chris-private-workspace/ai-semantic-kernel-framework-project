@@ -85,4 +85,4 @@
 - [x] Final gate sweep: mypy 0/397 · run_all 11/11 · pytest 3053/6skip · LLM-SDK-leak clean (no Vitest/mockup delta — backend-only)
 - [x] Navigators: CLAUDE.md Current-Sprint + Last-Updated · MEMORY.md pointer + subfile · next-phase-candidates (CLOSE the AD + add `AD-Memory-Combined-Formation-AB-Quality`) · sprint-workflow matrix
 - [x] Anti-pattern self-check (retro Q5): AP-2/3/4/6/8/11 → 0 violations; v2 lints 11/11
-- [ ] **Commit (local done)** → ⏳ PR push + open → CI → merge: **PENDING USER CONFIRMATION** (push is outward-facing per Developer Preferences) → post-merge status flip after gh-verified MERGED
+- [x] **Commit → PR #358 push + open → CI all-green (5 required) → squash-merged** (gh-verified MERGED, main `cd317ec7`, mergedAt 2026-06-30T15:45:40Z) → post-merge status flip done
