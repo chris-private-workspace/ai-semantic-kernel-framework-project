@@ -1,0 +1,32 @@
+user dan@acme.com = cf2b40a1-9b02-47de-b111-9e76c7fd48fe
+tenant = 09eb1b62-9fd3-439a-8229-1c923cc667e9
+
+=== memory_session_summary (dan, recent 3 via JOIN sessions) ===
+  session=15bf421a-b99a-4489-9bcf-a9798156a667
+  summary='The user asked whether I remember who they are and what we were working on previously. I explained that I can¡¦t reliably access prior conversations from this chat alone and asked them to provide their name/role and the project/topic so I can resume.'
+  key_decisions=[]
+  unresolved_issues=['User needs to provide their name/role and the prior project/topic to continue']
+  created=2026-06-30 15:23:35.299938+00:00  updated=2026-06-30 15:23:35.299938+00:00
+
+  session=73a909fe-fa17-4fe5-b41c-b15edec3e013
+  summary='Marcus asked about a Redis-to-DynamoDB session-store migration and whether to keep TTL-based expiry or switch to explicit invalidation. The guidance was to keep TTL as the default, enforce expiry at read time, and use explicit invalidation only for immediate-revocation cases.'
+  key_decisions=['Use a write-through cache during cutover', 'Prefer TTL-based expiry as the primary session lifecycle mechanism', 'Consider explicit invalidation only for must-revoke-now scenarios']
+  unresolved_issues=['Decide whether session expiry should remain TTL-based or move to explicit invalidation', 'Clarify whether the session model needs immediate revocation guarantees', 'Determine the exact cache/session data model for DynamoDB']
+  created=2026-06-30 15:20:30.060255+00:00  updated=2026-06-30 15:20:30.060255+00:00
+
+  session=760d5db9-8de6-4824-9886-2e05334a22bf
+  summary='You were working on the billing service migration from MongoDB to PostgreSQL as part of Project Aurora, the Oracle¡÷PostgreSQL migration targeting a Q3 go-live. The last discussion focused on the cutover approach and a PostgreSQL schema choice for invoice line items.'
+  key_decisions=['Use a dual-write pattern during the cutover window']
+  unresolved_issues=['Decide whether invoice line items should be stored in a JSONB column or a separate relational table']
+  created=2026-06-30 11:14:12.545120+00:00  updated=2026-06-30 11:14:12.545120+00:00
+
+
+=== memory_user (dan, most recent 8) ===
+  [auto_extract] conf=0.98 'The session-store cutover will use a write-through cache.' (c=15:20:30 u=15:20:30)
+  [auto_extract] conf=0.99 "Marcus's team is migrating its session store from Redis to DynamoDB." (c=15:20:30 u=15:20:30)
+  [None] conf=0.99 'Marcus leads the Payments Platform team.' (c=15:20:07 u=15:20:30)
+  [None] conf=0.85 'Migrating the session store from Redis to DynamoDB; using a write-through cache during cutover; open question: keep TTL-based expiry vs switch to explicit invalidation.' (c=15:20:10 u=15:20:10)
+  [auto_extract] conf=0.99 'The open schema question is whether invoice line items should be stored in a JSONB column or in a separate table.' (c=11:11:27 u=11:11:27)
+  [auto_extract] conf=0.96 'Chris is currently blocked on the PostgreSQL invoices table schema decision.' (c=11:11:27 u=11:11:27)
+  [auto_extract] conf=0.97 'The billing migration will use a dual-write pattern during the cutover window.' (c=11:11:27 u=11:11:27)
+  [auto_extract] conf=0.98 'Chris is migrating the billing service from MongoDB to PostgreSQL.' (c=11:11:27 u=11:11:27)

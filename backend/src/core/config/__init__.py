@@ -181,6 +181,18 @@ class Settings(BaseSettings):
     # Env: CHAT_SESSION_SUMMARY.
     chat_session_summary: bool = True
 
+    # Sprint 57.152 §Memory combine extract + summarize
+    # (AD-Memory-Formation-Combine-Extract-Summarize): when True (default), the
+    # post-send MemoryFormationWorker makes ONE combined cheap-tier LLM call that
+    # returns BOTH the durable user facts AND the rolling session summary, halving
+    # the background token + latency per send (the two callers previously read the
+    # same ledger twice). False → the proven two-call path (57.149 extract +
+    # 57.151 summarize run as separate calls) — a one-env-var fallback if the
+    # combined prompt ever degrades formation quality. Independent of the two
+    # feature flags above (which decide WHICH sections form). Env:
+    # CHAT_MEMORY_COMBINED_FORMATION.
+    chat_memory_combined_formation: bool = True
+
     # ---- Sprint 57.145 knowledge connector (first real external source) -
     # Root folder the knowledge_search tool reads (.md/.txt, recursive). Default =
     # in-repo planning docs (real content, zero setup); prod overrides to a company

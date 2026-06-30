@@ -148,13 +148,14 @@ def test_build_chat_memory_extractor_none_without_db_session_tenant(
 def test_build_chat_memory_extractor_returns_context_on_cheap_tier(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Env + db/session/tenant → a ChatMemoryExtractContext whose extractor runs
-    on the CHEAP deployment (background-LLM tier, not the user-facing action tier)."""
+    """Env + db/session/tenant → a ChatMemoryExtractContext whose formation worker
+    runs on the CHEAP deployment (background-LLM tier, not the user-facing action
+    tier). Sprint 57.152: the worker holds the cheap client directly."""
     _set_azure_env(monkeypatch, strong="strong-deploy")
     monkeypatch.setenv("AZURE_OPENAI_CHEAP_DEPLOYMENT_NAME", "cheap-deploy")
     ctx = build_chat_memory_extractor(None, object(), uuid4(), uuid4())  # type: ignore[arg-type]
     assert isinstance(ctx, ChatMemoryExtractContext)
-    client = ctx.extractor._chat_client  # type: ignore[attr-defined]
+    client = ctx.former._chat_client  # type: ignore[attr-defined]
     assert client.config.deployment_name == "cheap-deploy"
 
 

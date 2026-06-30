@@ -684,16 +684,17 @@ async def _maybe_auto_extract(
     trace_context: TraceContext,
 ) -> None:
     """Post-completion memory formation body (Sprint 57.149 auto-extract +
-    Sprint 57.151 session summary). Runs as a Starlette BackgroundTask AFTER the
-    SSE response body is fully sent (OUTSIDE the streaming generator, so a client
-    disconnect can't make the generator ignore GeneratorExit).
+    Sprint 57.151 session summary, combined into ONE call by Sprint 57.152). Runs
+    as a Starlette BackgroundTask AFTER the SSE response body is fully sent
+    (OUTSIDE the streaming generator, so a client disconnect can't make the
+    generator ignore GeneratorExit).
 
-    Loads the session ledger ONCE and runs whichever post-send features are wired
-    (each gated inside build_chat_memory_extractor):
-      - auto-extract (57.149): durable user facts → UserLayer. Needs a known user
-        (skipped for an anon trace); reads existing facts via profile() for dedup.
-      - session summary (57.151): a rolling per-session conversation summary →
-        memory_session_summary (keyed by session_id; no user_id needed).
+    Loads the session ledger ONCE, reads the user's known facts via profile() for
+    prompt-level dedup (only when the former extracts facts AND the user is known),
+    then makes ONE call to former.form() — which by default issues a single
+    combined cheap-tier LLM call forming BOTH durable user facts (→ UserLayer) and
+    a rolling per-session conversation summary (→ memory_session_summary), or the
+    two-call fallback when CHAT_MEMORY_COMBINED_FORMATION is off.
     BEST-EFFORT: any failure is logged + swallowed — memory formation must NEVER
     surface to the user.
     """
@@ -703,25 +704,20 @@ async def _maybe_auto_extract(
         ledger = await memory_extract_ctx.message_store.load()
         if not ledger:
             return
-        if memory_extract_ctx.extractor is not None and trace_context.user_id is not None:
+        known_facts: list[str] | None = None
+        if memory_extract_ctx.former.wants_user_facts and trace_context.user_id is not None:
             known_hints = await memory_extract_ctx.retrieval.profile(
                 tenant_id=tenant_id, user_id=trace_context.user_id
             )
             known_facts = [h.summary for h in known_hints if h.summary]
-            await memory_extract_ctx.extractor.extract_session_to_user(
-                session_id=session_id,
-                tenant_id=tenant_id,
-                user_id=trace_context.user_id,
-                messages=ledger,
-                known_facts=known_facts,
-                trace_context=trace_context,
-            )
-        if memory_extract_ctx.summarizer is not None:
-            await memory_extract_ctx.summarizer.summarize_and_store(
-                messages=ledger,
-                session_id=session_id,
-                trace_context=trace_context,
-            )
+        await memory_extract_ctx.former.form(
+            messages=ledger,
+            session_id=session_id,
+            tenant_id=tenant_id,
+            user_id=trace_context.user_id,
+            known_facts=known_facts,
+            trace_context=trace_context,
+        )
     except Exception:  # noqa: BLE001 — formation is best-effort; never break the stream
         logger.exception(
             "chat session %s/%s: post-send memory formation failed (best-effort)",

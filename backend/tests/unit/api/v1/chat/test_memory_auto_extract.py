@@ -1,11 +1,15 @@
 """
 File: backend/tests/unit/api/v1/chat/test_memory_auto_extract.py
-Purpose: Unit tests for the Sprint 57.149 post-completion Option-B auto-extract
-    hook (_maybe_auto_extract) — gate + dedup-facts threading + best-effort swallow.
+Purpose: Unit tests for the post-completion memory-formation hook
+    (_maybe_auto_extract) — gate + profile() dedup-facts threading + best-effort
+    swallow. Sprint 57.152 reshaped the ctx to carry a MemoryFormationWorker
+    (`former`) that the hook calls ONCE; the profile() known-facts read is gated
+    on former.wants_user_facts.
 Category: Tests / 範疇 3 + chat wiring
-Scope: Sprint 57.149 (AD-Memory-Formation-Auto-Extract)
+Scope: Sprint 57.149 (created) / Sprint 57.152 (former shape)
 
 Created: 2026-06-28
+Last Modified: 2026-06-30
 """
 
 from __future__ import annotations
@@ -21,16 +25,22 @@ from api.v1.chat.handler import ChatMemoryExtractContext
 from api.v1.chat.router import _maybe_auto_extract
 
 
-class _StubExtractor:
-    def __init__(self, *, raises: bool = False) -> None:
+class _StubFormer:
+    """Records form() calls; mimics MemoryFormationWorker's wants_user_facts gate."""
+
+    def __init__(self, *, wants_user_facts: bool = True, raises: bool = False) -> None:
         self.calls: list[dict[str, Any]] = []
+        self._wants = wants_user_facts
         self._raises = raises
 
-    async def extract_session_to_user(self, **kwargs: Any) -> list[Any]:
+    @property
+    def wants_user_facts(self) -> bool:
+        return self._wants
+
+    async def form(self, **kwargs: Any) -> None:
         self.calls.append(kwargs)
         if self._raises:
-            raise RuntimeError("extractor boom")
-        return []
+            raise RuntimeError("former boom")
 
 
 class _StubRetrieval:
@@ -51,9 +61,9 @@ class _StubMessageStore:
         return list(self._messages)
 
 
-def _ctx(extractor: Any, retrieval: Any, store: Any) -> ChatMemoryExtractContext:
+def _ctx(former: Any, retrieval: Any, store: Any) -> ChatMemoryExtractContext:
     return ChatMemoryExtractContext(
-        extractor=extractor,
+        former=former,
         retrieval=retrieval,
         message_store=store,
     )
@@ -65,7 +75,7 @@ def _trace(user_id: Any) -> TraceContext:
 
 @pytest.mark.asyncio
 async def test_no_op_when_ctx_none() -> None:
-    """No extract context wired (echo / flag-off / missing env) → nothing happens."""
+    """No formation context wired (echo / flag-off / missing env) → nothing happens."""
     await _maybe_auto_extract(
         memory_extract_ctx=None,
         tenant_id=uuid4(),
@@ -75,48 +85,73 @@ async def test_no_op_when_ctx_none() -> None:
 
 
 @pytest.mark.asyncio
-async def test_no_op_when_no_user() -> None:
-    """Anonymous / legacy caller (user_id None) → extractor never called."""
-    extractor = _StubExtractor()
-    store = _StubMessageStore((Message(role="user", content="x"),))
-    await _maybe_auto_extract(
-        memory_extract_ctx=_ctx(extractor, _StubRetrieval(), store),
-        tenant_id=uuid4(),
-        session_id=uuid4(),
-        trace_context=_trace(None),
-    )
-    assert extractor.calls == []
-
-
-@pytest.mark.asyncio
 async def test_no_op_when_empty_ledger() -> None:
-    """No messages in the session ledger → extractor never called."""
-    extractor = _StubExtractor()
+    """No messages in the session ledger → former.form never called."""
+    former = _StubFormer()
     await _maybe_auto_extract(
-        memory_extract_ctx=_ctx(extractor, _StubRetrieval(), _StubMessageStore(())),
+        memory_extract_ctx=_ctx(former, _StubRetrieval(), _StubMessageStore(())),
         tenant_id=uuid4(),
         session_id=uuid4(),
         trace_context=_trace(uuid4()),
     )
-    assert extractor.calls == []
+    assert former.calls == []
 
 
 @pytest.mark.asyncio
-async def test_runs_extract_with_ledger_and_known_facts() -> None:
-    """Happy path: loads the ledger, reads profile() facts for dedup, runs extract."""
+async def test_anon_user_skips_profile_but_still_forms() -> None:
+    """Anonymous trace (user_id None) → profile() NOT read, but former.form IS
+    called (with user_id=None) so the summary section can still form."""
+    former = _StubFormer()
+    retrieval = _StubRetrieval(summaries=("User name is Chris.",))
+    store = _StubMessageStore((Message(role="user", content="x"),))
+    await _maybe_auto_extract(
+        memory_extract_ctx=_ctx(former, retrieval, store),
+        tenant_id=uuid4(),
+        session_id=uuid4(),
+        trace_context=_trace(None),
+    )
+    assert retrieval.profile_calls == []
+    assert len(former.calls) == 1
+    assert former.calls[0]["user_id"] is None
+    assert former.calls[0]["known_facts"] is None
+
+
+@pytest.mark.asyncio
+async def test_no_profile_read_when_former_wants_no_facts() -> None:
+    """Summary-only worker (wants_user_facts False) → profile() NOT read even with
+    a known user; former.form is still called (summary section)."""
+    former = _StubFormer(wants_user_facts=False)
+    retrieval = _StubRetrieval(summaries=("User name is Chris.",))
+    store = _StubMessageStore((Message(role="user", content="x"),))
+    await _maybe_auto_extract(
+        memory_extract_ctx=_ctx(former, retrieval, store),
+        tenant_id=uuid4(),
+        session_id=uuid4(),
+        trace_context=_trace(uuid4()),
+    )
+    assert retrieval.profile_calls == []
+    assert len(former.calls) == 1
+    assert former.calls[0]["known_facts"] is None
+
+
+@pytest.mark.asyncio
+async def test_runs_form_with_ledger_and_known_facts() -> None:
+    """Happy path: loads the ledger, reads profile() facts for dedup (wants_user_
+    facts + known user), runs ONE former.form() with the ledger + known_facts."""
     user, tenant, session = uuid4(), uuid4(), uuid4()
     msgs = (Message(role="user", content="I am Chris"),)
-    extractor = _StubExtractor()
+    former = _StubFormer()
     retrieval = _StubRetrieval(summaries=("User name is Chris.",))
     await _maybe_auto_extract(
-        memory_extract_ctx=_ctx(extractor, retrieval, _StubMessageStore(msgs)),
+        memory_extract_ctx=_ctx(former, retrieval, _StubMessageStore(msgs)),
         tenant_id=tenant,
         session_id=session,
         trace_context=TraceContext(tenant_id=tenant, session_id=session, user_id=user),
     )
-    assert len(extractor.calls) == 1
-    call = extractor.calls[0]
+    assert len(former.calls) == 1
+    call = former.calls[0]
     assert call["tenant_id"] == tenant
+    assert call["session_id"] == session
     assert call["user_id"] == user
     assert call["messages"] == list(msgs)
     assert call["known_facts"] == ["User name is Chris."]
@@ -124,15 +159,15 @@ async def test_runs_extract_with_ledger_and_known_facts() -> None:
 
 
 @pytest.mark.asyncio
-async def test_swallows_extractor_failure() -> None:
-    """An extractor exception is logged + swallowed — it must NEVER propagate
+async def test_swallows_former_failure() -> None:
+    """A former exception is logged + swallowed — it must NEVER propagate
     (memory formation is best-effort; it cannot break the SSE stream)."""
-    extractor = _StubExtractor(raises=True)
+    former = _StubFormer(raises=True)
     store = _StubMessageStore((Message(role="user", content="x"),))
     await _maybe_auto_extract(
-        memory_extract_ctx=_ctx(extractor, _StubRetrieval(), store),
+        memory_extract_ctx=_ctx(former, _StubRetrieval(), store),
         tenant_id=uuid4(),
         session_id=uuid4(),
         trace_context=_trace(uuid4()),
     )
-    assert len(extractor.calls) == 1  # attempted, then swallowed (no raise)
+    assert len(former.calls) == 1  # attempted, then swallowed (no raise)

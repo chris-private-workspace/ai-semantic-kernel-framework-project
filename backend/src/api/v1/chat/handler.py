@@ -135,9 +135,8 @@ if TYPE_CHECKING:
         TeammateInboxScope,
     )
     from agent_harness.hitl import HITLManager
-    from agent_harness.memory.extraction import MemoryExtractor
+    from agent_harness.memory.formation import MemoryFormationWorker
     from agent_harness.memory.retrieval import MemoryRetrieval
-    from agent_harness.memory.session_summarizer import SessionSummarizer
     from agent_harness.observability import Tracer
     from agent_harness.orchestrator_loop._abc import AgentLoop
     from agent_harness.skills import SkillRegistry
@@ -798,19 +797,21 @@ def build_real_llm_handler(
 @dataclass(frozen=True)
 class ChatMemoryExtractContext:
     """The collaborators the chat post-completion memory hook needs
-    (Sprint 57.149 auto-extract + Sprint 57.151 session summary). Bundled so the
-    router threads ONE optional arg through _stream_loop_events, not several.
+    (Sprint 57.149 auto-extract + Sprint 57.151 session summary, combined into one
+    call by Sprint 57.152). Bundled so the router threads ONE optional arg through
+    _stream_loop_events, not several.
 
-    `extractor` is None when CHAT_MEMORY_AUTO_EXTRACT is off; `summarizer` is None
-    when CHAT_SESSION_SUMMARY is off — the two post-send features are independently
-    gated and share the one loaded ledger. The router builds the ctx when EITHER is
-    on; _maybe_auto_extract runs each only if its collaborator is present.
+    `former` is the MemoryFormationWorker composing the (flag-gated) extractor +
+    summarizer; it makes ONE combined cheap-tier call by default (or the two-call
+    fallback when CHAT_MEMORY_COMBINED_FORMATION is off). `retrieval` feeds the
+    profile() known-facts dedup read (only when former.wants_user_facts). The
+    router builds the ctx when EITHER feature flag is on; _maybe_auto_extract calls
+    former.form() once.
     """
 
-    extractor: MemoryExtractor | None
+    former: MemoryFormationWorker
     retrieval: MemoryRetrieval
     message_store: MessageStore
-    summarizer: SessionSummarizer | None = None
 
 
 def build_chat_memory_extractor(
@@ -856,6 +857,7 @@ def build_chat_memory_extractor(
     # unit tests that only exercise echo_demo / non-formation paths.
     from adapters.azure_openai.profile import build_azure_model_profile
     from agent_harness.memory.extraction import MemoryExtractor
+    from agent_harness.memory.formation import MemoryFormationWorker
     from agent_harness.memory.layers.user_layer import UserLayer
     from agent_harness.memory.session_summarizer import SessionSummarizer
 
@@ -877,11 +879,19 @@ def build_chat_memory_extractor(
 
     if extractor is None and summarizer is None:
         return None
-    return ChatMemoryExtractContext(
+    # Sprint 57.152: compose the (flag-gated) collaborators into ONE worker that
+    # makes a single combined cheap-tier call by default. chat_memory_combined_
+    # formation=false → the two-call fallback (each collaborator's own method).
+    former = MemoryFormationWorker(
+        profile.cheap,
         extractor=extractor,
+        summarizer=summarizer,
+        combined=settings.chat_memory_combined_formation,
+    )
+    return ChatMemoryExtractContext(
+        former=former,
         retrieval=retrieval,
         message_store=message_store,
-        summarizer=summarizer,
     )
 
 

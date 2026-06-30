@@ -60,6 +60,12 @@ ALLOWLIST_PATTERNS: tuple[str, ...] = (
     # by design NOT the main agent loop (no memory layers / tools / cache
     # breakpoints), so it is not routed through the centralized PromptBuilder.
     "agent_harness/memory/session_summarizer.py",
+    # Sprint 57.152: Cat 3 MemoryFormationWorker composes the extractor +
+    # summarizer into ONE combined background cheap-tier call (same utility-LLM
+    # category as extraction.py / session_summarizer.py above). It builds its own
+    # task-specific combined formation prompt and is by design NOT the main agent
+    # loop, so it is not routed through the centralized PromptBuilder.
+    "agent_harness/memory/formation.py",
     # Sprint 53.2: Cat 8 CircuitBreakerWrapper is a transparent ChatClient
     # decorator at adapter layer — it delegates `chat()` / `stream()` to the
     # inner adapter without constructing prompts. Caller (the AgentLoop) has

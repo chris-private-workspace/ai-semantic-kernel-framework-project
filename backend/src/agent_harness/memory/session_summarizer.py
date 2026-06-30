@@ -31,6 +31,7 @@ Created: 2026-06-30 (Sprint 57.151)
 Last Modified: 2026-06-30
 
 Modification History:
+    - 2026-06-30: Sprint 57.152 — extract store_summary() dispatch half (combined-formation reuse)
     - 2026-06-30: Initial creation (Sprint 57.151) — rolling session summarizer
 
 Related:
@@ -111,10 +112,25 @@ class SessionSummarizer:
         parsed = self._parse_summary(self._content_text(response.content))
         if parsed is None:
             return
+        await self.store_summary(parsed, session_id=session_id)
+
+    async def store_summary(
+        self,
+        parsed: dict[str, Any],
+        *,
+        session_id: UUID,
+    ) -> None:
+        """Upsert an already-parsed {summary, key_decisions, unresolved_issues}.
+
+        The dispatch half of summarization — split out (Sprint 57.152) so the
+        combined MemoryFormationWorker can reuse the SAME store code (the
+        blank-summary guard + the rolling upsert keyed on session_id) after a
+        single combined LLM call. summarize_and_store remains the standalone
+        single-call API (it now ends with this method). No-op on a blank summary.
+        """
         summary = parsed["summary"]
         if not summary.strip():
             return
-
         await self._store.upsert_summary(
             session_id=session_id,
             summary=summary.strip(),

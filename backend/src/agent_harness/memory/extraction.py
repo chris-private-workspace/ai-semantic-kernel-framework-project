@@ -31,9 +31,10 @@ Description:
 Owner: 01-eleven-categories-spec.md §範疇 3 (Memory) extraction worker
 
 Created: 2026-04-30 (Sprint 51.2 Day 3.3)
-Last Modified: 2026-06-28
+Last Modified: 2026-06-30
 
 Modification History (newest-first):
+    - 2026-06-30: Sprint 57.152 — extract write_facts() dispatch half (combined-formation reuse)
     - 2026-06-28: Sprint 57.149 — known_facts dedup + source tag (Option-B main-flow wiring)
     - 2026-04-30: Initial creation (Sprint 51.2 Day 3.3)
 """
@@ -105,11 +106,37 @@ class MemoryExtractor:
         )
 
         extracted = self._parse_extraction(self._content_text(response.content))
-        if not extracted:
-            return []
+        return await self.write_facts(
+            extracted,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            trace_context=trace_context,
+        )
 
+    async def write_facts(
+        self,
+        items: list[dict[str, Any]],
+        *,
+        tenant_id: UUID,
+        user_id: UUID,
+        trace_context: TraceContext | None = None,
+    ) -> list[UUID]:
+        """Write already-parsed `{content, confidence}` items to UserLayer.
+
+        The dispatch half of extraction — split out (Sprint 57.152) so the
+        combined MemoryFormationWorker can reuse the SAME write code (the
+        content/confidence clamp + source="auto_extract" tag + the 57.150
+        dedup upsert via UserLayer.write) after a single combined LLM call,
+        without re-deriving the facts itself. extract_session_to_user remains
+        the standalone single-call API (it now ends with this method).
+
+        Non-string / blank content items are dropped. Returns the written
+        MemoryUser entry IDs.
+        """
+        if not items:
+            return []
         new_ids: list[UUID] = []
-        for item in extracted:
+        for item in items:
             content = item.get("content")
             confidence = float(item.get("confidence", 0.6))
             if not isinstance(content, str) or not content.strip():
