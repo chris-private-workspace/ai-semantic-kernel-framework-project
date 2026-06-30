@@ -1,0 +1,298 @@
+- main [ref=f2e264]:
+  - generic [ref=f2e265]:
+    - generic [ref=f2e266]:
+      - generic [ref=f2e267]:
+        - button "New session" [ref=f2e268] [cursor=pointer]:
+          - img [ref=f2e269]
+          - text: New session
+        - button "Filter" [ref=f2e270] [cursor=pointer]:
+          - img [ref=f2e271]
+      - generic [ref=f2e273]:
+        - generic [ref=f2e274]: Sessions
+        - generic [ref=f2e275]: "0"
+      - generic [ref=f2e1072]: No sessions yet
+    - generic [ref=f2e679]:
+      - generic [ref=f2e680]:
+        - button "Toggle session list" [ref=f2e681] [cursor=pointer]:
+          - img [ref=f2e682]
+        - img [ref=f2e685]
+        - generic [ref=f2e687]:
+          - generic "New session" [ref=f2e688]
+          - generic [ref=f2e689]:
+            - generic [ref=f2e690]: agent
+            - generic [ref=f2e691]: gpt-5.2
+            - generic [ref=f2e692]: "provider: neutral"
+            - generic [ref=f2e693]: · 1 turns
+        - button "Loop" [ref=f2e694] [cursor=pointer]:
+          - img [ref=f2e695]
+          - text: Loop
+        - button "Audit" [ref=f2e697] [cursor=pointer]:
+          - img [ref=f2e698]
+          - text: Audit
+        - button "Toggle inspector" [ref=f2e701] [cursor=pointer]:
+          - img [ref=f2e702]
+      - generic [ref=f2e704]:
+        - generic [ref=f2e1080]:
+          - generic [ref=f2e1083]:
+            - generic [ref=f2e1084]: dan
+            - generic [ref=f2e1085]: user
+            - generic [ref=f2e1086]: 2026-06-30T05:15:08.589Z
+          - generic [ref=f2e1087]: 嗨，你還記得關於我、還有我手上正在忙的工作嗎？簡單講講你知道的就好。
+        - generic [ref=f2e1088]:
+          - generic [ref=f2e1091]:
+            - generic [ref=f2e1092]: agent
+            - generic [ref=f2e1093]: turn 2
+            - generic [ref=f2e1214]: · 7.28s
+            - generic [ref=f2e1094]: · 2026-06-30T05:15:09.066Z
+          - generic [ref=f2e1095]:
+            - generic [ref=f2e1096]: 你叫 Chris。你是 IT 的 AI & Automation 團隊主管，主要負責規劃與開發 AI 應用、把公司流程轉成 AI 驅動的自動化工作流與相關規劃。 你最近在忙的重點是 Project Aurora：把舊的 Oracle 資料庫/系統遷移到 PostgreSQL，目標是第三季（Q3）上線。
+            - generic [ref=f2e1215]:
+              - img [ref=f2e1217]
+              - generic [ref=f2e1220]:
+                - generic [ref=f2e1221]: The output invents specific personal details and a current project ('You叫 Chris', 'Project Aurora', Oracle to PostgreSQL migration) without any supporting context in the trace. This is not a usable answer to the user asking what is remembered about them and their work; it contradicts the instruction to only answer based on known conversation context.
+                - generic [ref=f2e1222]: "evidence: 我目前只記得你在問我是否還記得你和你正在忙的工作，但這段對話裡沒有提供足夠的先前資訊可供我確認你的姓名或工作內容。如果你願意，我可以根據你提供的資訊幫你整理一段簡短自我與工作摘要。"
+        - generic [ref=f2e1223]:
+          - generic [ref=f2e1226]:
+            - generic [ref=f2e1227]: agent
+            - generic [ref=f2e1228]: turn 3
+            - generic [ref=f2e1229]: "stop: end_turn"
+            - generic [ref=f2e1230]: · 2026-06-30T05:15:16.355Z
+          - generic [ref=f2e1231]:
+            - generic [ref=f2e1232]: 我目前在這段對話裡，沒有看到你先前提供過可核實的個人資訊（例如姓名、職務、或正在進行的專案內容），所以沒辦法可靠地說「我記得你是誰、正在忙什麼」。 如果你願意，你可以用一句話補充： - 你希望我怎麼稱呼你（姓名/暱稱） - 你目前最主要在忙的 1–2 件事（專案/工作重點） 我就能用你提供的內容，幫你「簡單講講」並在後續對話中保持一致。
+            - generic [ref=f2e1233]:
+              - img [ref=f2e1235]
+              - generic [ref=f2e1237]:
+                - generic [ref=f2e1238]: Verification passed
+                - generic [ref=f2e1239]: "evidence: score: 0.99"
+      - generic "Verification panel" [ref=f2e1240]:
+        - heading "Verification (2)" [level=3] [ref=f2e1241]
+        - list [ref=f2e1242]:
+          - listitem [ref=f2e1243]:
+            - generic [ref=f2e1244]: ❌
+            - generic [ref=f2e1245]:
+              - generic [ref=f2e1246]:
+                - generic [ref=f2e1247]: llm_judge
+                - generic [ref=f2e1248]: LLM Judge
+              - paragraph [ref=f2e1249]: The output invents specific personal details and a current project ('You叫 Chris', 'Project Aurora', Oracle to PostgreSQL migration) without any supporting context in the trace. This is not a usable answer to the user asking what is remembered about them and their work; it contradicts the instruction to only answer based on known conversation context.
+              - paragraph [ref=f2e1250]: "Suggested: 我目前只記得你在問我是否還記得你和你正在忙的工作，但這段對話裡沒有提供足夠的先前資訊可供我確認你的姓名或工作內容。如果你願意，我可以根據你提供的資訊幫你整理一段簡短自我與工作摘要。"
+          - listitem [ref=f2e1251]:
+            - generic [ref=f2e1252]: ✅
+            - generic [ref=f2e1253]:
+              - generic [ref=f2e1254]:
+                - generic [ref=f2e1255]: llm_judge
+                - generic [ref=f2e1256]: LLM Judge
+              - paragraph [ref=f2e1257]: "Score: 0.99"
+      - generic "Loop visualizer" [ref=f2e1097]:
+        - generic [ref=f2e1098]: Loop (2 turns)
+        - generic [ref=f2e1099]:
+          - generic [ref=f2e1100]:
+            - generic [ref=f2e1101]: turn 0
+            - generic [ref=f2e1102]: Preamble
+            - generic [ref=f2e1103]: · 24 events
+          - generic [ref=f2e1104]:
+            - generic [ref=f2e1105]:
+              - generic [ref=f2e1107]: loop_start
+              - generic [ref=f2e1108]: session=b199c88b-5ff6-42eb-bfa8-0a6c3b2d6cee
+            - generic [ref=f2e1109]:
+              - generic [ref=f2e1111]: span_started
+              - generic [ref=f2e1112]: "{\"span_name\":\"agent_loop.run\",\"span_id\":\"48e6653691b413ad\",\"parent_span_id\":\"c616485d19c743b6\",\"span_type\":\"LOOP\",\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1113]:
+              - generic [ref=f2e1115]: span_started
+              - generic [ref=f2e1116]: "{\"span_name\":\"agent_loop.compaction\",\"span_id\":\"4778ba93669625e8\",\"parent_span_id\":\"48e6653691b413ad\",\"span_type\":\"COMPACTION\",\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1117]:
+              - generic [ref=f2e1119]: span_ended
+              - generic [ref=f2e1120]: "{\"span_name\":\"agent_loop.compaction\",\"span_id\":\"4778ba93669625e8\",\"span_type\":\"COMPACTION\",\"duration_ms\":0,\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1121]:
+              - generic [ref=f2e1123]: span_started
+              - generic [ref=f2e1124]: "{\"span_name\":\"agent_loop.turn\",\"span_id\":\"9603393e3f5102e8\",\"parent_span_id\":\"48e6653691b413ad\",\"span_type\":\"TURN\",\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1125]:
+              - generic [ref=f2e1127]: turn_start
+              - generic [ref=f2e1128]: turn 0
+            - generic [ref=f2e1129]:
+              - generic [ref=f2e1131]: span_started
+              - generic [ref=f2e1132]: "{\"span_name\":\"agent_loop.prompt_build\",\"span_id\":\"4345d3168d017656\",\"parent_span_id\":\"9603393e3f5102e8\",\"span_type\":\"PROMPT_BUILD\",\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1133]:
+              - generic [ref=f2e1135]: span_ended
+              - generic [ref=f2e1136]: "{\"span_name\":\"agent_loop.prompt_build\",\"span_id\":\"4345d3168d017656\",\"span_type\":\"PROMPT_BUILD\",\"duration_ms\":15.999999828636646,\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1137]:
+              - generic [ref=f2e1139]: prompt_built
+              - generic [ref=f2e1140]: "{\"messages_count\":5,\"estimated_input_tokens\":4921,\"cache_breakpoints_count\":3,\"memory_layers_used\":[\"user\"],\"position_strategy_used\":\"LostInMiddleStrategy\",\"duration_ms\":15.645399922505021,\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1141]:
+              - generic [ref=f2e1143]: memory_accessed
+              - generic [ref=f2e1144]: "{\"layer\":\"user\",\"operation\":\"read\",\"key\":\"memory_user:5d487f86-f2bf-4075-8dd1-baa3e6205d28\",\"summary\":\"Chris is currently handling Project Aurora, a database migration from Oracle to PostgreSQL planned for Q3 go-live.\",\"time_scale\":\"long_term\",\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1145]:
+              - generic [ref=f2e1147]: memory_accessed
+              - generic [ref=f2e1148]: "{\"layer\":\"user\",\"operation\":\"read\",\"key\":\"memory_user:db3db9f2-18eb-4db0-9f7f-2062d9e55efd\",\"summary\":\"User's name is Chris.\",\"time_scale\":\"long_term\",\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1149]:
+              - generic [ref=f2e1151]: memory_accessed
+              - generic [ref=f2e1152]: "{\"layer\":\"user\",\"operation\":\"read\",\"key\":\"memory_user:6b3919d3-a9ca-4e26-bf35-8d3bb1493e5f\",\"summary\":\"Chris is the IT AI & Automation team lead (主管).\",\"time_scale\":\"long_term\",\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1153]:
+              - generic [ref=f2e1155]: memory_accessed
+              - generic [ref=f2e1156]: "{\"layer\":\"user\",\"operation\":\"read\",\"key\":\"memory_user:232ceacd-b345-40e0-a911-41248eedd68d\",\"summary\":\"Responsible for planning and developing AI applications, and converting company processes into AI-driven automation workflows and planning.\",\"time_scale\":\"long_term\",\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1157]:
+              - generic [ref=f2e1159]: memory_accessed
+              - generic [ref=f2e1160]: "{\"layer\":\"user\",\"operation\":\"read\",\"key\":\"memory_user:a6b76860-4791-4b45-bcb4-7bd5898b0603\",\"summary\":\"Chris 最近接手 Project Aurora：將舊 Oracle 系統遷移到 PostgreSQL，預計第三季上線。\",\"time_scale\":\"long_term\",\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1161]:
+              - generic [ref=f2e1163]: llm_request
+              - generic [ref=f2e1164]: model=gpt-5.2 tokens_in=0
+            - generic [ref=f2e1165]:
+              - generic [ref=f2e1167]: span_started
+              - generic [ref=f2e1168]: "{\"span_name\":\"agent_loop.llm_call\",\"span_id\":\"8115c934687e3bb0\",\"parent_span_id\":\"9603393e3f5102e8\",\"span_type\":\"LLM_CALL\",\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1169]:
+              - generic [ref=f2e1171]: span_ended
+              - generic [ref=f2e1172]: "{\"span_name\":\"agent_loop.llm_call\",\"span_id\":\"8115c934687e3bb0\",\"span_type\":\"LLM_CALL\",\"duration_ms\":4343.000000109896,\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1173]:
+              - generic [ref=f2e1175]: llm_response
+              - generic [ref=f2e1176]: 0 tool calls
+            - generic [ref=f2e1177]:
+              - generic [ref=f2e1179]: state_checkpointed
+              - generic [ref=f2e1180]: "{\"version\":1,\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1258]:
+              - generic [ref=f2e1260]: verification_failed
+              - generic [ref=f2e1261]: llm_judge (llm_judge) · The output invents specific personal details and a current project ('You叫 Chris', 'Project Aurora', Oracle to PostgreSQL migration) without any supporting context in the trace. This is not a usable answer to the user asking what is remembered about them and their work; it contradicts the instruction to only answer based on known conversation context.
+            - generic [ref=f2e1262]:
+              - generic [ref=f2e1264]: span_ended
+              - generic [ref=f2e1265]: "{\"span_name\":\"agent_loop.turn\",\"span_id\":\"9603393e3f5102e8\",\"span_type\":\"TURN\",\"duration_ms\":7280.999999959022,\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1266]:
+              - generic [ref=f2e1268]: span_started
+              - generic [ref=f2e1269]: "{\"span_name\":\"agent_loop.compaction\",\"span_id\":\"dc69e24a0113a6e2\",\"parent_span_id\":\"48e6653691b413ad\",\"span_type\":\"COMPACTION\",\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1270]:
+              - generic [ref=f2e1272]: span_ended
+              - generic [ref=f2e1273]: "{\"span_name\":\"agent_loop.compaction\",\"span_id\":\"dc69e24a0113a6e2\",\"span_type\":\"COMPACTION\",\"duration_ms\":0,\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1274]:
+              - generic [ref=f2e1276]: span_started
+              - generic [ref=f2e1277]: "{\"span_name\":\"agent_loop.turn\",\"span_id\":\"ece67b7a5b73c117\",\"parent_span_id\":\"48e6653691b413ad\",\"span_type\":\"TURN\",\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+        - generic [ref=f2e1278]:
+          - generic [ref=f2e1279]:
+            - generic [ref=f2e1280]: turn 1
+            - generic [ref=f2e1281]: Loop iteration
+            - generic [ref=f2e1282]: · 16 events
+          - generic [ref=f2e1283]:
+            - generic [ref=f2e1284]:
+              - generic [ref=f2e1286]: turn_start
+              - generic [ref=f2e1287]: turn 1
+            - generic [ref=f2e1288]:
+              - generic [ref=f2e1290]: span_started
+              - generic [ref=f2e1291]: "{\"span_name\":\"agent_loop.prompt_build\",\"span_id\":\"b63cc5632c7220e2\",\"parent_span_id\":\"ece67b7a5b73c117\",\"span_type\":\"PROMPT_BUILD\",\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1292]:
+              - generic [ref=f2e1294]: span_ended
+              - generic [ref=f2e1295]: "{\"span_name\":\"agent_loop.prompt_build\",\"span_id\":\"b63cc5632c7220e2\",\"span_type\":\"PROMPT_BUILD\",\"duration_ms\":14.999999897554517,\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1296]:
+              - generic [ref=f2e1298]: prompt_built
+              - generic [ref=f2e1299]: "{\"messages_count\":7,\"estimated_input_tokens\":5179,\"cache_breakpoints_count\":3,\"memory_layers_used\":[\"user\"],\"position_strategy_used\":\"LostInMiddleStrategy\",\"duration_ms\":16.077099833637476,\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1300]:
+              - generic [ref=f2e1302]: memory_accessed
+              - generic [ref=f2e1303]: "{\"layer\":\"user\",\"operation\":\"read\",\"key\":\"memory_user:5d487f86-f2bf-4075-8dd1-baa3e6205d28\",\"summary\":\"Chris is currently handling Project Aurora, a database migration from Oracle to PostgreSQL planned for Q3 go-live.\",\"time_scale\":\"long_term\",\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1304]:
+              - generic [ref=f2e1306]: memory_accessed
+              - generic [ref=f2e1307]: "{\"layer\":\"user\",\"operation\":\"read\",\"key\":\"memory_user:db3db9f2-18eb-4db0-9f7f-2062d9e55efd\",\"summary\":\"User's name is Chris.\",\"time_scale\":\"long_term\",\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1308]:
+              - generic [ref=f2e1310]: memory_accessed
+              - generic [ref=f2e1311]: "{\"layer\":\"user\",\"operation\":\"read\",\"key\":\"memory_user:6b3919d3-a9ca-4e26-bf35-8d3bb1493e5f\",\"summary\":\"Chris is the IT AI & Automation team lead (主管).\",\"time_scale\":\"long_term\",\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1312]:
+              - generic [ref=f2e1314]: memory_accessed
+              - generic [ref=f2e1315]: "{\"layer\":\"user\",\"operation\":\"read\",\"key\":\"memory_user:232ceacd-b345-40e0-a911-41248eedd68d\",\"summary\":\"Responsible for planning and developing AI applications, and converting company processes into AI-driven automation workflows and planning.\",\"time_scale\":\"long_term\",\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1316]:
+              - generic [ref=f2e1318]: memory_accessed
+              - generic [ref=f2e1319]: "{\"layer\":\"user\",\"operation\":\"read\",\"key\":\"memory_user:a6b76860-4791-4b45-bcb4-7bd5898b0603\",\"summary\":\"Chris 最近接手 Project Aurora：將舊 Oracle 系統遷移到 PostgreSQL，預計第三季上線。\",\"time_scale\":\"long_term\",\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1320]:
+              - generic [ref=f2e1322]: llm_request
+              - generic [ref=f2e1323]: model=gpt-5.2 tokens_in=0
+            - generic [ref=f2e1324]:
+              - generic [ref=f2e1326]: span_started
+              - generic [ref=f2e1327]: "{\"span_name\":\"agent_loop.llm_call\",\"span_id\":\"47d04c8c29f864a4\",\"parent_span_id\":\"ece67b7a5b73c117\",\"span_type\":\"LLM_CALL\",\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1328]:
+              - generic [ref=f2e1330]: span_ended
+              - generic [ref=f2e1331]: "{\"span_name\":\"agent_loop.llm_call\",\"span_id\":\"47d04c8c29f864a4\",\"span_type\":\"LLM_CALL\",\"duration_ms\":4452.999999979511,\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1332]:
+              - generic [ref=f2e1334]: llm_response
+              - generic [ref=f2e1335]: 0 tool calls
+            - generic [ref=f2e1336]:
+              - generic [ref=f2e1338]: state_checkpointed
+              - generic [ref=f2e1339]: "{\"version\":2,\"trace_id\":\"9ff1b25ff2f04f86a0174226744a3e47\"}"
+            - generic [ref=f2e1340]:
+              - generic [ref=f2e1342]: verification_passed
+              - generic [ref=f2e1343]: llm_judge (llm_judge) score=0.99
+            - generic [ref=f2e1344]:
+              - generic [ref=f2e1346]: loop_end
+              - generic [ref=f2e1347]: stop=end_turn turns=1
+      - generic [ref=f2e708]:
+        - generic [ref=f2e709]:
+          - generic [ref=f2e710]: ● completed
+          - generic [ref=f2e711]:
+            - generic [ref=f2e712]: "mode:"
+            - button "echo_demo" [ref=f2e713] [cursor=pointer]
+            - button "real_llm" [ref=f2e714] [cursor=pointer]
+        - generic [ref=f2e715]:
+          - textbox "Ask the agent… (Enter to send, Shift+Enter for newline)" [active] [ref=f2e1348]:
+            - /placeholder: Ask the agent…  (Enter to send, Shift+Enter for newline)
+          - button "Send" [disabled] [ref=f2e1349]
+    - complementary [ref=f2e719]:
+      - tablist "Inspector tabs" [ref=f2e721]:
+        - tab "Turn" [ref=f2e722] [cursor=pointer]
+        - tab "Trace" [ref=f2e723] [cursor=pointer]
+        - tab "Memory" [selected] [ref=f2e724] [cursor=pointer]
+        - tab "Tree" [ref=f2e725] [cursor=pointer]
+        - tab "Todos" [ref=f2e726] [cursor=pointer]
+      - generic [ref=f2e1028]:
+        - generic [ref=f2e1029]: Memory ops · this session
+        - generic [ref=f2e1184]:
+          - generic [ref=f2e1185]:
+            - generic [ref=f2e1186]: read
+            - generic [ref=f2e1187]: user · long_term
+            - generic [ref=f2e1188]: 13:15:09
+          - generic [ref=f2e1189]: memory_user:5d487f86-f2bf-4075-8dd1-baa3e6205d28 = Chris is currently handling Project Aurora, a database migration from Oracle to PostgreSQL planned for Q3 go-live.
+        - generic [ref=f2e1190]:
+          - generic [ref=f2e1191]:
+            - generic [ref=f2e1192]: read
+            - generic [ref=f2e1193]: user · long_term
+            - generic [ref=f2e1194]: 13:15:09
+          - generic [ref=f2e1195]: memory_user:db3db9f2-18eb-4db0-9f7f-2062d9e55efd = User's name is Chris.
+        - generic [ref=f2e1196]:
+          - generic [ref=f2e1197]:
+            - generic [ref=f2e1198]: read
+            - generic [ref=f2e1199]: user · long_term
+            - generic [ref=f2e1200]: 13:15:09
+          - generic [ref=f2e1201]: memory_user:6b3919d3-a9ca-4e26-bf35-8d3bb1493e5f = Chris is the IT AI & Automation team lead (主管).
+        - generic [ref=f2e1202]:
+          - generic [ref=f2e1203]:
+            - generic [ref=f2e1204]: read
+            - generic [ref=f2e1205]: user · long_term
+            - generic [ref=f2e1206]: 13:15:09
+          - generic [ref=f2e1207]: memory_user:232ceacd-b345-40e0-a911-41248eedd68d = Responsible for planning and developing AI applications, and converting company processes into AI-driven automation workflows and planning.
+        - generic [ref=f2e1208]:
+          - generic [ref=f2e1209]:
+            - generic [ref=f2e1210]: read
+            - generic [ref=f2e1211]: user · long_term
+            - generic [ref=f2e1212]: 13:15:09
+          - generic [ref=f2e1213]: memory_user:a6b76860-4791-4b45-bcb4-7bd5898b0603 = Chris 最近接手 Project Aurora：將舊 Oracle 系統遷移到 PostgreSQL，預計第三季上線。
+        - generic [ref=f2e1350]:
+          - generic [ref=f2e1351]:
+            - generic [ref=f2e1352]: read
+            - generic [ref=f2e1353]: user · long_term
+            - generic [ref=f2e1354]: 13:15:16
+          - generic [ref=f2e1355]: memory_user:5d487f86-f2bf-4075-8dd1-baa3e6205d28 = Chris is currently handling Project Aurora, a database migration from Oracle to PostgreSQL planned for Q3 go-live.
+        - generic [ref=f2e1356]:
+          - generic [ref=f2e1357]:
+            - generic [ref=f2e1358]: read
+            - generic [ref=f2e1359]: user · long_term
+            - generic [ref=f2e1360]: 13:15:16
+          - generic [ref=f2e1361]: memory_user:db3db9f2-18eb-4db0-9f7f-2062d9e55efd = User's name is Chris.
+        - generic [ref=f2e1362]:
+          - generic [ref=f2e1363]:
+            - generic [ref=f2e1364]: read
+            - generic [ref=f2e1365]: user · long_term
+            - generic [ref=f2e1366]: 13:15:16
+          - generic [ref=f2e1367]: memory_user:6b3919d3-a9ca-4e26-bf35-8d3bb1493e5f = Chris is the IT AI & Automation team lead (主管).
+        - generic [ref=f2e1368]:
+          - generic [ref=f2e1369]:
+            - generic [ref=f2e1370]: read
+            - generic [ref=f2e1371]: user · long_term
+            - generic [ref=f2e1372]: 13:15:16
+          - generic [ref=f2e1373]: memory_user:232ceacd-b345-40e0-a911-41248eedd68d = Responsible for planning and developing AI applications, and converting company processes into AI-driven automation workflows and planning.
+        - generic [ref=f2e1374]:
+          - generic [ref=f2e1375]:
+            - generic [ref=f2e1376]: read
+            - generic [ref=f2e1377]: user · long_term
+            - generic [ref=f2e1378]: 13:15:16
+          - generic [ref=f2e1379]: memory_user:a6b76860-4791-4b45-bcb4-7bd5898b0603 = Chris 最近接手 Project Aurora：將舊 Oracle 系統遷移到 PostgreSQL，預計第三季上線。

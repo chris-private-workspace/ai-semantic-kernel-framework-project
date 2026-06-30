@@ -1,10 +1,11 @@
 """
 File: backend/tests/unit/agent_harness/memory/test_extraction.py
-Purpose: Unit tests for MemoryExtractor (session -> user; manual-trigger).
+Purpose: Unit tests for MemoryExtractor (session -> user; + 57.149 known_facts dedup + source tag).
 Category: Tests / 範疇 3
-Scope: Phase 51 / Sprint 51.2 Day 3.4
+Scope: Phase 51 / Sprint 51.2 Day 3.4 (created); Sprint 57.149 (known_facts + source)
 
 Created: 2026-04-30
+Last Modified: 2026-06-28
 """
 
 from __future__ import annotations
@@ -137,3 +138,90 @@ async def test_extract_handles_prose_around_json() -> None:
     )
     assert len(new_ids) == 1
     assert user_layer.writes[0]["content"] == "user works on weekends"
+
+
+# === Sprint 57.149 (AD-Memory-Formation-Auto-Extract) — source tag + dedup ===
+
+
+@pytest.mark.asyncio
+async def test_extract_tags_source_auto_extract() -> None:
+    """Extracted rows carry source='auto_extract' so they are distinguishable
+    from agent-driven memory_write rows (drive-through attribution + dedup)."""
+    chat_client = MockChatClient(
+        responses=[
+            ChatResponse(
+                model="mock",
+                content='[{"content": "user is named Chris", "confidence": 0.9}]',
+                stop_reason=StopReason.END_TURN,
+            )
+        ]
+    )
+    user_layer = _UserLayerStub()
+    extractor = MemoryExtractor(chat_client=chat_client, user_layer=user_layer)  # type: ignore[arg-type]  # noqa: E501
+
+    await extractor.extract_session_to_user(
+        session_id=uuid4(),
+        tenant_id=uuid4(),
+        user_id=uuid4(),
+        messages=[Message(role="user", content="I am Chris")],
+    )
+    assert user_layer.writes[0]["source"] == "auto_extract"
+
+
+def test_build_known_block_empty_returns_blank() -> None:
+    """No known facts → empty block (the 51.2 prompt stays byte-identical)."""
+    assert MemoryExtractor._build_known_block(None) == ""
+    assert MemoryExtractor._build_known_block([]) == ""
+    assert MemoryExtractor._build_known_block(["", "  "]) == ""  # blank-only filtered
+
+
+def test_build_known_block_lists_facts() -> None:
+    """Known facts → a do-not-repeat dedup block listing each fact."""
+    block = MemoryExtractor._build_known_block(["user is Chris", "user likes tables"])
+    assert "ALREADY REMEMBERED" in block
+    assert "user is Chris" in block
+    assert "user likes tables" in block
+
+
+@pytest.mark.asyncio
+async def test_known_facts_reach_extraction_prompt() -> None:
+    """known_facts seed the prompt-level dedup block sent to the LLM."""
+    chat_client = MockChatClient(
+        responses=[ChatResponse(model="mock", content="[]", stop_reason=StopReason.END_TURN)]
+    )
+    user_layer = _UserLayerStub()
+    extractor = MemoryExtractor(chat_client=chat_client, user_layer=user_layer)  # type: ignore[arg-type]  # noqa: E501
+
+    await extractor.extract_session_to_user(
+        session_id=uuid4(),
+        tenant_id=uuid4(),
+        user_id=uuid4(),
+        messages=[Message(role="user", content="hi")],
+        known_facts=["user name is Chris"],
+    )
+    assert chat_client.last_request is not None
+    prompt = chat_client.last_request.messages[0].content
+    assert isinstance(prompt, str)
+    assert "ALREADY REMEMBERED" in prompt
+    assert "user name is Chris" in prompt
+
+
+@pytest.mark.asyncio
+async def test_no_known_facts_prompt_has_no_dedup_block() -> None:
+    """Without known_facts the extraction prompt has no dedup block."""
+    chat_client = MockChatClient(
+        responses=[ChatResponse(model="mock", content="[]", stop_reason=StopReason.END_TURN)]
+    )
+    user_layer = _UserLayerStub()
+    extractor = MemoryExtractor(chat_client=chat_client, user_layer=user_layer)  # type: ignore[arg-type]  # noqa: E501
+
+    await extractor.extract_session_to_user(
+        session_id=uuid4(),
+        tenant_id=uuid4(),
+        user_id=uuid4(),
+        messages=[Message(role="user", content="hi")],
+    )
+    assert chat_client.last_request is not None
+    prompt = chat_client.last_request.messages[0].content
+    assert isinstance(prompt, str)
+    assert "ALREADY REMEMBERED" not in prompt

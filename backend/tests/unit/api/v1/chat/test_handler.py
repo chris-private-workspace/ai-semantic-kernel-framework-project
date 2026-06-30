@@ -18,6 +18,8 @@ from agent_harness._contracts import SubagentBudget
 from agent_harness.orchestrator_loop import AgentLoopImpl
 from agent_harness.tools.memory_tools import MEMORY_FORMATION_NUDGE
 from api.v1.chat.handler import (
+    ChatMemoryExtractContext,
+    build_chat_memory_extractor,
     build_echo_demo_handler,
     build_handler,
     build_real_llm_handler,
@@ -115,6 +117,45 @@ def test_echo_demo_handler_omits_memory_formation_nudge() -> None:
     loop = build_echo_demo_handler(message="hi")
 
     assert MEMORY_FORMATION_NUDGE not in loop._system_prompt  # type: ignore[attr-defined]
+
+
+# --- Sprint 57.149: post-send Option-B auto-extract context builder -----------
+
+
+def test_build_chat_memory_extractor_none_without_azure_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Missing Azure env → None (SOFT — unlike build_real_llm_handler which raises)."""
+    monkeypatch.delenv("AZURE_OPENAI_ENDPOINT", raising=False)
+    monkeypatch.delenv("AZURE_OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("AZURE_OPENAI_DEPLOYMENT_NAME", raising=False)
+    ctx = build_chat_memory_extractor(None, object(), uuid4(), uuid4())  # type: ignore[arg-type]
+    assert ctx is None
+
+
+def test_build_chat_memory_extractor_none_without_db_session_tenant(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Env present but db/session/tenant absent → None (needs the ledger scope)."""
+    _set_azure_env(monkeypatch, strong="strong-deploy")
+    db = object()
+    sid, tid = uuid4(), uuid4()
+    assert build_chat_memory_extractor(None, None, sid, tid) is None
+    assert build_chat_memory_extractor(None, db, None, tid) is None  # type: ignore[arg-type]
+    assert build_chat_memory_extractor(None, db, sid, None) is None  # type: ignore[arg-type]
+
+
+def test_build_chat_memory_extractor_returns_context_on_cheap_tier(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Env + db/session/tenant → a ChatMemoryExtractContext whose extractor runs
+    on the CHEAP deployment (background-LLM tier, not the user-facing action tier)."""
+    _set_azure_env(monkeypatch, strong="strong-deploy")
+    monkeypatch.setenv("AZURE_OPENAI_CHEAP_DEPLOYMENT_NAME", "cheap-deploy")
+    ctx = build_chat_memory_extractor(None, object(), uuid4(), uuid4())  # type: ignore[arg-type]
+    assert isinstance(ctx, ChatMemoryExtractContext)
+    client = ctx.extractor._chat_client  # type: ignore[attr-defined]
+    assert client.config.deployment_name == "cheap-deploy"
 
 
 def test_build_real_llm_routes_cheap_to_verifier_action_to_loop(

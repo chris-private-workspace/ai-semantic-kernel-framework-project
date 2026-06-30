@@ -93,6 +93,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
+from starlette.background import BackgroundTask
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -151,7 +152,12 @@ from platform_layer.tenant.quota import (
     maybe_get_quota_enforcer,
 )
 
-from .handler import build_handler, resolve_session_persona
+from .handler import (
+    ChatMemoryExtractContext,
+    build_chat_memory_extractor,
+    build_handler,
+    resolve_session_persona,
+)
 from .injection_registry import get_default_injection_registry
 from .schemas import (
     ChatRequest,
@@ -424,6 +430,18 @@ async def chat(
     # failed → enqueue is skipped (degrade, same best-effort spirit as before).
     billing_outbox = maybe_get_billing_outbox()
 
+    # Sprint 57.149 (AD-Memory-Formation-Auto-Extract): the post-completion
+    # Option-B auto-extract context (cheap-tier extractor + retrieval + the
+    # session message ledger). Built only for the real_llm path with the env
+    # flag on — its presence in _stream_loop_events IS the gate. echo_demo /
+    # flag-off / missing Azure env / no db-session-tenant → None → the hook is a
+    # no-op (byte-identical to 57.148).
+    memory_extract_ctx: ChatMemoryExtractContext | None = (
+        build_chat_memory_extractor(model_policy, db, session_id, current_tenant)
+        if (req.mode == "real_llm" and settings.chat_memory_auto_extract)
+        else None
+    )
+
     return StreamingResponse(
         _stream_loop_events(
             loop,
@@ -456,6 +474,24 @@ async def chat(
             "X-Session-Id": str(session_id),
             "X-Trace-Id": trace_ctx.trace_id,
         },
+        # Sprint 57.149 (AD-Memory-Formation-Auto-Extract): run the Option-B
+        # deterministic extraction as a Starlette BackgroundTask — it executes
+        # AFTER the SSE body is fully sent, OUTSIDE the streaming generator. This
+        # (a) keeps the generator free of a post-loop blocking await (which made the
+        # generator "ignore GeneratorExit" + spam OTel context-detach errors when
+        # the client disconnected right after the final answer), and (b) is NOT a
+        # fire-and-forget orphan (Starlette owns its lifecycle), so it sidesteps the
+        # 57.97/57.143 spawn-worker trap the original synchronous design feared.
+        # memory_extract_ctx is None (echo / flag-off / missing env) → _maybe_auto_extract
+        # is a no-op. The extractor / retrieval / message_store all open their OWN
+        # sessions, so the request db being torn down does not affect this task.
+        background=BackgroundTask(
+            _maybe_auto_extract,
+            memory_extract_ctx=memory_extract_ctx,
+            tenant_id=current_tenant,
+            session_id=session_id,
+            trace_context=trace_ctx,
+        ),
     )
 
 
@@ -632,6 +668,50 @@ async def _max_main_seq(
         MessageEvent.tenant_id == tenant_id,
     )
     return int((await db.execute(stmt)).scalar_one())
+
+
+async def _maybe_auto_extract(
+    *,
+    memory_extract_ctx: ChatMemoryExtractContext | None,
+    tenant_id: UUID,
+    session_id: UUID,
+    trace_context: TraceContext,
+) -> None:
+    """Sprint 57.149 (AD-Memory-Formation-Auto-Extract): the post-completion
+    Option-B deterministic extraction body. Runs as a Starlette BackgroundTask
+    AFTER the SSE response body is fully sent (OUTSIDE the streaming generator,
+    so a client disconnect can't make the generator ignore GeneratorExit).
+
+    No-op unless an extract context is wired (the router builds it only for
+    real_llm + CHAT_MEMORY_AUTO_EXTRACT on) AND a user is known. Loads the
+    session ledger, reads existing facts via profile() for prompt-level dedup,
+    then runs the cheap-tier extractor. BEST-EFFORT: any failure is logged +
+    swallowed — memory formation must NEVER surface to the user.
+    """
+    if memory_extract_ctx is None or trace_context.user_id is None:
+        return
+    try:
+        ledger = await memory_extract_ctx.message_store.load()
+        if not ledger:
+            return
+        known_hints = await memory_extract_ctx.retrieval.profile(
+            tenant_id=tenant_id, user_id=trace_context.user_id
+        )
+        known_facts = [h.summary for h in known_hints if h.summary]
+        await memory_extract_ctx.extractor.extract_session_to_user(
+            session_id=session_id,
+            tenant_id=tenant_id,
+            user_id=trace_context.user_id,
+            messages=ledger,
+            known_facts=known_facts,
+            trace_context=trace_context,
+        )
+    except Exception:  # noqa: BLE001 — formation is best-effort; never break the stream
+        logger.exception(
+            "chat session %s/%s: memory auto-extract failed (best-effort)",
+            tenant_id,
+            session_id,
+        )
 
 
 def _drain_subagent_frames(buffer: "list[LoopEvent] | None") -> list[bytes]:

@@ -80,6 +80,7 @@ class _TenantStubLayer(MemoryLayer):
         user_id: UUID | None = None,
         time_scale: Literal["short_term", "long_term", "semantic"] = "long_term",
         confidence: float = 0.5,
+        source: str | None = None,
         trace_context: TraceContext | None = None,
     ) -> UUID:
         if tenant_id is None:
@@ -91,6 +92,7 @@ class _TenantStubLayer(MemoryLayer):
                 "user_id": user_id,
                 "content": content,
                 "time_scale": time_scale,
+                "source": source,
             }
         )
         self._store.append(

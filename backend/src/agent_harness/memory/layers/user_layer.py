@@ -28,6 +28,7 @@ Created: 2026-04-30 (Sprint 51.2 Day 2)
 Last Modified: 2026-06-04
 
 Modification History:
+    - 2026-06-28: Sprint 57.149 — write() additive source param → memory_user.source column
     - 2026-06-04: Sprint 57.76 — emit memory_ops on write/evict (same txn, Risk C)
     - 2026-04-30: Initial creation (Sprint 51.2 Day 2.2)
 
@@ -111,12 +112,20 @@ class UserLayer(MemoryLayer):
         user_id: UUID | None = None,
         time_scale: _TimeScale = "long_term",
         confidence: float = 0.5,
+        source: str | None = None,
         trace_context: TraceContext | None = None,
     ) -> UUID:
         """Insert into memory_user; return new id.
 
         Spec fields without PG columns (verify_before_use, last_verified_at,
         source_tool_call_id, time_scale) live in metadata JSONB.
+
+        `source` is the optional provenance tag persisted into the real
+        `memory_user.source` column (additive; default None = pre-57.149
+        behavior). Sprint 57.149 wires the post-send `MemoryExtractor` to pass
+        `source="auto_extract"` so deterministic-extraction rows are
+        distinguishable from agent-driven `memory_write` rows (drive-through
+        attribution + future upsert-by-key dedup).
         """
         if tenant_id is None or user_id is None:
             raise ValueError("UserLayer.write requires tenant_id and user_id")
@@ -140,6 +149,7 @@ class UserLayer(MemoryLayer):
                 user_id=user_id,
                 category="general",
                 content=content,
+                source=source,
                 confidence=Decimal(str(round(confidence, 2))),
                 expires_at=expires_at,
                 metadata_=metadata,

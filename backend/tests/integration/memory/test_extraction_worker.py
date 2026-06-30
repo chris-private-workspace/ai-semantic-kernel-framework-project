@@ -40,6 +40,7 @@ class _RecordingLayer(MemoryLayer):
         user_id: UUID | None = None,
         time_scale: Literal["short_term", "long_term", "semantic"] = "long_term",
         confidence: float = 0.5,
+        source: str | None = None,
         trace_context: TraceContext | None = None,
     ) -> UUID:
         self.writes.append(
@@ -49,6 +50,7 @@ class _RecordingLayer(MemoryLayer):
                 "user_id": user_id,
                 "time_scale": time_scale,
                 "confidence": confidence,
+                "source": source,
             }
         )
         return uuid4()
@@ -105,6 +107,7 @@ async def test_extract_5_message_session_creates_user_hints() -> None:
         assert w["tenant_id"] == tenant
         assert w["user_id"] == user
         assert w["time_scale"] == "long_term"
+        assert w["source"] == "auto_extract"  # Sprint 57.149 provenance tag
 
 
 @pytest.mark.asyncio
@@ -155,3 +158,27 @@ async def test_extraction_writes_under_correct_tenant_user() -> None:
 
     assert layer.writes[0]["tenant_id"] == tenant
     assert layer.writes[0]["user_id"] == user
+
+
+@pytest.mark.asyncio
+async def test_known_facts_threaded_into_extraction_prompt() -> None:
+    """Sprint 57.149: known_facts (from profile()) reach the extractor's LLM
+    prompt as a do-not-repeat dedup block (best-effort prompt-level dedup)."""
+    chat_client = MockChatClient(
+        responses=[ChatResponse(model="mock", content="[]", stop_reason=StopReason.END_TURN)]
+    )
+    layer = _RecordingLayer()
+    extractor = MemoryExtractor(chat_client=chat_client, user_layer=layer)  # type: ignore[arg-type]
+
+    await extractor.extract_session_to_user(
+        session_id=uuid4(),
+        tenant_id=uuid4(),
+        user_id=uuid4(),
+        messages=[Message(role="user", content="hello again")],
+        known_facts=["User name is Chris."],
+    )
+    assert chat_client.last_request is not None
+    prompt = chat_client.last_request.messages[0].content
+    assert isinstance(prompt, str)
+    assert "User name is Chris." in prompt
+    assert "ALREADY REMEMBERED" in prompt
