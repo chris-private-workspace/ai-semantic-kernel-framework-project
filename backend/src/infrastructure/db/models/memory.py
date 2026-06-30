@@ -31,9 +31,10 @@ Description:
     (no client integration; that lands in Phase 51.2).
 
 Created: 2026-04-29 (Sprint 49.3 Day 2.3)
-Last Modified: 2026-06-04
+Last Modified: 2026-06-30
 
 Modification History:
+    - 2026-06-30: Sprint 57.150 — add dedup_key + uq_memory_user_dedup (write-side upsert)
     - 2026-06-04: Sprint 57.76 — add MemoryOp (append-only memory_ops ops log)
     - 2026-04-29: Initial creation (Sprint 49.3 Day 2.3)
 
@@ -226,6 +227,16 @@ class MemoryUser(Base, TenantScopedMixin):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     vector_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
+    # Write-side dedup key: md5(normalize(content)). The (tenant_id, user_id,
+    # dedup_key) unique constraint makes UserLayer.write an idempotent upsert so a
+    # repeated durable fact UPDATEs one row instead of accumulating duplicates that
+    # dilute profile() top-k (Sprint 57.150 — closes AD-Memory-User-Upsert-By-Key).
+    dedup_key: Mapped[str | None] = mapped_column(
+        String(32),
+        nullable=True,
+        doc="md5(normalize(content)) — write-side dedup conflict key (Sprint 57.150)",
+    )
+
     # Provenance
     source: Mapped[str | None] = mapped_column(
         String(64),
@@ -254,6 +265,9 @@ class MemoryUser(Base, TenantScopedMixin):
     )
 
     __table_args__ = (
+        # Write-side dedup conflict target (Sprint 57.150). Nullable dedup_key →
+        # PG permits multiple NULLs; UserLayer.write always sets it.
+        UniqueConstraint("tenant_id", "user_id", "dedup_key", name="uq_memory_user_dedup"),
         Index("idx_memory_user_user", "user_id"),
         Index("idx_memory_user_category", "user_id", "category"),
         Index(

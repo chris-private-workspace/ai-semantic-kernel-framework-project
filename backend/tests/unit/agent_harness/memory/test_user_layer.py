@@ -15,23 +15,32 @@ Modified: 2026-06-04 (Sprint 57.76 — update write/evict assertions for memory_
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
 
-from agent_harness.memory.layers.user_layer import UserLayer
+from agent_harness.memory.layers.user_layer import UserLayer, _dedup_key
 from infrastructure.db.models.memory import MemoryOp, MemoryUser
 
 
-def _build_factory(rows: list[MemoryUser], scalar_value: str | None = None) -> AsyncMock:
-    """async_sessionmaker shape: factory() returns async ctx mgr -> session."""
+def _build_factory(
+    rows: list[MemoryUser],
+    scalar_value: str | None = None,
+    scalar_one_value: object | None = None,
+) -> AsyncMock:
+    """async_sessionmaker shape: factory() returns async ctx mgr -> session.
+
+    `scalar_one_value` configures the upserted-id returned by write()'s
+    `(await session.execute(pg_insert…returning)).scalar_one()` (Sprint 57.150).
+    """
     session = AsyncMock()
     result = MagicMock()
     result.scalars.return_value.all.return_value = rows
     result.scalar_one_or_none.return_value = scalar_value
+    result.scalar_one.return_value = scalar_one_value
     session.execute = AsyncMock(return_value=result)
     session.commit = AsyncMock()
     session.add = MagicMock()
@@ -102,35 +111,40 @@ async def test_read_semantic_only_returns_empty() -> None:
 
 
 @pytest.mark.asyncio
-async def test_write_long_term_no_expires() -> None:
-    layer = UserLayer(_build_factory([]))
-    tenant = uuid4()
-    user = uuid4()
+async def test_write_returns_upserted_id_and_records_op() -> None:
+    """Sprint 57.150: write() upserts via execute(pg_insert…returning).scalar_one()
+    and still records a WRITE MemoryOp in the same txn (Risk C). The returned id is
+    the upserted row id (new on insert, existing on conflict)."""
+    upserted = uuid4()
+    layer = UserLayer(_build_factory([], scalar_one_value=upserted))
     eid = await layer.write(
         content="prefers brevity",
-        tenant_id=tenant,
-        user_id=user,
+        tenant_id=uuid4(),
+        user_id=uuid4(),
         time_scale="long_term",
         confidence=0.7,
     )
-    assert eid is not None
+    assert eid == upserted
 
     session = layer._session_factory._mock_session  # type: ignore[attr-defined]
-    # Sprint 57.76: write now adds BOTH the MemoryUser row + a MemoryOp row.
-    targets = [c.args[0] for c in session.add.call_args_list]
-    added: MemoryUser = next(t for t in targets if isinstance(t, MemoryUser))
-    assert added.tenant_id == tenant
-    assert added.user_id == user
-    assert added.expires_at is None  # long_term
-    meta = added.metadata_ or {}
-    assert meta.get("time_scale") == "long_term"
-    assert meta.get("verify_before_use") is False
+    # The upsert ran via session.execute (NOT session.add(MemoryUser)).
+    session.execute.assert_awaited_once()
+    op_targets = [c.args[0] for c in session.add.call_args_list if isinstance(c.args[0], MemoryOp)]
+    assert len(op_targets) == 1
+    assert op_targets[0].operation == "WRITE"
+    assert op_targets[0].time_scale == "long_term"
+    assert op_targets[0].value_snapshot == "prefers brevity"
+    # No MemoryUser is session.add'd anymore (the upsert is an execute()).
+    assert not [c.args[0] for c in session.add.call_args_list if isinstance(c.args[0], MemoryUser)]
+    session.commit.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_write_short_term_sets_24h_expiry() -> None:
-    layer = UserLayer(_build_factory([]))
-    before = datetime.now(timezone.utc)
+async def test_write_short_term_op_records_time_scale() -> None:
+    """Sprint 57.150: short_term still flows through the upsert; the MemoryOp
+    carries the time_scale. The 24h-expiry value now lives in the real-DB
+    integration test (test_user_layer_dedup.py), where the inserted row is observable."""
+    layer = UserLayer(_build_factory([], scalar_one_value=uuid4()))
     await layer.write(
         content="working note",
         tenant_id=uuid4(),
@@ -138,13 +152,9 @@ async def test_write_short_term_sets_24h_expiry() -> None:
         time_scale="short_term",
     )
     session = layer._session_factory._mock_session  # type: ignore[attr-defined]
-    # Sprint 57.76: pick the MemoryUser row from the add() targets (a MemoryOp
-    # is also added in the same session).
-    targets = [c.args[0] for c in session.add.call_args_list]
-    added: MemoryUser = next(t for t in targets if isinstance(t, MemoryUser))
-    assert added.expires_at is not None
-    delta = added.expires_at - before
-    assert timedelta(hours=23, minutes=55) < delta < timedelta(hours=24, minutes=5)
+    op_targets = [c.args[0] for c in session.add.call_args_list if isinstance(c.args[0], MemoryOp)]
+    assert len(op_targets) == 1
+    assert op_targets[0].time_scale == "short_term"
 
 
 @pytest.mark.asyncio
@@ -224,3 +234,26 @@ def test_row_to_hint_parses_iso_last_verified() -> None:
     hint = UserLayer._row_to_hint(row, query="x")
     assert hint.last_verified_at is not None
     assert hint.last_verified_at.year == 2026
+
+
+# ---------------------------------------------------------------------------
+# _dedup_key normalization (Sprint 57.150 — write-side upsert key)
+# ---------------------------------------------------------------------------
+
+
+def test_dedup_key_is_32_hex() -> None:
+    key = _dedup_key("hello world")
+    assert len(key) == 32
+    assert all(c in "0123456789abcdef" for c in key)
+
+
+def test_dedup_key_normalizes_whitespace_and_case() -> None:
+    """Collapse whitespace runs + trim edges + lowercase before hashing — must
+    match the migration 0032 backfill so a backfilled row and a live repeat collide."""
+    assert _dedup_key("User  Likes\tDark   Mode") == _dedup_key("user likes dark mode")
+    assert _dedup_key("  hello  ") == _dedup_key("hello")
+    assert _dedup_key("Hello\nWorld") == _dedup_key("hello world")
+
+
+def test_dedup_key_distinguishes_different_content() -> None:
+    assert _dedup_key("Chris works on Aurora") != _dedup_key("Chris works on Borealis")

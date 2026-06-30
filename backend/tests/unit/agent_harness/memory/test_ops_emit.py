@@ -81,11 +81,13 @@ async def test_user_write_emits_write_op_same_session() -> None:
     assert op.user_id == user
     assert op.actor == str(user)
     assert op.time_scale == "long_term"
-    # Risk C: the MemoryUser row + the op row are added to the SAME session,
-    # and there is exactly ONE commit (no separate session / double-commit).
+    # Risk C: the MemoryUser upsert + the op row run on the SAME session with
+    # exactly ONE commit (no separate session / double-commit). Sprint 57.150 made
+    # write() an ON CONFLICT upsert → the MemoryUser is now an execute(), not add().
+    session.execute.assert_awaited()
     targets = [c.args[0] for c in session.add.call_args_list]
-    assert any(isinstance(t, MemoryUser) for t in targets)
     assert any(isinstance(t, MemoryOp) for t in targets)
+    assert not any(isinstance(t, MemoryUser) for t in targets)
     session.commit.assert_awaited_once()
 
 
