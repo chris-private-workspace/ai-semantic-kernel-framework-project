@@ -158,6 +158,16 @@ class Settings(BaseSettings):
     # dev/CI SubprocessSandbox fallback (byte-unchanged); production opts in.
     # Env: SANDBOX_REQUIRE_ISOLATION.
     sandbox_require_isolation: bool = False
+    # Sprint 57.149 §Memory Option-B deterministic formation
+    # (AD-Memory-Formation-Auto-Extract): when True (default), the chat router
+    # runs the MemoryExtractor after every send completes — a cheap-tier LLM
+    # pass over the just-finished conversation that writes durable user facts to
+    # UserLayer (source="auto_extract"), so the platform forms memory even when
+    # the agent never calls memory_write (57.148 Option-A nudge is discretionary;
+    # this is deterministic). Synchronous after the answer streams + best-effort
+    # (an extractor failure never breaks the send / SSE stream). False → the
+    # router hook is a no-op (byte-identical to 57.148). Env: CHAT_MEMORY_AUTO_EXTRACT.
+    chat_memory_auto_extract: bool = True
 
     # ---- Sprint 57.145 knowledge connector (first real external source) -
     # Root folder the knowledge_search tool reads (.md/.txt, recursive). Default =

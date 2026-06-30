@@ -1,8 +1,8 @@
 """
 File: backend/src/agent_harness/memory/extraction.py
-Purpose: Session -> User memory extraction worker (manual-trigger in 51.2).
+Purpose: Session -> User memory extraction worker (Option-B deterministic formation).
 Category: 範疇 3 (Memory) / Extraction
-Scope: Phase 51 / Sprint 51.2 Day 3
+Scope: Phase 51 / Sprint 51.2 Day 3 (created); Sprint 57.149 (wired to chat main flow)
 
 Description:
     MemoryExtractor reads session messages, prompts the LLM (via the
@@ -17,12 +17,25 @@ Description:
     - Extraction uses ChatClient ABC; agent_harness must NOT import
       openai/anthropic directly (per llm-provider-neutrality.md).
 
+    57.149 design choices (Option-B formation, AD-Memory-Formation-Auto-Extract):
+    - Now driven from the chat main flow after every send completes (the chat
+      router's post-completion hook; cheap tier). The 51.2 "manual trigger
+      only" note is superseded — but the worker itself is unchanged below the
+      new `known_facts` param + `source` tag.
+    - `known_facts` (read from MemoryRetrieval.profile() before extraction)
+      seeds a prompt-level dedup block ("only NEW facts") — lightweight; the
+      guaranteed write-side upsert is AD-Memory-User-Upsert-By-Key.
+    - extracted rows are tagged `source="auto_extract"` so they are
+      distinguishable from agent-driven `memory_write` rows.
+
 Owner: 01-eleven-categories-spec.md §範疇 3 (Memory) extraction worker
 
-Carry items resolved here:
-    None (CARRY-027 handles the auto-trigger queue work).
-
 Created: 2026-04-30 (Sprint 51.2 Day 3.3)
+Last Modified: 2026-06-28
+
+Modification History (newest-first):
+    - 2026-06-28: Sprint 57.149 — known_facts dedup + source tag (Option-B main-flow wiring)
+    - 2026-04-30: Initial creation (Sprint 51.2 Day 3.3)
 """
 
 from __future__ import annotations
@@ -46,7 +59,7 @@ have these fields:
   - "confidence": float between 0.0 and 1.0
 
 Return [] if no durable facts can be extracted. No prose, only JSON.
-
+{known_block}
 Conversation:
 {conversation}
 """
@@ -70,13 +83,17 @@ class MemoryExtractor:
         tenant_id: UUID,
         user_id: UUID,
         messages: list[Message],
+        known_facts: list[str] | None = None,
         trace_context: TraceContext | None = None,
     ) -> list[UUID]:
         if not messages:
             return []
 
         conversation_text = self._render_messages(messages)
-        prompt = _EXTRACTION_PROMPT.format(conversation=conversation_text)
+        prompt = _EXTRACTION_PROMPT.format(
+            conversation=conversation_text,
+            known_block=self._build_known_block(known_facts),
+        )
 
         request = ChatRequest(
             messages=[Message(role="user", content=prompt)],
@@ -104,11 +121,31 @@ class MemoryExtractor:
                 user_id=user_id,
                 time_scale="long_term",
                 confidence=max(0.0, min(1.0, confidence)),
+                source="auto_extract",
                 trace_context=trace_context,
             )
             new_ids.append(entry_id)
 
         return new_ids
+
+    @staticmethod
+    def _build_known_block(known_facts: list[str] | None) -> str:
+        """Render the optional dedup block listing already-remembered facts.
+
+        Empty / None → "" (the prompt is byte-identical to the 51.2 form).
+        Otherwise the LLM is told to emit only NEW facts. Best-effort
+        (the model may still echo) — guaranteed write-side dedup is
+        AD-Memory-User-Upsert-By-Key.
+        """
+        if not known_facts:
+            return ""
+        listed = "\n".join(f"  - {fact}" for fact in known_facts if fact and fact.strip())
+        if not listed:
+            return ""
+        return (
+            "\nALREADY REMEMBERED (do NOT repeat these; emit only NEW durable "
+            "facts not already covered here):\n" + listed + "\n"
+        )
 
     @staticmethod
     def _render_messages(messages: list[Message]) -> str:

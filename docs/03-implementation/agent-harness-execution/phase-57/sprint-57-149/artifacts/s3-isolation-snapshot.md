@@ -1,0 +1,590 @@
+- main [ref=f4e264]:
+  - generic [ref=f4e265]:
+    - generic [ref=f4e266]:
+      - generic [ref=f4e267]:
+        - button "New session" [ref=f4e268] [cursor=pointer]:
+          - img [ref=f4e269]
+          - text: New session
+        - button "Filter" [ref=f4e270] [cursor=pointer]:
+          - img [ref=f4e271]
+      - generic [ref=f4e273]:
+        - generic [ref=f4e274]: Sessions
+        - generic [ref=f4e275]: "50"
+      - button "Untitled session running 0 turns · 2026/6/30 下午1:15:08" [ref=f4e276] [cursor=pointer]:
+        - generic [ref=f4e277]:
+          - generic "Untitled session" [ref=f4e278]
+          - generic "running" [ref=f4e279]
+        - generic [ref=f4e280]:
+          - generic [ref=f4e281]: 0 turns
+          - generic [ref=f4e282]: ·
+          - generic [ref=f4e283]: 2026/6/30 下午1:15:08
+      - button "Untitled session running 0 turns · 2026/6/30 下午1:10:05" [ref=f4e284] [cursor=pointer]:
+        - generic [ref=f4e285]:
+          - generic "Untitled session" [ref=f4e286]
+          - generic "running" [ref=f4e287]
+        - generic [ref=f4e288]:
+          - generic [ref=f4e289]: 0 turns
+          - generic [ref=f4e290]: ·
+          - generic [ref=f4e291]: 2026/6/30 下午1:10:05
+      - button "Untitled session running 0 turns · 2026/6/28 上午11:49:25" [ref=f4e292] [cursor=pointer]:
+        - generic [ref=f4e293]:
+          - generic "Untitled session" [ref=f4e294]
+          - generic "running" [ref=f4e295]
+        - generic [ref=f4e296]:
+          - generic [ref=f4e297]: 0 turns
+          - generic [ref=f4e298]: ·
+          - generic [ref=f4e299]: 2026/6/28 上午11:49:25
+      - button "Untitled session running 0 turns · 2026/6/28 上午11:47:05" [ref=f4e300] [cursor=pointer]:
+        - generic [ref=f4e301]:
+          - generic "Untitled session" [ref=f4e302]
+          - generic "running" [ref=f4e303]
+        - generic [ref=f4e304]:
+          - generic [ref=f4e305]: 0 turns
+          - generic [ref=f4e306]: ·
+          - generic [ref=f4e307]: 2026/6/28 上午11:47:05
+      - button "Untitled session running 0 turns · 2026/6/28 上午12:11:33" [ref=f4e308] [cursor=pointer]:
+        - generic [ref=f4e309]:
+          - generic "Untitled session" [ref=f4e310]
+          - generic "running" [ref=f4e311]
+        - generic [ref=f4e312]:
+          - generic [ref=f4e313]: 0 turns
+          - generic [ref=f4e314]: ·
+          - generic [ref=f4e315]: 2026/6/28 上午12:11:33
+      - button "Untitled session running 0 turns · 2026/6/28 上午12:08:59" [ref=f4e316] [cursor=pointer]:
+        - generic [ref=f4e317]:
+          - generic "Untitled session" [ref=f4e318]
+          - generic "running" [ref=f4e319]
+        - generic [ref=f4e320]:
+          - generic [ref=f4e321]: 0 turns
+          - generic [ref=f4e322]: ·
+          - generic [ref=f4e323]: 2026/6/28 上午12:08:59
+      - button "Untitled session running 0 turns · 2026/6/28 上午12:07:06" [ref=f4e324] [cursor=pointer]:
+        - generic [ref=f4e325]:
+          - generic "Untitled session" [ref=f4e326]
+          - generic "running" [ref=f4e327]
+        - generic [ref=f4e328]:
+          - generic [ref=f4e329]: 0 turns
+          - generic [ref=f4e330]: ·
+          - generic [ref=f4e331]: 2026/6/28 上午12:07:06
+      - button "Untitled session running 0 turns · 2026/6/27 下午11:02:04" [ref=f4e332] [cursor=pointer]:
+        - generic [ref=f4e333]:
+          - generic "Untitled session" [ref=f4e334]
+          - generic "running" [ref=f4e335]
+        - generic [ref=f4e336]:
+          - generic [ref=f4e337]: 0 turns
+          - generic [ref=f4e338]: ·
+          - generic [ref=f4e339]: 2026/6/27 下午11:02:04
+      - button "Untitled session running 0 turns · 2026/6/27 下午3:29:40" [ref=f4e340] [cursor=pointer]:
+        - generic [ref=f4e341]:
+          - generic "Untitled session" [ref=f4e342]
+          - generic "running" [ref=f4e343]
+        - generic [ref=f4e344]:
+          - generic [ref=f4e345]: 0 turns
+          - generic [ref=f4e346]: ·
+          - generic [ref=f4e347]: 2026/6/27 下午3:29:40
+      - button "Untitled session running 0 turns · 2026/6/26 下午7:13:11" [ref=f4e348] [cursor=pointer]:
+        - generic [ref=f4e349]:
+          - generic "Untitled session" [ref=f4e350]
+          - generic "running" [ref=f4e351]
+        - generic [ref=f4e352]:
+          - generic [ref=f4e353]: 0 turns
+          - generic [ref=f4e354]: ·
+          - generic [ref=f4e355]: 2026/6/26 下午7:13:11
+      - button "Untitled session running 0 turns · 2026/6/26 下午7:05:35" [ref=f4e356] [cursor=pointer]:
+        - generic [ref=f4e357]:
+          - generic "Untitled session" [ref=f4e358]
+          - generic "running" [ref=f4e359]
+        - generic [ref=f4e360]:
+          - generic [ref=f4e361]: 0 turns
+          - generic [ref=f4e362]: ·
+          - generic [ref=f4e363]: 2026/6/26 下午7:05:35
+      - button "Untitled session running 0 turns · 2026/6/26 下午6:54:31" [ref=f4e364] [cursor=pointer]:
+        - generic [ref=f4e365]:
+          - generic "Untitled session" [ref=f4e366]
+          - generic "running" [ref=f4e367]
+        - generic [ref=f4e368]:
+          - generic [ref=f4e369]: 0 turns
+          - generic [ref=f4e370]: ·
+          - generic [ref=f4e371]: 2026/6/26 下午6:54:31
+      - button "Untitled session running 0 turns · 2026/6/25 下午10:50:51" [ref=f4e372] [cursor=pointer]:
+        - generic [ref=f4e373]:
+          - generic "Untitled session" [ref=f4e374]
+          - generic "running" [ref=f4e375]
+        - generic [ref=f4e376]:
+          - generic [ref=f4e377]: 0 turns
+          - generic [ref=f4e378]: ·
+          - generic [ref=f4e379]: 2026/6/25 下午10:50:51
+      - button "Untitled session running 0 turns · 2026/6/25 下午6:18:59" [ref=f4e380] [cursor=pointer]:
+        - generic [ref=f4e381]:
+          - generic "Untitled session" [ref=f4e382]
+          - generic "running" [ref=f4e383]
+        - generic [ref=f4e384]:
+          - generic [ref=f4e385]: 0 turns
+          - generic [ref=f4e386]: ·
+          - generic [ref=f4e387]: 2026/6/25 下午6:18:59
+      - button "Untitled session running 0 turns · 2026/6/24 下午11:47:22" [ref=f4e388] [cursor=pointer]:
+        - generic [ref=f4e389]:
+          - generic "Untitled session" [ref=f4e390]
+          - generic "running" [ref=f4e391]
+        - generic [ref=f4e392]:
+          - generic [ref=f4e393]: 0 turns
+          - generic [ref=f4e394]: ·
+          - generic [ref=f4e395]: 2026/6/24 下午11:47:22
+      - button "Untitled session running 0 turns · 2026/6/24 下午11:45:01" [ref=f4e396] [cursor=pointer]:
+        - generic [ref=f4e397]:
+          - generic "Untitled session" [ref=f4e398]
+          - generic "running" [ref=f4e399]
+        - generic [ref=f4e400]:
+          - generic [ref=f4e401]: 0 turns
+          - generic [ref=f4e402]: ·
+          - generic [ref=f4e403]: 2026/6/24 下午11:45:01
+      - button "Untitled session running 0 turns · 2026/6/24 下午11:42:12" [ref=f4e404] [cursor=pointer]:
+        - generic [ref=f4e405]:
+          - generic "Untitled session" [ref=f4e406]
+          - generic "running" [ref=f4e407]
+        - generic [ref=f4e408]:
+          - generic [ref=f4e409]: 0 turns
+          - generic [ref=f4e410]: ·
+          - generic [ref=f4e411]: 2026/6/24 下午11:42:12
+      - button "Untitled session running 0 turns · 2026/6/24 下午11:17:01" [ref=f4e412] [cursor=pointer]:
+        - generic [ref=f4e413]:
+          - generic "Untitled session" [ref=f4e414]
+          - generic "running" [ref=f4e415]
+        - generic [ref=f4e416]:
+          - generic [ref=f4e417]: 0 turns
+          - generic [ref=f4e418]: ·
+          - generic [ref=f4e419]: 2026/6/24 下午11:17:01
+      - button "Untitled session running 0 turns · 2026/6/24 下午7:09:29" [ref=f4e420] [cursor=pointer]:
+        - generic [ref=f4e421]:
+          - generic "Untitled session" [ref=f4e422]
+          - generic "running" [ref=f4e423]
+        - generic [ref=f4e424]:
+          - generic [ref=f4e425]: 0 turns
+          - generic [ref=f4e426]: ·
+          - generic [ref=f4e427]: 2026/6/24 下午7:09:29
+      - button "Untitled session running 0 turns · 2026/6/24 下午4:52:44" [ref=f4e428] [cursor=pointer]:
+        - generic [ref=f4e429]:
+          - generic "Untitled session" [ref=f4e430]
+          - generic "running" [ref=f4e431]
+        - generic [ref=f4e432]:
+          - generic [ref=f4e433]: 0 turns
+          - generic [ref=f4e434]: ·
+          - generic [ref=f4e435]: 2026/6/24 下午4:52:44
+      - button "Untitled session running 0 turns · 2026/6/24 下午4:44:54" [ref=f4e436] [cursor=pointer]:
+        - generic [ref=f4e437]:
+          - generic "Untitled session" [ref=f4e438]
+          - generic "running" [ref=f4e439]
+        - generic [ref=f4e440]:
+          - generic [ref=f4e441]: 0 turns
+          - generic [ref=f4e442]: ·
+          - generic [ref=f4e443]: 2026/6/24 下午4:44:54
+      - button "Untitled session running 0 turns · 2026/6/24 上午10:20:20" [ref=f4e444] [cursor=pointer]:
+        - generic [ref=f4e445]:
+          - generic "Untitled session" [ref=f4e446]
+          - generic "running" [ref=f4e447]
+        - generic [ref=f4e448]:
+          - generic [ref=f4e449]: 0 turns
+          - generic [ref=f4e450]: ·
+          - generic [ref=f4e451]: 2026/6/24 上午10:20:20
+      - button "Untitled session running 0 turns · 2026/6/24 上午12:58:26" [ref=f4e452] [cursor=pointer]:
+        - generic [ref=f4e453]:
+          - generic "Untitled session" [ref=f4e454]
+          - generic "running" [ref=f4e455]
+        - generic [ref=f4e456]:
+          - generic [ref=f4e457]: 0 turns
+          - generic [ref=f4e458]: ·
+          - generic [ref=f4e459]: 2026/6/24 上午12:58:26
+      - button "Untitled session running 0 turns · 2026/6/23 下午10:31:53" [ref=f4e460] [cursor=pointer]:
+        - generic [ref=f4e461]:
+          - generic "Untitled session" [ref=f4e462]
+          - generic "running" [ref=f4e463]
+        - generic [ref=f4e464]:
+          - generic [ref=f4e465]: 0 turns
+          - generic [ref=f4e466]: ·
+          - generic [ref=f4e467]: 2026/6/23 下午10:31:53
+      - button "Untitled session running 0 turns · 2026/6/18 下午10:47:26" [ref=f4e468] [cursor=pointer]:
+        - generic [ref=f4e469]:
+          - generic "Untitled session" [ref=f4e470]
+          - generic "running" [ref=f4e471]
+        - generic [ref=f4e472]:
+          - generic [ref=f4e473]: 0 turns
+          - generic [ref=f4e474]: ·
+          - generic [ref=f4e475]: 2026/6/18 下午10:47:26
+      - button "Untitled session running 0 turns · 2026/6/18 下午10:46:06" [ref=f4e476] [cursor=pointer]:
+        - generic [ref=f4e477]:
+          - generic "Untitled session" [ref=f4e478]
+          - generic "running" [ref=f4e479]
+        - generic [ref=f4e480]:
+          - generic [ref=f4e481]: 0 turns
+          - generic [ref=f4e482]: ·
+          - generic [ref=f4e483]: 2026/6/18 下午10:46:06
+      - button "Untitled session running 0 turns · 2026/6/18 下午10:44:46" [ref=f4e484] [cursor=pointer]:
+        - generic [ref=f4e485]:
+          - generic "Untitled session" [ref=f4e486]
+          - generic "running" [ref=f4e487]
+        - generic [ref=f4e488]:
+          - generic [ref=f4e489]: 0 turns
+          - generic [ref=f4e490]: ·
+          - generic [ref=f4e491]: 2026/6/18 下午10:44:46
+      - button "Untitled session running 0 turns · 2026/6/18 下午10:42:32" [ref=f4e492] [cursor=pointer]:
+        - generic [ref=f4e493]:
+          - generic "Untitled session" [ref=f4e494]
+          - generic "running" [ref=f4e495]
+        - generic [ref=f4e496]:
+          - generic [ref=f4e497]: 0 turns
+          - generic [ref=f4e498]: ·
+          - generic [ref=f4e499]: 2026/6/18 下午10:42:32
+      - button "Untitled session running 0 turns · 2026/6/18 下午10:40:54" [ref=f4e500] [cursor=pointer]:
+        - generic [ref=f4e501]:
+          - generic "Untitled session" [ref=f4e502]
+          - generic "running" [ref=f4e503]
+        - generic [ref=f4e504]:
+          - generic [ref=f4e505]: 0 turns
+          - generic [ref=f4e506]: ·
+          - generic [ref=f4e507]: 2026/6/18 下午10:40:54
+      - button "Untitled session running 0 turns · 2026/6/18 下午10:39:13" [ref=f4e508] [cursor=pointer]:
+        - generic [ref=f4e509]:
+          - generic "Untitled session" [ref=f4e510]
+          - generic "running" [ref=f4e511]
+        - generic [ref=f4e512]:
+          - generic [ref=f4e513]: 0 turns
+          - generic [ref=f4e514]: ·
+          - generic [ref=f4e515]: 2026/6/18 下午10:39:13
+      - button "Untitled session running 0 turns · 2026/6/18 下午10:35:26" [ref=f4e516] [cursor=pointer]:
+        - generic [ref=f4e517]:
+          - generic "Untitled session" [ref=f4e518]
+          - generic "running" [ref=f4e519]
+        - generic [ref=f4e520]:
+          - generic [ref=f4e521]: 0 turns
+          - generic [ref=f4e522]: ·
+          - generic [ref=f4e523]: 2026/6/18 下午10:35:26
+      - button "Untitled session running 0 turns · 2026/6/18 下午7:22:23" [ref=f4e524] [cursor=pointer]:
+        - generic [ref=f4e525]:
+          - generic "Untitled session" [ref=f4e526]
+          - generic "running" [ref=f4e527]
+        - generic [ref=f4e528]:
+          - generic [ref=f4e529]: 0 turns
+          - generic [ref=f4e530]: ·
+          - generic [ref=f4e531]: 2026/6/18 下午7:22:23
+      - button "Untitled session running 0 turns · 2026/6/18 下午7:13:09" [ref=f4e532] [cursor=pointer]:
+        - generic [ref=f4e533]:
+          - generic "Untitled session" [ref=f4e534]
+          - generic "running" [ref=f4e535]
+        - generic [ref=f4e536]:
+          - generic [ref=f4e537]: 0 turns
+          - generic [ref=f4e538]: ·
+          - generic [ref=f4e539]: 2026/6/18 下午7:13:09
+      - button "Untitled session running 0 turns · 2026/6/18 下午7:11:14" [ref=f4e540] [cursor=pointer]:
+        - generic [ref=f4e541]:
+          - generic "Untitled session" [ref=f4e542]
+          - generic "running" [ref=f4e543]
+        - generic [ref=f4e544]:
+          - generic [ref=f4e545]: 0 turns
+          - generic [ref=f4e546]: ·
+          - generic [ref=f4e547]: 2026/6/18 下午7:11:14
+      - button "Untitled session running 0 turns · 2026/6/18 下午7:08:22" [ref=f4e548] [cursor=pointer]:
+        - generic [ref=f4e549]:
+          - generic "Untitled session" [ref=f4e550]
+          - generic "running" [ref=f4e551]
+        - generic [ref=f4e552]:
+          - generic [ref=f4e553]: 0 turns
+          - generic [ref=f4e554]: ·
+          - generic [ref=f4e555]: 2026/6/18 下午7:08:22
+      - button "Untitled session running 0 turns · 2026/6/18 下午7:06:38" [ref=f4e556] [cursor=pointer]:
+        - generic [ref=f4e557]:
+          - generic "Untitled session" [ref=f4e558]
+          - generic "running" [ref=f4e559]
+        - generic [ref=f4e560]:
+          - generic [ref=f4e561]: 0 turns
+          - generic [ref=f4e562]: ·
+          - generic [ref=f4e563]: 2026/6/18 下午7:06:38
+      - button "Handoff → planner running planner · 0 turns · 2026/6/18 下午7:03:49 ↳ planner" [ref=f4e564] [cursor=pointer]:
+        - generic [ref=f4e565]:
+          - generic "Handoff → planner" [ref=f4e566]
+          - generic "running" [ref=f4e567]
+        - generic [ref=f4e568]:
+          - generic [ref=f4e569]: planner
+          - generic [ref=f4e570]: ·
+          - generic [ref=f4e571]: 0 turns
+          - generic [ref=f4e572]: ·
+          - generic [ref=f4e573]: 2026/6/18 下午7:03:49
+        - generic [ref=f4e575]: ↳ planner
+      - button "Untitled session 0 turns · 2026/6/18 下午7:03:49" [ref=f4e576] [cursor=pointer]:
+        - generic "Untitled session" [ref=f4e578]
+        - generic [ref=f4e579]:
+          - generic [ref=f4e580]: 0 turns
+          - generic [ref=f4e581]: ·
+          - generic [ref=f4e582]: 2026/6/18 下午7:03:49
+      - button "Untitled session running 0 turns · 2026/6/18 下午7:02:19" [ref=f4e583] [cursor=pointer]:
+        - generic [ref=f4e584]:
+          - generic "Untitled session" [ref=f4e585]
+          - generic "running" [ref=f4e586]
+        - generic [ref=f4e587]:
+          - generic [ref=f4e588]: 0 turns
+          - generic [ref=f4e589]: ·
+          - generic [ref=f4e590]: 2026/6/18 下午7:02:19
+      - button "Untitled session running 0 turns · 2026/6/18 下午6:55:52" [ref=f4e591] [cursor=pointer]:
+        - generic [ref=f4e592]:
+          - generic "Untitled session" [ref=f4e593]
+          - generic "running" [ref=f4e594]
+        - generic [ref=f4e595]:
+          - generic [ref=f4e596]: 0 turns
+          - generic [ref=f4e597]: ·
+          - generic [ref=f4e598]: 2026/6/18 下午6:55:52
+      - button "Untitled session running 0 turns · 2026/6/18 下午6:54:04" [ref=f4e599] [cursor=pointer]:
+        - generic [ref=f4e600]:
+          - generic "Untitled session" [ref=f4e601]
+          - generic "running" [ref=f4e602]
+        - generic [ref=f4e603]:
+          - generic [ref=f4e604]: 0 turns
+          - generic [ref=f4e605]: ·
+          - generic [ref=f4e606]: 2026/6/18 下午6:54:04
+      - button "Untitled session running 0 turns · 2026/6/18 下午6:52:25" [ref=f4e607] [cursor=pointer]:
+        - generic [ref=f4e608]:
+          - generic "Untitled session" [ref=f4e609]
+          - generic "running" [ref=f4e610]
+        - generic [ref=f4e611]:
+          - generic [ref=f4e612]: 0 turns
+          - generic [ref=f4e613]: ·
+          - generic [ref=f4e614]: 2026/6/18 下午6:52:25
+      - button "Untitled session running 0 turns · 2026/6/18 下午6:48:22" [ref=f4e615] [cursor=pointer]:
+        - generic [ref=f4e616]:
+          - generic "Untitled session" [ref=f4e617]
+          - generic "running" [ref=f4e618]
+        - generic [ref=f4e619]:
+          - generic [ref=f4e620]: 0 turns
+          - generic [ref=f4e621]: ·
+          - generic [ref=f4e622]: 2026/6/18 下午6:48:22
+      - button "Untitled session running 0 turns · 2026/6/18 下午4:21:54" [ref=f4e623] [cursor=pointer]:
+        - generic [ref=f4e624]:
+          - generic "Untitled session" [ref=f4e625]
+          - generic "running" [ref=f4e626]
+        - generic [ref=f4e627]:
+          - generic [ref=f4e628]: 0 turns
+          - generic [ref=f4e629]: ·
+          - generic [ref=f4e630]: 2026/6/18 下午4:21:54
+      - button "Untitled session running 0 turns · 2026/6/18 下午1:09:40" [ref=f4e631] [cursor=pointer]:
+        - generic [ref=f4e632]:
+          - generic "Untitled session" [ref=f4e633]
+          - generic "running" [ref=f4e634]
+        - generic [ref=f4e635]:
+          - generic [ref=f4e636]: 0 turns
+          - generic [ref=f4e637]: ·
+          - generic [ref=f4e638]: 2026/6/18 下午1:09:40
+      - button "Untitled session running 0 turns · 2026/6/18 下午12:45:44" [ref=f4e639] [cursor=pointer]:
+        - generic [ref=f4e640]:
+          - generic "Untitled session" [ref=f4e641]
+          - generic "running" [ref=f4e642]
+        - generic [ref=f4e643]:
+          - generic [ref=f4e644]: 0 turns
+          - generic [ref=f4e645]: ·
+          - generic [ref=f4e646]: 2026/6/18 下午12:45:44
+      - button "Untitled session running 0 turns · 2026/6/18 上午10:43:03" [ref=f4e647] [cursor=pointer]:
+        - generic [ref=f4e648]:
+          - generic "Untitled session" [ref=f4e649]
+          - generic "running" [ref=f4e650]
+        - generic [ref=f4e651]:
+          - generic [ref=f4e652]: 0 turns
+          - generic [ref=f4e653]: ·
+          - generic [ref=f4e654]: 2026/6/18 上午10:43:03
+      - button "Untitled session running 0 turns · 2026/6/17 下午6:54:20" [ref=f4e655] [cursor=pointer]:
+        - generic [ref=f4e656]:
+          - generic "Untitled session" [ref=f4e657]
+          - generic "running" [ref=f4e658]
+        - generic [ref=f4e659]:
+          - generic [ref=f4e660]: 0 turns
+          - generic [ref=f4e661]: ·
+          - generic [ref=f4e662]: 2026/6/17 下午6:54:20
+      - button "Untitled session running 0 turns · 2026/6/17 下午3:11:16" [ref=f4e663] [cursor=pointer]:
+        - generic [ref=f4e664]:
+          - generic "Untitled session" [ref=f4e665]
+          - generic "running" [ref=f4e666]
+        - generic [ref=f4e667]:
+          - generic [ref=f4e668]: 0 turns
+          - generic [ref=f4e669]: ·
+          - generic [ref=f4e670]: 2026/6/17 下午3:11:16
+      - button "Untitled session running 0 turns · 2026/6/17 下午12:59:56" [ref=f4e671] [cursor=pointer]:
+        - generic [ref=f4e672]:
+          - generic "Untitled session" [ref=f4e673]
+          - generic "running" [ref=f4e674]
+        - generic [ref=f4e675]:
+          - generic [ref=f4e676]: 0 turns
+          - generic [ref=f4e677]: ·
+          - generic [ref=f4e678]: 2026/6/17 下午12:59:56
+    - generic [ref=f4e679]:
+      - generic [ref=f4e680]:
+        - button "Toggle session list" [ref=f4e681] [cursor=pointer]:
+          - img [ref=f4e682]
+        - img [ref=f4e685]
+        - generic [ref=f4e687]:
+          - generic "New session" [ref=f4e688]
+          - generic [ref=f4e689]:
+            - generic [ref=f4e690]: agent
+            - generic [ref=f4e691]: gpt-5.2
+            - generic [ref=f4e692]: "provider: neutral"
+            - generic [ref=f4e693]: · 0 turns
+        - button "Loop" [ref=f4e694] [cursor=pointer]:
+          - img [ref=f4e695]
+          - text: Loop
+        - button "Audit" [ref=f4e697] [cursor=pointer]:
+          - img [ref=f4e698]
+          - text: Audit
+        - button "Toggle inspector" [ref=f4e701] [cursor=pointer]:
+          - img [ref=f4e702]
+      - generic [ref=f4e704]:
+        - generic [ref=f4e705]:
+          - generic [ref=f4e708]:
+            - generic [ref=f4e709]: priya
+            - generic [ref=f4e710]: user
+            - generic [ref=f4e711]: 2026-06-30T05:18:27.186Z
+          - generic [ref=f4e712]: 你知道我是誰、我手上正在忙什麼專案嗎？簡單講講你知道的就好。
+        - generic [ref=f4e713]:
+          - generic [ref=f4e716]:
+            - generic [ref=f4e717]: agent
+            - generic [ref=f4e718]: turn 2
+            - generic [ref=f4e719]: "stop: end_turn"
+            - generic [ref=f4e720]: · 2026-06-30T05:18:27.295Z
+          - generic [ref=f4e721]:
+            - generic [ref=f4e722]: 我不知道你是誰、也不知道你手上正在忙什麼專案；在這段對話裡你還沒有提供任何可用來辨識你身份或專案的資訊。
+            - generic [ref=f4e723]:
+              - img [ref=f4e725]
+              - generic [ref=f4e727]:
+                - generic [ref=f4e728]: Verification passed
+                - generic [ref=f4e729]: "evidence: score: 0.99"
+      - generic "Verification panel" [ref=f4e730]:
+        - heading "Verification (1)" [level=3] [ref=f4e731]
+        - list [ref=f4e732]:
+          - listitem [ref=f4e733]:
+            - generic [ref=f4e734]: ✅
+            - generic [ref=f4e735]:
+              - generic [ref=f4e736]:
+                - generic [ref=f4e737]: llm_judge
+                - generic [ref=f4e738]: LLM Judge
+              - paragraph [ref=f4e739]: "Score: 0.99"
+      - generic "Loop visualizer" [ref=f4e740]:
+        - generic [ref=f4e741]: Loop (1 turn)
+        - generic [ref=f4e742]:
+          - generic [ref=f4e743]:
+            - generic [ref=f4e744]: turn 0
+            - generic [ref=f4e745]: Preamble
+            - generic [ref=f4e746]: · 16 events
+          - generic [ref=f4e747]:
+            - generic [ref=f4e748]:
+              - generic [ref=f4e750]: loop_start
+              - generic [ref=f4e751]: session=db9df626-dd72-4ff3-9187-eca48ef9a8ed
+            - generic [ref=f4e752]:
+              - generic [ref=f4e754]: span_started
+              - generic [ref=f4e755]: "{\"span_name\":\"agent_loop.run\",\"span_id\":\"c372874a6d51c080\",\"parent_span_id\":\"668da86209894788\",\"span_type\":\"LOOP\",\"trace_id\":\"cd1497747b6a496ca15207353c13bd54\"}"
+            - generic [ref=f4e756]:
+              - generic [ref=f4e758]: span_started
+              - generic [ref=f4e759]: "{\"span_name\":\"agent_loop.compaction\",\"span_id\":\"a6b0c9744a9a8f67\",\"parent_span_id\":\"c372874a6d51c080\",\"span_type\":\"COMPACTION\",\"trace_id\":\"cd1497747b6a496ca15207353c13bd54\"}"
+            - generic [ref=f4e760]:
+              - generic [ref=f4e762]: span_ended
+              - generic [ref=f4e763]: "{\"span_name\":\"agent_loop.compaction\",\"span_id\":\"a6b0c9744a9a8f67\",\"span_type\":\"COMPACTION\",\"duration_ms\":0,\"trace_id\":\"cd1497747b6a496ca15207353c13bd54\"}"
+            - generic [ref=f4e764]:
+              - generic [ref=f4e766]: span_started
+              - generic [ref=f4e767]: "{\"span_name\":\"agent_loop.turn\",\"span_id\":\"1532f6d0bbb0cb1b\",\"parent_span_id\":\"c372874a6d51c080\",\"span_type\":\"TURN\",\"trace_id\":\"cd1497747b6a496ca15207353c13bd54\"}"
+            - generic [ref=f4e768]:
+              - generic [ref=f4e770]: turn_start
+              - generic [ref=f4e771]: turn 0
+            - generic [ref=f4e772]:
+              - generic [ref=f4e774]: span_started
+              - generic [ref=f4e775]: "{\"span_name\":\"agent_loop.prompt_build\",\"span_id\":\"d71a7b67099d4b3d\",\"parent_span_id\":\"1532f6d0bbb0cb1b\",\"span_type\":\"PROMPT_BUILD\",\"trace_id\":\"cd1497747b6a496ca15207353c13bd54\"}"
+            - generic [ref=f4e776]:
+              - generic [ref=f4e778]: span_ended
+              - generic [ref=f4e779]: "{\"span_name\":\"agent_loop.prompt_build\",\"span_id\":\"d71a7b67099d4b3d\",\"span_type\":\"PROMPT_BUILD\",\"duration_ms\":16.00000006146729,\"trace_id\":\"cd1497747b6a496ca15207353c13bd54\"}"
+            - generic [ref=f4e780]:
+              - generic [ref=f4e782]: prompt_built
+              - generic [ref=f4e783]: "{\"messages_count\":4,\"estimated_input_tokens\":4775,\"cache_breakpoints_count\":3,\"memory_layers_used\":[],\"position_strategy_used\":\"LostInMiddleStrategy\",\"duration_ms\":13.254400109872222,\"trace_id\":\"cd1497747b6a496ca15207353c13bd54\"}"
+            - generic [ref=f4e784]:
+              - generic [ref=f4e786]: llm_request
+              - generic [ref=f4e787]: model=gpt-5.2 tokens_in=0
+            - generic [ref=f4e788]:
+              - generic [ref=f4e790]: span_started
+              - generic [ref=f4e791]: "{\"span_name\":\"agent_loop.llm_call\",\"span_id\":\"712aa4037876c25d\",\"parent_span_id\":\"1532f6d0bbb0cb1b\",\"span_type\":\"LLM_CALL\",\"trace_id\":\"cd1497747b6a496ca15207353c13bd54\"}"
+            - generic [ref=f4e792]:
+              - generic [ref=f4e794]: span_ended
+              - generic [ref=f4e795]: "{\"span_name\":\"agent_loop.llm_call\",\"span_id\":\"712aa4037876c25d\",\"span_type\":\"LLM_CALL\",\"duration_ms\":3702.999999979511,\"trace_id\":\"cd1497747b6a496ca15207353c13bd54\"}"
+            - generic [ref=f4e796]:
+              - generic [ref=f4e798]: llm_response
+              - generic [ref=f4e799]: 0 tool calls
+            - generic [ref=f4e800]:
+              - generic [ref=f4e802]: state_checkpointed
+              - generic [ref=f4e803]: "{\"version\":1,\"trace_id\":\"cd1497747b6a496ca15207353c13bd54\"}"
+            - generic [ref=f4e804]:
+              - generic [ref=f4e806]: verification_passed
+              - generic [ref=f4e807]: llm_judge (llm_judge) score=0.99
+            - generic [ref=f4e808]:
+              - generic [ref=f4e810]: loop_end
+              - generic [ref=f4e811]: stop=end_turn turns=0
+      - generic [ref=f4e812]:
+        - generic [ref=f4e813]:
+          - generic [ref=f4e814]: ● completed
+          - generic [ref=f4e815]:
+            - generic [ref=f4e816]: "mode:"
+            - button "echo_demo" [ref=f4e817] [cursor=pointer]
+            - button "real_llm" [ref=f4e818] [cursor=pointer]
+        - generic [ref=f4e819]:
+          - textbox "Ask the agent… (Enter to send, Shift+Enter for newline)" [active] [ref=f4e820]:
+            - /placeholder: Ask the agent…  (Enter to send, Shift+Enter for newline)
+          - button "Send" [disabled] [ref=f4e822]
+    - complementary [ref=f4e823]:
+      - tablist "Inspector tabs" [ref=f4e825]:
+        - tab "Turn" [selected] [ref=f4e826] [cursor=pointer]
+        - tab "Trace" [ref=f4e827] [cursor=pointer]
+        - tab "Memory" [ref=f4e828] [cursor=pointer]
+        - tab "Tree" [ref=f4e829] [cursor=pointer]
+        - tab "Todos" [ref=f4e830] [cursor=pointer]
+      - generic [ref=f4e831]:
+        - generic [ref=f4e832]: Turn 1 · end_turn
+        - generic [ref=f4e833]:
+          - generic [ref=f4e834]:
+            - generic [ref=f4e835]: stop_reason
+            - generic [ref=f4e837]: end_turn
+          - generic [ref=f4e838]:
+            - generic [ref=f4e839]: duration
+            - generic [ref=f4e840]: —
+          - generic [ref=f4e841]:
+            - generic [ref=f4e842]: tokens.in
+            - generic [ref=f4e843]: 3,389
+          - generic [ref=f4e844]:
+            - generic [ref=f4e845]: tokens.out
+            - generic [ref=f4e846]: "47"
+          - generic [ref=f4e847]:
+            - generic [ref=f4e848]: tokens.thinking
+            - generic [ref=f4e849]: —
+          - generic [ref=f4e850]:
+            - generic [ref=f4e851]: tokens.cached
+            - generic [ref=f4e852]: 2,816
+          - generic [ref=f4e853]:
+            - generic [ref=f4e854]: cache_hit
+            - generic [ref=f4e855]: 83%
+          - generic [ref=f4e856]:
+            - generic [ref=f4e857]: cost
+            - generic [ref=f4e858]: —
+          - generic [ref=f4e859]:
+            - generic [ref=f4e860]: model
+            - generic [ref=f4e861]: gpt-5.2
+          - generic [ref=f4e862]:
+            - generic [ref=f4e863]: active_skill
+            - generic [ref=f4e864]: —
+          - generic [ref=f4e865]:
+            - generic [ref=f4e866]: trace_id
+            - generic [ref=f4e867]: cd1497747b6a496ca15207353c13bd54
+          - generic [ref=f4e868]:
+            - generic [ref=f4e869]: span_id
+            - generic [ref=f4e870]: 1532f6d0bbb0cb1b
+          - generic [ref=f4e872]: Block sequence
+          - generic [ref=f4e873]:
+            - generic [ref=f4e874]:
+              - generic [ref=f4e876]: answer
+              - generic [ref=f4e877]: 我不知道你是誰、也不知道你手上正在忙什麼專案；在這段對話裡你還沒有提供任何可用來辨識你身份或專案…
+            - generic [ref=f4e878]:
+              - generic [ref=f4e880]: verification
+              - generic [ref=f4e881]: claim verified · llm_judge
+          - button "Open audit entry" [ref=f4e883] [cursor=pointer]:
+            - img [ref=f4e884]
+            - text: Open audit entry
+          - button "Open in Loop Debug" [ref=f4e887] [cursor=pointer]:
+            - img [ref=f4e888]
+            - text: Open in Loop Debug
