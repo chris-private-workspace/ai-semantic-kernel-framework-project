@@ -219,6 +219,14 @@ class Settings(BaseSettings):
     # Env: QDRANT_URL.
     qdrant_url: str = "http://localhost:6333"
 
+    # ---- Sprint 57.155 Cat 3 memory semantic axis (CARRY-026 Slice 1, L4 user) --
+    # When True (default False): the user memory layer's "semantic" time_scale is
+    # served by embedding + Qdrant cosine recall (per-tenant collection, per-user
+    # payload filter) instead of the 51.2 [] stub. Reuses the same embedding +
+    # qdrant_url config as the knowledge vector path. OFF → 57.150 keyword/ILIKE
+    # behavior byte-identical, zero added cost. Env: MEMORY_VECTOR_ENABLED.
+    memory_vector_enabled: bool = False
+
     # ---- Sprint 57.112 IAM Block C MFA (TOTP) -----------------------
     # mfa_issuer_name: the otpauth:// issuer label shown in the user's authenticator
     #   app (e.g. "IPA Platform: jamie@acme.com"). Override via env: MFA_ISSUER_NAME.

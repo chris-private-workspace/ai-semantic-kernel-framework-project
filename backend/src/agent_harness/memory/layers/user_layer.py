@@ -14,8 +14,11 @@ Description:
         - expires_at, metadata (JSONB)
 
     51.2 simplified design choices:
-    - read() uses ILIKE substring match (no vector search; semantic axis
-      returns empty — CARRY-026 Qdrant)
+    - read() uses ILIKE substring match for the short/long-term axes. The
+      "semantic" axis returned empty (51.2 stub) until Sprint 57.155 (CARRY-026
+      Slice 1): when a MemoryVectorIndex is injected (MEMORY_VECTOR_ENABLED),
+      read() embeds + cosine-searches the user's rows and merges the vector hits;
+      with no index it stays byte-identical (semantic-only → [], mixed → keyword).
     - 4 spec fields with no PG column live in metadata JSONB:
         verify_before_use, last_verified_at, source_tool_call_id, time_scale
     - short_term writes set expires_at = now() + 24h
@@ -25,9 +28,10 @@ Owner: 01-eleven-categories-spec.md §範疇 3 Layer 4 User
 Single-source: 17.md §2.1
 
 Created: 2026-04-30 (Sprint 51.2 Day 2)
-Last Modified: 2026-06-30
+Last Modified: 2026-07-01
 
 Modification History:
+    - 2026-07-01: Sprint 57.155 — read() semantic branch via MemoryVectorIndex (CARRY-026 L4)
     - 2026-06-30: Sprint 57.150 — write() → idempotent upsert on dedup_key
     - 2026-06-28: Sprint 57.149 — write() additive source param → memory_user.source column
     - 2026-06-04: Sprint 57.76 — emit memory_ops on write/evict (same txn, Risk C)
@@ -42,7 +46,9 @@ Related:
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Literal
@@ -55,7 +61,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from agent_harness._contracts import MemoryHint, TraceContext
 from agent_harness.memory._abc import MemoryLayer, MemoryScope
 from agent_harness.memory._ops_recorder import _record_memory_op
+from agent_harness.memory.vector_index import MemoryRow, MemoryVectorIndex
 from infrastructure.db.models.memory import MemoryUser
+
+logger = logging.getLogger(__name__)
 
 _TimeScale = Literal["short_term", "long_term", "semantic"]
 
@@ -78,8 +87,16 @@ class UserLayer(MemoryLayer):
 
     scope = MemoryScope.USER
 
-    def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
+    def __init__(
+        self,
+        session_factory: async_sessionmaker[AsyncSession],
+        vector_index: MemoryVectorIndex | None = None,
+    ) -> None:
         self._session_factory = session_factory
+        # Sprint 57.155 (CARRY-026 Slice 1): when injected (MEMORY_VECTOR_ENABLED on),
+        # the "semantic" time_scale returns cosine-ranked hits instead of the 51.2 []
+        # stub. None → byte-identical to 57.150 (semantic-only → [], mixed → keyword only).
+        self._vector_index = vector_index
 
     async def read(
         self,
@@ -98,28 +115,101 @@ class UserLayer(MemoryLayer):
         if tenant_id is None or user_id is None:
             return []
 
-        # Semantic-only request: 51.2 stub — empty (CARRY-026 Qdrant)
-        if time_scales == ("semantic",):
-            return []
+        want_keyword = any(ts in ("short_term", "long_term") for ts in time_scales)
+        # Sprint 57.155: "semantic" is real only when the vector index is injected and
+        # the query is non-empty (an empty query cannot embed meaningfully). Otherwise
+        # the 51.2 [] stub / keyword-only behavior is preserved byte-for-byte.
+        want_semantic = (
+            "semantic" in time_scales and self._vector_index is not None and query.strip() != ""
+        )
 
+        keyword_hints: list[MemoryHint] = []
+        if want_keyword:
+            async with self._session_factory() as session:
+                stmt = select(MemoryUser).where(
+                    MemoryUser.tenant_id == tenant_id,
+                    MemoryUser.user_id == user_id,
+                    or_(
+                        MemoryUser.content.ilike(f"%{query}%"),
+                        MemoryUser.category.ilike(f"%{query}%"),
+                    ),
+                )
+                # short_term filter: expires_at must be NOT NULL and in future
+                if "short_term" in time_scales and "long_term" not in time_scales:
+                    stmt = stmt.where(MemoryUser.expires_at.is_not(None))
+                # confidence-desc ordering for stable top-k
+                stmt = stmt.order_by(MemoryUser.confidence.desc().nulls_last()).limit(max_hints)
+                rows = (await session.execute(stmt)).scalars().all()
+            keyword_hints = [self._row_to_hint(row, query=query) for row in rows]
+
+        semantic_hints: list[MemoryHint] = []
+        if want_semantic:
+            semantic_hints = await self._semantic_hints(
+                query=query, tenant_id=tenant_id, user_id=user_id, max_hints=max_hints
+            )
+
+        # No semantic hits (index off / not requested / empty / fail-soft) → the keyword
+        # path is returned unchanged (byte-identical to 57.150; also the semantic-only []
+        # stub, since keyword_hints is [] when only "semantic" was requested).
+        if not semantic_hints:
+            return keyword_hints
+
+        # Merge keyword + semantic, dedup by row id (keep the higher relevance — the
+        # semantic cosine outranks the keyword 0.4/0.8 substring boost for real matches),
+        # then re-rank by relevance + cap. MemoryRetrieval.search re-sorts downstream.
+        by_id: dict[UUID, MemoryHint] = {}
+        for hint in keyword_hints + semantic_hints:
+            prev = by_id.get(hint.hint_id)
+            if prev is None or hint.relevance_score > prev.relevance_score:
+                by_id[hint.hint_id] = hint
+        merged = sorted(by_id.values(), key=lambda h: h.relevance_score, reverse=True)
+        return merged[:max_hints]
+
+    async def _semantic_hints(
+        self, *, query: str, tenant_id: UUID, user_id: UUID, max_hints: int
+    ) -> list[MemoryHint]:
+        """Semantic recall via the vector index (Sprint 57.155). Fail-soft to [] on any error.
+
+        Fetches the user's rows (wildcard), embeds + cosine-searches them, and maps each
+        hit back to a full MemoryHint whose relevance_score is the cosine score (the
+        semantic ranking signal MemoryRetrieval.search consumes). Any embedding / Qdrant
+        failure degrades to [] so recall never breaks (the keyword path still returns).
+        """
+        index = self._vector_index
+        if index is None:
+            return []
         async with self._session_factory() as session:
             stmt = select(MemoryUser).where(
                 MemoryUser.tenant_id == tenant_id,
                 MemoryUser.user_id == user_id,
-                or_(
-                    MemoryUser.content.ilike(f"%{query}%"),
-                    MemoryUser.category.ilike(f"%{query}%"),
-                ),
             )
-            # short_term filter: expires_at must be NOT NULL and in future
-            if "short_term" in time_scales and "long_term" not in time_scales:
-                stmt = stmt.where(MemoryUser.expires_at.is_not(None))
-            # confidence-desc ordering for stable top-k
-            stmt = stmt.order_by(MemoryUser.confidence.desc().nulls_last()).limit(max_hints)
-
             rows = (await session.execute(stmt)).scalars().all()
-
-        return [self._row_to_hint(row, query=query) for row in rows]
+        by_dedup: dict[str, MemoryUser] = {r.dedup_key: r for r in rows if r.dedup_key}
+        mem_rows = [
+            MemoryRow(
+                dedup_key=r.dedup_key,
+                content=r.content or "",
+                confidence=float(r.confidence) if r.confidence is not None else 0.5,
+            )
+            for r in rows
+            if r.dedup_key
+        ]
+        if not mem_rows:
+            return []
+        try:
+            hits = await index.search(
+                tenant_id=tenant_id, user_id=user_id, rows=mem_rows, query=query, top_k=max_hints
+            )
+        except Exception:  # noqa: BLE001 — fail-soft: any embed/Qdrant error → no semantic hits
+            logger.warning("memory semantic recall failed; keyword path preserved", exc_info=True)
+            return []
+        out: list[MemoryHint] = []
+        for hit in hits:
+            row = by_dedup.get(hit.dedup_key)
+            if row is None:
+                continue
+            out.append(replace(self._row_to_hint(row, query=query), relevance_score=hit.score))
+        return out
 
     async def write(
         self,

@@ -17,9 +17,10 @@ Key Components:
     - QdrantVectorStore: ensure_collection / recreate_collection / count / upsert / search
 
 Created: 2026-06-27 (Sprint 57.146)
-Last Modified: 2026-06-27
+Last Modified: 2026-07-01
 
 Modification History (newest-first):
+    - 2026-07-01: Sprint 57.155 — count() gains payload_filter (Cat 3 memory per-user count)
     - 2026-06-27: Initial creation (Sprint 57.146) — first real Qdrant client
       (AD-Knowledge-Connector-First-Real-Source Slice 2; closes CARRY-026 for KB)
 
@@ -85,14 +86,21 @@ class QdrantVectorStore:
 
         await asyncio.to_thread(_recreate)
 
-    async def count(self, name: str) -> int:
-        """Number of points in the collection (0 if it does not exist)."""
+    async def count(self, name: str, payload_filter: dict[str, Any] | None = None) -> int:
+        """Number of points in the collection (0 if it does not exist).
+
+        payload_filter (Cat 3 memory per-user count, Sprint 57.155): when supplied,
+        counts only the points matching the QdrantNamespaceStrategy-shaped filter —
+        mirrors search()'s payload_filter. Default None = total collection count
+        (the 57.146 knowledge behavior, byte-identical for its no-arg callers).
+        """
 
         def _count() -> int:
             client = self._get_client()
             if not client.collection_exists(name):
                 return 0
-            return client.count(collection_name=name).count
+            cfilter = models.Filter.model_validate(payload_filter) if payload_filter else None
+            return client.count(collection_name=name, count_filter=cfilter).count
 
         return await asyncio.to_thread(_count)
 

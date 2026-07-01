@@ -3,6 +3,7 @@ File: backend/tests/unit/infrastructure/vector/test_qdrant_client.py
 Purpose: Unit tests for QdrantVectorStore (Sprint 57.146 — QdrantClient mocked, no live Qdrant).
 Category: Tests
 Created: 2026-06-27
+Last Modified: 2026-07-01 (Sprint 57.155 — count() payload_filter both arities)
 """
 
 from __future__ import annotations
@@ -19,6 +20,14 @@ def _cos(a: list[float], b: list[float]) -> float:
     na = math.sqrt(sum(x * x for x in a)) or 1.0
     nb = math.sqrt(sum(y * y for y in b)) or 1.0
     return dot / (na * nb)
+
+
+def _match_filter(qfilter: Any, payload: dict[str, Any]) -> bool:
+    """Honor a qdrant models.Filter (must-conditions) against a point payload (Sprint 57.155)."""
+    for cond in qfilter.must or []:
+        if payload.get(cond.key) != cond.match.value:
+            return False
+    return True
 
 
 class _FakeQdrant:
@@ -38,8 +47,11 @@ class _FakeQdrant:
     def delete_collection(self, name: str) -> None:
         self.collections.pop(name, None)
 
-    def count(self, collection_name: str) -> Any:
-        return SimpleNamespace(count=len(self.collections.get(collection_name, [])))
+    def count(self, collection_name: str, count_filter: Any = None) -> Any:
+        pts = self.collections.get(collection_name, [])
+        if count_filter is not None:
+            pts = [p for p in pts if _match_filter(count_filter, p[2])]
+        return SimpleNamespace(count=len(pts))
 
     def upsert(self, collection_name: str, points: list[Any]) -> None:
         store = self.collections.setdefault(collection_name, [])
@@ -83,6 +95,27 @@ async def test_upsert_and_count() -> None:
     await store.upsert("c", [(0, [1.0, 0.0], {"source": "a"}), (1, [0.0, 1.0], {"source": "b"})])
     assert await store.count("c") == 2
     assert await store.count("missing") == 0
+
+
+async def test_count_with_payload_filter_scopes_to_subset() -> None:
+    """Sprint 57.155: count(payload_filter=) counts only matching points (per-user memory count)."""
+    store, _ = _store_with_fake()
+    await store.ensure_collection("c", 2)
+    await store.upsert(
+        "c",
+        [
+            (0, [1.0, 0.0], {"tenant_id": "t", "user_id": "a"}),
+            (1, [0.0, 1.0], {"tenant_id": "t", "user_id": "b"}),
+        ],
+    )
+    assert await store.count("c") == 2  # no filter → total (57.146 behavior)
+    pf = {
+        "must": [
+            {"key": "tenant_id", "match": {"value": "t"}},
+            {"key": "user_id", "match": {"value": "a"}},
+        ]
+    }
+    assert await store.count("c", payload_filter=pf) == 1  # only user a's point
 
 
 async def test_search_ranks_by_cosine_and_maps_payload() -> None:

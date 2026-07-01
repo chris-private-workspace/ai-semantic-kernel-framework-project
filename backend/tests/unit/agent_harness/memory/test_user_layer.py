@@ -17,13 +17,29 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from decimal import Decimal
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
 
 from agent_harness.memory.layers.user_layer import UserLayer, _dedup_key
+from agent_harness.memory.vector_index import MemoryVectorHit
 from infrastructure.db.models.memory import MemoryOp, MemoryUser
+
+
+class _FakeVectorIndex:
+    """Stand-in MemoryVectorIndex: returns preset hits + records the search call."""
+
+    def __init__(self, hits: list[MemoryVectorHit]) -> None:
+        self._hits = hits
+        self.calls: list[tuple[Any, Any, list[str], str, int]] = []
+
+    async def search(
+        self, *, tenant_id: Any, user_id: Any, rows: Any, query: str, top_k: int
+    ) -> list[MemoryVectorHit]:
+        self.calls.append((tenant_id, user_id, [r.dedup_key for r in rows], query, top_k))
+        return self._hits
 
 
 def _build_factory(
@@ -102,12 +118,54 @@ async def test_read_returns_hints() -> None:
 
 @pytest.mark.asyncio
 async def test_read_semantic_only_returns_empty() -> None:
-    """Semantic axis is stub in 51.2 (CARRY-026 Qdrant)."""
+    """Semantic axis is the 51.2 [] stub when NO vector index is injected (byte-identical)."""
     layer = UserLayer(_build_factory([_make_row()]))
     hints = await layer.read(
         query="x", tenant_id=uuid4(), user_id=uuid4(), time_scales=("semantic",)
     )
     assert hints == []
+
+
+@pytest.mark.asyncio
+async def test_read_semantic_returns_vector_hits_when_index_injected() -> None:
+    """Sprint 57.155 (CARRY-026 Slice 1): with a MemoryVectorIndex injected, semantic
+    recall returns cosine-ranked hits (was the 51.2 [] stub); the hit's cosine score
+    becomes the MemoryHint.relevance_score (not the keyword 0.4/0.8 substring boost)."""
+    tenant, user = uuid4(), uuid4()
+    row = _make_row(tenant_id=tenant, user_id=user, content="I love scuba diving")
+    row.dedup_key = "k1"
+    fake = _FakeVectorIndex(
+        [
+            MemoryVectorHit(
+                dedup_key="k1", content="I love scuba diving", confidence=0.85, score=0.93
+            )
+        ]
+    )
+    layer = UserLayer(_build_factory([row]), vector_index=cast(Any, fake))
+    hints = await layer.read(
+        query="ocean hobbies", tenant_id=tenant, user_id=user, time_scales=("semantic",)
+    )
+    assert len(hints) == 1
+    assert hints[0].summary == "I love scuba diving"
+    assert hints[0].relevance_score == 0.93  # cosine score, not the substring boost
+    # the index was queried with the user's rows + the query
+    assert fake.calls and fake.calls[0][3] == "ocean hobbies"
+
+
+@pytest.mark.asyncio
+async def test_read_semantic_fail_soft_on_index_error() -> None:
+    """Any embed/Qdrant error → semantic degrades to [] (recall never breaks)."""
+
+    class _BoomIndex:
+        async def search(self, **kwargs: Any) -> list[MemoryVectorHit]:
+            raise RuntimeError("qdrant unreachable")
+
+    tenant, user = uuid4(), uuid4()
+    row = _make_row(tenant_id=tenant, user_id=user)
+    row.dedup_key = "k1"
+    layer = UserLayer(_build_factory([row]), vector_index=cast(Any, _BoomIndex()))
+    hints = await layer.read(query="x", tenant_id=tenant, user_id=user, time_scales=("semantic",))
+    assert hints == []  # fail-soft to the stub
 
 
 @pytest.mark.asyncio

@@ -26,9 +26,10 @@ Key Components:
     - make_chat_state_deps(db, session_id, tenant_id) -> (Reducer|None, Checkpointer|None)  (Cat 7)
 
 Created: 2026-05-31 (Sprint 57.63 Day 1)
-Last Modified: 2026-06-11
+Last Modified: 2026-07-01
 
 Modification History (newest-first):
+    - 2026-07-01: Sprint 57.155 — inject MemoryVectorIndex into UserLayer (CARRY-026 L4 semantic)
     - 2026-06-12: Sprint 57.109 C2 — compaction budget env knob + thread to sub-compactors
     - 2026-06-11: Sprint 57.103 (B2b) — inbox_factory → inbox_scope (register child queue)
     - 2026-06-11: Sprint 57.102 (B2a) — thread teammate factory + inbox_factory + mailbox
@@ -90,6 +91,7 @@ from agent_harness.state_mgmt import (
 from agent_harness.subagent import DefaultSubagentDispatcher
 from agent_harness.verification import VerifierRegistry
 from agent_harness.verification.llm_judge import LLMJudgeVerifier
+from api.v1.chat.memory_vector_index import get_memory_vector_index
 from core.config import get_settings
 from infrastructure.db.engine import get_session_factory
 from platform_layer.governance.error_budget_provider import maybe_get_budget_store
@@ -301,7 +303,10 @@ def make_chat_memory_deps(
         "system": SystemLayer(session_factory),
         "tenant": TenantLayer(session_factory),
         "role": RoleLayer(session_factory),
-        "user": UserLayer(session_factory),
+        # Sprint 57.155 (CARRY-026 Slice 1): inject the memory vector index into the
+        # user layer so the "semantic" axis is real when MEMORY_VECTOR_ENABLED is on.
+        # None (flag off / unconfigured) → UserLayer keeps the 57.150 keyword path.
+        "user": UserLayer(session_factory, vector_index=get_memory_vector_index()),
         "session": SessionLayer(),
     }
     # Sprint 57.151 (AD-Memory-Formation-Session-Recall): thread the session-summary
