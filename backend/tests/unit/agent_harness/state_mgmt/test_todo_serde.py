@@ -42,9 +42,9 @@ def test_serde_round_trip() -> None:
     ]
     blob = todos_to_jsonb(todos)
     assert blob == [
-        {"id": "1", "title": "Research the topic", "status": "completed"},
-        {"id": "2", "title": "Draft the answer", "status": "in_progress"},
-        {"id": "3", "title": "Review", "status": "pending"},
+        {"id": "1", "title": "Research the topic", "status": "completed", "depends_on": []},
+        {"id": "2", "title": "Draft the answer", "status": "in_progress", "depends_on": []},
+        {"id": "3", "title": "Review", "status": "pending", "depends_on": []},
     ]
     assert todos_from_jsonb(blob) == todos
 

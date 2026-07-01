@@ -26,9 +26,10 @@ Key Components:
     - make_write_todos_handler(store): dual-arity handler factory
 
 Created: 2026-06-24 (Sprint 57.140)
-Last Modified: 2026-06-24
+Last Modified: 2026-07-01
 
 Modification History (newest-first):
+    - 2026-07-01: Sprint 57.156 — add per-todo depends_on to the schema + description (DAG)
     - 2026-06-24: Initial creation (Sprint 57.140) — write_todos tool + handler
 
 Related:
@@ -66,8 +67,11 @@ WRITE_TODOS_SPEC: ToolSpec = ToolSpec(
         "multi-step task, call this FIRST to lay out a plan (3 or more todos), then "
         "call it again to update each todo's status (pending -> in_progress -> "
         "completed) as you finish steps. Always pass the COMPLETE list — this "
-        "REPLACES the previous plan. Consult the '## Active Plan' section to see "
-        "what is still pending after a new message."
+        "REPLACES the previous plan. When a step needs another step done first, set "
+        "its `depends_on` to the ids of those prerequisite todos; work the steps "
+        "marked (ready) in the '## Active Plan' section before ones marked "
+        "(blocked by: ...). Consult '## Active Plan' to see what is still pending "
+        "after a new message."
     ),
     input_schema={
         "type": "object",
@@ -84,6 +88,15 @@ WRITE_TODOS_SPEC: ToolSpec = ToolSpec(
                             "type": "string",
                             "enum": ["pending", "in_progress", "completed"],
                             "default": "pending",
+                        },
+                        "depends_on": {
+                            "type": "array",
+                            "items": {"type": "string", "minLength": 1},
+                            "description": (
+                                "ids of todos that must be completed before this one "
+                                "can start (a dependency graph). Omit or [] if none."
+                            ),
+                            "default": [],
                         },
                     },
                     "required": ["id", "title"],

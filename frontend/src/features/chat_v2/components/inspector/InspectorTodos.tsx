@@ -20,6 +20,11 @@
  *   Honest empty state: until the agent writes a plan (single-step requests never
  *   do), the tab shows "no plan yet", NOT a fabricated row (AP-4).
  *
+ *   Sprint 57.156 (DAG): when a todo declares depends_on, the row shows a "⤷ needs"
+ *   line + a "blocked" badge (a pending todo whose known deps aren't all completed),
+ *   mirroring the backend ready_todos rule. Reuses the same .badge / var(--*) classes
+ *   (styles-mockup.css still UNTOUCHED).
+ *
  *   Pure read; no side effects.
  *
  * Key Components:
@@ -27,9 +32,10 @@
  *   - statusBadgeClass(): TodoItem status → mockup .badge tone class
  *
  * Created: 2026-06-24 (Sprint 57.140)
- * Last Modified: 2026-06-24
+ * Last Modified: 2026-07-01
  *
  * Modification History (newest-first):
+ *   - 2026-07-01: Sprint 57.156 — render depends_on ("⤷ needs") + blocked badge (DAG)
  *   - 2026-06-24: Initial creation (Sprint 57.140) — research #1 task-primitive Todos tab
  *
  * Related:
@@ -52,7 +58,17 @@ function statusBadgeClass(status: TodoItem["status"]): string {
   return "badge";
 }
 
-function TodoRow({ todo, index }: { todo: TodoItem; index: number }): JSX.Element {
+function TodoRow({
+  todo,
+  index,
+  blocked,
+  depTitles,
+}: {
+  todo: TodoItem;
+  index: number;
+  blocked: boolean;
+  depTitles: string[];
+}): JSX.Element {
   return (
     <div
       data-testid={`inspector-todo-${index}`}
@@ -65,8 +81,21 @@ function TodoRow({ todo, index }: { todo: TodoItem; index: number }): JSX.Elemen
     >
       <div className="row" style={{ gap: 6 }}>
         <span className={statusBadgeClass(todo.status)}>{todo.status}</span>
+        {blocked && (
+          <span data-testid={`inspector-todo-blocked-${index}`} className="badge">
+            blocked
+          </span>
+        )}
         <span style={{ color: "var(--fg)" }}>{todo.title}</span>
       </div>
+      {depTitles.length > 0 && (
+        <div
+          data-testid={`inspector-todo-deps-${index}`}
+          style={{ marginTop: 3, color: "var(--fg-muted)", fontSize: 10 }}
+        >
+          ⤷ needs: {depTitles.join(", ")}
+        </div>
+      )}
     </div>
   );
 }
@@ -105,15 +134,35 @@ export function InspectorTodos(): JSX.Element {
 
   const completed = todos.filter((t) => t.status === "completed").length;
 
+  // Sprint 57.156 DAG: mirror the backend ready rule (agent_harness ready_todos) —
+  // a pending todo is "blocked" iff any KNOWN dependency is not yet completed;
+  // an unknown dep id is ignored (no permanent deadlock). Titles resolve deps for
+  // the "⤷ needs" line; an unknown id falls back to the raw id.
+  const completedIds = new Set(todos.filter((t) => t.status === "completed").map((t) => t.id));
+  const titleById = new Map(todos.map((t) => [t.id, t.title]));
+
   return (
     <div data-testid="inspector-todos" style={{ padding: "12px 16px" }}>
       {header}
       <div className="subtle" style={{ marginBottom: 8 }}>
         {completed}/{todos.length} completed
       </div>
-      {todos.map((todo, i) => (
-        <TodoRow key={todo.id || i} todo={todo} index={i} />
-      ))}
+      {todos.map((todo, i) => {
+        const deps = todo.depends_on ?? [];
+        const blocked =
+          todo.status === "pending" &&
+          deps.some((d) => titleById.has(d) && !completedIds.has(d));
+        const depTitles = deps.map((d) => titleById.get(d) ?? d);
+        return (
+          <TodoRow
+            key={todo.id || i}
+            todo={todo}
+            index={i}
+            blocked={blocked}
+            depTitles={depTitles}
+          />
+        );
+      })}
     </div>
   );
 }

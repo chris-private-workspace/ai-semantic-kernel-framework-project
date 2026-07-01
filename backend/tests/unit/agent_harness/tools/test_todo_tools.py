@@ -118,3 +118,31 @@ async def test_handler_rejects_non_list() -> None:
     result = await handler(_call("not a list"), ExecutionContext())
     assert "Error" in result
     assert store.replace_calls == 0
+
+
+@pytest.mark.asyncio
+async def test_handler_parses_depends_on() -> None:
+    """The handler threads per-todo depends_on through to the store (Sprint 57.156 DAG)."""
+    store = _FakeTodoStore()
+    handler = make_write_todos_handler(store)
+    await handler(
+        _call(
+            [
+                {"id": "a", "title": "design", "status": "completed"},
+                {"id": "b", "title": "build", "depends_on": ["a"]},
+                {"id": "c", "title": "test", "depends_on": ["a", "b", "b"]},  # dedup
+            ]
+        ),
+        ExecutionContext(),
+    )
+    by_id = {t.id: t for t in store.todos}
+    assert by_id["a"].depends_on == ()
+    assert by_id["b"].depends_on == ("a",)
+    assert by_id["c"].depends_on == ("a", "b")
+
+
+def test_spec_schema_allows_depends_on() -> None:
+    """The write_todos item schema exposes depends_on (array of strings)."""
+    item_props = WRITE_TODOS_SPEC.input_schema["properties"]["todos"]["items"]["properties"]
+    assert item_props["depends_on"]["type"] == "array"
+    assert item_props["depends_on"]["items"]["type"] == "string"
