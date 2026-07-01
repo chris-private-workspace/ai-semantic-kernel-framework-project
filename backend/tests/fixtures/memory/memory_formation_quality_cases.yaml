@@ -1,0 +1,181 @@
+# Golden corpus for the combined-vs-separate memory-formation quality A/B (Sprint 57.154).
+#
+# Each case is a conversation fed IDENTICALLY to both arms (combined single-call vs two focused
+# calls). The Hybrid oracle scores what each arm produced:
+#   - expected_facts: keyword GROUPS; a written fact "covers" a group if its normalized text
+#     contains ALL the group's keywords. coverage = matched groups / total groups.
+#   - expected_summary_points: guidance the LLM-judge uses to grade summary faithfulness/coverage.
+#   - expects_facts: false marks a 0-durable-fact conversation (arithmetic/chit-chat) — its
+#     expected_facts is [] so EVERY written fact counts as spurious (tests hallucination).
+#
+# Difficulty grades: clear multi-fact / decisions-heavy / subtle-implicit / 0-fact spurious-test /
+# long multi-turn attention-split / troubleshooting.
+
+cases:
+  # --- clear multi-fact technical (name + stack migration) ---
+  - id: db_migration_clear
+    conversation:
+      - role: user
+        content: "Hi, I'm Marcus. We're migrating our session store from Redis to DynamoDB this quarter."
+      - role: assistant
+        content: "Got it, Marcus. What's driving the move off Redis?"
+      - role: user
+        content: "Cost at scale, mainly. We'll keep a write-through cache in front of DynamoDB with TTL-based invalidation."
+    expected_facts:
+      - ["marcus"]
+      - ["redis", "dynamodb"]
+    expected_summary_points:
+      - "session store migration from Redis to DynamoDB"
+      - "write-through cache with TTL invalidation"
+    expects_facts: true
+
+  # --- decisions-heavy (tests summary key_decisions capture) ---
+  - id: product_launch_decisions
+    conversation:
+      - role: user
+        content: "For the launch we decided to ship the mobile app first and hold the web version until Q3."
+      - role: assistant
+        content: "Understood. Any decision on pricing?"
+      - role: user
+        content: "Yes, we agreed on a freemium tier plus a $12/month pro plan. Still open: whether to run a beta waitlist."
+    expected_facts:
+      - ["mobile", "first"]
+      - ["freemium"]
+    expected_summary_points:
+      - "launch mobile app first, web held until Q3"
+      - "freemium plus a $12/month pro plan"
+      - "open question: beta waitlist"
+    expects_facts: true
+
+  # --- subtle / implicit preferences (no "I prefer" phrasing) ---
+  - id: subtle_implicit_prefs
+    conversation:
+      - role: user
+        content: "Every time you give me code, put the tests in the same message — I hate switching files to find them."
+      - role: assistant
+        content: "Noted."
+      - role: user
+        content: "And keep explanations short. I read fast and long preambles slow me down."
+    expected_facts:
+      - ["test"]
+      - ["short"]
+    expected_summary_points:
+      - "user wants tests inline with code"
+      - "user prefers short explanations"
+    expects_facts: true
+
+  # --- 0-durable-fact: arithmetic (tests spurious-fact rate) ---
+  - id: arithmetic_no_facts
+    conversation:
+      - role: user
+        content: "What's 47 times 3?"
+      - role: assistant
+        content: "47 times 3 is 141."
+    expected_facts: []
+    expected_summary_points:
+      - "user asked a simple arithmetic question"
+    expects_facts: false
+
+  # --- 0-durable-fact: chit-chat (tests spurious-fact rate) ---
+  - id: chitchat_no_facts
+    conversation:
+      - role: user
+        content: "Good morning! Hope you're doing well today."
+      - role: assistant
+        content: "Good morning! I'm ready to help — what can I do for you?"
+    expected_facts: []
+    expected_summary_points:
+      - "a brief greeting exchange with no substantive content"
+    expects_facts: false
+
+  # --- long multi-turn architecture (attention-split test) ---
+  - id: long_multiturn_arch
+    conversation:
+      - role: user
+        content: "I'm Priya, tech lead on the payments team. We're designing an idempotency layer for our checkout API."
+      - role: assistant
+        content: "What's the current failure mode you're guarding against?"
+      - role: user
+        content: "Duplicate charges when clients retry on timeout. We'll key idempotency on a client-supplied request ID stored in Postgres."
+      - role: assistant
+        content: "How long do you retain the keys?"
+      - role: user
+        content: "24 hours, then a nightly job purges them. We decided against Redis for this to avoid a second source of truth."
+    expected_facts:
+      - ["priya"]
+      - ["idempotency"]
+      - ["postgres"]
+    expected_summary_points:
+      - "idempotency layer for the checkout API to prevent duplicate charges"
+      - "client-supplied request ID stored in Postgres, 24-hour retention"
+      - "decided against Redis to avoid a second source of truth"
+    expects_facts: true
+
+  # --- identity: role + project ---
+  - id: role_and_project
+    conversation:
+      - role: user
+        content: "For context, I'm Dana and I own the Knowledge Connector feature on the platform team."
+      - role: assistant
+        content: "Thanks Dana. What are you working on in it right now?"
+      - role: user
+        content: "Wiring per-tenant document isolation into the retrieval path."
+    expected_facts:
+      - ["dana"]
+      - ["knowledge connector"]
+    expected_summary_points:
+      - "user Dana owns the Knowledge Connector feature"
+      - "working on per-tenant document isolation in retrieval"
+    expects_facts: true
+
+  # --- constraints + deadline ---
+  - id: constraints_and_deadline
+    conversation:
+      - role: user
+        content: "Whatever we build has to run on-prem — no external SaaS calls allowed, compliance requirement."
+      - role: assistant
+        content: "Understood. Any timeline?"
+      - role: user
+        content: "The audit is on October 15th, so it needs to be done and documented by then."
+    expected_facts:
+      - ["on-prem"]
+      - ["october"]
+    expected_summary_points:
+      - "hard constraint: must run on-prem, no external SaaS calls (compliance)"
+      - "deadline: audit on October 15th"
+    expects_facts: true
+
+  # --- troubleshooting (summary should capture problem + resolution) ---
+  - id: troubleshooting_session
+    conversation:
+      - role: user
+        content: "My uploads keep failing at exactly 5MB. Small files work fine."
+      - role: assistant
+        content: "That's usually a proxy body-size limit. Which reverse proxy are you on?"
+      - role: user
+        content: "Nginx. Ah — client_max_body_size defaults to 1MB... wait, ours is set to 5MB. Bumping it to 50MB fixed it."
+    expected_facts:
+      - ["nginx"]
+    expected_summary_points:
+      - "uploads failed at a size limit"
+      - "root cause was the Nginx client_max_body_size limit"
+      - "resolved by raising the limit to 50MB"
+    expects_facts: true
+
+  # --- multiple durable tech-stack preferences ---
+  - id: preferences_stack
+    conversation:
+      - role: user
+        content: "For any new service, default us to FastAPI and Postgres. We standardized on those."
+      - role: assistant
+        content: "Will do. Anything on the frontend side?"
+      - role: user
+        content: "React with TypeScript, and we deploy everything on Kubernetes."
+    expected_facts:
+      - ["fastapi"]
+      - ["postgres"]
+      - ["kubernetes"]
+    expected_summary_points:
+      - "standard stack: FastAPI and Postgres for services"
+      - "React with TypeScript on the frontend, deployed on Kubernetes"
+    expects_facts: true
