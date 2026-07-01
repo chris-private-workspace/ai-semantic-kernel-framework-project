@@ -7,6 +7,7 @@
  * Created: 2026-06-24 (Sprint 57.140)
  *
  * Modification History:
+ *   - 2026-07-01: Sprint 57.156 — DAG: blocked badge + "⤷ needs" deps line coverage
  *   - 2026-06-24: Initial creation (Sprint 57.140) — empty / rows / status badges / count
  */
 
@@ -89,5 +90,46 @@ describe("InspectorTodos (Sprint 57.140)", () => {
     });
     render(<InspectorTodos />);
     expect(screen.getByText("2/3 completed")).toBeInTheDocument();
+  });
+
+  test("Sprint 57.156 DAG: a blocked pending todo shows a 'blocked' badge + '⤷ needs' line", () => {
+    useChatStore.setState({
+      todos: [
+        makeTodo({ id: "a", title: "Design schema", status: "pending" }),
+        makeTodo({ id: "b", title: "Write migration", status: "pending", depends_on: ["a"] }),
+      ],
+    });
+    render(<InspectorTodos />);
+    // b (index 1) is blocked on a (still pending)
+    expect(screen.getByTestId("inspector-todo-blocked-1")).toBeInTheDocument();
+    expect(screen.getByTestId("inspector-todo-deps-1")).toHaveTextContent("needs: Design schema");
+    // a (index 0) has no deps → no badge / no needs line
+    expect(screen.queryByTestId("inspector-todo-blocked-0")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("inspector-todo-deps-0")).not.toBeInTheDocument();
+  });
+
+  test("Sprint 57.156 DAG: deps completed → '⤷ needs' line but NO blocked badge (ready)", () => {
+    useChatStore.setState({
+      todos: [
+        makeTodo({ id: "a", title: "Design schema", status: "completed" }),
+        makeTodo({ id: "b", title: "Write migration", status: "pending", depends_on: ["a"] }),
+      ],
+    });
+    render(<InspectorTodos />);
+    expect(screen.queryByTestId("inspector-todo-blocked-1")).not.toBeInTheDocument();
+    expect(screen.getByTestId("inspector-todo-deps-1")).toHaveTextContent("needs: Design schema");
+  });
+
+  test("Sprint 57.156 DAG: the blocked badge reuses the mockup .badge class (no new CSS)", () => {
+    useChatStore.setState({
+      todos: [
+        makeTodo({ id: "a", title: "x", status: "pending" }),
+        makeTodo({ id: "b", title: "y", status: "pending", depends_on: ["a"] }),
+      ],
+    });
+    render(<InspectorTodos />);
+    const blocked = screen.getByTestId("inspector-todo-blocked-1");
+    expect(blocked.className).toBe("badge");
+    expect(blocked).toHaveTextContent("blocked");
   });
 });

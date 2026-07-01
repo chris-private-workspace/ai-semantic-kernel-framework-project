@@ -137,6 +137,8 @@ export type TodoItem = {
   id: string;
   title: string;
   status: "pending" | "in_progress" | "completed";
+  // Sprint 57.156 DAG: ids of prerequisite todos (optional; older events omit it).
+  depends_on?: string[];
 };
 
 type ChatStoreState = {
@@ -583,6 +585,10 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
             id: String(t.id ?? ""),
             title: String(t.title ?? ""),
             status: narrowTodoStatus(t.status),
+            // Sprint 57.156 DAG: narrow the generic prerequisite-id list.
+            depends_on: Array.isArray(t.depends_on)
+              ? (t.depends_on as unknown[]).map((d) => String(d)).filter((d) => d !== "")
+              : [],
           }));
           return { ...s, rawEvents, todos };
         }
