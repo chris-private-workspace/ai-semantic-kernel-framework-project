@@ -78,4 +78,4 @@
 - [x] Final gate sweep: mypy `src` 399/0 · run_all 11/11 · pytest 3123/6skip · black/isort/flake8 + LLM-SDK-leak clean · FE untouched (no Vitest/mockup delta)
 - [x] Navigators: CLAUDE.md Current-Sprint + Last-Updated · MEMORY.md pointer + subfile · next-phase-candidates (CARRY-026 Slice-1 done + carryovers) · sprint-workflow matrix (`memory-vector-recall-spike` 0.60 row)
 - [x] Anti-pattern self-check (retro Q5): AP-2/3/4/6/8/11 → 0 violations; v2 lints 11/11
-- [ ] **Commit** → ⏳ PR push + open → CI → merge: PENDING USER CONFIRMATION (push is outward-facing per Developer Preferences) → post-merge status flip after gh-verified MERGED
+- [x] **Commit `a27f0ab3`** → PR #364 pushed + opened → CI all-green (5 required) → squash-merged (gh-verified MERGED, main `e1083964`, mergedAt 2026-07-01T09:40:57Z) → status flip done (chore branch)
