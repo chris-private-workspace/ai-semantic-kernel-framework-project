@@ -89,6 +89,9 @@ def _force_verification_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
             # Sprint 57.136: the real_llm loop reads the correction-context strategy too;
             # the stub mirrors real Settings (default "keep" = byte-identical).
             chat_verification_correction_strategy="keep",
+            # Sprint 57.153: the real_llm loop reads the memory-grounding toggle too;
+            # the stub mirrors real Settings (default True = memory-aware judge).
+            chat_verification_memory_grounding=True,
             # Sprint 57.145: build_real_llm_handler reads knowledge_docs_root to wire
             # the knowledge_search tool; "" → `or None` → None → not registered →
             # byte-identical for these model-routing tests.

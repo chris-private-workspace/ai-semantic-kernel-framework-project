@@ -270,3 +270,81 @@ async def test_judge_exception_path_keeps_zero_tokens() -> None:
     assert result.input_tokens == 0
     assert result.output_tokens == 0
     assert result.model is None
+
+
+# === Sprint 57.153 (AD-Verification-Judge-Memory-Inject-Blind): {memory} grounding ===
+
+
+def _state_with_memory(injected_memory: str | None) -> LoopState:
+    """A real LoopState whose transient carries the injected-memory grounding block."""
+    from datetime import datetime
+    from uuid import uuid4
+
+    from agent_harness._contracts.state import DurableState, StateVersion, TransientState
+
+    sid = uuid4()
+    return LoopState(
+        transient=TransientState(messages=[], injected_memory=injected_memory),
+        durable=DurableState(session_id=sid, tenant_id=sid),
+        version=StateVersion(
+            version=0, parent_version=None, created_at=datetime(2026, 7, 1), created_by_category="t"
+        ),
+    )
+
+
+@pytest.mark.asyncio
+async def test_judge_substitutes_memory_block() -> None:
+    """A {memory} placeholder receives state.transient.injected_memory (Sprint 57.153)."""
+    chat = MockChatClient(responses=[_judge_response(passed=True)])
+    verifier = LLMJudgeVerifier(
+        chat_client=chat,
+        judge_template="Memory:\n{memory}\nOutput: {output}\nReply JSON.",
+    )
+    await verifier.verify(
+        output="你是 Chris。",
+        state=_state_with_memory("[memory:user] User name is Chris."),
+    )
+    assert chat.last_request is not None
+    sent = chat.last_request.messages[0].content
+    assert isinstance(sent, str)
+    assert "[memory:user] User name is Chris." in sent  # grounding substituted
+    assert "你是 Chris。" in sent  # output substituted
+
+
+@pytest.mark.asyncio
+async def test_judge_memory_placeholder_empty_when_none() -> None:
+    """No injected_memory → {memory} substitutes to '' (the lever-OFF / no-grounding path)."""
+    chat = MockChatClient(responses=[_judge_response(passed=True)])
+    verifier = LLMJudgeVerifier(
+        chat_client=chat,
+        judge_template="Memory:[{memory}]\nOutput: {output}",
+    )
+    await verifier.verify(output="x", state=_state_with_memory(None))
+    assert chat.last_request is not None
+    sent = chat.last_request.messages[0].content
+    assert isinstance(sent, str)
+    assert "Memory:[]" in sent  # empty grounding block
+
+
+@pytest.mark.asyncio
+async def test_judge_template_without_memory_placeholder_is_noop() -> None:
+    """A template with no {memory} placeholder is byte-identical (the .replace no-ops)."""
+    chat = MockChatClient(responses=[_judge_response(passed=True)])
+    verifier = LLMJudgeVerifier(chat_client=chat, judge_template="Judge: {output}")
+    await verifier.verify(output="x", state=_state_with_memory("[memory:user] ignored here"))
+    assert chat.last_request is not None
+    sent = chat.last_request.messages[0].content
+    assert isinstance(sent, str)
+    assert sent == "Judge: x"  # no {memory} placeholder → grounding not injected
+
+
+@pytest.mark.asyncio
+async def test_judge_memory_noop_when_state_none() -> None:
+    """state=None (Cat 9 fallback paths) → {memory} substitutes to '' (no crash)."""
+    chat = MockChatClient(responses=[_judge_response(passed=True)])
+    verifier = LLMJudgeVerifier(chat_client=chat, judge_template="M:[{memory}] O:{output}")
+    await verifier.verify(output="x", state=_state())  # _state() is cast(None)
+    assert chat.last_request is not None
+    sent = chat.last_request.messages[0].content
+    assert isinstance(sent, str)
+    assert sent == "M:[] O:x"

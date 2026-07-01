@@ -7,6 +7,7 @@ LLMJudgeVerifier ships in US-2; AgentLoop self-correction integration in US-3.
 """
 
 from agent_harness.verification._abc import Verifier
+from agent_harness.verification._trace import build_memory_block, build_trace_block
 from agent_harness.verification.cat9_fallback import LLMJudgeFallbackGuardrail
 from agent_harness.verification.cat9_mutator import LLMVerifyMutateGuardrail
 from agent_harness.verification.llm_judge import LLMJudgeVerifier
@@ -24,6 +25,8 @@ from agent_harness.verification.types import (
 
 __all__ = [
     "FormatRule",
+    "build_memory_block",
+    "build_trace_block",
     "LLMJudgeFallbackGuardrail",
     "LLMJudgeVerifier",
     "LLMVerifyMutateGuardrail",

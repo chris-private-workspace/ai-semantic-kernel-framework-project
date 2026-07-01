@@ -1,0 +1,88 @@
+# Golden corpus for benchmark_memory_grounded_judge.py (Sprint 57.153).
+#
+# Two case classes test the two sides of the memory-aware judge fix:
+#   - grounded_recall: the answer is a recall grounded in the injected memory but has little/no
+#     keyword overlap with the user_question, so a MEMORY-BLIND judge reads it as an unsupported /
+#     off-topic claim and false-positive-REJECTs it. Correct verdict = PASS. The memory_aware arm
+#     should pass it (the WIN); the bare arm is expected to (sometimes) reject it.
+#   - genuine_fabrication: the answer CONTRADICTS the injected memory (a fact the memory pins, with
+#     a different value). Correct verdict = REJECT. The memory_aware arm should catch the
+#     contradiction (the GUARD — grounding must NOT make the judge blindly lenient); a bare judge
+#     cannot see the contradiction at all.
+#
+# Schema per case: id / injected_memory (list of memory summary lines) / user_question (the trace) /
+# candidate_answer (the recall to judge) / expected (grounded_recall | genuine_fabrication).
+
+cases:
+  # --- grounded_recall (correct verdict = PASS; the 57.153 win) ---
+  - id: identity-zero-keyword
+    injected_memory:
+      - "User name is Chris."
+      - "Chris is responsible for developing the Knowledge Connector feature."
+    user_question: "你知道我是誰嗎?"
+    candidate_answer: "你是 Chris,目前負責開發 Knowledge Connector 功能。"
+    expected: grounded_recall
+
+  - id: project-recall
+    injected_memory:
+      - "Project Aurora is migrating the data store from Oracle to PostgreSQL, targeted for Q3."
+    user_question: "remind me what we were planning"
+    candidate_answer: "We were planning Project Aurora — migrating from Oracle to PostgreSQL, targeted for Q3."
+    expected: grounded_recall
+
+  - id: role-recall
+    injected_memory:
+      - "The user is the SOC 2 compliance lead for the platform."
+    user_question: "what's my main focus again?"
+    candidate_answer: "Your main focus is leading SOC 2 compliance for the platform."
+    expected: grounded_recall
+
+  - id: session-summary-recall
+    injected_memory:
+      - "Last session discussed the billing migration from MongoDB to Postgres using a dual-write strategy."
+    user_question: "what were we working on last time?"
+    candidate_answer: "Last session we worked on the billing migration from MongoDB to Postgres with a dual-write strategy."
+    expected: grounded_recall
+
+  - id: detail-recall
+    injected_memory:
+      - "The user is designing a write-through cache and weighing TTL vs explicit invalidation."
+    user_question: "what was that caching approach I was on?"
+    candidate_answer: "You were designing a write-through cache, weighing TTL against explicit invalidation."
+    expected: grounded_recall
+
+  # --- genuine_fabrication: contradicts the injected memory (correct verdict = REJECT; the guard) ---
+  - id: name-contradiction
+    injected_memory:
+      - "User name is Chris."
+    user_question: "你知道我是誰嗎?"
+    candidate_answer: "你是 Marcus,一位資深架構師。"
+    expected: genuine_fabrication
+
+  - id: project-db-contradiction
+    injected_memory:
+      - "Project Aurora is migrating from Oracle to PostgreSQL."
+    user_question: "which database are we moving Aurora to?"
+    candidate_answer: "Aurora is migrating to MySQL."
+    expected: genuine_fabrication
+
+  - id: role-contradiction
+    injected_memory:
+      - "The user is a backend engineer."
+    user_question: "what's my role here?"
+    candidate_answer: "You are a frontend designer."
+    expected: genuine_fabrication
+
+  - id: timeline-contradiction
+    injected_memory:
+      - "Project Aurora is targeted for Q3."
+    user_question: "when is Aurora due?"
+    candidate_answer: "Aurora is due in Q1."
+    expected: genuine_fabrication
+
+  - id: count-contradiction
+    injected_memory:
+      - "The platform team has 12 engineers."
+    user_question: "how big is the platform team?"
+    candidate_answer: "The platform team has 50 engineers."
+    expected: genuine_fabrication

@@ -14,11 +14,15 @@ from __future__ import annotations
 from typing import Any
 
 from agent_harness._contracts.chat import Message, ToolCall
-from agent_harness.verification._trace import build_trace_block
+from agent_harness.verification._trace import build_memory_block, build_trace_block
 
 
 def _msg(role: str, content: str, **kw: Any) -> Message:
     return Message(role=role, content=content, **kw)  # type: ignore[arg-type]
+
+
+def _acc(scope: str, summary: str, **kw: Any) -> dict[str, Any]:
+    return {"scope": scope, "summary": summary, "key": "k", "time_scale": "long_term", **kw}
 
 
 def test_empty_messages_returns_empty() -> None:
@@ -72,3 +76,59 @@ def test_max_messages_zero_returns_empty() -> None:
 
 def test_char_budget_zero_returns_empty() -> None:
     assert build_trace_block([_msg("user", "hi")], char_budget=0) == ""
+
+
+# === build_memory_block (Sprint 57.153) ===
+
+
+def test_memory_empty_returns_empty() -> None:
+    assert build_memory_block([]) == ""
+
+
+def test_memory_renders_scope_and_summary() -> None:
+    block = build_memory_block(
+        [_acc("user", "User name is Chris."), _acc("session", "Discussed billing migration.")]
+    )
+    assert "[memory:user] User name is Chris." in block
+    assert "[memory:session] Discussed billing migration." in block
+    assert block.count("\n") == 1  # exactly 2 lines
+
+
+def test_memory_skips_empty_summary() -> None:
+    block = build_memory_block([_acc("user", ""), _acc("user", "Real fact.")])
+    assert block == "[memory:user] Real fact."
+
+
+def test_memory_all_empty_summaries_returns_empty() -> None:
+    assert build_memory_block([_acc("user", "  "), _acc("session", "")]) == ""
+
+
+def test_memory_no_scope_uses_bare_prefix() -> None:
+    block = build_memory_block([{"summary": "Some fact.", "key": "k"}])
+    assert block == "[memory] Some fact."
+
+
+def test_memory_per_entry_cap_truncates() -> None:
+    block = build_memory_block([_acc("user", "Z" * 1000)])
+    assert "…" in block
+    assert len(block) < 1000
+
+
+def test_memory_char_budget_keeps_head_drops_tail() -> None:
+    # head = highest-priority (top-k conf-ordered) → retained; tail dropped
+    accs = [_acc("user", f"fact{i}-" + "X" * 90) for i in range(10)]
+    block = build_memory_block(accs, char_budget=150)
+    assert len(block) <= 150
+    assert "fact0" in block  # the highest-priority head is retained
+    assert "fact9" not in block  # the lowest-priority tail is dropped
+
+
+def test_memory_char_budget_zero_returns_empty() -> None:
+    assert build_memory_block([_acc("user", "hi")], char_budget=0) == ""
+
+
+def test_memory_defensive_on_non_dict_entry() -> None:
+    # a malformed (non-dict) access must degrade gracefully, not crash
+    accs = ["not-a-dict", _acc("user", "Real fact.")]
+    block = build_memory_block(accs)  # type: ignore[arg-type]
+    assert block == "[memory:user] Real fact."

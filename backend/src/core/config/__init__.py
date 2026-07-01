@@ -151,6 +151,15 @@ class Settings(BaseSettings):
     # falls back to "keep" (the handler validates). Env:
     # CHAT_VERIFICATION_CORRECTION_STRATEGY.
     chat_verification_correction_strategy: str = "keep"
+    # Sprint 57.153 §memory-aware verification (AD-Verification-Judge-Memory-Inject-Blind):
+    # when True, the in-loop Cat 10 judge is shown the memory injected into THIS turn's prompt
+    # (the 57.148 profile() / 57.151 recent_sessions() block) so a memory-grounded recall is
+    # NOT false-positive-rejected as fabrication (the judge otherwise sees only {output}+{trace},
+    # never the injected memory in the system prompt). Default ON — this is a confirmed broken-UX
+    # fix (a grounded recall was rejected → coached into a no-recall answer; observed 57.149 +
+    # 57.152 Leg-2); the A/B harness confirms no fabrication-catch regression. Set False to revert
+    # to the pre-57.153 memory-blind judge. Env: CHAT_VERIFICATION_MEMORY_GROUNDING.
+    chat_verification_memory_grounding: bool = True
     # Sprint 57.137 §sandbox detect→restrict (AD-Guardrail-Detect-To-Restrict):
     # when True, python_sandbox FAILS CLOSED if no structurally-isolating backend
     # (DockerSandbox) is available — it refuses to run rather than silently

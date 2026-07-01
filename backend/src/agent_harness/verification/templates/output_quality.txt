@@ -10,6 +10,15 @@ Do NOT flag for style, length, tone, formatting, completeness debates, or anythi
 a reasonable user would still accept as an answer. A short, correct answer PASSES.
 When in doubt, pass.
 
+Retrieved memory (facts injected into the agent's context from the user's durable memory;
+MAY BE EMPTY): a statement in the output that is consistent with the retrieved memory below
+is GROUNDED — do NOT flag it as fabricated, unsupported, or off-topic merely because the
+conversation trace does not mention it. (Still flag a statement that genuinely CONTRADICTS
+the retrieved memory.)
+---
+{memory}
+---
+
 Conversation trace (recent turns + tool results; MAY BE EMPTY — if empty, judge the
 output on its own and do not invent a failure):
 ---

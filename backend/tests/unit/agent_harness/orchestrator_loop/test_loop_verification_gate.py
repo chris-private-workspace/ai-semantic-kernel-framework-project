@@ -202,6 +202,7 @@ def _build_loop(
     verifier_registry: VerifierRegistry | None,
     max_attempts: int = 2,
     correction_context_strategy: str = "keep",
+    verification_memory_grounding: bool = True,
 ) -> tuple[FakeChatClient, AgentLoopImpl]:
     chat = FakeChatClient(texts)
     registry = ToolRegistryImpl()
@@ -213,6 +214,7 @@ def _build_loop(
         verifier_registry=verifier_registry,
         max_correction_attempts=max_attempts,
         correction_context_strategy=correction_context_strategy,
+        verification_memory_grounding=verification_memory_grounding,
     )
     return chat, loop
 
@@ -366,3 +368,81 @@ async def test_correction_unknown_strategy_falls_back_to_keep() -> None:
     second_request = chat.request_messages[1]
     # Unknown → keep → the failed answer is re-shown (NOT dropped).
     assert any(m.role == "assistant" and m.content == "bad answer" for m in second_request)
+
+
+# === Sprint 57.153: memory-aware judge grounding (AD-Verification-Judge-Memory-Inject-Blind) ===
+
+
+class _CapturingVerifier(Verifier):
+    """Records the LoopState it is handed so a test can inspect trace_state.injected_memory."""
+
+    def __init__(self) -> None:
+        self.seen_injected_memory: str | None = "UNSET"
+
+    async def verify(
+        self, *, output: str, state: LoopState, trace_context: TraceContext | None = None
+    ) -> VerificationResult:
+        self.seen_injected_memory = state.transient.injected_memory
+        return VerificationResult(
+            passed=True, verifier_name="cap", verifier_type="rules_based", score=1.0
+        )
+
+
+_ACCESS = [
+    {"scope": "user", "summary": "User name is Chris.", "key": "k", "time_scale": "long_term"}
+]
+
+
+async def test_gate_threads_injected_memory_when_grounding_on() -> None:
+    # grounding ON (default): the gate renders the injected accesses into the trace_state
+    # so the judge can read the grounding.
+    cap = _CapturingVerifier()
+    _, loop = _build_loop(texts=["x"], verifier_registry=_registry(cap))
+    verdict = await loop._cat10_verify_gate(
+        output_text="你是 Chris。",
+        messages=[Message(role="user", content="你是誰?")],
+        turn_count=0,
+        session_id=uuid4(),
+        attempt=0,
+        ctx=TraceContext.create_root(),
+        injected_accesses=_ACCESS,
+    )
+    assert verdict.outcome == "pass"
+    assert cap.seen_injected_memory is not None
+    assert "[memory:user]" in cap.seen_injected_memory
+    assert "User name is Chris." in cap.seen_injected_memory
+
+
+async def test_gate_omits_injected_memory_when_grounding_off() -> None:
+    # grounding OFF: even with injected accesses present, the trace_state carries no
+    # memory → judge prompt byte-identical to pre-57.153.
+    cap = _CapturingVerifier()
+    _, loop = _build_loop(
+        texts=["x"], verifier_registry=_registry(cap), verification_memory_grounding=False
+    )
+    await loop._cat10_verify_gate(
+        output_text="你是 Chris。",
+        messages=[],
+        turn_count=0,
+        session_id=uuid4(),
+        attempt=0,
+        ctx=TraceContext.create_root(),
+        injected_accesses=_ACCESS,
+    )
+    assert cap.seen_injected_memory is None
+
+
+async def test_gate_no_injected_accesses_is_none() -> None:
+    # No injected accesses (the naked-fallback / echo path) → injected_memory None even ON.
+    cap = _CapturingVerifier()
+    _, loop = _build_loop(texts=["x"], verifier_registry=_registry(cap))
+    await loop._cat10_verify_gate(
+        output_text="hi",
+        messages=[],
+        turn_count=0,
+        session_id=uuid4(),
+        attempt=0,
+        ctx=TraceContext.create_root(),
+        injected_accesses=None,
+    )
+    assert cap.seen_injected_memory is None

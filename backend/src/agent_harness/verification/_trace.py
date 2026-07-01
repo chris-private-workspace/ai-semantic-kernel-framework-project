@@ -19,13 +19,16 @@ Description:
 
 Key Components:
     - build_trace_block(messages, *, max_messages, char_budget): the formatter
+    - build_memory_block(accesses, *, char_budget): the injected-memory grounding formatter (57.153)
     - _content_to_text(): collapse str | list[ContentBlock] to a one-line string
 
 LLM Provider Neutrality: operates on the neutral `Message` dataclass only; no SDK import.
 
 Created: 2026-06-13 (Sprint 57.111 A3)
+Last Modified: 2026-07-01
 
 Modification History (newest-first):
+    - 2026-07-01: Sprint 57.153 — add build_memory_block (memory-aware judge grounding)
     - 2026-06-13: Initial creation (Sprint 57.111 A3) — trace-aware judge input builder
 
 Related:
@@ -49,6 +52,11 @@ from agent_harness._contracts.chat import Message
 _DEFAULT_MAX_MESSAGES = 8
 _DEFAULT_CHAR_BUDGET = 2000
 _PER_MESSAGE_CAP = 400
+
+# Sprint 57.153: memory-grounding block bounds (independent of the trace bounds — the
+# memory block is a separate, smaller grounding section; env override below).
+_DEFAULT_MEMORY_CHAR_BUDGET = 1500
+_PER_MEMORY_CAP = 300
 
 
 def _env_int(name: str, default: int) -> int:
@@ -125,4 +133,59 @@ def build_trace_block(
         nl = block.find("\n")
         if nl != -1:
             block = block[nl + 1 :]
+    return block
+
+
+def build_memory_block(
+    accesses: list[Any],
+    *,
+    char_budget: int | None = None,
+) -> str:
+    """Render the memory injected into this turn's prompt as a bounded grounding block.
+
+    The in-loop Cat 10 judge (Sprint 57.153, AD-Verification-Judge-Memory-Inject-Blind)
+    reads this so a recall grounded in injected memory is NOT false-positive-rejected as
+    fabrication. The injected memory (57.148 `profile()` + 57.151 `recent_sessions()`)
+    lives in the per-turn PromptBuilder artifact (the system prompt), never in `messages`,
+    and `build_trace_block` drops system messages — so the verify gate threads the captured
+    `memory_accesses` (builder.py:397 — `{scope, time_scale, key, summary}`; `summary` is the
+    MemoryHint's PII-safe capped summary, NOT raw content) here instead, as a section the
+    judge weighs alongside `{output}` and `{trace}`.
+
+    Renders each access as `[memory:{scope}] {summary}` (one capped line). Returns "" when
+    there is nothing to show (empty list / budget 0 / no non-empty summaries) — the judge
+    then critiques the output + trace alone, byte-identical to pre-57.153. When the joined
+    block exceeds `char_budget` the LOWEST-priority (tail) lines are dropped, keeping the
+    head: `memory_accesses` is top-k confidence-ordered within a layer, so the head carries
+    the most relevant grounding. Env override: CHAT_VERIFICATION_MEMORY_CHAR_BUDGET.
+    """
+    if char_budget is None:
+        char_budget = _env_int("CHAT_VERIFICATION_MEMORY_CHAR_BUDGET", _DEFAULT_MEMORY_CHAR_BUDGET)
+    if not accesses or char_budget <= 0:
+        return ""
+
+    lines: list[str] = []
+    for acc in accesses:
+        # Defensive .get — the access dicts come from builder.py layer_metadata, but a
+        # future producer shape change should degrade gracefully, not crash the judge.
+        get = acc.get if isinstance(acc, dict) else (lambda _k, _d="": _d)
+        scope = str(get("scope", "") or "")
+        summary = str(get("summary", "") or "").strip().replace("\n", " ")
+        if not summary:
+            continue
+        if len(summary) > _PER_MEMORY_CAP:
+            summary = summary[:_PER_MEMORY_CAP] + "…"
+        prefix = f"[memory:{scope}] " if scope else "[memory] "
+        lines.append(prefix + summary)
+    if not lines:
+        return ""
+
+    block = "\n".join(lines)
+    if len(block) > char_budget:
+        # Keep the highest-priority head; drop the trailing partial line so we never end
+        # mid-sentence (opposite of the trace block, which keeps the recent tail).
+        block = block[:char_budget]
+        nl = block.rfind("\n")
+        if nl != -1:
+            block = block[:nl]
     return block

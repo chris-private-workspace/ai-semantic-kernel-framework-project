@@ -24,9 +24,10 @@ Owner: 01-eleven-categories-spec.md §範疇 10
 Single-source: 17.md §2.1 (Verifier ABC) / §1.1 (VerificationResult)
 
 Created: 2026-05-04 (Sprint 54.1 Day 2)
-Last Modified: 2026-06-13
+Last Modified: 2026-07-01
 
 Modification History:
+    - 2026-07-01: Sprint 57.153 — memory-aware {memory} judge grounding block
     - 2026-06-13: Sprint 57.111 A3 — trace-aware {trace} prompt + optional judge temperature
     - 2026-06-05: Sprint 57.82 — capture response.usage + model into result (B-8 cost-ledger)
     - 2026-05-04: AD-Cat10-Obs-1 — accept optional Tracer (Sprint 54.2 US-5)
@@ -72,7 +73,8 @@ class LLMJudgeVerifier(Verifier):
             judge_template: Either a template name (e.g. "factual_consistency") or a raw
                 template string. Names are loaded via `load_template()`. Raw strings must
                 contain a literal `{output}` placeholder; an optional `{trace}` placeholder
-                receives the A3 trace block.
+                receives the A3 trace block; an optional `{memory}` placeholder (Sprint
+                57.153) receives the injected-memory grounding block.
             name: Verifier display name (used in VerificationResult.verifier_name).
             temperature: judge sampling temperature (default 1.0 = pre-A3 behavior). The
                 cheap-judge accuracy benchmark (Sprint 57.111) constructs judges at 0.0 for
@@ -121,13 +123,20 @@ class LLMJudgeVerifier(Verifier):
                 )
 
     def _build_prompt(self, output: str, state: LoopState | None) -> str:
-        """Resolve template (name or raw) and substitute {output} (+ optional {trace}).
+        """Resolve template (name or raw) and substitute {output} (+ optional {trace}/{memory}).
 
         {trace} (Sprint 57.111 A3): when `state` carries a loop trace, substitute the
-        recent turns + tool errors so the judge critiques trace-aware. Absent state OR a
-        template without a `{trace}` placeholder → the substitution is a no-op (an empty
-        block; `.replace` on a string with no `{trace}` is byte-identical to the pre-A3
-        final-string-only prompt).
+        recent turns + tool errors so the judge critiques trace-aware.
+
+        {memory} (Sprint 57.153, AD-Verification-Judge-Memory-Inject-Blind): when `state`
+        carries `transient.injected_memory`, substitute the memory injected into THIS turn's
+        prompt so the judge does NOT false-positive-reject a memory-grounded recall as
+        fabrication (the injected memory lives in the system prompt, never in the trace).
+
+        Absent state OR a template without a `{trace}`/`{memory}` placeholder → each
+        substitution is a no-op (an empty block; `.replace` on a string with no placeholder
+        is byte-identical to the prior prompt). Only output_quality.txt + key_condition.txt
+        carry `{memory}`; the Cat 9 fallback templates are `{output}`-only.
         """
         if "{output}" in self._template_arg:
             # Raw template string
@@ -136,7 +145,12 @@ class LLMJudgeVerifier(Verifier):
             # Template name → load from templates/
             template_text = load_template(self._template_arg)
         trace_block = build_trace_block(state.transient.messages) if state is not None else ""
-        return template_text.replace("{output}", output).replace("{trace}", trace_block)
+        memory_block = (state.transient.injected_memory or "") if state is not None else ""
+        return (
+            template_text.replace("{output}", output)
+            .replace("{trace}", trace_block)
+            .replace("{memory}", memory_block)
+        )
 
     def _parse_response(self, content: str | list[Any]) -> VerificationResult:
         """Parse judge JSON response into VerificationResult. Fail-closed on errors."""

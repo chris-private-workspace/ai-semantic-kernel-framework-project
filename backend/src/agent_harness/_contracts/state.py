@@ -11,7 +11,7 @@ Description:
     Reducer.
 
 Key Components:
-    - TransientState: messages buffer / pending tool_calls / metrics-in-flight
+    - TransientState: messages buffer / pending tool_calls / metrics-in-flight / injected_memory
     - DurableState: pending approvals / checkpoints / conversation summary
     - LoopState: composite (transient + durable + tenant context)
     - StateVersion: monotonic version for time-travel + Reducer correctness
@@ -20,9 +20,10 @@ Owner: 01-eleven-categories-spec.md §範疇 7
 Single-source: 17.md §1.1
 
 Created: 2026-04-29 (Sprint 49.1)
-Last Modified: 2026-04-29
+Last Modified: 2026-07-01
 
 Modification History:
+    - 2026-07-01: Sprint 57.153 — add TransientState.injected_memory (memory-aware judge grounding)
     - 2026-04-29: Initial creation (Sprint 49.1)
 
 Related:
@@ -60,6 +61,16 @@ class TransientState:
     current_turn: int = 0
     elapsed_ms: float = 0.0
     token_usage_so_far: int = 0
+    # Sprint 57.153 (AD-Verification-Judge-Memory-Inject-Blind): the memory injected
+    # into THIS turn's prompt (the rendered 57.148 profile() / 57.151 recent_sessions()
+    # block), captured so the in-loop Cat 10 judge can read what grounded the agent and
+    # NOT false-positive-reject a memory-grounded recall as fabrication. The injected
+    # memory lives in the per-turn PromptBuilder artifact (system prompt), never in
+    # `messages`, and build_trace_block drops system messages — so the verify gate's
+    # throwaway trace_state carries it here instead. None/"" = no grounding shown (the
+    # naked-fallback / echo path, or the memory-grounding lever OFF) → judge byte-identical
+    # to pre-57.153. Set only on the gate's throwaway snapshot (no Reducer involved).
+    injected_memory: str | None = None
 
 
 @dataclass

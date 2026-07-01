@@ -28,6 +28,15 @@ Do NOT flag for style, tone, or completeness debates a reasonable user would sti
 A short, correct answer that meets every clearly-imposed condition PASSES. When a condition
 is genuinely ambiguous (not clearly imposed), do not treat it as critical. When in doubt, pass.
 
+Retrieved memory (facts injected into the agent's context from the user's durable memory;
+MAY BE EMPTY): a statement in the output that is consistent with the retrieved memory below
+is GROUNDED — do NOT treat it as a floor failure (fabricated / unsupported / off-topic) merely
+because the conversation trace does not mention it. (Still flag a statement that genuinely
+CONTRADICTS the retrieved memory.)
+---
+{memory}
+---
+
 Conversation trace (recent turns + tool results; MAY BE EMPTY — if empty, there is no request
 to extract conditions from, so judge the output on the usability floor only and do not invent
 a failure):

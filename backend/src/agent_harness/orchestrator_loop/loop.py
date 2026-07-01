@@ -47,6 +47,7 @@ Last Modified: 2026-06-25
 Modification History (newest-first):
     - 2026-06-25: Sprint 57.144 — rare tool-error path routes via Cat 2 taxonomy (research #7 B2)
     - 2026-06-25: Sprint 57.142 — llm_call span +finish_reason → gen_ai.response.finish_reasons
+    - 2026-07-01: Sprint 57.153 — verify gate threads this turn's injected memory to the judge
     - 2026-06-23: Sprint 57.136 — correction-context strategy: summarize drops failed answer
     - 2026-06-17: Sprint 57.132 — resume() persists tool round-trip + held-answer replay to ledger
     - 2026-06-16: Sprint 57.129 — TOOL_USE branch persists tool round-trips to the ledger
@@ -394,6 +395,13 @@ class AgentLoopImpl(AgentLoop):
         # Settings-only (no per-tenant override — anti-AP-6). Any non-"summarize"
         # value behaves as "keep".
         correction_context_strategy: str = "keep",
+        # 57.153 §memory-aware verification (AD-Verification-Judge-Memory-Inject-Blind):
+        # when True, the in-loop Cat 10 judge is shown the memory injected into THIS turn's
+        # prompt (the 57.148 profile() / 57.151 recent_sessions() block) so a memory-grounded
+        # recall is NOT false-positive-rejected as fabrication. False (or a turn with no
+        # injected memory) → the judge prompt is byte-identical to pre-57.153. Settings-only
+        # (per-tenant grounding is a C3 concern — deferred).
+        verification_memory_grounding: bool = True,
         # 57.101 B1 §between-turns injection: an optional message inbox the loop
         # drains at the TOP of each turn (before the between-turns guardrail), so a
         # mid-run injected message joins the conversation at the NEXT turn boundary
@@ -465,6 +473,8 @@ class AgentLoopImpl(AgentLoop):
         self._verification_escalate_on_max = verification_escalate_on_max
         # 57.136 §correction-context hygiene (see ctor docstring above).
         self._correction_context_strategy = correction_context_strategy
+        # 57.153 §memory-aware verification (see ctor docstring above).
+        self._verification_memory_grounding = verification_memory_grounding
         # 57.101 B1 §between-turns injection (see ctor docstring above).
         self._message_inbox = message_inbox
         # 57.122 §HITL policy read-side (AD-HITL-Policy-ReadSide-Potemkin-Phase58):
@@ -1704,6 +1714,7 @@ class AgentLoopImpl(AgentLoop):
         session_id: UUID,
         attempt: int,
         ctx: TraceContext,
+        injected_accesses: list[Any] | None = None,
     ) -> _VerifyVerdict:
         """Run the Cat 10 verifiers on a FINAL candidate answer (Sprint 57.98 A1).
 
@@ -1719,10 +1730,19 @@ class AgentLoopImpl(AgentLoop):
         package so the loop module carries no import-time dependency on Cat 10 (see
         the TYPE_CHECKING note above; imported from the package per 17.md §1).
         """
-        from agent_harness.verification import persist_verification_event
+        from agent_harness.verification import build_memory_block, persist_verification_event
 
         registry = self._verifier_registry
         assert registry is not None  # caller-gated (registry set + non-empty)
+        # 57.153: render the memory injected into THIS turn's prompt as a grounding block
+        # the judge weighs alongside {output}+{trace}, so a memory-grounded recall is not
+        # false-positive-rejected as fabrication. Gated on the flag (OFF → "" → byte-identical
+        # to pre-57.153); empty/absent accesses → build_memory_block returns "".
+        memory_block = (
+            build_memory_block(injected_accesses or [])
+            if self._verification_memory_grounding
+            else ""
+        )
         events: list[LoopEvent] = []
         failures: list[VerificationResult] = []
         verif_in = 0
@@ -1735,7 +1755,11 @@ class AgentLoopImpl(AgentLoop):
         # carries only the PRIOR turns, no double-count. A None-state path stays for
         # the Cat 9 fallback judge sites (they have no loop → string-only critique).
         trace_state = LoopState(
-            transient=TransientState(messages=list(messages), current_turn=turn_count),
+            transient=TransientState(
+                messages=list(messages),
+                current_turn=turn_count,
+                injected_memory=memory_block or None,
+            ),
             durable=DurableState(
                 session_id=session_id,
                 tenant_id=self._tenant_id or session_id,
@@ -2307,6 +2331,10 @@ class AgentLoopImpl(AgentLoop):
                     # When None, falls back to 50.x baseline (raw messages, no cache).
                     chat_messages: list[Message] = messages
                     cache_breakpoints: list[CacheBreakpoint] | None = None
+                    # 57.153: the memory injected into THIS turn's prompt (captured from the
+                    # builder artifact below) → threaded to the Cat 10 verify gate so the judge
+                    # sees the agent's grounding. Empty on the naked-fallback / echo path.
+                    turn_injected_memory: list[Any] = []
                     if self._prompt_builder is not None:
                         build_state = LoopState(
                             transient=TransientState(
@@ -2380,6 +2408,11 @@ class AgentLoopImpl(AgentLoop):
                         )
                         layers_used = artifact.layer_metadata.get("memory_layers_used", [])
                         strategy_used = artifact.layer_metadata.get("position_strategy", "")
+                        # 57.153: capture this turn's injected-memory accesses (same source
+                        # as the MemoryAccessed emit below) for the Cat 10 verify gate.
+                        turn_injected_memory = list(
+                            artifact.layer_metadata.get("memory_accesses", [])
+                        )
                         yield PromptBuilt(
                             messages_count=len(artifact.messages),
                             estimated_input_tokens=artifact.estimated_input_tokens,
@@ -2649,6 +2682,7 @@ class AgentLoopImpl(AgentLoop):
                             session_id=session_id,
                             attempt=verification_attempts,
                             ctx=ctx,
+                            injected_accesses=turn_injected_memory,
                         )
                         for vev in verdict.events:
                             yield vev

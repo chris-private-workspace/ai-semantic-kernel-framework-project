@@ -751,6 +751,10 @@ def build_real_llm_handler(
         # Sprint 57.136 §correction-context hygiene: keep (default) re-shows the
         # failed answer; summarize drops it to break self-conditioning.
         correction_context_strategy=correction_context_strategy,
+        # Sprint 57.153 §memory-aware verification: when True (default), the in-loop
+        # judge is shown this turn's injected memory so a grounded recall is not
+        # false-positive-rejected as fabrication. Settings-only (per-tenant = C3 deferred).
+        verification_memory_grounding=settings.chat_verification_memory_grounding,
         # Sprint 57.101 B1: the between-turns injection inbox (None = no-op drain).
         message_inbox=message_inbox,
         # Sprint 57.71 (A-4 Tier 0): inject the router's real OTelTracer so the
