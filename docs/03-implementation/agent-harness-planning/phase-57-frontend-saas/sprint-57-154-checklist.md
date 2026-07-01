@@ -87,4 +87,4 @@ _(Pure-backend measurement spike: NO user-facing surface → the real-Azure A/B 
 - [x] Final gate sweep: mypy `src --strict` **0/397** · run_all **11/11** · pytest **3106 passed / 6 skip** (3082 +24) · black/isort/flake8 clean · LLM-SDK-leak clean · FE untouched (no Vitest/mockup delta) ✅
 - [x] Navigators: CLAUDE.md Current-Sprint + Last-Updated · MEMORY.md pointer + subfile · next-phase-candidates (CLOSE the AD + carryovers) · sprint-workflow matrix (`memory-formation-combine-ab-spike` 0.60 row) ✅
 - [x] Anti-pattern self-check (retro Q5): AP-2/3/4/6/8/10/11 → 0 violations; v2 lints 11/11 ✅
-- [ ] **Commit** → ⏳ PR push + open → CI → merge: PENDING USER CONFIRMATION (push is outward-facing per Developer Preferences) → post-merge status flip after gh-verified MERGED
+- [x] **Commit `0fa81705`** → PR #362 pushed + opened → CI all-green (5 required) → squash-merged (gh-verified MERGED, main `64732999`, mergedAt 2026-07-01T05:50:09Z) → status flip done (chore branch)
