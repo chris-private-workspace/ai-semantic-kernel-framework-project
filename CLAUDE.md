@@ -76,7 +76,7 @@ Build enterprise AI agent teams that work like **human professional teams** — 
 | **Roadmap** | Phase 49-55 V2 ✅ / Phase 56-58 SaaS Stage 1 3/3 ✅ / Phase 57+ Frontend ongoing |
 | **Tech Stack** | FastAPI + React 18 + PostgreSQL + Redis（V1 沿用）|
 | **Architecture** | TAO/ReAct loop + 11+1 範疇 全 Level 4（Cat 9 L5）+ LLM Provider 中性（CI-enforced）+ Multi-tenant 3 鐵律 |
-| **Branch Protection** | enforce_admins=true / **review_count=0**（solo-dev policy 永久，2026-05-03 Sprint 53.2 起）/ 5 active required CI checks |
+| **Branch Protection** | ⚠️ 現狀（`gh api` 查核 2026-07-03）：classic protection 未設（404）；ruleset `agent-framework-project-rules` 存在但 **enforcement=`disabled`** → main **目前無生效的 merge-blocking 保護**。CI（backend / v2-lints / E2E）仍每 PR 執行但**非 blocking**。**review_count=0** solo-dev policy（2026-05-03 Sprint 53.2 起）仍為意圖政策；如需恢復 enforce_admins + required checks，須將該 ruleset enforcement 改回 `active`。 |
 
 詳見 `docs/03-implementation/agent-harness-planning/06-phase-roadmap.md`。
 
