@@ -115,6 +115,7 @@ from agent_harness._contracts.events import (
 )
 from agent_harness.observability._abc import Tracer
 from agent_harness.orchestrator_loop import AgentLoop
+from agent_harness.orchestrator_loop.scheduler import CONTINUATION_NUDGE, should_continue_plan
 from agent_harness.state_mgmt import DBMessageStore
 from business_domain._service_factory import BusinessServiceFactory
 from core.config import get_settings
@@ -152,6 +153,7 @@ from platform_layer.tenant.quota import (
     maybe_get_quota_enforcer,
 )
 
+from ._category_factories import make_chat_todo_store
 from .handler import (
     ChatMemoryExtractContext,
     build_chat_memory_extractor,
@@ -751,6 +753,63 @@ def _drain_subagent_frames(buffer: "list[LoopEvent] | None") -> list[bytes]:
     return frames
 
 
+async def _scheduled_loop_events(
+    loop: object,  # AgentLoopImpl; loose-typed to avoid circular import noise
+    *,
+    session_id: UUID,
+    user_input: str,
+    trace_context: TraceContext,
+    db: AsyncSession | None,
+    tenant_id: UUID,
+) -> AsyncIterator["tuple[LoopEvent, bool]"]:
+    """Sprint 57.157 Scheduler — yield events across one-or-more loop.run() bursts.
+
+    Each item is ``(event, swallow)``. ``swallow=True`` marks an intermediate
+    LoopCompleted whose burst ended at the max_turns ceiling with the durable plan
+    still unfinished: the caller runs per-burst billing but SKIPS the yield + the
+    quota/SLA/audit/handoff closeout, and this generator auto-starts the NEXT burst
+    driven by CONTINUATION_NUDGE (a real user turn — loop.run() self-rehydrates the
+    Cat-3 ledger + the ## Active Plan each burst, 57.127 + 57.156, so no checkpoint
+    or new state is needed).
+
+    Bounded by ``chat_scheduler_max_bursts``. Default OFF
+    (``chat_scheduler_auto_continue``) → exactly one burst, ``swallow`` always False
+    → byte-identical to the pre-57.157 single ``loop.run()``.
+    """
+    settings = get_settings()
+    scheduler_on = settings.chat_scheduler_auto_continue
+    max_bursts = settings.chat_scheduler_max_bursts
+    current_input = user_input
+    bursts = 0
+    while True:
+        cont = False
+        async for event in loop.run(  # type: ignore[attr-defined]
+            session_id=session_id,
+            user_input=current_input,
+            trace_context=trace_context,
+        ):
+            swallow = False
+            if scheduler_on and isinstance(event, LoopCompleted) and db is not None:
+                store = make_chat_todo_store(db, session_id, tenant_id)
+                if store is not None:
+                    todos = (await store.load()) or []
+                    swallow = should_continue_plan(
+                        enabled=True,
+                        stop_reason=event.stop_reason,
+                        todos=todos,
+                        bursts_used=bursts,
+                        max_bursts=max_bursts,
+                    )
+            yield event, swallow
+            if swallow:
+                cont = True
+                break
+        if not cont:
+            break
+        bursts += 1
+        current_input = CONTINUATION_NUDGE
+
+
 async def _stream_loop_events(
     loop: object,  # AgentLoopImpl; loose-typed to avoid circular import noise
     tenant_id: UUID,
@@ -822,10 +881,13 @@ async def _stream_loop_events(
     compaction_out = 0
     compaction_model: str | None = None
     try:
-        async for event in loop.run(  # type: ignore[attr-defined]
+        async for event, _swallow in _scheduled_loop_events(
+            loop,
             session_id=session_id,
             user_input=user_input,
             trace_context=trace_context,
+            db=db,
+            tenant_id=tenant_id,
         ):
             # Sprint 57.95 (Cat 11 → Cat 12 SSE relay): flush any subagent events
             # emitted during the prior await (e.g. a task_spawn tool call) BEFORE the
@@ -866,16 +928,20 @@ async def _stream_loop_events(
             # Sprint 57.125: persist the main-session event BEFORE the yield (the
             # persisted payload == the streamed frame, incl. active_skill). The
             # best-effort SAVEPOINT inside the helper never blocks/breaks the stream.
-            if main_transcript_on:
-                main_seq += 1
-                await _persist_main_event(
-                    payload,
-                    db=db,
-                    tenant_id=tenant_id,
-                    session_id=session_id,
-                    sequence_num=main_seq,
-                )
-            yield format_sse_message(payload["type"], payload["data"])
+            # Sprint 57.157: a swallowed (continuing) intermediate LoopCompleted is
+            # NOT persisted/yielded — the FE stream stays continuous with one
+            # terminal loop_end; only this burst's billing (below) runs for it.
+            if not _swallow:
+                if main_transcript_on:
+                    main_seq += 1
+                    await _persist_main_event(
+                        payload,
+                        db=db,
+                        tenant_id=tenant_id,
+                        session_id=session_id,
+                        sequence_num=main_seq,
+                    )
+                yield format_sse_message(payload["type"], payload["data"])
             # Sprint 57.109 (C2): fold the summarize call's usage (server-side
             # fields on ContextCompacted; structural-only compactions carry 0).
             if isinstance(event, ContextCompacted) and (
@@ -886,14 +952,19 @@ async def _stream_loop_events(
                 if event.model:
                     compaction_model = event.model
             if isinstance(event, LoopCompleted):
-                natural_completion = True
+                # Sprint 57.157: a swallowed (continuing) burst runs per-burst billing
+                # (below) but SKIPS the once-per-send closeout — natural_completion,
+                # quota reconcile, SLA, audit, handoff are FINAL-burst only (repeating
+                # the quota reconcile against the same reservation would over-release).
+                if not _swallow:
+                    natural_completion = True
                 # Sprint 56.2 Day 2 (US-3 — closes AD-QuotaPostCall-1):
                 # reconcile reservation with actual tokens. event.total_tokens
                 # is the cumulative input+output across all LLM calls in this
                 # loop run (loop.py L944 accumulator → LoopCompleted event).
                 # Default 0 from early-termination paths releases full
                 # reservation back; happy-path END_TURN releases over-reservation.
-                if quota_enforcer is not None and estimated_tokens > 0:
+                if not _swallow and quota_enforcer is not None and estimated_tokens > 0:
                     try:
                         await quota_enforcer.record_usage(
                             tenant_id=tenant_id,
@@ -924,7 +995,7 @@ async def _stream_loop_events(
                 # SLAReportGenerator (US-2) can compute per-tenant p99.
                 # Failure must not break SSE stream — Redis flake should not
                 # cascade into chat outage; SLA monitoring is best-effort.
-                if sla_recorder is not None and chat_start_time is not None:
+                if not _swallow and sla_recorder is not None and chat_start_time is not None:
                     try:
                         latency_ms = int((time.monotonic() - chat_start_time) * 1000)
                         complexity = classify_loop_complexity(event)
@@ -1053,6 +1124,12 @@ async def _stream_loop_events(
                             tenant_id,
                             session_id,
                         )
+                # Sprint 57.157: reset the per-BURST compaction accumulator so the next
+                # burst's _compaction billing counts only its own turns (this burst's
+                # usage was just enqueued above, for a swallowed + a final burst alike).
+                compaction_in = 0
+                compaction_out = 0
+                compaction_model = None
                 # Sprint 57.6 Day 2 US-3 (R3 / closes 57.5 D-17 + AD-Reality-3-audit_log):
                 # Append a hash-chained audit_log row for chat completion. Best-effort
                 # failure isolation: audit append must NOT break the SSE stream
@@ -1068,7 +1145,7 @@ async def _stream_loop_events(
                 _audit_observer_enabled = (
                     os.environ.get("AUDIT_LOG_CHAT_OBSERVER", "true").lower() == "true"
                 )
-                if db is not None and _audit_observer_enabled:
+                if not _swallow and db is not None and _audit_observer_enabled:
                     try:
                         async with db.begin_nested():
                             await append_audit(
@@ -1155,7 +1232,11 @@ async def _stream_loop_events(
                             tenant_id,
                             session_id,
                         )
-                break
+                # Sprint 57.157: a swallowed (continuing) burst must NOT break the caller
+                # loop — _scheduled_loop_events keeps yielding the next burst's events;
+                # only the FINAL LoopCompleted breaks out to the closeout below.
+                if not _swallow:
+                    break
             # Sprint 57.84 (C-15): enqueue one tool_call billing event per
             # ToolCallExecuted into billing_outbox (the drainer prices it from
             # config/llm_pricing.yml + materializes cost_ledger). tool_seq makes

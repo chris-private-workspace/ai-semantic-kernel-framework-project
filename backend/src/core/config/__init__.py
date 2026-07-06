@@ -202,6 +202,20 @@ class Settings(BaseSettings):
     # CHAT_MEMORY_COMBINED_FORMATION.
     chat_memory_combined_formation: bool = True
 
+    # ---- Sprint 57.157 Scheduler (cross-burst auto-continue) ------------
+    # When True: after a chat burst ends at the per-send max_turns ceiling with the
+    # durable task plan (write_todos) still unfinished, the router SSE generator
+    # auto-runs the next burst (bounded by chat_scheduler_max_bursts) instead of
+    # closing the stream and forcing a manual "continue". Default OFF → byte-identical
+    # single-burst behavior (auto-continue burns extra bursts of tokens + lengthens a
+    # single send, so it must be opted into, not silently on for every tenant).
+    # Env: CHAT_SCHEDULER_AUTO_CONTINUE.
+    chat_scheduler_auto_continue: bool = False
+    # Max AUTO continuations per send (each burst keeps its own max_turns=8 +
+    # token_budget=100k caps). 3 → up to ~24 turns/send. Bounds infinite
+    # continuation. Env: CHAT_SCHEDULER_MAX_BURSTS.
+    chat_scheduler_max_bursts: int = 3
+
     # ---- Sprint 57.145 knowledge connector (first real external source) -
     # Root folder the knowledge_search tool reads (.md/.txt, recursive). Default =
     # in-repo planning docs (real content, zero setup); prod overrides to a company
