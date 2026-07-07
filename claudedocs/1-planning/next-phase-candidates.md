@@ -91,7 +91,7 @@ This list follows the canonical research §5 ranked order (#6 → #3 → #8 → 
 
 ---
 
-## 🆕 Sprint 57.160 Carryover — tool-anchored observation masking (env-gated) + reduction/retention A/B (engine-debt, compaction range; commit done, ⏳ PR pending user push confirmation)
+## 🆕 Sprint 57.160 Carryover — tool-anchored observation masking (env-gated) + reduction/retention A/B (engine-debt, compaction range; MERGED PR #376, main `ab9b4cf5`)
 
 **SHIPPED → closes `AD-Compaction-NoOp-On-Single-User-Turn-Chat-Path` (57.159 finding).** The `DefaultObservationMasker` anchored its keep-window on USER-message count (`observation_masker.py:62-64`), so the chat main flow (one user msg/send) never masked within a long single-user-turn tool run (57.159 observed 4k→35k). Adds an opt-in tool-result-recency anchor mode (`DefaultObservationMasker(tool_anchor_keep=N)`: keep last N `role=="tool"` results intact, tombstone older; `None` = byte-identical) via env lever `CHAT_COMPACTION_TOOL_ANCHORED_MASKING` (default OFF; injected into Structural + PreClear) + a deterministic OFF-vs-ON reduction/retention A/B harness. Backend-only NO wire/codegen/frontend/migration. Evidence-first (env lever + A/B — AskUserQuestion pick "B"). A/B (8 cases): **off 0.00% / on 60.83% / retention 100% / recommend_default_on True**. Drive-through PASS (real chat-v2 + Azure gpt-5.2 + 6× knowledge_search in ONE user turn, lever + `PRECLEAR_RATIO=0.5`): REAL reductions `13,615→7,933 (−42%)`, `16,199→7,984 (−51%)`, context bounded ~8-9k vs 4k→35k, BOREALIS-9 + 6 topics retained.
 
