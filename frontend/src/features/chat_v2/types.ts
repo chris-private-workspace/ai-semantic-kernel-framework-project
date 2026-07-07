@@ -25,6 +25,7 @@
  * Last Modified: 2026-06-16
  *
  * Modification History:
+ *   - 2026-07-07: Sprint 57.159 — +CompactionMarkerTurn in the Turn union (context_compacted timeline marker; Cat 4 L2→L3)
  *   - 2026-06-16: Sprint 57.131 — AgentTurn +model (per-turn LLM model for the Inspector Turn row)
  *   - 2026-06-16: Sprint 57.130 — AgentTurn +terminated? (LoopTerminated wire surface)
  *   - 2026-06-16: Sprint 57.126 — +UserMessageEvent (persist-only replay event; not a wire type)
@@ -212,7 +213,23 @@ export type HITLTurn = {
   countdownSec: number | null;
 };
 
-export type Turn = UserTurn | AgentTurn | HITLTurn;
+// Sprint 57.159: a session-flow marker for a Cat 4 context compaction. The
+// `context_compacted` event is fully wired (loop → sse → wire → store) but was
+// store-recognized as rawEvents-only (57.66 A-5c deferred) → the token reduction
+// rendered nowhere. This marker surfaces it as a persistent timeline entry
+// (mirrors the message_injected pseudo-turn) so compaction is observable. It is
+// NOT a speaker turn — TurnList renders it as a slim divider, not a .turn shell.
+export type CompactionMarkerTurn = {
+  role: "compaction";
+  id: string;
+  at: string;
+  tokensBefore: number;
+  tokensAfter: number;
+  strategy: string;
+  messagesCompacted: number;
+};
+
+export type Turn = UserTurn | AgentTurn | HITLTurn | CompactionMarkerTurn;
 
 // === Sprint 57.21: Session fixture type ===================================
 // Per mockup L5-12. Backend wire deferred (AD-ChatV2-SessionList-Backend).

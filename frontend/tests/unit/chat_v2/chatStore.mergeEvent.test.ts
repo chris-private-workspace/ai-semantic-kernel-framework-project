@@ -15,6 +15,7 @@
  * Created: 2026-05-17 (Sprint 57.21 Day 1)
  *
  * Modification History:
+ *   - 2026-07-07: Sprint 57.159 — context_compacted → CompactionMarkerTurn timeline coverage
  *   - 2026-06-17: Sprint 57.131 — llm_request stamps per-turn model + turn_start model-null coverage
  *   - 2026-06-16: Sprint 57.130 — loop_terminated → flip pending tool + terminated record coverage
  *   - 2026-06-12: Sprint 57.108 — HITL tool/reason + traceId/spanId/tokens/duration capture coverage
@@ -211,6 +212,23 @@ const messageInjected = (text: string): LoopEvent => ({
   data: { text },
 });
 
+// Sprint 57.159: a Cat 4 context-compaction frame (token reduction + strategy).
+const contextCompacted = (
+  before = 9824,
+  after = 2679,
+  strategy = "hybrid",
+  messagesCompacted = 12,
+): LoopEvent => ({
+  type: "context_compacted",
+  data: {
+    tokens_before: before,
+    tokens_after: after,
+    compaction_strategy: strategy,
+    messages_compacted: messagesCompacted,
+    duration_ms: 42,
+  },
+});
+
 // Sprint 57.130: a Cat-8 fatal terminate frame (reason + nullable detail/state).
 const loopTerminated = (
   reason = "max_retries_exhausted",
@@ -337,6 +355,24 @@ describe("chatStore.mergeEvent Turn block sequence (Sprint 57.21 Day 1)", () => 
       expect(injected.text).toBe("also check the db pool");
       expect(injected.injected).toBe(true);
     }
+  });
+
+  test("context_compacted pushes a CompactionMarkerTurn into the timeline (Sprint 57.159)", () => {
+    useChatStore.getState().mergeEvent(turnStart());
+    useChatStore.getState().mergeEvent(contextCompacted(9824, 2679, "hybrid", 12));
+    const { turns, rawEvents } = useChatStore.getState();
+    // turn_start (agent) + the compaction marker
+    expect(turns).toHaveLength(2);
+    const marker = turns[1];
+    expect(marker.role).toBe("compaction");
+    if (marker.role === "compaction") {
+      expect(marker.tokensBefore).toBe(9824);
+      expect(marker.tokensAfter).toBe(2679);
+      expect(marker.strategy).toBe("hybrid");
+      expect(marker.messagesCompacted).toBe(12);
+    }
+    // rawEvents audit trail retained (dual-emit)
+    expect(rawEvents.some((e) => e.type === "context_compacted")).toBe(true);
   });
 
   test("llm_request populates active AgentTurn tokensIn", () => {

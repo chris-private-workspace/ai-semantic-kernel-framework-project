@@ -20,6 +20,7 @@
  * Created: 2026-05-17 (Sprint 57.21 Day 2 §2.1)
  *
  * Modification History:
+ *   - 2026-07-07: Sprint 57.159 — dispatch role==="compaction" to CompactionMarker (Cat 4 L2→L3 timeline surface)
  *   - 2026-06-06: chat-v2 honest surface — empty-state copy explains real_llm (live) vs echo_demo (mock) instead of only teaching echo_demo (CHANGE-054)
  *   - 2026-05-23: Sprint 57.30 Day 3 §D1 — re-point scroll wrapper to mockup L83 verbatim inline-style + empty-state to mockup .subtle/.mono
  *   - 2026-05-17: Initial creation (Sprint 57.21 Day 2 §2.1)
@@ -27,7 +28,7 @@
  * Related:
  *   - reference/design-mockups/page-chat.jsx L83-85 (scrolling wrapper around TURNS.map)
  *   - reference/design-mockups/page-chat.jsx L159-163 (TurnRender dispatcher source)
- *   - ./turns/{UserTurn,AgentTurn,HITLTurn}.tsx (role components)
+ *   - ./turns/{UserTurn,AgentTurn,HITLTurn,CompactionMarker}.tsx (role components)
  *   - ../store/chatStore.ts (subscribes to turns + block-sequence reducer)
  */
 
@@ -38,6 +39,7 @@ import { useEffect, useRef } from "react";
 
 import { useChatStore } from "../store/chatStore";
 import { AgentTurn } from "./turns/AgentTurn";
+import { CompactionMarker } from "./turns/CompactionMarker";
 import { HITLTurn } from "./turns/HITLTurn";
 import { UserTurn } from "./turns/UserTurn";
 
@@ -76,6 +78,7 @@ export function TurnList(): JSX.Element {
         if (turn.role === "user") return <UserTurn key={turn.id} turn={turn} />;
         if (turn.role === "agent") return <AgentTurn key={turn.id} turn={turn} />;
         if (turn.role === "hitl") return <HITLTurn key={turn.id} turn={turn} />;
+        if (turn.role === "compaction") return <CompactionMarker key={turn.id} turn={turn} />;
         return null;
       })}
     </div>

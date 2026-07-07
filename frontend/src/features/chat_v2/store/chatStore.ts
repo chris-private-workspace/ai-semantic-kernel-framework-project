@@ -21,7 +21,8 @@
  *     - approval_requested → push HITLTurn + update approvals dict (dual-emit)
  *     - approval_received  → update HITLTurn decision + approvals dict (dual-emit)
  *     - guardrail_triggered → rawEvents only (Phase-2+ may render warning)
- *     - prompt_built / context_compacted / state_checkpointed / tripwire_triggered
+ *     - context_compacted  → push CompactionMarkerTurn into timeline (Sprint 57.159; Cat 4 L2→L3)
+ *     - prompt_built / state_checkpointed / tripwire_triggered
  *                          → rawEvents only (Sprint 57.66; rich render DEFERRED A-5c)
  *     - verification_*     → append VerificationBlock + verifications slice (dual-emit)
  *     - subagent_spawned   → append/extend SubagentForkBlock + subagents slice (dual-emit)
@@ -36,6 +37,7 @@
  * Last Modified: 2026-06-16
  *
  * Modification History:
+ *   - 2026-07-07: Sprint 57.159 — context_compacted pushes a CompactionMarkerTurn (was rawEvents-only; Cat 4 L2→L3)
  *   - 2026-06-16: Sprint 57.131 — llm_request stamps per-turn model on the AgentTurn (Inspector model row)
  *   - 2026-06-16: Sprint 57.130 — +loop_terminated case (flip pending tool→error + terminated badge)
  *   - 2026-06-16: Sprint 57.126 — +loadSessionHistory (fetch /events → replay) + user_message case
@@ -836,8 +838,31 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
           return { ...s, rawEvents };
         }
 
+        case "context_compacted": {
+          // Sprint 57.159 (Cat 4 L2→L3): surface the compaction as a persistent
+          // timeline marker (was rawEvents-only — the 57.66 A-5c deferral left the
+          // token reduction rendering nowhere). Push a compaction marker turn
+          // (mirrors message_injected). Compaction fires BEFORE turn_started, so
+          // the marker naturally precedes the turn it enabled. rawEvents retained.
+          return {
+            ...s,
+            rawEvents,
+            turns: [
+              ...s.turns,
+              {
+                role: "compaction",
+                id: nextTurnId(),
+                at: nowIso(),
+                tokensBefore: ev.data.tokens_before,
+                tokensAfter: ev.data.tokens_after,
+                strategy: ev.data.compaction_strategy,
+                messagesCompacted: ev.data.messages_compacted,
+              },
+            ],
+          };
+        }
+
         case "prompt_built":
-        case "context_compacted":
         case "state_checkpointed":
         case "tripwire_triggered": {
           // Sprint 57.66: recognized + typed + audit-trail only (rawEvents).
