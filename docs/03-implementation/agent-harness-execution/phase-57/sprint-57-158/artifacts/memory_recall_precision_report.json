@@ -1,0 +1,28 @@
+{
+  "total": 10,
+  "k": 5,
+  "profile": {
+    "arm": "profile",
+    "n_cases": 10,
+    "recall_at_k": 0.2,
+    "precision_at_k": 0.04,
+    "mrr": 0.15
+  },
+  "keyword": {
+    "arm": "keyword",
+    "n_cases": 10,
+    "recall_at_k": 0.1,
+    "precision_at_k": 0.02,
+    "mrr": 0.1
+  },
+  "semantic": {
+    "arm": "semantic",
+    "n_cases": 10,
+    "recall_at_k": 1.0,
+    "precision_at_k": 0.22000000000000003,
+    "mrr": 1.0
+  },
+  "semantic_vs_profile_recall_delta": 0.8,
+  "semantic_vs_keyword_recall_delta": 0.9,
+  "verdict": "semantic-wins"
+}

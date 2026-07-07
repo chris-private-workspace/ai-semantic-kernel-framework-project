@@ -1,0 +1,191 @@
+# Golden corpus for the memory recall-strategy precision A/B (Sprint 57.158).
+#
+# Each case = ONE user with many facts + a natural-language query + the gold-relevant fact ids.
+# The A/B compares three recall arms' top-k over `facts`:
+#   profile  (confidence-desc, query-agnostic) / keyword (substring) / semantic (cosine, real embeddings)
+#
+# DISCRIMINATION (the point of the corpus — see plan §3.2 / D-corpus-discriminates):
+# a case DISCRIMINATES when its gold fact(s) sit OUTSIDE the top-5-by-confidence AND the query is
+# not a substring of the gold content. Then profile MISSES (gold not in top-5 confidence) and
+# keyword MISSES (a question is not a substring of a statement) — only semantic (real embeddings,
+# synonym-aware) can surface it. >= 50% of cases must discriminate or the A/B proves nothing.
+# The offline test asserts the discrimination property statically (via rank_profile).
+#
+# NOTE: with a hash-based DeterministicEmbeddingClient the offline semantic arm is near-random —
+# the semantic ADVANTAGE is provable ONLY on the RUN_AZURE_INTEGRATION=1 run (real text-embedding).
+#
+# Confidence convention: 0.85-0.99 = high (fills profile top-5); 0.30-0.50 = low (below top-5 in a
+# 12-fact case) — discriminating gold facts are deliberately low-confidence.
+
+cases:
+  # 1 — DISCRIMINATING: the datastore fact is low-conf + phrased "Aurora Postgres", query says "database".
+  - id: which_database
+    query: "which database are we using in production?"
+    gold_fact_ids: [db]
+    facts:
+      - { id: name, content: "The user's name is Priya.", confidence: 0.95 }
+      - { id: role, content: "Priya is a staff platform engineer on the payments team.", confidence: 0.92 }
+      - { id: tz, content: "Priya works in the Singapore timezone (GMT+8).", confidence: 0.90 }
+      - { id: standup, content: "The team runs daily standup at 9:30am.", confidence: 0.88 }
+      - { id: lang, content: "The team's primary backend language is Go.", confidence: 0.86 }
+      - { id: db, content: "Our primary production datastore is Aurora Postgres with a read replica.", confidence: 0.40 }
+      - { id: cache, content: "We put a write-through Redis cache in front of hot reads.", confidence: 0.38 }
+      - { id: ci, content: "CI runs on GitHub Actions with a 20-minute budget.", confidence: 0.35 }
+      - { id: oncall, content: "On-call rotation is weekly, handed over on Mondays.", confidence: 0.33 }
+      - { id: region, content: "Primary region is ap-southeast-1.", confidence: 0.32 }
+      - { id: iac, content: "Infrastructure is managed with Terraform.", confidence: 0.30 }
+      - { id: dash, content: "Dashboards live in Grafana.", confidence: 0.30 }
+
+  # 2 — DISCRIMINATING: "spreadsheet tool" fact low-conf; query says "expense reports".
+  - id: expense_reports
+    query: "how do we handle expense reports?"
+    gold_fact_ids: [expense]
+    facts:
+      - { id: name, content: "The user's name is Marcus.", confidence: 0.96 }
+      - { id: title, content: "Marcus is the engineering manager for the growth org.", confidence: 0.93 }
+      - { id: reports, content: "Marcus has six direct reports.", confidence: 0.90 }
+      - { id: mtg, content: "1:1s are scheduled every other Tuesday.", confidence: 0.88 }
+      - { id: okrs, content: "The org tracks OKRs on a quarterly cadence.", confidence: 0.87 }
+      - { id: expense, content: "Reimbursements are submitted through Concur by the 5th of each month.", confidence: 0.42 }
+      - { id: travel, content: "Travel over $500 needs VP approval.", confidence: 0.40 }
+      - { id: laptop, content: "New hires get a 16-inch MacBook Pro.", confidence: 0.36 }
+      - { id: perks, content: "There is a $1000 annual learning stipend.", confidence: 0.34 }
+      - { id: pto, content: "PTO is unlimited but a 3-week minimum is encouraged.", confidence: 0.32 }
+      - { id: office, content: "The office is open Tuesday through Thursday.", confidence: 0.31 }
+      - { id: parking, content: "Parking is validated at the front desk.", confidence: 0.30 }
+
+  # 3 — DISCRIMINATING: auth fact low-conf, phrased "sign-in / OIDC"; query says "login".
+  - id: how_login
+    query: "what does our login flow look like?"
+    gold_fact_ids: [auth]
+    facts:
+      - { id: name, content: "The user's name is Dana.", confidence: 0.97 }
+      - { id: squad, content: "Dana leads the identity squad.", confidence: 0.94 }
+      - { id: cert, content: "Dana holds a CISSP certification.", confidence: 0.90 }
+      - { id: soc2, content: "The company is pursuing SOC 2 Type II this year.", confidence: 0.89 }
+      - { id: pentest, content: "An annual third-party penetration test is scheduled for Q3.", confidence: 0.87 }
+      - { id: auth, content: "Sign-in uses OIDC against Entra ID with PKCE and MFA.", confidence: 0.41 }
+      - { id: session, content: "Session tokens are JWTs that expire after 30 minutes.", confidence: 0.39 }
+      - { id: rbac, content: "Access control is role-based with four tiers.", confidence: 0.36 }
+      - { id: secrets, content: "Secrets are stored in HashiCorp Vault.", confidence: 0.34 }
+      - { id: audit, content: "Audit logs are retained for 400 days.", confidence: 0.32 }
+      - { id: waf, content: "A WAF fronts all public endpoints.", confidence: 0.31 }
+      - { id: backup, content: "Backups run nightly with a 30-day retention.", confidence: 0.30 }
+
+  # 4 — DISCRIMINATING: "commute by bicycle" low-conf; query says "get to work".
+  - id: commute
+    query: "how does she get to work?"
+    gold_fact_ids: [bike]
+    facts:
+      - { id: name, content: "The user's name is Lena.", confidence: 0.95 }
+      - { id: pet, content: "Lena has a golden retriever named Biscuit.", confidence: 0.92 }
+      - { id: coffee, content: "Lena drinks oat-milk flat whites.", confidence: 0.90 }
+      - { id: music, content: "Lena listens to lo-fi while coding.", confidence: 0.88 }
+      - { id: book, content: "Lena is reading a book on distributed systems.", confidence: 0.86 }
+      - { id: bike, content: "Lena rides her bicycle to the office along the river path.", confidence: 0.43 }
+      - { id: lunch, content: "Lena usually brings lunch from home.", confidence: 0.40 }
+      - { id: desk, content: "Lena has a standing desk by the window.", confidence: 0.36 }
+      - { id: plant, content: "Lena keeps a small succulent on her desk.", confidence: 0.34 }
+      - { id: gym, content: "Lena goes to the gym on Wednesdays.", confidence: 0.32 }
+      - { id: podcast, content: "Lena hosts a small internal tech podcast.", confidence: 0.31 }
+      - { id: mentor, content: "Lena mentors two junior engineers.", confidence: 0.30 }
+
+  # 5 — DISCRIMINATING: "ship product updates" low-conf phrased "release cadence"; query says "deploy".
+  - id: deploy_cadence
+    query: "how often do we deploy to production?"
+    gold_fact_ids: [release]
+    facts:
+      - { id: name, content: "The user's name is Sam.", confidence: 0.96 }
+      - { id: team, content: "Sam is on the developer-experience team.", confidence: 0.93 }
+      - { id: tool, content: "Sam maintains the internal CLI.", confidence: 0.91 }
+      - { id: langs, content: "The platform is written in Rust and TypeScript.", confidence: 0.89 }
+      - { id: repo, content: "Everything lives in a single monorepo.", confidence: 0.88 }
+      - { id: release, content: "We cut a production release every weekday afternoon via canary.", confidence: 0.42 }
+      - { id: flags, content: "Feature flags are managed through LaunchDarkly.", confidence: 0.39 }
+      - { id: rollback, content: "Rollbacks are one command and take under two minutes.", confidence: 0.37 }
+      - { id: tests, content: "The test suite has about 12,000 cases.", confidence: 0.35 }
+      - { id: review, content: "Every change needs one approving review.", confidence: 0.33 }
+      - { id: docs, content: "Docs are generated from code comments.", confidence: 0.31 }
+      - { id: pkg, content: "Internal packages are published to a private registry.", confidence: 0.30 }
+
+  # 6 — DISCRIMINATING: "unwind by painting" low-conf; query says "hobby / free time".
+  - id: hobby
+    query: "what does he do in his free time?"
+    gold_fact_ids: [paint]
+    facts:
+      - { id: name, content: "The user's name is Omar.", confidence: 0.95 }
+      - { id: job, content: "Omar is a data engineer.", confidence: 0.93 }
+      - { id: stack, content: "Omar works mostly with Spark and Airflow.", confidence: 0.90 }
+      - { id: team, content: "Omar is on the analytics platform team.", confidence: 0.88 }
+      - { id: coffee, content: "Omar roasts his own coffee beans.", confidence: 0.86 }
+      - { id: paint, content: "On weekends Omar unwinds with watercolour landscapes.", confidence: 0.41 }
+      - { id: hike, content: "Omar hikes a local trail most Sundays.", confidence: 0.39 }
+      - { id: cook, content: "Omar is learning to make sourdough.", confidence: 0.36 }
+      - { id: game, content: "Omar plays five-a-side football on Thursdays.", confidence: 0.34 }
+      - { id: travel, content: "Omar visited Japan last spring.", confidence: 0.32 }
+      - { id: lang, content: "Omar is learning conversational Japanese.", confidence: 0.31 }
+      - { id: cat, content: "Omar has a cat named Pixel.", confidence: 0.30 }
+
+  # 7 — DISCRIMINATING: "monitoring stack" low-conf phrased "observability"; query says "alerts".
+  - id: alerts
+    query: "how do we get paged when something breaks?"
+    gold_fact_ids: [obs]
+    facts:
+      - { id: name, content: "The user's name is Wei.", confidence: 0.96 }
+      - { id: role, content: "Wei is an SRE lead.", confidence: 0.94 }
+      - { id: slo, content: "The core API has a 99.95% availability SLO.", confidence: 0.91 }
+      - { id: budget, content: "Error budgets are reviewed weekly.", confidence: 0.89 }
+      - { id: runbook, content: "Runbooks are kept in the internal wiki.", confidence: 0.87 }
+      - { id: obs, content: "Observability is OpenTelemetry into Prometheus with PagerDuty escalation.", confidence: 0.42 }
+      - { id: trace, content: "Distributed traces are sampled at 10%.", confidence: 0.40 }
+      - { id: log, content: "Logs are shipped to Loki.", confidence: 0.37 }
+      - { id: dash, content: "Grafana dashboards are the source of truth.", confidence: 0.35 }
+      - { id: chaos, content: "Chaos experiments run monthly.", confidence: 0.33 }
+      - { id: capacity, content: "Capacity is planned a quarter ahead.", confidence: 0.31 }
+      - { id: postmortem, content: "Postmortems are blameless and public internally.", confidence: 0.30 }
+
+  # 8 — EASY (control): the gold fact is HIGH confidence → profile also catches it (arms should tie here).
+  - id: user_name_easy
+    query: "what is the user's name?"
+    gold_fact_ids: [name]
+    facts:
+      - { id: name, content: "The user's name is Chris.", confidence: 0.99 }
+      - { id: role, content: "Chris is a backend engineer.", confidence: 0.85 }
+      - { id: team, content: "Chris is on the agent-harness team.", confidence: 0.60 }
+      - { id: db, content: "The project uses PostgreSQL.", confidence: 0.55 }
+      - { id: fe, content: "The frontend is React.", confidence: 0.50 }
+      - { id: q, content: "Redis and RabbitMQ are used for queues.", confidence: 0.45 }
+      - { id: os, content: "Development happens on Windows.", confidence: 0.40 }
+      - { id: tz, content: "Chris works in the Taipei timezone.", confidence: 0.35 }
+
+  # 9 — EASY (control): keyword-substring match present AND high confidence.
+  - id: primary_language_easy
+    query: "language"
+    gold_fact_ids: [lang]
+    facts:
+      - { id: name, content: "The user's name is Ravi.", confidence: 0.98 }
+      - { id: lang, content: "Our primary language for services is Python.", confidence: 0.95 }
+      - { id: fw, content: "We use FastAPI for HTTP services.", confidence: 0.70 }
+      - { id: orm, content: "SQLAlchemy is the ORM.", confidence: 0.55 }
+      - { id: test, content: "pytest is the test runner.", confidence: 0.45 }
+      - { id: fmt, content: "Formatting is black and isort.", confidence: 0.40 }
+      - { id: type, content: "mypy runs in strict mode.", confidence: 0.35 }
+      - { id: pkg, content: "Dependencies are pinned in pyproject.", confidence: 0.30 }
+
+  # 10 — DISCRIMINATING (multi-gold): two low-conf facts both relevant to "notifications".
+  - id: notifications_multi
+    query: "how do customers get notified about their orders?"
+    gold_fact_ids: [email, sms]
+    facts:
+      - { id: name, content: "The user's name is Nadia.", confidence: 0.95 }
+      - { id: role, content: "Nadia is a product manager for checkout.", confidence: 0.93 }
+      - { id: metric, content: "The north-star metric is completed orders per week.", confidence: 0.91 }
+      - { id: ab, content: "The team runs two A/B experiments at a time.", confidence: 0.89 }
+      - { id: roadmap, content: "The roadmap is planned six weeks out.", confidence: 0.88 }
+      - { id: email, content: "Order confirmations are sent by transactional email via SendGrid.", confidence: 0.44 }
+      - { id: sms, content: "Shipping updates go out as SMS through Twilio.", confidence: 0.42 }
+      - { id: push, content: "The mobile app sends push reminders for abandoned carts.", confidence: 0.40 }
+      - { id: refund, content: "Refunds are processed within three business days.", confidence: 0.36 }
+      - { id: fraud, content: "A fraud check runs before capture.", confidence: 0.34 }
+      - { id: locale, content: "Checkout supports twelve locales.", confidence: 0.32 }
+      - { id: gateway, content: "Payments route through Stripe.", confidence: 0.30 }
