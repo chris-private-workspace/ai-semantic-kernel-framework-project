@@ -4,10 +4,11 @@
 
 **Category**: Development Process
 **Created**: 2026-04-28
-**Last Modified**: 2026-06-17
+**Last Modified**: 2026-07-07
 **Status**: Active
 
 > **Modification History**
+> - 2026-07-07: REFACTOR-010 — §Sprint Closeout Self-Check +1 line: full SHIPPED carryover → next-phase-candidates-shipped-archive.md, main file keeps 1-line pointer + open ADs only (stop next-phase re-bloat)
 > - 2026-06-17: REFACTOR-008 — Reference Template (Step 1 + Step 2) re-anchored from "most-recent sprint" (relative/floating → monotonic drift) to FROZEN `claudedocs/templates/sprint-{plan,checklist}-template.md` (absolute); enforce short H1 + Summary block + §0 line-breaks (fix the 57.107-130 drift defects)
 > - 2026-06-16: chore(rules) — §Sprint Closeout post-merge status-flip rule: flip `PR-pending`→`MERGED` on the 2 current-status surfaces (CLAUDE.md Current Sprint row + next-phase head block) after gh-verified merge + interregnum Current-Sprint-row wording + historical-block sweep only if misleading (one done 2026-06-16 for 57.112-126)
 > - 2026-06-03: chore(rules) — Area-A (57.66-73) lessons fold-in: Prong-1 test-infra verify (AD-Day0-Prong1-TestInfra-File-Verify) + Prong-2 +2 drift rows (codegen-shape AD-Day0-Codegen-Existing-Shape-Capture / no-live-producer) + Risk Class E (stale --reload masks wiring; C-11 cost_ledger) + Risk Class C reinforce (AD-Source-DB-Call-Test-Isolation) + Before-Commit item 7 (agent-delegation: all gates + pin language + parent re-verify)
@@ -725,6 +726,7 @@ Before commit closeout MHist, verify:
 - [ ] **MEMORY.md new entry**: ~250-300 char quality pointer (topic + keywords + subfile link)? (NOT a packed retro summary)
 - [ ] **Sprint detail preserved**: Memory subfile + retrospective.md updated with full content? (YES — single-source preserved elsewhere)
 - [ ] **Carryover / open items**: Documented in next sprint plan §Carryover or `claudedocs/1-planning/next-phase-candidates.md`? (NOT in CLAUDE.md table cell)
+- [ ] **next-phase-candidates.md append** (post REFACTOR-010): full SHIPPED carryover narration → `next-phase-candidates-shipped-archive.md` (verbatim, newest-first); into `next-phase-candidates.md` only a **1-line §Shipped Sprints Pointer Index row + the open ADs into §Open Carryover ADs**. NO full SHIPPED block (file:line / drive-through / pytest counts / CHANGE-NNN / design note) in the main file — that is the REFACTOR-001/005/009/010 re-bloat anti-pattern.
 - [ ] **Calibration ratio**: Tracked in `sprint-workflow.md §Scope-class multiplier matrix`? (NOT in CLAUDE.md / MEMORY.md prose)
 
 ### Why This Policy Exists (REFACTOR-001 root cause analysis 2026-05-18)
