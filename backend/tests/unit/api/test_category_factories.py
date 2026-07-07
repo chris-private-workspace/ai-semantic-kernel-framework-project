@@ -37,6 +37,7 @@ from api.v1.chat._category_factories import (
     _DEFAULT_KEEP_RECENT_TURNS,
     _compaction_keep_recent_turns,
     _compaction_token_budget,
+    _compaction_tool_anchored_keep,
     make_chat_compactor,
     make_chat_error_deps,
     make_chat_state_deps,
@@ -157,3 +158,53 @@ def test_factory_threads_keep_recent_to_sub_compactors(
     compactor = make_chat_compactor(MockChatClient(responses=[]))
     assert compactor.structural.keep_recent_turns == 1  # type: ignore[attr-defined]
     assert compactor.semantic.keep_recent_turns == 1  # type: ignore[attr-defined]
+
+
+# === Sprint 57.160: CHAT_COMPACTION_TOOL_ANCHORED_MASKING env lever ===========
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [("2", 2), ("1", 1), ("", None), ("0", None), ("-3", None), ("abc", None)],
+)
+def test_compaction_tool_anchored_keep_env(
+    monkeypatch: pytest.MonkeyPatch, raw: str, expected: int | None
+) -> None:
+    """>= 1 → N; unset / 0 / negative / garbage → None (OFF, user-anchored default)."""
+    monkeypatch.setenv("CHAT_COMPACTION_TOOL_ANCHORED_MASKING", raw)
+    assert _compaction_tool_anchored_keep() == expected
+
+
+def test_compaction_tool_anchored_keep_unset_is_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CHAT_COMPACTION_TOOL_ANCHORED_MASKING", raising=False)
+    assert _compaction_tool_anchored_keep() is None
+
+
+def test_factory_default_masker_is_user_anchored(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Lever OFF → structural gets a user-anchored masker (tool_anchor_keep is None)."""
+    monkeypatch.delenv("CHAT_COMPACTION_TOOL_ANCHORED_MASKING", raising=False)
+    compactor = make_chat_compactor(MockChatClient(responses=[]))
+    assert compactor.structural.masker.tool_anchor_keep is None  # type: ignore[attr-defined]
+
+
+def test_factory_injects_tool_anchored_masker_into_structural(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Lever ON → the SAME tool-anchored masker is injected into the structural stage."""
+    monkeypatch.setenv("CHAT_COMPACTION_TOOL_ANCHORED_MASKING", "3")
+    compactor = make_chat_compactor(MockChatClient(responses=[]))
+    assert compactor.structural.masker.tool_anchor_keep == 3  # type: ignore[attr-defined]
+
+
+def test_factory_injects_tool_anchored_masker_into_preclear(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Lever ON + preclear enabled → the preclear stage also gets the tool-anchored masker."""
+    from agent_harness.context_mgmt.compactor.chained import ChainedCompactor
+
+    monkeypatch.setenv("CHAT_COMPACTION_TOOL_ANCHORED_MASKING", "2")
+    monkeypatch.setenv("CHAT_COMPACTION_PRECLEAR_RATIO", "0.5")
+    compactor = make_chat_compactor(MockChatClient(responses=[]))
+    assert isinstance(compactor, ChainedCompactor)
+    preclear = compactor.compactors[0]
+    assert preclear.masker.tool_anchor_keep == 2  # type: ignore[attr-defined]

@@ -1,0 +1,66 @@
+# Tool-anchored masking A/B corpus (Sprint 57.160, AD-Compaction-NoOp-On-Single-User-Turn-Chat-Path).
+#
+# Each case is a SINGLE-user-turn tool-heavy transcript SPEC (built into real
+# Messages by benchmark_tool_anchored_masking.build_transcript): one user turn
+# followed by n_tool_calls × (assistant tool_call + tool result blob) — the
+# shape the chat main flow actually produces (one user message per send).
+#
+# The harness measures, with a REAL TiktokenCounter, OFF (user-anchored, the
+# default — a NO-OP on this shape) vs ON (tool-anchored, keep last N tool
+# results) reduction, plus mechanical retention (recent-N intact + provenance).
+#
+# Schema: id, n_tool_calls, tool_result_chars, tool_anchor_keep (required);
+#         user_text_chars (default 40), assistant_text_chars (default 0),
+#         keep_recent (default 5 — the OFF user-anchored window), note (optional).
+
+cases:
+  - id: deep-tool-run
+    n_tool_calls: 12
+    tool_result_chars: 2000
+    tool_anchor_keep: 3
+    note: "deep single-send tool run; most tokens in old tool results → high tool-anchored yield"
+
+  - id: mid-tool-run
+    n_tool_calls: 8
+    tool_result_chars: 1200
+    tool_anchor_keep: 3
+    assistant_text_chars: 80
+    note: "moderate run + small assistant text"
+
+  - id: many-small-tools
+    n_tool_calls: 16
+    tool_result_chars: 600
+    tool_anchor_keep: 4
+    note: "many small tool results within one send"
+
+  - id: few-large-tools
+    n_tool_calls: 6
+    tool_result_chars: 4000
+    tool_anchor_keep: 2
+    note: "few but very large tool results"
+
+  - id: prose-balanced
+    n_tool_calls: 10
+    tool_result_chars: 800
+    tool_anchor_keep: 3
+    user_text_chars: 1500
+    assistant_text_chars: 400
+    note: "tool results balanced against a long user request + assistant prose → lower yield"
+
+  - id: long-single-send
+    n_tool_calls: 20
+    tool_result_chars: 1500
+    tool_anchor_keep: 3
+    note: "the genuine target — a 20-round tool run inside ONE user turn (57.159 observed 4k→35k)"
+
+  - id: keep-1-aggressive
+    n_tool_calls: 10
+    tool_result_chars: 1800
+    tool_anchor_keep: 1
+    note: "keep only the latest tool result — most aggressive tool-anchored clear"
+
+  - id: keep-covers-all
+    n_tool_calls: 3
+    tool_result_chars: 2000
+    tool_anchor_keep: 5
+    note: "n_tool_calls <= tool_anchor_keep → ON passthrough (boundary; on_reduction 0, retention ok)"

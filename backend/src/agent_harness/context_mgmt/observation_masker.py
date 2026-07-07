@@ -33,6 +33,7 @@ Related:
 Created: 2026-05-01 (Sprint 52.1 Day 3.1)
 
 Modification History:
+    - 2026-07-07: Sprint 57.160 — add opt-in tool-result-recency anchor mode (closes AD-Compaction-NoOp-On-Single-User-Turn-Chat-Path)
     - 2026-05-01: Initial creation (Sprint 52.1 Day 3.1) — default masker impl
 """
 
@@ -44,8 +45,34 @@ from agent_harness._contracts import Message
 from agent_harness.context_mgmt._abc import ObservationMasker
 
 
+def _tombstone(msg: Message) -> Message:
+    """Replace a role="tool" message body with a size tombstone; keep the rest of the message."""
+    tool_name = msg.name or "unknown"
+    content_str = msg.content if isinstance(msg.content, str) else "[content blocks]"
+    byte_count = len(content_str) if isinstance(content_str, str) else 0
+    return replace(msg, content=f"[REDACTED: tool {tool_name} result; bytes={byte_count}]")
+
+
 class DefaultObservationMasker(ObservationMasker):
-    """Tombstone-style masker; keeps tool_calls field, redacts old tool bodies."""
+    """Tombstone-style masker; keeps tool_calls field, redacts old tool bodies.
+
+    Anchor modes (Sprint 57.160):
+      - user-anchored (default, tool_anchor_keep=None): the keep-window is measured
+        in USER-message count — the recent keep_recent user turns stay intact. The
+        original Sprint 52.1 behaviour (byte-identical when tool_anchor_keep is None).
+      - tool-anchored (tool_anchor_keep=N >= 1, opt-in via the factory env lever
+        CHAT_COMPACTION_TOOL_ANCHORED_MASKING): the keep-window is measured in
+        role="tool" RESULT recency — the last N tool results stay intact, older tool
+        blobs are tombstoned — so masking reduces WITHIN a single user turn. Fixes
+        AD-Compaction-NoOp-On-Single-User-Turn-Chat-Path (57.159): the chat main flow
+        runs one user message per send, so the user-anchored window never fires inside
+        a long single-user-turn tool run (observation was 4k->35k, 8 no-op compactions).
+    """
+
+    def __init__(self, *, tool_anchor_keep: int | None = None) -> None:
+        # None = original user-anchored path (byte-identical). >= 1 = switch to
+        # tool-result-recency anchoring (keep the last N tool results intact).
+        self.tool_anchor_keep = tool_anchor_keep
 
     def mask_old_results(
         self,
@@ -55,7 +82,11 @@ class DefaultObservationMasker(ObservationMasker):
     ) -> list[Message]:
         if not messages:
             return []
+        if self.tool_anchor_keep is not None:
+            return self._mask_tool_anchored(messages)
+        return self._mask_user_anchored(messages, keep_recent=keep_recent)
 
+    def _mask_user_anchored(self, messages: list[Message], *, keep_recent: int) -> list[Message]:
         # Anchor "turn" boundaries on user messages: the keep_recent-th-from-last
         # user message marks the cutoff. Everything from that user onwards is
         # untouched; older role="tool" messages get tombstoned.
@@ -68,11 +99,32 @@ class DefaultObservationMasker(ObservationMasker):
         out: list[Message] = []
         for i, msg in enumerate(messages):
             if msg.role == "tool" and i < cutoff_idx:
-                tool_name = msg.name or "unknown"
-                content_str = msg.content if isinstance(msg.content, str) else "[content blocks]"
-                byte_count = len(content_str) if isinstance(content_str, str) else 0
-                tombstone = f"[REDACTED: tool {tool_name} result; bytes={byte_count}]"
-                out.append(replace(msg, content=tombstone))
+                out.append(_tombstone(msg))
+            else:
+                out.append(msg)
+        return out
+
+    def _mask_tool_anchored(self, messages: list[Message]) -> list[Message]:
+        # Anchor the keep-window on tool-RESULT recency: keep the last N role="tool"
+        # results intact, tombstone every older tool result. Independent of user-turn
+        # count, so it reduces within a single-user-turn tool run. system / user /
+        # assistant (incl. tool_calls provenance) are never touched.
+        keep = self.tool_anchor_keep or 0
+        if keep < 1:
+            # Defensive: a non-positive anchor is a passthrough (the factory env
+            # reader already floors at 1; guards the tool_indices[-0]==[0] footgun).
+            return list(messages)
+
+        tool_indices = [i for i, m in enumerate(messages) if m.role == "tool"]
+        if len(tool_indices) <= keep:
+            return list(messages)
+
+        cutoff_idx = tool_indices[-keep]
+
+        out: list[Message] = []
+        for i, msg in enumerate(messages):
+            if msg.role == "tool" and i < cutoff_idx:
+                out.append(_tombstone(msg))
             else:
                 out.append(msg)
         return out

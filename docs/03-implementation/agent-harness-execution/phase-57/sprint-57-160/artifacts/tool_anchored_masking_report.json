@@ -1,0 +1,81 @@
+{
+  "total": 8,
+  "mean_off_reduction": 0.0,
+  "mean_on_reduction": 0.6082917052813366,
+  "retention_ok_rate": 1.0,
+  "recommend_default_on": true,
+  "results": [
+    {
+      "id": "deep-tool-run",
+      "l0_tokens": 12230,
+      "off_tokens": 12230,
+      "on_tokens": 3365,
+      "off_reduction": 0.0,
+      "on_reduction": 0.7248569092395748,
+      "retention_ok": true
+    },
+    {
+      "id": "mid-tool-run",
+      "l0_tokens": 5038,
+      "off_tokens": 5038,
+      "on_tokens": 2113,
+      "off_reduction": 0.0,
+      "on_reduction": 0.5805875347360063,
+      "retention_ok": true
+    },
+    {
+      "id": "many-small-tools",
+      "l0_tokens": 5102,
+      "off_tokens": 5102,
+      "on_tokens": 1670,
+      "off_reduction": 0.0,
+      "on_reduction": 0.6726773814190513,
+      "retention_ok": true
+    },
+    {
+      "id": "few-large-tools",
+      "l0_tokens": 12122,
+      "off_tokens": 12122,
+      "on_tokens": 4182,
+      "off_reduction": 0.0,
+      "on_reduction": 0.6550074245174063,
+      "retention_ok": true
+    },
+    {
+      "id": "prose-balanced",
+      "l0_tokens": 4876,
+      "off_tokens": 4876,
+      "on_tokens": 2174,
+      "off_reduction": 0.0,
+      "on_reduction": 0.5541427399507793,
+      "retention_ok": true
+    },
+    {
+      "id": "long-single-send",
+      "l0_tokens": 15374,
+      "off_tokens": 15374,
+      "on_tokens": 2879,
+      "off_reduction": 0.0,
+      "on_reduction": 0.8127357876935085,
+      "retention_ok": true
+    },
+    {
+      "id": "keep-1-aggressive",
+      "l0_tokens": 9194,
+      "off_tokens": 9194,
+      "on_tokens": 1229,
+      "off_reduction": 0.0,
+      "on_reduction": 0.8663258646943659,
+      "retention_ok": true
+    },
+    {
+      "id": "keep-covers-all",
+      "l0_tokens": 3068,
+      "off_tokens": 3068,
+      "on_tokens": 3068,
+      "off_reduction": 0.0,
+      "on_reduction": 0.0,
+      "retention_ok": true
+    }
+  ]
+}

@@ -26,9 +26,10 @@ Key Components:
     - make_chat_state_deps(db, session_id, tenant_id) -> (Reducer|None, Checkpointer|None)  (Cat 7)
 
 Created: 2026-05-31 (Sprint 57.63 Day 1)
-Last Modified: 2026-07-01
+Last Modified: 2026-07-07
 
 Modification History (newest-first):
+    - 2026-07-07: Sprint 57.160 — inject env-gated tool-anchored masker (single-user-turn fix)
     - 2026-07-01: Sprint 57.155 — inject MemoryVectorIndex into UserLayer (CARRY-026 L4 semantic)
     - 2026-06-12: Sprint 57.109 C2 — compaction budget env knob + thread to sub-compactors
     - 2026-06-11: Sprint 57.103 (B2b) — inbox_factory → inbox_scope (register child queue)
@@ -60,6 +61,7 @@ from agent_harness.context_mgmt.compactor.hybrid import HybridCompactor
 from agent_harness.context_mgmt.compactor.preclear import PreClearCompactor
 from agent_harness.context_mgmt.compactor.semantic import SemanticCompactor
 from agent_harness.context_mgmt.compactor.structural import StructuralCompactor
+from agent_harness.context_mgmt.observation_masker import DefaultObservationMasker
 from agent_harness.context_mgmt.token_counter.tiktoken_counter import TiktokenCounter
 from agent_harness.error_handling import (
     DefaultCircuitBreaker,
@@ -165,6 +167,26 @@ def _compaction_preclear_ratio() -> float:
     return ratio if 0.0 < ratio < 1.0 else 0.0
 
 
+def _compaction_tool_anchored_keep() -> int | None:
+    """Resolve the tool-result-recency masking anchor (CHAT_COMPACTION_TOOL_ANCHORED_MASKING).
+
+    Sprint 57.160 (closes AD-Compaction-NoOp-On-Single-User-Turn-Chat-Path): when set
+    to N >= 1 the factory injects a tool-anchored DefaultObservationMasker into BOTH the
+    structural and preclear stages, so the masker keeps the last N role="tool" results and
+    tombstones older tool blobs WITHIN a single user turn — fixing the chat main flow's
+    no-op (57.109 D-DAY3-2 / observation_masker.py:62-64: the user-anchored window never
+    fires when a long tool run shares ONE user message). DEFAULT unset / invalid / < 1 →
+    None → the compactors keep their default user-anchored masker (byte-identical to
+    pre-57.160). Evidence-first: the A/B harness sets the flip-to-default recommendation.
+    """
+    raw = os.environ.get("CHAT_COMPACTION_TOOL_ANCHORED_MASKING", "")
+    try:
+        keep = int(raw) if raw else 0
+    except ValueError:
+        return None
+    return keep if keep >= 1 else None
+
+
 def make_chat_compactor(chat_client: ChatClient) -> Compactor:
     """Cat 4: HybridCompactor (structural-first, semantic fallback).
 
@@ -182,11 +204,20 @@ def make_chat_compactor(chat_client: ChatClient) -> Compactor:
     """
     budget = _compaction_token_budget()
     keep_recent = _compaction_keep_recent_turns()
+    # Sprint 57.160: when the tool-anchored lever is set, inject a tool-result-recency
+    # masker into BOTH the structural and preclear stages so masking reduces WITHIN a
+    # single user turn (chat main flow = 1 user message/send). None → the compactors
+    # default to their own user-anchored DefaultObservationMasker (byte-identical).
+    tool_anchor = _compaction_tool_anchored_keep()
+    masker = (
+        DefaultObservationMasker(tool_anchor_keep=tool_anchor) if tool_anchor is not None else None
+    )
     hybrid = HybridCompactor(
         structural=StructuralCompactor(
             keep_recent_turns=keep_recent,
             token_budget=budget,
             token_threshold_ratio=_CHAT_TOKEN_THRESHOLD_RATIO,
+            masker=masker,
         ),
         semantic=SemanticCompactor(
             chat_client=chat_client,
@@ -214,6 +245,7 @@ def make_chat_compactor(chat_client: ChatClient) -> Compactor:
                     preclear_ratio=preclear_ratio,
                     keep_recent_turns=keep_recent,
                     token_budget=budget,
+                    masker=masker,
                 ),
                 hybrid,
             ]
