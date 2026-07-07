@@ -17,6 +17,10 @@ Description:
       5. (Day 3.3) Old tool results outside keep_recent are masked via
          injected ObservationMasker. Day 2 ships an inline tombstone path so
          the strategy is functional before Day 3 wires the masker.
+      6. (Sprint 57.161) When a TokenCounter is injected, tokens_after is a
+         REAL post-mask re-count (mirroring PreClearCompactor) so in-place
+         tombstoning surfaces its reduction. Without a counter it falls back to
+         a message-count ratio (blind to tombstoning; byte-identical pre-57.161).
 
 Why this exists:
     V1 ignored context rot (AP-7). Long conversations blew context windows
@@ -35,6 +39,7 @@ Related:
 Created: 2026-05-01 (Sprint 52.1 Day 2.1)
 
 Modification History:
+    - 2026-07-07: Sprint 57.161 — real tokens_after re-count when token_counter injected
     - 2026-05-01: Initial creation (Sprint 52.1 Day 2.1) — rule-based compaction
 """
 
@@ -55,6 +60,7 @@ from agent_harness._contracts import (
 from agent_harness.context_mgmt._abc import ObservationMasker
 from agent_harness.context_mgmt.compactor._abc import Compactor
 from agent_harness.context_mgmt.observation_masker import DefaultObservationMasker
+from agent_harness.context_mgmt.token_counter._abc import TokenCounter
 
 
 def _tool_call_signature(msg: Message) -> str | None:
@@ -113,6 +119,7 @@ class StructuralCompactor(Compactor):
         token_threshold_ratio: float = 0.75,
         turn_threshold: int = 30,
         masker: ObservationMasker | None = None,
+        token_counter: TokenCounter | None = None,
     ) -> None:
         self.keep_recent_turns = keep_recent_turns
         self.preserve_hitl = preserve_hitl
@@ -122,6 +129,10 @@ class StructuralCompactor(Compactor):
         # Day 3.3: dependency-injected masker. Default = DefaultObservationMasker.
         # Replaces the Day 2 inline _redact_old_tool_results helper.
         self.masker: ObservationMasker = masker or DefaultObservationMasker()
+        # Sprint 57.161: when injected, tokens_after is a REAL post-mask re-count
+        # (mirrors PreClearCompactor) instead of the message-count ratio that is
+        # blind to in-place tombstoning. None → legacy ratio (byte-identical).
+        self.token_counter = token_counter
 
     def should_compact(self, state: LoopState) -> bool:
         """Override ABC default with concrete state path access."""
@@ -185,12 +196,29 @@ class StructuralCompactor(Compactor):
                     kept_messages.append(rest_buffer[rest_pointer])
                     rest_pointer += 1
 
-        # Step 5: build new state with the same durable + transient swapped in
+        # Step 5: build new state with the same durable + transient swapped in.
+        # tokens_after feeds BOTH the chat-v2 compaction marker AND the loop's
+        # ongoing budget — loop.py:2282 sets `tokens_used = result.tokens_after`
+        # and does NOT re-count (the earlier "Loop.run() will re-count" claim was
+        # stale). So this value must reflect the REAL reduction.
+        if self.token_counter is not None:
+            # Real token re-count (mirror PreClearCompactor preclear.py:178-181):
+            # a message-count ratio is BLIND to in-place tombstoning (the masker
+            # shrinks tool bodies without dropping messages → len unchanged →
+            # ratio 1.0 → a no-op tokens_after). Apply the true reduction ratio
+            # to the loop-scale tokens_before so the marker + budget both move.
+            tokens_original = self.token_counter.count(messages=messages)
+            tokens_masked = self.token_counter.count(messages=kept_messages)
+            reduction_ratio = (tokens_masked / tokens_original) if tokens_original > 0 else 1.0
+            new_token_usage = int(tokens_before * reduction_ratio)
+        else:
+            # Legacy message-count ratio (byte-identical pre-57.161; used when no
+            # counter is injected, e.g. unit tests constructing StructuralCompactor()).
+            new_token_usage = int(tokens_before * len(kept_messages) / max(original_count, 1))
         new_transient = replace(
             state.transient,
             messages=kept_messages,
-            # token_usage_so_far is approximated; real Loop.run() will re-count via TokenCounter
-            token_usage_so_far=int(tokens_before * len(kept_messages) / max(original_count, 1)),
+            token_usage_so_far=new_token_usage,
         )
         new_state = replace(state, transient=new_transient)
         tokens_after = new_transient.token_usage_so_far

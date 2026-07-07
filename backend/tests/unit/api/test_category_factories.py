@@ -208,3 +208,14 @@ def test_factory_injects_tool_anchored_masker_into_preclear(
     assert isinstance(compactor, ChainedCompactor)
     preclear = compactor.compactors[0]
     assert preclear.masker.tool_anchor_keep == 2  # type: ignore[attr-defined]
+
+
+def test_factory_injects_token_counter_into_structural() -> None:
+    """Sprint 57.161 (default-on): the structural stage always gets a real TokenCounter
+    so tokens_after is a real post-mask re-count, not the tombstone-blind message-count ratio."""
+    from agent_harness.context_mgmt.token_counter.tiktoken_counter import TiktokenCounter
+
+    compactor = make_chat_compactor(MockChatClient(responses=[]))
+    counter = compactor.structural.token_counter  # type: ignore[attr-defined]
+    assert isinstance(counter, TiktokenCounter)
+    assert counter.accuracy() == "exact"

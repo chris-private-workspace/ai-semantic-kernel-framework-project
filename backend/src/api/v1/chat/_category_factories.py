@@ -29,6 +29,7 @@ Created: 2026-05-31 (Sprint 57.63 Day 1)
 Last Modified: 2026-07-07
 
 Modification History (newest-first):
+    - 2026-07-07: Sprint 57.161 — inject TiktokenCounter into StructuralCompactor
     - 2026-07-07: Sprint 57.160 — inject env-gated tool-anchored masker (single-user-turn fix)
     - 2026-07-01: Sprint 57.155 — inject MemoryVectorIndex into UserLayer (CARRY-026 L4 semantic)
     - 2026-06-12: Sprint 57.109 C2 — compaction budget env knob + thread to sub-compactors
@@ -218,6 +219,12 @@ def make_chat_compactor(chat_client: ChatClient) -> Compactor:
             token_budget=budget,
             token_threshold_ratio=_CHAT_TOKEN_THRESHOLD_RATIO,
             masker=masker,
+            # Sprint 57.161 (default-on correctness fix): inject the chat-flow
+            # TiktokenCounter so tokens_after is a REAL post-mask re-count instead
+            # of the message-count ratio that is blind to in-place tombstoning —
+            # so tool-anchored masking (57.160) surfaces its reduction on the
+            # marker + relieves the loop budget WITHOUT also enabling preclear.
+            token_counter=TiktokenCounter(model="gpt-4o"),
         ),
         semantic=SemanticCompactor(
             chat_client=chat_client,
