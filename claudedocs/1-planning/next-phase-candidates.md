@@ -99,6 +99,7 @@ This list follows the canonical research §5 ranked order (#6 → #3 → #8 → 
 
 | Sprint | Shipped (closes / PR) | Detail pointer |
 |--------|-----------------------|----------------|
+| 57.162 | DAG soft-enforce advisory + cycle report + Inspector Viz — closes AD-TaskPrimitive-DAG-{Enforce,CycleReport,Viz}-Phase58 (57.156 carryovers); **committed LOCAL, PR-pending (not pushed per user)** | memory/project_phase57_162_dag_enforce_cyclereport_viz.md |
 | 57.161 | structural compactor real token re-count — closes AD-Compaction-Structural-RealTokenCount; PR #378 | memory/project_phase57_161_structural_realcount.md |
 | 57.160 | tool-anchored observation masking — closes AD-Compaction-NoOp-On-Single-User-Turn-Chat-Path; PR #376 | memory/project_phase57_160_tool_anchored_masking.md |
 | 57.159 | compaction L2→L3 drive-through + Inspector timeline marker — PR #374 | memory/project_phase57_159_compaction_drivethrough_marker.md |
@@ -213,7 +214,7 @@ This list follows the canonical research §5 ranked order (#6 → #3 → #8 → 
 **NEW carryover** `AD-Compaction-Structural-TombstoneCount-Marker` (mirror preclear's tombstoned count into `StructuralCompactor.messages_compacted` so the marker shows `· N msgs` on pure tombstone instead of `· 0 msgs`) + per-tenant real-count toggle (C3 seam). CHANGE-128 + design note `63-structural-realcount-design.md`. Detail: `memory/project_phase57_161_structural_realcount.md`.
 
 #### 57.156
-**NEW carryover**: ~~`AD-TaskPrimitive-Scheduler-Phase58`~~ ✅ **CLOSED Sprint 57.157** (below) · `AD-TaskPrimitive-DAG-Enforce-Phase58` (topological execution enforcement) · `AD-TaskPrimitive-DAG-CycleReport-Phase58` (surface a detected cycle to the agent) · `AD-TaskPrimitive-DAG-Viz-Phase58` (inline turn-block DAG graph). Detail: `memory/project_phase57_156_dag_task_primitive.md`.
+**NEW carryover**: ~~`AD-TaskPrimitive-Scheduler-Phase58`~~ ✅ **CLOSED Sprint 57.157** · ~~`AD-TaskPrimitive-DAG-Enforce-Phase58`~~ ✅ **CLOSED Sprint 57.162** (SOFT — advisory not reject, AskUserQuestion pick) · ~~`AD-TaskPrimitive-DAG-CycleReport-Phase58`~~ ✅ **CLOSED Sprint 57.162** (`detect_cycles` → observation advisory + `render_active_plan` `(blocked by cycle: …)`) · ~~`AD-TaskPrimitive-DAG-Viz-Phase58`~~ ✅ **CLOSED Sprint 57.162** (Inspector `TodoDagGraph` leveled node-link). All 4 57.156 DAG carryovers now closed (57.162 committed LOCAL, PR-pending — not pushed per user 完成即暫停). Detail: `memory/project_phase57_156_dag_task_primitive.md` + `memory/project_phase57_162_dag_enforce_cyclereport_viz.md`.
 
 #### 57.157
 **NEW carryover**: `AD-Scheduler-Burst-Stats-Aggregate-Phase58` (final `loop_end` reflects only the last burst's counters, not the cross-burst total) · `AD-Scheduler-Burst-Boundary-Wire-Phase58` (no wire event marks a burst boundary; a FE burst counter would need one) · `AD-Scheduler-PerTenant-Phase58` (global env, not per-tenant policy — deliberate anti-AP-6) · `AD-Scheduler-TokenBudget-Continue-Phase58` (only `max_turns` continues; `token_budget` conservatively stops) · `AD-TaskPrimitive-DAG-Enforce-Phase58` (still open — DAG + scheduler both remain guidance).

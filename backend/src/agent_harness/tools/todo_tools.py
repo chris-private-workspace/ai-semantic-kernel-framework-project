@@ -26,9 +26,10 @@ Key Components:
     - make_write_todos_handler(store): dual-arity handler factory
 
 Created: 2026-06-24 (Sprint 57.140)
-Last Modified: 2026-07-01
+Last Modified: 2026-07-08
 
 Modification History (newest-first):
+    - 2026-07-08: Sprint 57.162 — append soft plan_warnings advisory to handler result (DAG)
     - 2026-07-01: Sprint 57.156 — add per-todo depends_on to the schema + description (DAG)
     - 2026-06-24: Initial creation (Sprint 57.140) — write_todos tool + handler
 
@@ -54,7 +55,12 @@ from agent_harness._contracts import (
     ToolHITLPolicy,
     ToolSpec,
 )
-from agent_harness._contracts.todo import Todo, _todo_from_dict, summarize_todos
+from agent_harness._contracts.todo import (
+    Todo,
+    _todo_from_dict,
+    plan_warnings,
+    summarize_todos,
+)
 from agent_harness.state_mgmt import TodoStore
 
 ToolHandler = Callable[[ToolCall, ExecutionContext], Awaitable[str]]
@@ -139,7 +145,17 @@ def make_write_todos_handler(store: TodoStore) -> ToolHandler:
                 todos.append(todo)
 
         await store.replace(todos)
-        return f"Recorded plan: {summarize_todos(todos)}."
+        result = f"Recorded plan: {summarize_todos(todos)}."
+        # Sprint 57.162 (soft DAG-Enforce, guidance-not-enforcement): the write ALWAYS
+        # succeeds; if the agent worked out of dependency order (a dependent marked
+        # in_progress/completed before its prerequisite) OR declared a dependency cycle,
+        # append a non-blocking advisory to the observation so the agent can self-
+        # correct. A clean plan appends nothing (byte-identical to Sprint 57.156).
+        warnings = plan_warnings(todos)
+        if warnings:
+            advisory = "\n".join(f"- {w}" for w in warnings)
+            result += f"\n\n⚠️ Plan advisory (not blocking):\n{advisory}"
+        return result
 
     return handler
 
