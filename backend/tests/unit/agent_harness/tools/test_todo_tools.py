@@ -146,3 +146,62 @@ def test_spec_schema_allows_depends_on() -> None:
     item_props = WRITE_TODOS_SPEC.input_schema["properties"]["todos"]["items"]["properties"]
     assert item_props["depends_on"]["type"] == "array"
     assert item_props["depends_on"]["items"]["type"] == "string"
+
+
+@pytest.mark.asyncio
+async def test_handler_clean_plan_has_no_advisory() -> None:
+    """An in-order acyclic plan → summary only (byte-identical to Sprint 57.156)."""
+    store = _FakeTodoStore()
+    handler = make_write_todos_handler(store)
+    result = await handler(
+        _call(
+            [
+                {"id": "a", "title": "design", "status": "completed"},
+                {"id": "b", "title": "build", "status": "in_progress", "depends_on": ["a"]},
+            ]
+        ),
+        ExecutionContext(),
+    )
+    assert result == "Recorded plan: 2 todos (1 completed, 1 in_progress, 0 pending)."
+    assert "⚠️" not in result
+
+
+@pytest.mark.asyncio
+async def test_handler_appends_out_of_order_advisory_but_still_writes() -> None:
+    """Soft DAG-Enforce: an out-of-order write STILL succeeds + gets a ⚠️ advisory."""
+    store = _FakeTodoStore()
+    handler = make_write_todos_handler(store)
+    result = await handler(
+        _call(
+            [
+                {"id": "a", "title": "Design", "status": "pending"},
+                {"id": "b", "title": "Build", "status": "in_progress", "depends_on": ["a"]},
+            ]
+        ),
+        ExecutionContext(),
+    )
+    # the write is NOT rejected (guidance, not enforcement)
+    assert store.replace_calls == 1
+    assert [t.id for t in store.todos] == ["a", "b"]
+    # ...and the observation carries the non-blocking advisory
+    assert "⚠️ Plan advisory (not blocking):" in result
+    assert "'Build' is marked in_progress but prerequisite 'Design' is not completed." in result
+
+
+@pytest.mark.asyncio
+async def test_handler_appends_cycle_advisory() -> None:
+    """A written dependency cycle → the plan persists + a ⚠️ cycle advisory."""
+    store = _FakeTodoStore()
+    handler = make_write_todos_handler(store)
+    result = await handler(
+        _call(
+            [
+                {"id": "a", "title": "A", "depends_on": ["b"]},
+                {"id": "b", "title": "B", "depends_on": ["a"]},
+            ]
+        ),
+        ExecutionContext(),
+    )
+    assert store.replace_calls == 1
+    assert "⚠️ Plan advisory (not blocking):" in result
+    assert "Dependency cycle detected among: A, B" in result

@@ -26,13 +26,16 @@ Key Components:
     - _todo_to_dict / _todo_from_dict: single-item serde
     - todos_to_jsonb / todos_from_jsonb: list serde (DB JSONB column)
     - ready_todos: ids of pending todos whose deps are all completed (Sprint 57.156 DAG)
-    - render_active_plan: '## Active Plan' section, dependency-aware (Sprint 57.156)
+    - detect_cycles: ids of todos participating in a dependency cycle (Sprint 57.162)
+    - plan_warnings: non-blocking advisory lines — out-of-order + cycle (Sprint 57.162)
+    - render_active_plan: '## Active Plan' section, dependency+cycle-aware (Sprint 57.156/162)
     - summarize_todos: short "(N completed, M in_progress, K pending)" line
 
 Created: 2026-06-24 (Sprint 57.140)
-Last Modified: 2026-07-01
+Last Modified: 2026-07-08
 
 Modification History (newest-first):
+    - 2026-07-08: Sprint 57.162 — detect_cycles + soft plan advisory + render cycle (DAG)
     - 2026-07-01: Sprint 57.156 — Todo.depends_on + ready_todos + dependency-aware render (DAG)
     - 2026-06-24: Initial creation (Sprint 57.140) — explicit task-primitive contract
 
@@ -169,6 +172,85 @@ def ready_todos(todos: list[Todo]) -> set[str]:
     return ready
 
 
+def detect_cycles(todos: list[Todo]) -> set[str]:
+    """Return the ids of todos that participate in a dependency cycle.
+
+    Considers KNOWN dependency ids only (an unknown / typo'd dep id is ignored,
+    consistent with ready_todos) — so a reported cycle is a real closed loop among
+    existing todos, not an artefact of a dangling id. Depth-first search with grey
+    (on the current path) / black (fully explored) colouring; when a grey node is
+    re-encountered every node on the path back to it is a cycle member. Bounded by
+    the plan size (the agent writes a handful of todos). Empty for an acyclic plan.
+    """
+    known = {t.id for t in todos}
+    adjacency: dict[str, tuple[str, ...]] = {}
+    for todo in todos:
+        # first occurrence wins if a malformed blob repeats an id (serde dedups upstream)
+        adjacency.setdefault(
+            todo.id,
+            tuple(d for d in todo.depends_on if d in known and d != todo.id),
+        )
+
+    white, grey, black = 0, 1, 2
+    color: dict[str, int] = dict.fromkeys(adjacency, white)
+    cyclic: set[str] = set()
+    path: list[str] = []
+
+    def visit(node: str) -> None:
+        color[node] = grey
+        path.append(node)
+        for dep in adjacency[node]:
+            if color.get(dep, black) == grey:
+                # back-edge: dep is on the current path → the whole loop is cyclic
+                cyclic.update(path[path.index(dep) :])
+            elif color.get(dep, black) == white:
+                visit(dep)
+        path.pop()
+        color[node] = black
+
+    for tid in adjacency:
+        if color[tid] == white:
+            visit(tid)
+    return cyclic
+
+
+def plan_warnings(todos: list[Todo]) -> list[str]:
+    """Non-blocking advisory lines about an inconsistent plan; [] when the plan is clean.
+
+    Two advisories, in order (Sprint 57.162, guidance-not-enforcement — the caller
+    appends these to the write_todos observation; the write ALWAYS succeeds):
+      1. Out-of-order: a todo marked in_progress / completed while a KNOWN prerequisite
+         is not yet completed (the agent worked ahead of its own declared order).
+      2. Cycle: a dependency cycle among existing todos (those steps can never become
+         ready) — surfaced once with the member titles.
+    An empty list means no advisory (the handler then returns the plain summary,
+    byte-identical to Sprint 57.156).
+    """
+    title_by_id = {t.id: t.title for t in todos}
+    completed = {t.id for t in todos if t.status == "completed"}
+    warnings: list[str] = []
+
+    for todo in todos:
+        if todo.status not in ("in_progress", "completed"):
+            continue
+        for dep in todo.depends_on:
+            if dep in title_by_id and dep not in completed:
+                warnings.append(
+                    f"'{todo.title}' is marked {todo.status} but prerequisite "
+                    f"'{title_by_id[dep]}' is not completed."
+                )
+
+    cyclic = detect_cycles(todos)
+    if cyclic:
+        titles = [title_by_id[tid] for tid in title_by_id if tid in cyclic]
+        warnings.append(
+            "Dependency cycle detected among: "
+            f"{', '.join(titles)} — these steps can never become ready; "
+            "fix their depends_on."
+        )
+    return warnings
+
+
 def render_active_plan(todos: list[Todo]) -> str:
     """Render the current todo list as a '## Active Plan' system-prompt section.
 
@@ -180,21 +262,30 @@ def render_active_plan(todos: list[Todo]) -> str:
     Dependency-aware (Sprint 57.156 DAG): when ANY todo declares `depends_on`, each
     pending dependent todo is annotated `(ready)` (all prerequisites completed) or
     `(blocked by: <titles>)` so the agent works unblocked steps first — a NUDGE,
-    nothing enforces the order. When NO todo has a dependency the output is
-    byte-identical to the Sprint 57.140 flat render (same instruction, no
-    annotations).
+    nothing enforces the order. Cycle-aware (Sprint 57.162): a pending todo that is
+    part of a dependency cycle is annotated `(blocked by cycle: <titles>)` instead of
+    the misleading plain `(blocked by: ...)`, so a typo'd `depends_on` surfaces as a
+    fixable deadlock rather than silently staying not-ready forever. When NO todo has
+    a dependency the output is byte-identical to the Sprint 57.140 flat render (same
+    instruction, no annotations).
     """
     has_deps = any(t.depends_on for t in todos)
     completed = {t.id for t in todos if t.status == "completed"}
     title_by_id = {t.id: t.title for t in todos}
+    # Sprint 57.162: surface a dependency cycle durably (the agent re-reads this at
+    # every run start) — a cyclic node is annotated distinctly so a typo'd depends_on
+    # is visible, not a silent deadlock. Only computed when the plan actually has deps.
+    cyclic = detect_cycles(todos) if has_deps else set()
 
     if has_deps:
         instruction = (
             "You have an existing task plan from earlier in this task. Continue from "
             "it — do NOT restart. Work the steps marked (ready) first; a step marked "
-            "(blocked by: ...) is waiting on a prerequisite to complete. As you finish "
-            "each step, call `write_todos` again with the WHOLE updated list to move "
-            "items to in_progress / completed."
+            "(blocked by: ...) is waiting on a prerequisite to complete. A step marked "
+            "(blocked by cycle: ...) is part of a dependency cycle — revise its "
+            "depends_on so it can become ready. As you finish each step, call "
+            "`write_todos` again with the WHOLE updated list to move items to "
+            "in_progress / completed."
         )
     else:
         instruction = (
@@ -207,11 +298,15 @@ def render_active_plan(todos: list[Todo]) -> str:
     for todo in todos:
         annotation = ""
         if has_deps and todo.status == "pending" and todo.depends_on:
-            unmet = [
-                title_by_id.get(d, d)
-                for d in todo.depends_on
-                if d in title_by_id and d not in completed
-            ]
-            annotation = f" (blocked by: {', '.join(unmet)})" if unmet else " (ready)"
+            if todo.id in cyclic:
+                cycle_titles = [title_by_id[tid] for tid in title_by_id if tid in cyclic]
+                annotation = f" (blocked by cycle: {', '.join(cycle_titles)})"
+            else:
+                unmet = [
+                    title_by_id.get(d, d)
+                    for d in todo.depends_on
+                    if d in title_by_id and d not in completed
+                ]
+                annotation = f" (blocked by: {', '.join(unmet)})" if unmet else " (ready)"
         lines.append(f"- [{todo.status}] {todo.title}{annotation}")
     return "\n".join(lines)

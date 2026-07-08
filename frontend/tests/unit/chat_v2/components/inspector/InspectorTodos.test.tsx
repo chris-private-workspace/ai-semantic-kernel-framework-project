@@ -7,6 +7,7 @@
  * Created: 2026-06-24 (Sprint 57.140)
  *
  * Modification History:
+ *   - 2026-07-08: Sprint 57.162 — DAG viz graph render / no-graph-for-flat / cycle-marker coverage
  *   - 2026-07-01: Sprint 57.156 — DAG: blocked badge + "⤷ needs" deps line coverage
  *   - 2026-06-24: Initial creation (Sprint 57.140) — empty / rows / status badges / count
  */
@@ -131,5 +132,48 @@ describe("InspectorTodos (Sprint 57.140)", () => {
     const blocked = screen.getByTestId("inspector-todo-blocked-1");
     expect(blocked.className).toBe("badge");
     expect(blocked).toHaveTextContent("blocked");
+  });
+
+  test("Sprint 57.162 DAG viz: a plan with deps renders the node-link graph + edges", () => {
+    useChatStore.setState({
+      todos: [
+        makeTodo({ id: "a", title: "Design schema", status: "completed" }),
+        makeTodo({ id: "b", title: "Write migration", status: "pending", depends_on: ["a"] }),
+        makeTodo({ id: "c", title: "Run tests", status: "pending", depends_on: ["b"] }),
+      ],
+    });
+    render(<InspectorTodos />);
+    expect(screen.getByTestId("todo-dag-graph")).toBeInTheDocument();
+    expect(screen.getByTestId("todo-dag-node-a")).toBeInTheDocument();
+    expect(screen.getByTestId("todo-dag-node-b")).toBeInTheDocument();
+    expect(screen.getByTestId("todo-dag-node-c")).toBeInTheDocument();
+    // edges point from each prerequisite to its dependent
+    expect(screen.getByTestId("todo-dag-edge-a-b")).toBeInTheDocument();
+    expect(screen.getByTestId("todo-dag-edge-b-c")).toBeInTheDocument();
+    // the flat list is retained below the graph (a11y / text fallback)
+    expect(screen.getByTestId("inspector-todos")).toBeInTheDocument();
+    expect(screen.getByText("Design schema")).toBeInTheDocument(); // unique to the flat list
+  });
+
+  test("Sprint 57.162 DAG viz: NO graph for a flat (no-dependency) plan", () => {
+    useChatStore.setState({
+      todos: [makeTodo({ id: "1", title: "a" }), makeTodo({ id: "2", title: "b" })],
+    });
+    render(<InspectorTodos />);
+    expect(screen.queryByTestId("todo-dag-graph")).not.toBeInTheDocument();
+  });
+
+  test("Sprint 57.162 DAG viz: cyclic nodes carry a cycle marker + dashed cycle edge", () => {
+    useChatStore.setState({
+      todos: [
+        makeTodo({ id: "a", title: "A", status: "pending", depends_on: ["b"] }),
+        makeTodo({ id: "b", title: "B", status: "pending", depends_on: ["a"] }),
+      ],
+    });
+    render(<InspectorTodos />);
+    expect(screen.getByTestId("todo-dag-graph")).toBeInTheDocument();
+    expect(screen.getByTestId("todo-dag-cycle-node-a")).toBeInTheDocument();
+    expect(screen.getByTestId("todo-dag-cycle-node-b")).toBeInTheDocument();
+    expect(screen.getByTestId("todo-dag-edge-b-a")).toBeInTheDocument();
   });
 });
