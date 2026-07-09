@@ -262,7 +262,19 @@ def build_report(plain: ArmRun, reflection: ArmRun) -> ReflectionReport:
     )
 
 
-def report_to_markdown(report: ReflectionReport, *, stamp: str) -> str:
+def select_answerer(profile: Any, answerer_tier: str) -> Any:
+    """Pick the answerer client for the A/B run.
+
+    action (default) = the strong production answerer (byte-identical to Sprint 57.144);
+    cheap = the weaker tier (Sprint 57.163 weaker-model A/B — does reflection have headroom
+    below the strong tier?). The judge ALWAYS stays profile.cheap (constant across the A/B).
+    """
+    return profile.action if answerer_tier == "action" else profile.cheap
+
+
+def report_to_markdown(
+    report: ReflectionReport, *, stamp: str, answerer_tier: str = "action"
+) -> str:
     """Render a human-readable A/B report (for the design-note verdict)."""
     verdict = (
         "FLIP lever default → ON (reflection)"
@@ -272,6 +284,7 @@ def report_to_markdown(report: ReflectionReport, *, stamp: str) -> str:
     lines = [
         f"# Tool-Error Reflection A/B — {stamp}",
         "",
+        f"- answerer tier: **{answerer_tier}**",
         f"- cases: **{report.total}**",
         "",
         "| metric | plain | reflection | delta (refl−plain) |",
@@ -290,25 +303,32 @@ def report_to_markdown(report: ReflectionReport, *, stamp: str) -> str:
     return "\n".join(lines) + "\n"
 
 
-async def _amain(fixture: Path, out_dir: Path) -> int:
+async def _amain(fixture: Path, out_dir: Path, answerer_tier: str = "action") -> int:
     # Imported lazily so a CI-safe import of this module's pure helpers does not require
     # the Azure adapter env (mirrors benchmark_correction_hygiene.py).
     from adapters.azure_openai.profile import build_azure_model_profile
 
     cases = load_cases(fixture)
     profile = build_azure_model_profile()
-    # The recovery is produced by the action-tier model (the production main answerer);
-    # the verdict is rendered by the cheap-tier model (the production judge tier).
-    plain = await run_arm("plain", cases, answerer=profile.action, judge=profile.cheap)
-    reflection = await run_arm("reflection", cases, answerer=profile.action, judge=profile.cheap)
+    # The recovery is produced by the chosen answerer tier (Sprint 57.163: --answerer-tier
+    # cheap runs the weaker-model A/B); the verdict is ALWAYS rendered by the cheap-tier
+    # judge (constant across the A/B). Default "action" = byte-identical to Sprint 57.144.
+    answerer = select_answerer(profile, answerer_tier)
+    plain = await run_arm("plain", cases, answerer=answerer, judge=profile.cheap)
+    reflection = await run_arm("reflection", cases, answerer=answerer, judge=profile.cheap)
     report = build_report(plain, reflection)
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    md = report_to_markdown(report, stamp=datetime.now().isoformat(timespec="seconds"))
-    (out_dir / "tool_error_reflection_report.md").write_text(md, encoding="utf-8")
-    (out_dir / "tool_error_reflection_report.json").write_text(
+    stamp = datetime.now().isoformat(timespec="seconds")
+    md = report_to_markdown(report, stamp=stamp, answerer_tier=answerer_tier)
+    # action (default) keeps the Sprint 57.144 filename; a cheap run is suffixed so the
+    # weaker-model report does not clobber the action baseline.
+    suffix = "" if answerer_tier == "action" else f"_{answerer_tier}"
+    (out_dir / f"tool_error_reflection_report{suffix}.md").write_text(md, encoding="utf-8")
+    (out_dir / f"tool_error_reflection_report{suffix}.json").write_text(
         json.dumps(
             {
+                "answerer_tier": answerer_tier,
                 "total": report.total,
                 "plain": report.plain.__dict__,
                 "reflection": report.reflection.__dict__,
@@ -345,8 +365,18 @@ def main() -> int:
     parser.add_argument(
         "--out", default=str(Path(__file__).resolve().parent.parent / "benchmark_reports")
     )
+    parser.add_argument(
+        "--answerer-tier",
+        choices=("action", "cheap"),
+        default="action",
+        help=(
+            "Which model tier PRODUCES the recovery: action (strong, default = Sprint "
+            "57.144 byte-identical) or cheap (weaker-model A/B, Sprint 57.163). The judge "
+            "always stays the cheap tier."
+        ),
+    )
     args = parser.parse_args()
-    return asyncio.run(_amain(Path(args.fixture), Path(args.out)))
+    return asyncio.run(_amain(Path(args.fixture), Path(args.out), args.answerer_tier))
 
 
 if __name__ == "__main__":

@@ -47,6 +47,8 @@ build_messages = _bench.build_messages
 run_arm = _bench.run_arm
 judge_recovery = _bench.judge_recovery
 build_report = _bench.build_report
+report_to_markdown = _bench.report_to_markdown
+select_answerer = _bench.select_answerer
 MATERIALITY = _bench.MATERIALITY
 
 _FIXTURE = (
@@ -200,3 +202,44 @@ def test_build_report_keeps_when_immaterial() -> None:
     assert report.fix_delta == pytest.approx(0.0)
     assert report.reflection_recommended is False
     assert report.token_delta == pytest.approx(2.0)
+
+
+# === select_answerer / report tier label (Sprint 57.163 weaker-model knob) ==
+
+
+class _FakeProfile:
+    """Minimal stand-in for adapters._base.model_profile.ModelProfile."""
+
+    def __init__(self, action: Any, cheap: Any) -> None:
+        self.action = action
+        self.cheap = cheap
+
+
+def test_select_answerer_action_is_strong() -> None:
+    prof = _FakeProfile(action="STRONG", cheap="WEAK")
+    # default tier binds the strong action client = byte-identical to Sprint 57.144
+    assert select_answerer(prof, "action") == "STRONG"
+
+
+def test_select_answerer_cheap_is_weaker() -> None:
+    prof = _FakeProfile(action="STRONG", cheap="WEAK")
+    # --answerer-tier cheap binds the weaker tier (the judge stays cheap separately)
+    assert select_answerer(prof, "cheap") == "WEAK"
+
+
+def _immaterial_report() -> Any:
+    plain = ArmRun(arm="plain", n=5, fixes=3, fix_rate=0.6, mean_completion_tokens=10.0)
+    reflection = ArmRun(arm="reflection", n=5, fixes=3, fix_rate=0.6, mean_completion_tokens=11.0)
+    return build_report(plain, reflection)
+
+
+def test_report_markdown_carries_answerer_tier() -> None:
+    md = report_to_markdown(
+        _immaterial_report(), stamp="2026-07-09T00:00:00", answerer_tier="cheap"
+    )
+    assert "answerer tier: **cheap**" in md
+
+
+def test_report_markdown_default_tier_is_action() -> None:
+    md = report_to_markdown(_immaterial_report(), stamp="s")
+    assert "answerer tier: **action**" in md

@@ -30,10 +30,11 @@ Key Components:
 Created: 2026-06-25 (Sprint 57.144)
 
 Modification History (newest-first):
+    - 2026-07-09: Sprint 57.163 — fix stale rare-path cross-ref (loop.py 3023-3030 -> 3068-3086)
     - 2026-06-25: Initial creation (Sprint 57.144) — research #7 Half B structured-error reflection
 
 Related:
-    - tools/executor.py (dominant failure paths) / orchestrator_loop/loop.py:3023-3030 (rare path)
+    - tools/executor.py (dominant failure paths) / orchestrator_loop/loop.py:3068-3086 (rare path)
     - error_handling/_abc.py (Cat 8 ErrorClass — orthogonal: retry decision, not fix-diagnosis)
     - claudedocs/5-status/tool-description-lint-reflection-thin-spike-eval-20260625.md §1.4
 """

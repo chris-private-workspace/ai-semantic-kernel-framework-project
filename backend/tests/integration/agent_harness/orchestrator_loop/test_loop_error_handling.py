@@ -166,6 +166,43 @@ def _make_failing_loop_components(
     return registry, executor
 
 
+class _RaisingExecutor(ToolExecutorImpl):
+    """A ToolExecutor whose execute() ITSELF raises — the RARE loop.py:3068 path, distinct
+    from a handler soft-failure caught inside ToolExecutorImpl.execute() (the dominant
+    _build_failure path). Sprint 57.163 US-1: the real executor is designed to turn every
+    failure into a ToolResult, so this near-dead branch cannot be reached via a real executor
+    on the 主流量 — inject a raising executor to exercise the wiring (gate-only, NOT a
+    drive-through: the branch is defensive full-coverage, near-unreachable in production)."""
+
+    def __init__(self, registry: ToolRegistryImpl, exc: BaseException) -> None:
+        super().__init__(registry=registry, handlers={})
+        self._exc = exc
+
+    async def execute(
+        self,
+        call: ToolCall,
+        *,
+        trace_context: TraceContext | None = None,
+        context: ExecutionContext | None = None,
+    ) -> Any:
+        raise self._exc
+
+
+def _make_raising_loop_components(
+    exc: BaseException,
+) -> tuple[ToolRegistryImpl, _RaisingExecutor]:
+    """Build a registry + an executor whose execute() itself raises (rare path)."""
+    registry = ToolRegistryImpl()
+    registry.register(
+        ToolSpec(
+            name="fake_tool",
+            description="A tool whose executor itself raises for rare-path testing.",
+            input_schema={"type": "object", "properties": {"x": {"type": "integer"}}},
+        )
+    )
+    return registry, _RaisingExecutor(registry, exc)
+
+
 # === fixtures ==============================================================
 
 
@@ -354,3 +391,62 @@ class TestOptOut:
         completes = [e for e in events if isinstance(e, LoopCompleted)]
         assert len(completes) == 1
         assert not any(isinstance(e, LoopTerminated) for e in events)
+
+
+class TestRarePathReflection:
+    """Sprint 57.163 US-1: the RARE path where the executor ITSELF raises (loop.py:3068),
+    NOT a handler soft-failure the executor catches (the dominant _build_failure path that
+    Sprint 57.144's TestLLMRecoverable already covers). Gate-only: near-unreachable on the
+    主流量 (the real executor turns every failure into a ToolResult) — these assert the
+    wiring of the branch with both lever states, NOT usability."""
+
+    @pytest.mark.asyncio
+    async def test_rare_path_reflection_when_lever_on(
+        self, session_id, trace_ctx, monkeypatch
+    ) -> None:
+        monkeypatch.setenv("CHAT_TOOL_ERROR_REFLECTION", "1")
+        # error_policy not None → reaches :3068 (not the opt-out re-raise); no terminator +
+        # no error_budget → never terminates → falls through to the reflection synthesis.
+        registry, executor = _make_raising_loop_components(RuntimeError("boom"))
+        chat = _RecordingFakeChatClient()
+        loop = AgentLoopImpl(
+            chat_client=chat,
+            output_parser=OutputParserImpl(),
+            tool_executor=executor,
+            tool_registry=registry,
+            error_policy=DefaultErrorPolicy(),
+        )
+        async for _ in loop.run(
+            session_id=session_id, user_input="call fake_tool", trace_context=trace_ctx
+        ):
+            pass
+        tool_msgs = [m for msgs in chat.seen_messages for m in msgs if m.role == "tool"]
+        assert tool_msgs, "expected a tool-role message fed back to the LLM"
+        joined = " ".join(str(m.content) for m in tool_msgs)
+        # RuntimeError → classify_tool_error → INVOCATION taxonomy → typed diagnosis in content
+        assert "tool invocation error" in joined
+        assert "boom" in joined
+
+    @pytest.mark.asyncio
+    async def test_rare_path_baseline_when_lever_off(
+        self, session_id, trace_ctx, monkeypatch
+    ) -> None:
+        monkeypatch.delenv("CHAT_TOOL_ERROR_REFLECTION", raising=False)
+        registry, executor = _make_raising_loop_components(RuntimeError("boom"))
+        chat = _RecordingFakeChatClient()
+        loop = AgentLoopImpl(
+            chat_client=chat,
+            output_parser=OutputParserImpl(),
+            tool_executor=executor,
+            tool_registry=registry,
+            error_policy=DefaultErrorPolicy(),
+        )
+        async for _ in loop.run(
+            session_id=session_id, user_input="call fake_tool", trace_context=trace_ctx
+        ):
+            pass
+        tool_msgs = [m for msgs in chat.seen_messages for m in msgs if m.role == "tool"]
+        joined = " ".join(str(m.content) for m in tool_msgs)
+        # lever OFF → the pre-57.144 rare-path baseline content (loop.py:3078), no taxonomy label
+        assert "Please adjust your approach" in joined
+        assert "tool invocation error" not in joined
