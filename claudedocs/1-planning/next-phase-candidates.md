@@ -99,7 +99,7 @@ This list follows the canonical research §5 ranked order (#6 → #3 → #8 → 
 
 | Sprint | Shipped (closes / PR) | Detail pointer |
 |--------|-----------------------|----------------|
-| 57.163 | tool-error reflection rare-path verify (gate-only integration fault-inject; Day-0 re-scope from drive-through — rare branch near-unreachable) + weaker-model A/B (KEY: reflection tier-dependent, weak +12.5% vs strong +0.00%) — closes Tool-range ③1 AD-Tool-Error-Reflection-Loop-RarePath-DriveThrough + ④ weaker-model re-check (57.144 carryovers); ⏳ PR #383 pending | memory/project_phase57_163_tool_reflection_evidence.md |
+| 57.163 | tool-error reflection rare-path verify (gate-only integration fault-inject; Day-0 re-scope from drive-through — rare branch near-unreachable) + weaker-model A/B (KEY: reflection tier-dependent, weak +12.5% vs strong +0.00%) — closes Tool-range ③1 AD-Tool-Error-Reflection-Loop-RarePath-DriveThrough + ④ weaker-model re-check (57.144 carryovers); MERGED PR #383, main `08a93901` | memory/project_phase57_163_tool_reflection_evidence.md |
 | 57.162 | DAG soft-enforce advisory + cycle report + Inspector Viz — closes AD-TaskPrimitive-DAG-{Enforce,CycleReport,Viz}-Phase58 (57.156 carryovers); **MERGED PR #381, main `f4828495`** | memory/project_phase57_162_dag_enforce_cyclereport_viz.md |
 | 57.161 | structural compactor real token re-count — closes AD-Compaction-Structural-RealTokenCount; PR #378 | memory/project_phase57_161_structural_realcount.md |
 | 57.160 | tool-anchored observation masking — closes AD-Compaction-NoOp-On-Single-User-Turn-Chat-Path; PR #376 | memory/project_phase57_160_tool_anchored_masking.md |
