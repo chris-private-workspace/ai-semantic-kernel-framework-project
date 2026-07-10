@@ -3026,6 +3026,23 @@ class AgentLoopImpl(AgentLoop):
                                     # behavior
                                     raise
                                 if terminate:
+                                    # Sprint 57.164 (AD-Tool-Error-Taxonomy-UI): mirror the
+                                    # dominant-path emit — surface the raised tool error's typed
+                                    # taxonomy on the wire BEFORE terminating (classify from the
+                                    # exception here; the synthetic ToolResult is built later, at
+                                    # the LLM-recoverable synthesis, which this FATAL path skips).
+                                    yield ToolCallFailed(
+                                        tool_call_id=tc.id,
+                                        tool_name=tc.name,
+                                        error=repr(exc),
+                                        error_taxonomy=classify_tool_error(
+                                            error_class=(
+                                                f"{type(exc).__module__}.{type(exc).__name__}"
+                                            ),
+                                            error_msg=repr(exc),
+                                        ).value,
+                                        trace_context=ctx,
+                                    )
                                     yield LoopTerminated(
                                         reason=(
                                             term_reason.value if term_reason is not None else ""
@@ -3063,20 +3080,19 @@ class AgentLoopImpl(AgentLoop):
                                 # this is the RARE path where the executor ITSELF raised
                                 # (the dominant handler-exception path is enriched inside
                                 # ToolExecutorImpl._build_failure). Route it through the SAME
-                                # Cat 2 taxonomy when the lever is on so both paths agree;
-                                # byte-identical default ("Error: …") when off.
+                                # Cat 2 taxonomy so both paths agree.
+                                # Sprint 57.164 (Option B decouple): classify ALWAYS (display
+                                # taxonomy, mirrors _build_failure); the lever gates only the
+                                # LLM content ("Error: …" byte-identical default when off).
+                                _tax = classify_tool_error(
+                                    error_class=f"{type(exc).__module__}.{type(exc).__name__}",
+                                    error_msg=repr(exc),
+                                )
                                 if tool_error_reflection_enabled():
-                                    _tax = classify_tool_error(
-                                        error_class=(
-                                            f"{type(exc).__module__}.{type(exc).__name__}"
-                                        ),
-                                        error_msg=repr(exc),
-                                    )
                                     _err_content = render_reflection(_tax, repr(exc))
-                                    _err_taxonomy: str | None = _tax.value
                                 else:
                                     _err_content = f"Error: {exc!r}. Please adjust your approach."
-                                    _err_taxonomy = None
+                                _err_taxonomy: str | None = _tax.value
                                 result = ToolResult(
                                     tool_call_id=tc.id,
                                     tool_name=tc.name,
@@ -3112,6 +3128,19 @@ class AgentLoopImpl(AgentLoop):
                                     )
                                 )
                                 if terminate:
+                                    # Sprint 57.164 (AD-Tool-Error-Taxonomy-UI): surface the
+                                    # failed tool's typed taxonomy on the wire BEFORE the loop
+                                    # terminates, so the chat-v2 ToolBlock shows the diagnosis
+                                    # chip (a Cat-8 FATAL tool failure otherwise only yields
+                                    # loop_terminated → the 57.130 "terminated" flip, hiding the
+                                    # taxonomy that _build_failure already computed).
+                                    yield ToolCallFailed(
+                                        tool_call_id=tc.id,
+                                        tool_name=tc.name,
+                                        error=result.error or "unknown tool error",
+                                        error_taxonomy=result.error_taxonomy,
+                                        trace_context=ctx,
+                                    )
                                     yield LoopTerminated(
                                         reason=(
                                             term_reason.value if term_reason is not None else ""
@@ -3174,6 +3203,8 @@ class AgentLoopImpl(AgentLoop):
                                 tool_call_id=tc.id,
                                 tool_name=tc.name,
                                 error=result.error or "unknown tool error",
+                                # Sprint 57.164: carry the typed taxonomy to the wire.
+                                error_taxonomy=result.error_taxonomy,
                                 trace_context=ctx,
                             )
 
@@ -3561,6 +3592,8 @@ class AgentLoopImpl(AgentLoop):
                     tool_call_id=pending_tc.id,
                     tool_name=pending_tc.name,
                     error=result.error or "unknown tool error",
+                    # Sprint 57.164: carry the typed taxonomy to the wire.
+                    error_taxonomy=result.error_taxonomy,
                     trace_context=ctx,
                 )
             messages.append(Message(role="tool", content=tool_content, tool_call_id=pending_tc.id))

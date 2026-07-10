@@ -111,12 +111,15 @@ class TestSerializeLoopEvent:
             tool_call_id="c1",
             tool_name="broken_tool",
             error="timeout",
+            error_taxonomy="failed_api",  # Sprint 57.164
         )
         out = serialize_loop_event(ev)
         assert out is not None
         assert out["type"] == "tool_call_result"
         assert out["data"]["is_error"] is True
         assert out["data"]["result"] == "timeout"
+        # Sprint 57.164: the typed taxonomy flows to the wire on a failure.
+        assert out["data"]["error_taxonomy"] == "failed_api"
 
     def test_tool_call_requested(self) -> None:
         ev = ToolCallRequested(
@@ -143,6 +146,8 @@ class TestSerializeLoopEvent:
         assert out["data"]["duration_ms"] == 1.25
         assert out["data"]["is_error"] is False
         assert out["data"]["result"] == "X"
+        # Sprint 57.164: success has no taxonomy — always null (parity with the fail branch).
+        assert out["data"]["error_taxonomy"] is None
 
     def test_loop_completed(self) -> None:
         ev = LoopCompleted(stop_reason="end_turn", total_turns=2)

@@ -703,6 +703,9 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
                       output: ev.data.result,
                       durationMs: ev.data.duration_ms,
                       isError: ev.data.is_error,
+                      // Sprint 57.164: the typed taxonomy for the ToolBlock chip
+                      // (null on success / unclassified).
+                      errorTaxonomy: ev.data.error_taxonomy,
                     }
                   : b,
               ),

@@ -102,6 +102,7 @@ export const DEMO_LOOP_EVENTS: LoopEvent[] = [
       duration_ms: 82,
       result: '{"rows": 8}',
       is_error: false,
+      error_taxonomy: null, // Sprint 57.164
     },
   },
   {
@@ -130,6 +131,7 @@ export const DEMO_LOOP_EVENTS: LoopEvent[] = [
       duration_ms: 210,
       result: '{"latency_p99_ms": 2840}',
       is_error: false,
+      error_taxonomy: null, // Sprint 57.164
     },
   },
   {

@@ -37,6 +37,7 @@ Created: 2026-06-02 (Sprint 57.67)
 Last Modified: 2026-06-16
 
 Modification History (newest-first):
+    - 2026-07-10: Sprint 57.164 — tool_call_result +error_taxonomy field (count 26 unchanged)
     - 2026-06-24: Sprint 57.140 — add todos_updated wire-type (Cat 1 task primitive) 25→26
     - 2026-06-16: Sprint 57.130 — add loop_terminated wire-type (Cat 8 fatal-terminate) 24→25
     - 2026-06-14: Sprint 57.116 — loop_start +active_skill field (count 24 unchanged)
@@ -120,6 +121,10 @@ WIRE_SCHEMA: dict[str, dict[str, str]] = {
         "duration_ms": "number",
         "result": "string",
         "is_error": "boolean",
+        # Sprint 57.164 (AD-Tool-Error-Taxonomy-UI): the typed error taxonomy on a
+        # failed tool (null on success). Additive field on the existing type — the
+        # 26 wire-TYPE count is unchanged.
+        "error_taxonomy": "string | null",
     },
     "loop_end": {
         "stop_reason": "string",

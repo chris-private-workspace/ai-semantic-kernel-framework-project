@@ -18,7 +18,10 @@ Description:
     = the *retry* decision); this answers "how should the model FIX it", not "retry?".
     The two coexist.
 
-    Consumers (both gated by the CHAT_TOOL_ERROR_REFLECTION lever):
+    Consumers (Sprint 57.164 Option B: classification ALWAYS runs so the chat-v2
+    ToolBlock can show a typed diagnosis on any failure; the CHAT_TOOL_ERROR_REFLECTION
+    lever gates ONLY whether render_reflection's output is injected into the LLM-visible
+    `content` — no LLM reads the display taxonomy, so agent behavior is lever-independent):
     - tools/executor.py — the dominant handler-exception + schema-validation failure paths
     - orchestrator_loop/loop.py — the rare executor-itself-raises path (B2 full coverage)
 
@@ -30,6 +33,7 @@ Key Components:
 Created: 2026-06-25 (Sprint 57.144)
 
 Modification History (newest-first):
+    - 2026-07-10: Sprint 57.164 — always classify; lever now gates only the LLM content
     - 2026-07-09: Sprint 57.163 — fix stale rare-path cross-ref (loop.py 3023-3030 -> 3068-3086)
     - 2026-06-25: Initial creation (Sprint 57.144) — research #7 Half B structured-error reflection
 

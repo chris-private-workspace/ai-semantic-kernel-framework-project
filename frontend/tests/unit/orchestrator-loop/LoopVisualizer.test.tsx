@@ -86,6 +86,7 @@ describe("LoopVisualizer (Sprint 57.12 US-4 + Sprint 57.37 fixture/playback/filt
           duration_ms: 42,
           result: "ok",
           is_error: false,
+          error_taxonomy: null, // Sprint 57.164
         },
       },
       { type: "loop_end", data: { stop_reason: "end_turn", total_turns: 2 } },

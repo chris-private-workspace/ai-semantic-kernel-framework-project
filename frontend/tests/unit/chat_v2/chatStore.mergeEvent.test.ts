@@ -73,7 +73,11 @@ const toolReq = (id: string, name = "metrics.query", args: Record<string, unknow
   data: { tool_call_id: id, tool_name: name, args },
 });
 
-const toolResult = (id: string, isError = false): LoopEvent => ({
+const toolResult = (
+  id: string,
+  isError = false,
+  errorTaxonomy: string | null = null,
+): LoopEvent => ({
   type: "tool_call_result",
   data: {
     tool_call_id: id,
@@ -81,6 +85,7 @@ const toolResult = (id: string, isError = false): LoopEvent => ({
     duration_ms: 210,
     result: isError ? "boom" : "ok-output",
     is_error: isError,
+    error_taxonomy: errorTaxonomy, // Sprint 57.164
   },
 });
 
@@ -508,6 +513,8 @@ describe("chatStore.mergeEvent Turn block sequence (Sprint 57.21 Day 1)", () => 
     expect(tool.output).toBe("ok-output");
     expect(tool.durationMs).toBe(210);
     expect(tool.isError).toBe(false);
+    // Sprint 57.164: success carries no taxonomy.
+    expect(tool.errorTaxonomy).toBeNull();
   });
 
   test("tool_call_result error: ToolBlock status=error + isError=true", () => {
@@ -518,6 +525,16 @@ describe("chatStore.mergeEvent Turn block sequence (Sprint 57.21 Day 1)", () => 
     const tool = t.blocks.find((b) => b.type === "tool") as ToolBlock;
     expect(tool.status).toBe("error");
     expect(tool.isError).toBe(true);
+  });
+
+  test("tool_call_result error: ToolBlock captures errorTaxonomy (Sprint 57.164)", () => {
+    useChatStore.getState().mergeEvent(turnStart());
+    useChatStore.getState().mergeEvent(toolReq("tc-7"));
+    useChatStore.getState().mergeEvent(toolResult("tc-7", true, "parameter"));
+    const t = lastAgentTurn(useChatStore.getState().turns);
+    const tool = t.blocks.find((b) => b.type === "tool") as ToolBlock;
+    expect(tool.status).toBe("error");
+    expect(tool.errorTaxonomy).toBe("parameter");
   });
 
   // --- verification -------------------------------------------------------

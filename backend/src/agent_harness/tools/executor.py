@@ -391,27 +391,26 @@ class ToolExecutorImpl(ToolExecutor):
         is_schema_error: bool = False,
         is_unknown_tool: bool = False,
     ) -> ToolResult:
-        """Construct a failed ToolResult, enriched with structured-error reflection.
+        """Construct a failed ToolResult with a typed error taxonomy.
 
         Sprint 57.144 US-2 (research #7 Half B): the single failure-result builder for
-        BOTH the handler-exception path and `_fail` (schema / unknown-tool). When the
-        CHAT_TOOL_ERROR_REFLECTION lever is ON, the LLM-visible `content` carries a
-        typed diagnosis (the loop renders `content`, not `error` — so the failure is no
-        longer an empty observation) and `error_taxonomy` is set. When OFF, content=""
-        + error/error_class only = byte-identical to the pre-57.144 behavior. Orthogonal
-        to the Cat 8 ErrorClass retry decision (which reads `error_class`).
+        BOTH the handler-exception path and `_fail` (schema / unknown-tool).
+
+        Sprint 57.164 (AD-Tool-Error-Taxonomy-UI, Option B decouple): `error_taxonomy`
+        is a pure, free classification — set it ALWAYS so the chat-v2 ToolBlock can show
+        a typed diagnosis on any failure. The CHAT_TOOL_ERROR_REFLECTION lever gates ONLY
+        the LLM-visible `content` reflection (the evidence-first behavior 57.144/57.163
+        A/B-measured: content="" when OFF = byte-identical pre-57.144). No LLM reads
+        `error_taxonomy`, so agent behavior is identical whether the lever is on or off.
+        Orthogonal to the Cat 8 ErrorClass retry decision (which reads `error_class`).
         """
-        content = ""
-        taxonomy_value: str | None = None
-        if tool_error_reflection_enabled():
-            taxonomy = classify_tool_error(
-                error_class=error_class,
-                error_msg=error,
-                is_schema_error=is_schema_error,
-                is_unknown_tool=is_unknown_tool,
-            )
-            content = render_reflection(taxonomy, error)
-            taxonomy_value = taxonomy.value
+        taxonomy = classify_tool_error(
+            error_class=error_class,
+            error_msg=error,
+            is_schema_error=is_schema_error,
+            is_unknown_tool=is_unknown_tool,
+        )
+        content = render_reflection(taxonomy, error) if tool_error_reflection_enabled() else ""
         return ToolResult(
             tool_call_id=call.id,
             tool_name=call.name,
@@ -419,7 +418,7 @@ class ToolExecutorImpl(ToolExecutor):
             content=content,
             error=error,
             error_class=error_class,
-            error_taxonomy=taxonomy_value,
+            error_taxonomy=taxonomy.value,
         )
 
     def _safe_emit(

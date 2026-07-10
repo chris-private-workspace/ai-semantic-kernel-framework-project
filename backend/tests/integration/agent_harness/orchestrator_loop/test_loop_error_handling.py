@@ -29,6 +29,7 @@ from agent_harness._contracts import (
     Message,
     TokenUsage,
     ToolCall,
+    ToolCallFailed,
     ToolSpec,
     TraceContext,
 )
@@ -325,6 +326,15 @@ class TestFatalTermination:
         assert len(terminated) == 1
         assert terminated[0].reason == TerminationReason.FATAL_EXCEPTION.value
 
+        # Sprint 57.164 (AD-Tool-Error-Taxonomy-UI): a terminating tool failure now surfaces
+        # its typed taxonomy on the wire — a ToolCallFailed(error_taxonomy) is emitted BEFORE
+        # the LoopTerminated, so the chat-v2 ToolBlock shows the diagnosis chip instead of
+        # only the 57.130 "terminated" flip. (MyMysteryBug → INVOCATION taxonomy.)
+        tool_failed = [e for e in events if isinstance(e, ToolCallFailed)]
+        assert len(tool_failed) == 1
+        assert tool_failed[0].error_taxonomy == "invocation"
+        assert events.index(tool_failed[0]) < events.index(terminated[0])
+
 
 class TestBudgetTermination:
     @pytest.mark.asyncio
@@ -450,3 +460,32 @@ class TestRarePathReflection:
         # lever OFF → the pre-57.144 rare-path baseline content (loop.py:3078), no taxonomy label
         assert "Please adjust your approach" in joined
         assert "tool invocation error" not in joined
+
+    @pytest.mark.asyncio
+    async def test_rare_path_emits_taxonomy_on_wire_even_when_lever_off(
+        self, session_id, trace_ctx, monkeypatch
+    ) -> None:
+        """Sprint 57.164 (AD-Tool-Error-Taxonomy-UI, Option B decouple): the emitted
+        ToolCallFailed carries the typed error_taxonomy for the chat-v2 ToolBlock EVEN
+        WHEN the reflection lever is OFF — classification is display metadata decoupled
+        from the LLM-visible content reflection (which stays lever-gated / empty above)."""
+        monkeypatch.delenv("CHAT_TOOL_ERROR_REFLECTION", raising=False)
+        registry, executor = _make_raising_loop_components(RuntimeError("boom"))
+        chat = _RecordingFakeChatClient()
+        loop = AgentLoopImpl(
+            chat_client=chat,
+            output_parser=OutputParserImpl(),
+            tool_executor=executor,
+            tool_registry=registry,
+            error_policy=DefaultErrorPolicy(),
+        )
+        failures = [
+            ev
+            async for ev in loop.run(
+                session_id=session_id, user_input="call fake_tool", trace_context=trace_ctx
+            )
+            if isinstance(ev, ToolCallFailed)
+        ]
+        assert failures, "expected a ToolCallFailed event on the wire"
+        # RuntimeError → INVOCATION taxonomy, present on the wire event regardless of the lever.
+        assert failures[0].error_taxonomy == "invocation"

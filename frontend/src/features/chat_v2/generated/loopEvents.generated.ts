@@ -65,6 +65,7 @@ export interface ToolCallResultEvent {
     duration_ms: number;
     result: string;
     is_error: boolean;
+    error_taxonomy: string | null;
   };
 }
 

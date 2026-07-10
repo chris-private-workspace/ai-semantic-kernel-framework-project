@@ -114,6 +114,10 @@ export type ToolBlock = {
   output: string | null;
   durationMs: number | null;
   isError: boolean;
+  // Sprint 57.164 (AD-Tool-Error-Taxonomy-UI): the typed error taxonomy on a failed
+  // tool (parameter / wrong_tool / failed_api / invocation / unknown), or null on
+  // success / a legacy unclassified failure. Rendered as a chip on the ToolBlock head.
+  errorTaxonomy?: string | null;
 };
 
 export type VerificationBlock = {

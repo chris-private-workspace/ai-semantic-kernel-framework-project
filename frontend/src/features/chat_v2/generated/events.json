@@ -58,7 +58,8 @@
       "tool_name": "string",
       "duration_ms": "number",
       "result": "string",
-      "is_error": "boolean"
+      "is_error": "boolean",
+      "error_taxonomy": "string | null"
     },
     "loop_end": {
       "stop_reason": "string",

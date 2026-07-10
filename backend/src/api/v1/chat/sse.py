@@ -37,6 +37,7 @@ Created: 2026-04-30 (Sprint 50.2 Day 1.3)
 Last Modified: 2026-06-16
 
 Modification History (newest-first):
+    - 2026-07-10: Sprint 57.164 — tool_call_result +error_taxonomy (both branches)
     - 2026-06-16: Sprint 57.130 — serialize LoopTerminated → loop_terminated (24→25 wire)
     - 2026-06-14: Sprint 57.116 — loop_start +active_skill (default null; router overrides)
     - 2026-06-12: Sprint 57.108 — approval +tool_name/reason; llm_response +input/output tokens
@@ -216,6 +217,10 @@ def _serialize_inner(event: LoopEvent) -> dict[str, Any] | None:
                 "duration_ms": event.duration_ms,
                 "result": event.result_content,
                 "is_error": False,
+                # Sprint 57.164: success has no taxonomy — always null. Declared on
+                # BOTH tool_call_result branches so the shared wire type has one stable
+                # field set (test_event_wire_schema_parity guards this).
+                "error_taxonomy": None,
             },
         }
 
@@ -228,6 +233,9 @@ def _serialize_inner(event: LoopEvent) -> dict[str, Any] | None:
                 "duration_ms": 0.0,
                 "result": event.error,
                 "is_error": True,
+                # Sprint 57.164 (AD-Tool-Error-Taxonomy-UI): the typed diagnosis the
+                # chat-v2 ToolBlock renders as a chip (parameter / wrong_tool / …).
+                "error_taxonomy": event.error_taxonomy,
             },
         }
 

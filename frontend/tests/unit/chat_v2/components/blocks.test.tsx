@@ -85,6 +85,45 @@ describe("ToolBlock (mockup L208-223)", () => {
     );
     expect(screen.getByText("error")).toBeInTheDocument();
   });
+
+  test("error with errorTaxonomy renders the taxonomy chip (Sprint 57.164)", () => {
+    render(
+      <ToolBlock
+        block={{
+          type: "tool",
+          toolCallId: "tc-4",
+          name: "incidents.get",
+          status: "error",
+          input: "{}",
+          output: "not found",
+          durationMs: 5,
+          isError: true,
+          errorTaxonomy: "parameter",
+        }}
+      />,
+    );
+    const chip = screen.getByTestId("tool-error-taxonomy");
+    expect(chip).toBeInTheDocument();
+    expect(chip).toHaveTextContent("parameter");
+  });
+
+  test("no chip when errorTaxonomy absent (Sprint 57.164)", () => {
+    render(
+      <ToolBlock
+        block={{
+          type: "tool",
+          toolCallId: "tc-5",
+          name: "metrics.query",
+          status: "ok",
+          input: "{}",
+          output: "ok",
+          durationMs: 3,
+          isError: false,
+        }}
+      />,
+    );
+    expect(screen.queryByTestId("tool-error-taxonomy")).not.toBeInTheDocument();
+  });
 });
 
 describe("VerificationBlock (mockup L234-244)", () => {

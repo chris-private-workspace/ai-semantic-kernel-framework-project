@@ -325,13 +325,15 @@ async def test_no_handler_registered_returns_error() -> None:
 
 
 # === Sprint 57.144 (research #7 Half B): structured-error reflection ========
-# The CHAT_TOOL_ERROR_REFLECTION lever gates whether failure ToolResults carry a
-# typed diagnosis in `content` (the LLM-visible field) + `error_taxonomy`. OFF =
-# byte-identical pre-57.144 behavior (content="" on these soft-failure paths).
+# The CHAT_TOOL_ERROR_REFLECTION lever gates whether the failure ToolResult's
+# LLM-visible `content` carries the typed reflection. Sprint 57.164 (Option B
+# decouple): `error_taxonomy` is now classified ALWAYS (display metadata for the
+# chat-v2 ToolBlock) regardless of the lever; only `content` is lever-gated (empty
+# when OFF = byte-identical pre-57.144 LLM-visible behavior).
 
 
 @pytest.mark.asyncio
-async def test_reflection_off_handler_exception_byte_identical(
+async def test_reflection_off_handler_exception_content_byte_identical(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("CHAT_TOOL_ERROR_REFLECTION", raising=False)
@@ -341,8 +343,9 @@ async def test_reflection_off_handler_exception_byte_identical(
 
     result = await exe.execute(_call("boom"))
     assert result.success is False
-    assert result.content == ""  # today's behavior preserved
-    assert result.error_taxonomy is None
+    assert result.content == ""  # LLM-visible content byte-identical when OFF
+    # Sprint 57.164 (Option B): taxonomy is classified even when the lever is OFF.
+    assert result.error_taxonomy == "invocation"  # generic handler exception
     assert result.error_class == "builtins.RuntimeError"  # still set for Cat 8
 
 
@@ -392,7 +395,7 @@ async def test_reflection_on_schema_invalid_is_parameter(
 
 
 @pytest.mark.asyncio
-async def test_reflection_off_unknown_tool_byte_identical(
+async def test_reflection_off_unknown_tool_content_byte_identical(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("CHAT_TOOL_ERROR_REFLECTION", raising=False)
@@ -400,5 +403,6 @@ async def test_reflection_off_unknown_tool_byte_identical(
     exe = ToolExecutorImpl(registry=reg, handlers={})
 
     result = await exe.execute(_call("nonexistent"))
-    assert result.content == ""  # today's behavior preserved
-    assert result.error_taxonomy is None
+    assert result.content == ""  # LLM-visible content byte-identical when OFF
+    # Sprint 57.164 (Option B): taxonomy is classified even when the lever is OFF.
+    assert result.error_taxonomy == "wrong_tool"

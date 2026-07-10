@@ -208,6 +208,11 @@ class ToolCallFailed(LoopEvent):
     tool_call_id: str = ""
     tool_name: str = ""
     error: str = ""
+    # Sprint 57.164 (AD-Tool-Error-Taxonomy-UI): the typed error taxonomy carried from
+    # ToolResult.error_taxonomy (parameter / wrong_tool / failed_api / invocation /
+    # unknown), always set on failure (Option B decouple) so the chat-v2 ToolBlock shows
+    # a typed diagnosis. None only for a legacy/unclassified failure.
+    error_taxonomy: str | None = None
 
 
 # === Category 3: Memory =====================================================

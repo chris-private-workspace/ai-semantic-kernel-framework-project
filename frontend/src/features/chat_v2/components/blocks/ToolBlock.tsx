@@ -32,6 +32,7 @@
  * Created: 2026-05-17 (Sprint 57.21 Day 2 §2.2)
  *
  * Modification History:
+ *   - 2026-07-10: Sprint 57.164 — conditional error-taxonomy chip (.badge danger; no new CSS)
  *   - 2026-05-23: Sprint 57.30 Day 3 §D2 — verbatim re-point Tailwind → mockup .block.tool-call/.tool-call-head/.tool-call-body + .badge dot
  *   - 2026-05-17: Initial extract from mockup L208-223 + Tailwind convert
  *
@@ -74,6 +75,18 @@ export function ToolBlock({ block }: { block: ToolBlockType }): JSX.Element {
           <span className={`badge dot ${STATUS_BADGE_TONE[block.status]}`}>
             {STATUS_LABEL[block.status]}
           </span>
+          {/* Sprint 57.164 (AD-Tool-Error-Taxonomy-UI): typed error diagnosis on a
+              failed tool. Reuses the mockup `.badge danger` primitive (no new CSS);
+              renders only when present (success/pending tools unchanged). */}
+          {block.errorTaxonomy && (
+            <span
+              className="badge danger"
+              title="tool error taxonomy"
+              data-testid="tool-error-taxonomy"
+            >
+              {block.errorTaxonomy}
+            </span>
+          )}
           <span className="mono subtle" style={{ fontSize: 10.5 }}>{durationLabel}</span>
         </span>
       </div>

@@ -64,6 +64,7 @@ const toolResult = (): LoopEvent => ({
     duration_ms: 120,
     result: "echoed: hi",
     is_error: false,
+    error_taxonomy: null, // Sprint 57.164
   },
 });
 const loopEnd = (stop: string, total = 1): LoopEvent => ({
