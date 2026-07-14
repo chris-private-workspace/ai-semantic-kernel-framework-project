@@ -26,8 +26,7 @@ def _seed_all_budgeted(mod: object, tmp: Path, matrix_rows: str = "") -> None:
     matrix.write_text(
         "# matrix\n\n| Scope class | Mult | mean | Status |\n"
         "|---|---|---|---|\n"
-        "| `lean-class` | 0.60 | n/a | KEEP (57.1 ratio ~1.0 IN band) |\n"
-        + matrix_rows,
+        "| `lean-class` | 0.60 | n/a | KEEP (57.1 ratio ~1.0 IN band) |\n" + matrix_rows,
         encoding="utf-8",
     )
 

@@ -59,13 +59,13 @@ MATRIX_ROW_MAX = 400
 # Raising a budget is a conscious decision: justify it in the commit that
 # raises it (usually the right fix is moving content on-demand instead).
 SIZE_BUDGETS: dict[str, int] = {
-    "CLAUDE.md": 45_000,                                  # 35,920 @ 2026-07-14
-    ".claude/rules/sprint-workflow.md": 60_000,           # 53,684 @ 2026-07-14
-    ".claude/rules/file-header-convention.md": 24_000,    # 18,043 @ 2026-07-14
-    ".claude/rules/multi-tenant-data.md": 18_000,         # 13,601 @ 2026-07-14
-    ".claude/rules/anti-patterns-checklist.md": 14_000,   # 9,608  @ 2026-07-14
-    ".claude/rules/README.md": 14_000,                    # 9,882  @ 2026-07-14
-    MATRIX_FILE: 60_000,                                  # 28,544 @ 2026-07-14 (on-demand, but rows accrete per sprint)
+    "CLAUDE.md": 45_000,  # 35,920 @ 2026-07-14
+    ".claude/rules/sprint-workflow.md": 60_000,  # 53,684 @ 2026-07-14
+    ".claude/rules/file-header-convention.md": 24_000,  # 18,043 @ 2026-07-14
+    ".claude/rules/multi-tenant-data.md": 18_000,  # 13,601 @ 2026-07-14
+    ".claude/rules/anti-patterns-checklist.md": 14_000,  # 9,608  @ 2026-07-14
+    ".claude/rules/README.md": 14_000,  # 9,882  @ 2026-07-14
+    MATRIX_FILE: 60_000,  # 28,544 @ 2026-07-14 (on-demand, but rows accrete per sprint)
 }
 
 
@@ -137,7 +137,9 @@ def main(argv: list[str] | None = None) -> int:
     violations = find_violations(repo_root)
     if not violations:
         n = len(SIZE_BUDGETS)
-        print(f"rules-hygiene: OK ({n} budgeted files + matrix rows <= {MATRIX_ROW_MAX} chars)")
+        print(
+            f"rules-hygiene: OK ({n} budgeted files + matrix rows <= {MATRIX_ROW_MAX} chars)"
+        )
         return 0
 
     print(f"rules-hygiene: {len(violations)} violation(s):")
