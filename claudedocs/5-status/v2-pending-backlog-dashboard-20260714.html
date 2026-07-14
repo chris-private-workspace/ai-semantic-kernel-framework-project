@@ -1,0 +1,754 @@
+<!--
+  File: claudedocs/5-status/v2-pending-backlog-dashboard-20260714.html
+  Purpose: 全專案 pending 工作互動式盤點操作台（分頁看每條工作線完成度 + 剩餘 AD；open 項可勾選追蹤）。
+  Category: Status snapshot (cross-cutting) / 5-status
+  Created: 2026-07-14
+  Authoritative data source:
+    - claudedocs/1-planning/next-phase-candidates.md (873 行) §Top Candidates + §Open Carryover ADs
+    - claudedocs/1-planning/harness-deepening-proposal-20260610.md (A/B/C 10-slice)
+    - memory/project_engine_debt_program_kickoff.md (7-range pool, 2026-07-06 kickoff)
+    - 各 sprint retrospective / memory 子檔（完成度對照）
+  Regenerate: 重新從上述來源推導 TRACKS[] 資料陣列。本檔為 Artifact source file
+    (發布於 claude.ai/code/artifact)；重新發布同一路徑即更新同一 URL。
+  Note: checkbox「已處理」狀態僅存於瀏覽器 localStorage（視覺追蹤，不寫回 repo）。
+-->
+<title>V2 Pending Backlog 操作台</title>
+<style>
+  :root {
+    --paper: #f4f6f9;
+    --card: #ffffff;
+    --card-2: #eef1f6;
+    --ink: #1b2330;
+    --ink-soft: #4a5568;
+    --ink-faint: #7a869a;
+    --line: #dde3ec;
+    --line-strong: #c6cfdd;
+    --accent: #2f60e6;          /* blueprint blue */
+    --accent-soft: #e5ecfd;
+    --done: #1f9d55;
+    --done-soft: #e2f4ea;
+    --partial: #b7791f;
+    --partial-soft: #f8efd8;
+    --open: #64748b;
+    --open-soft: #eceff4;
+    --blocker: #d1362f;
+    --blocker-soft: #fbe6e5;
+    --shadow: 0 1px 2px rgba(20,30,50,.06), 0 2px 8px rgba(20,30,50,.05);
+    --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0d1117;
+      --card: #161b22;
+      --card-2: #1c232d;
+      --ink: #e6edf5;
+      --ink-soft: #aeb9c8;
+      --ink-faint: #6e7b8d;
+      --line: #262d38;
+      --line-strong: #333c49;
+      --accent: #5b86f5;
+      --accent-soft: #17233f;
+      --done: #3fb950;
+      --done-soft: #122619;
+      --partial: #e3b341;
+      --partial-soft: #2a2312;
+      --open: #8695a8;
+      --open-soft: #1b222c;
+      --blocker: #f0564d;
+      --blocker-soft: #2b1615;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 2px 10px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="light"] {
+    --paper: #f4f6f9; --card: #ffffff; --card-2: #eef1f6; --ink: #1b2330;
+    --ink-soft: #4a5568; --ink-faint: #7a869a; --line: #dde3ec; --line-strong: #c6cfdd;
+    --accent: #2f60e6; --accent-soft: #e5ecfd; --done: #1f9d55; --done-soft: #e2f4ea;
+    --partial: #b7791f; --partial-soft: #f8efd8; --open: #64748b; --open-soft: #eceff4;
+    --blocker: #d1362f; --blocker-soft: #fbe6e5;
+    --shadow: 0 1px 2px rgba(20,30,50,.06), 0 2px 8px rgba(20,30,50,.05);
+  }
+  :root[data-theme="dark"] {
+    --paper: #0d1117; --card: #161b22; --card-2: #1c232d; --ink: #e6edf5;
+    --ink-soft: #aeb9c8; --ink-faint: #6e7b8d; --line: #262d38; --line-strong: #333c49;
+    --accent: #5b86f5; --accent-soft: #17233f; --done: #3fb950; --done-soft: #122619;
+    --partial: #e3b341; --partial-soft: #2a2312; --open: #8695a8; --open-soft: #1b222c;
+    --blocker: #f0564d; --blocker-soft: #2b1615;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 2px 10px rgba(0,0,0,.25);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--sans); line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px 96px; }
+
+  /* ---- top bar ---- */
+  header {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--paper) 86%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .bar { max-width: 1080px; margin: 0 auto; padding: 14px 20px;
+         display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .brand { display: flex; flex-direction: column; gap: 2px; margin-right: auto; }
+  .brand .eyebrow {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--accent); font-weight: 600;
+  }
+  .brand h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
+  .brand .sub { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); }
+
+  .globalstat { display: flex; align-items: center; gap: 12px; }
+  .ring { --p: 0; width: 46px; height: 46px; border-radius: 50%;
+    background: conic-gradient(var(--accent) calc(var(--p) * 1%), var(--line) 0);
+    display: grid; place-items: center; flex: none; }
+  .ring::before { content: ""; width: 36px; height: 36px; border-radius: 50%; background: var(--paper); position: absolute; }
+  .ring b { position: relative; font-family: var(--mono); font-size: 12px; font-weight: 700; }
+  .globalstat .gtxt { font-family: var(--mono); font-size: 11px; color: var(--ink-soft); line-height: 1.35; }
+  .globalstat .gtxt b { color: var(--ink); }
+
+  button.tbtn {
+    font-family: var(--mono); font-size: 12px; color: var(--ink-soft);
+    background: var(--card); border: 1px solid var(--line-strong); border-radius: 8px;
+    padding: 7px 10px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center;
+  }
+  button.tbtn:hover { border-color: var(--accent); color: var(--ink); }
+  button.tbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---- tabs ---- */
+  nav.tabs { display: flex; gap: 4px; overflow-x: auto; padding: 12px 0 0;
+             margin: 0 auto; max-width: 1080px; scrollbar-width: thin; }
+  nav.tabs::-webkit-scrollbar { height: 6px; }
+  nav.tabs::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 3px; }
+  .tab {
+    flex: none; font-family: var(--sans); font-size: 13px; font-weight: 600;
+    color: var(--ink-soft); background: transparent; border: 0;
+    border-bottom: 2px solid transparent; padding: 9px 12px 11px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+  }
+  .tab:hover { color: var(--ink); }
+  .tab[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab .cnt {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 700;
+    background: var(--open-soft); color: var(--ink-soft);
+    padding: 1px 6px; border-radius: 20px; min-width: 20px; text-align: center;
+  }
+  .tab[data-hasopen="true"] .cnt { background: var(--accent-soft); color: var(--accent); }
+  .tab[data-hasopen="false"] .cnt { background: var(--done-soft); color: var(--done); }
+
+  /* ---- panel header ---- */
+  .panel { padding-top: 24px; animation: fade .25s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .panel { animation: none; } }
+
+  .phead { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;
+           padding: 20px 22px; background: var(--card); border: 1px solid var(--line);
+           border-radius: 14px; box-shadow: var(--shadow); margin-bottom: 18px; }
+  .phead .meta { flex: 1 1 300px; }
+  .phead .tag { font-family: var(--mono); font-size: 11px; letter-spacing: .08em;
+                text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  .phead h2 { margin: 5px 0 8px; font-size: 22px; letter-spacing: -.015em; text-wrap: balance; }
+  .phead p { margin: 0; color: var(--ink-soft); font-size: 13.5px; max-width: 62ch; }
+  .phead .num { flex: none; text-align: right; }
+  .phead .num .big { font-family: var(--mono); font-size: 30px; font-weight: 700; line-height: 1; letter-spacing: -.02em; }
+  .phead .num .small { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); margin-top: 4px; }
+
+  .pbar { height: 8px; border-radius: 6px; background: var(--open-soft); overflow: hidden; display: flex; margin-top: 12px; }
+  .pbar i { display: block; height: 100%; }
+  .pbar .d { background: var(--done); }
+  .pbar .p { background: var(--partial); }
+
+  /* ---- filter ---- */
+  .filter { display: flex; gap: 6px; align-items: center; margin: 0 0 12px; flex-wrap: wrap; }
+  .filter .lbl { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-right: 4px; }
+  .fbtn { font-family: var(--mono); font-size: 11.5px; padding: 4px 10px; border-radius: 7px;
+          border: 1px solid var(--line-strong); background: var(--card); color: var(--ink-soft); cursor: pointer; }
+  .fbtn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  :root[data-theme="dark"] .fbtn[aria-pressed="true"],
+  @media (prefers-color-scheme: dark) { }
+
+  /* ---- section within panel ---- */
+  .sect { margin: 22px 0 4px; display: flex; align-items: baseline; gap: 10px; }
+  .sect h3 { margin: 0; font-size: 14px; font-family: var(--mono); letter-spacing: .01em; }
+  .sect .schip { font-family: var(--mono); font-size: 10.5px; padding: 1px 7px; border-radius: 20px; font-weight: 700; }
+  .sect .miniprog { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+  .sect .note { font-size: 12px; color: var(--ink-faint); font-family: var(--sans); }
+
+  /* ---- AD rows ---- */
+  ul.list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  li.ad {
+    display: grid; grid-template-columns: 22px 1fr auto; gap: 12px; align-items: start;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 11px 14px; box-shadow: var(--shadow);
+  }
+  li.ad[data-status="done"] { opacity: .82; }
+  li.ad[data-checked="true"] { background: var(--done-soft); border-color: color-mix(in srgb, var(--done) 40%, var(--line)); }
+
+  .dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; flex: none; }
+  .dot.done { background: var(--done); }
+  .dot.partial { background: var(--partial); }
+  .dot.open { background: var(--open); box-shadow: inset 0 0 0 2px var(--card), 0 0 0 1.5px var(--open); background: transparent; }
+  .dot.blocker { background: var(--blocker); }
+
+  .adbody { min-width: 0; }
+  .adid { font-family: var(--mono); font-size: 12.5px; font-weight: 600; color: var(--ink);
+          word-break: break-word; }
+  li.ad[data-checked="true"] .adid { text-decoration: line-through; color: var(--ink-soft); }
+  .addesc { font-size: 12.5px; color: var(--ink-soft); margin-top: 3px; }
+  .admeta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
+  .chip { font-family: var(--mono); font-size: 10px; letter-spacing: .02em; padding: 1.5px 7px;
+          border-radius: 5px; font-weight: 600; white-space: nowrap; }
+  .chip.range { background: var(--accent-soft); color: var(--accent); }
+  .chip.sprint { background: var(--done-soft); color: var(--done); }
+  .chip.phase { background: var(--open-soft); color: var(--ink-soft); }
+  .chip.blk { background: var(--blocker-soft); color: var(--blocker); }
+
+  .adaction { flex: none; align-self: center; }
+  .st { font-family: var(--mono); font-size: 10px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: .05em; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
+  .st.done { background: var(--done-soft); color: var(--done); }
+  .st.partial { background: var(--partial-soft); color: var(--partial); }
+
+  label.chk { display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+              font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); user-select: none; }
+  label.chk input { appearance: none; width: 17px; height: 17px; border-radius: 5px;
+    border: 1.5px solid var(--line-strong); background: var(--card); cursor: pointer; position: relative; flex: none; }
+  label.chk input:checked { background: var(--done); border-color: var(--done); }
+  label.chk input:checked::after { content: "✓"; position: absolute; inset: 0; color: #fff;
+    font-size: 11px; display: grid; place-items: center; font-family: var(--sans); }
+  label.chk input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  li.ad[data-checked="true"] label.chk { color: var(--done); }
+
+  .empty { text-align: center; color: var(--ink-faint); font-family: var(--mono); font-size: 12px; padding: 30px; }
+
+  footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line);
+           font-family: var(--mono); font-size: 11px; color: var(--ink-faint); line-height: 1.7; }
+  footer b { color: var(--ink-soft); }
+  a { color: var(--accent); }
+
+  @media (max-width: 640px) {
+    .phead .num { text-align: left; }
+    li.ad { grid-template-columns: 18px 1fr; }
+    .adaction { grid-column: 2; justify-self: start; margin-top: 4px; }
+  }
+</style>
+
+<header>
+  <div class="bar">
+    <div class="brand">
+      <span class="eyebrow">Agent Harness · V2 Engine Debt</span>
+      <h1>Pending Backlog 操作台</h1>
+      <span class="sub" id="asof">截至 2026-07-14 · 最新 merged Sprint 57.165</span>
+    </div>
+    <div class="globalstat">
+      <div class="ring" id="gring"><b id="gpct">0%</b></div>
+      <div class="gtxt">
+        <div><b id="gdone">0</b> 完成 · <b id="gopen">0</b> 待處理</div>
+        <div id="gchecked">已勾銷 0</div>
+      </div>
+    </div>
+    <button class="tbtn" id="themebtn" aria-label="切換主題">◐ 主題</button>
+    <button class="tbtn" id="resetbtn" aria-label="清除勾選">↺ 重設勾選</button>
+  </div>
+  <nav class="tabs" id="tabs" role="tablist"></nav>
+</header>
+
+<main class="wrap">
+  <div id="panel" class="panel" role="tabpanel"></div>
+  <footer>
+    <div><b>資料權威來源</b>：<code>claudedocs/1-planning/next-phase-candidates.md</code>（873 行）+ <code>harness-deepening-proposal-20260610.md</code> + engine-debt program memory（2026-07-06 kickoff）+ 各 sprint retrospective / memory 子檔。</div>
+    <div><b>勾選狀態</b>存於瀏覽器 localStorage（僅本機、僅視覺追蹤，不寫回 repo）。這是一份<b>凍結盤點</b>：綠=已 SHIPPED、琥珀=近完成 range、空心=待處理 AD。</div>
+    <div><b>策略框架</b>：Phase 1（進行中）清 7 個引擎內部 range → Phase 2（最後）做 knowledge/business 落地；Frontend/SaaS Stage 2 為獨立線，多數 Phase 58+。</div>
+  </footer>
+</main>
+
+<script>
+// ============================================================
+// DATA — every track, every AD. status: done | partial | open
+// (partial only used at range-level rollups; items are done|open)
+// ============================================================
+const TRACKS = [
+  {
+    id: "overview", label: "總覽", icon: "▤",
+    isOverview: true
+  },
+
+  // ---------- 早期 A/B/C 區 ----------
+  {
+    id: "abc", label: "A/B/C 區", tag: "Harness Deepening · 2026-06-10 roadmap",
+    title: "A/B/C 引擎深化（早期 A、B、C 區）",
+    desc: "3 個 workflow / 10-slice 的終態設計。verification 進 loop、subagent 完成、model policy + config 分層。全數 SHIPPED，此線已完全關閉、無 pending。",
+    sections: [
+      { name: "A · Verification into loop", items: [
+        { id:"A1 · in-loop verify gate", d:"退掉 correction_loop.py wrapper，補上 resume 繞過驗證的結構漏洞", s:"57.98", st:"done" },
+        { id:"A2 · verification-ESCALATE human loop", d:"max-fail 終點條件性轉人工暫停；APPROVE 投遞 / REJECT 教練一輪", s:"57.99", st:"done" },
+        { id:"A3 · trace-aware critique + judge benchmark", d:"in-loop judge 看得到近期 turn/tool error；永久 cheap-judge 準確度 benchmark", s:"57.111", st:"done" },
+      ]},
+      { name: "B · Subagent completion", items: [
+        { id:"B1 · between-turns injection primitive", d:"MessageInbox ABC + drain seam；chat 即時注入 + TEAMMATE 共用一個 primitive", s:"57.101", st:"done" },
+        { id:"B2a/B2b · TEAMMATE multi-turn", d:"TEAMMATE → 真多輪子 loop", s:"57.102/103", st:"done" },
+        { id:"B3 · HANDOFF finish", d:"首個 LLM-drivable handoff tool + handoff governance + lineage + sidechain 持久化", s:"57.107", st:"done" },
+        { id:"B4 · child governance", d:"tenant-composed Cat 9 引擎進雙子 loop + GuardrailTriggered relay + spawn 失敗策略", s:"57.110", st:"done" },
+      ]},
+      { name: "C · Model policy + config tiering", items: [
+        { id:"C1 · per-tenant model policy", d:"每租戶 model policy（meta_data）", s:"57.104", st:"done" },
+        { id:"C1 前置 · RBAC-DB→JWT wiring", d:"DB role grant 於登入即 authz-effective（closes ISSUE-6）", s:"57.105", st:"done" },
+        { id:"C3 · harness policy + RiskyActionDetector", d:"每租戶 escalate phrases/tools + verification override + risky-action ESCALATE", s:"57.106", st:"done" },
+        { id:"C2 · compaction cheap tier", d:"compaction 走 cheap model tier", s:"57.109", st:"done" },
+      ]},
+    ]
+  },
+
+  // ---------- 研究 8 項 ----------
+  {
+    id: "research", label: "研究 8 項", tag: "Deep Research · 2026-06-22",
+    title: "深度研究 8 項機會（+ drive-through gap）",
+    desc: "三份 2026-06-22 research 文件排出的 8 個 ranked 機會，逐一 thin-spike 驗證。全數 CLOSED（多為 evidence-first：量測後多數 keep-default + opt-in lever）。衍生的 Tool follow-on 已滾入 engine-debt Tool range。",
+    sections: [
+      { name: "8 ranked opportunities", items: [
+        { id:"#6 Verification retry self-conditioning", d:"keep default 判定；summarize env lever 出貨；2-turn 下 low-risk", s:"57.136", st:"done" },
+        { id:"#3 Guardrail detect→restrict", d:"regex escape 60% / Docker containment 100%；fail-closed lever（default OFF）", s:"57.137", st:"done" },
+        { id:"#8 Verification key-condition", d:"per-task 條件抽取 template，opt-in（+16.7pp 但 fp 20% → 不設 default）", s:"57.138", st:"done" },
+        { id:"#4 Layered compaction (ACON)", d:"PreClearCompactor 先清 tool result（33.7% 在 ACON band），opt-in", s:"57.139", st:"done" },
+        { id:"#1 Explicit task primitive (linear)", d:"write_todos + session_todos 持久 + Active Plan 再注入 + chat-v2 Todos tab", s:"57.140", st:"done" },
+        { id:"#2 pass^k reliability harness", d:"offline benchmark_pass_k：pass^k + behavioral consistency + λ + ε", s:"57.141", st:"done" },
+        { id:"#5 OTel GenAI schema", d:"tracer 層 bespoke → CNCF gen_ai.*；順手修 token-loss latent bug", s:"57.142", st:"done" },
+        { id:"#7 Tool-description lint + reflection", d:"AST lint 補 40 個缺失 param 描述；error reflection lever（default OFF）", s:"57.144", st:"done" },
+      ]},
+      { name: "drive-through-found gap", items: [
+        { id:"UserStop-Resume-Context", d:"使用者 Stop 中途後「continue」→ 補 CC 式 persist-immediately + interrupt marker", s:"57.143", st:"done" },
+      ]},
+    ]
+  },
+
+  // ---------- Engine-Debt 7 range ----------
+  {
+    id: "engine", label: "引擎債 7 Range", tag: "Phase 1 · 進行中主線",
+    title: "Engine-Debt 7-Range Program（引擎內部債）",
+    desc: "2026-07-06 使用者拍板：先清 7 個引擎內部 range，再做 grounding。已推進 11 個 sprint（57.155–165）。Tool range 已 4/4；Task primitive 近收官；Loop-interrupt 與 Observability 兩個 range 尚未動工。",
+    sections: [
+      { name: "① Tool  ✅ 核心 4/4 完成", items: [
+        { id:"reflection rare-path verify + weaker-model A/B", d:"③1 + ④；reflection tier-dependent（弱模型 +12.5%）", s:"57.163", st:"done" },
+        { id:"tool-error taxonomy 進 chat-v2 UI", d:"③3；additive error_taxonomy + .badge danger chip", s:"57.164", st:"done" },
+        { id:"LLM-assisted --fix for tool-description lint", d:"③2；opt-in --fix 草擬描述 + --write AST splice", s:"57.165", st:"done" },
+        { id:"AD-Tool-Reflection-RarePath-Near-Dead-Evaluate", d:"loop.py:3068 近不可達 rare 分支是否保留 / 改 executor self-raise 路徑", r:"Tool", p:"Phase 58" },
+        { id:"AD-Tool-Reflection-PerTier-Default", d:"弱/cheap-tier 預設 ON、強模型 OFF，或 per-tenant/per-profile（需更大 corpus / --runs N）", r:"Tool", p:"Phase 58" },
+        { id:"AD-Tool-Taxonomy-HumanLabel", d:"taxonomy 人類可讀標籤", r:"Tool", p:"Phase 58" },
+        { id:"AD-Tool-Failure-Terminate-vs-Recoverable-Policy", d:"tool 失敗 terminate vs recoverable 的策略", r:"Tool", p:"Phase 58" },
+        { id:"AD-Tool-Autofix-Selection-Impact-Phase58", d:"autofix 選取對後續影響評估 + ASCII-normalize drafts + param-key ordering", r:"Tool", p:"Phase 58" },
+        { id:"AD-RequestApproval-Placeholder-Deprecated", d:"棄用 RequestApproval placeholder", r:"Tool", p:"Phase 58" },
+      ]},
+      { name: "② Task primitive  近完成", items: [
+        { id:"DAG task primitive (depends_on)", d:"Todo.depends_on DAG + ready/blocked", s:"57.156", st:"done" },
+        { id:"cross-burst auto-continue scheduler", d:"kickoff；突破 max_turns=8 短命上限（default OFF）", s:"57.157", st:"done" },
+        { id:"DAG enforce(soft) + cycle report + Inspector Viz", d:"closes 57.156 的 3 個 DAG carryover", s:"57.162", st:"done" },
+        { id:"AD-TaskPrimitive-Saturation-DriveThrough-Phase58", d:"5+ send 飽和 drive-through 測試", r:"Task", p:"Phase 58" },
+        { id:"AD-Scheduler-Burst-Stats-Aggregate-Phase58", d:"loop_end 只反映最後一 burst 的 counter，非跨-burst 總計", r:"Task", p:"Phase 58" },
+        { id:"AD-Scheduler-Burst-Boundary-Wire-Phase58", d:"無 wire event 標記 burst 邊界（FE burst counter 需要）", r:"Task", p:"Phase 58" },
+        { id:"AD-Scheduler-PerTenant-Phase58", d:"global env → per-tenant policy（刻意避 AP-6）", r:"Task", p:"Phase 58" },
+        { id:"AD-Scheduler-TokenBudget-Continue-Phase58", d:"只有 max_turns 續跑；token_budget 保守停止", r:"Task", p:"Phase 58" },
+      ]},
+      { name: "③ Compaction  部分", items: [
+        { id:"compaction Inspector timeline marker", d:"已接線 context_compacted → chat-v2 CompactionMarkerTurn", s:"57.159", st:"done" },
+        { id:"tool-anchored observation masking + A/B", d:"保留最後 N tool result、tombstone 舊的（default OFF）", s:"57.160", st:"done" },
+        { id:"structural compactor real token re-count", d:"注入 TokenCounter 讓 tombstone 反映實際 token 減量（default ON）", s:"57.161", st:"done" },
+        { id:"AD-Compaction-Structural-TombstoneCount-Marker", d:"把 tombstone 數映到 marker（顯示 ·N msgs 而非 ·0）", r:"Compaction", p:"Phase 58" },
+        { id:"AD-Compaction-ToolAnchored-Preclear-Phase58", d:"tool_use_id-anchored clear，補 single-send 場景", r:"Compaction", p:"Phase 58" },
+        { id:"AD-Compaction-Preclear-PerTenant-Phase58", d:"preclear per-tenant 覆寫（C3 seam）", r:"Compaction", p:"Phase 58" },
+      ]},
+      { name: "④ Memory  部分", items: [
+        { id:"memory vector recall — L4 user-layer (CARRY-026 Slice 1)", d:"MemoryVectorIndex；opt-in MEMORY_VECTOR_ENABLED、per-user 隔離", s:"57.155", st:"done" },
+        { id:"memory recall-strategy precision A/B", d:"semantic 勝：recall@k 100% vs profile 20%（+80pp）", s:"57.158", st:"done" },
+        { id:"AD-Memory-Semantic-Axis-System-Tenant-Layers", d:"語意軸擴到 L1 system + L2 tenant 層", r:"Memory", p:"Phase 58" },
+        { id:"AD-Memory-Session-Summary-Semantic-Rank", d:"session summary recall 由 recency → semantic ranking", r:"Memory", p:"Phase 58" },
+        { id:"AD-Memory-Semantic-NearDup-Dedup", d:"dedup 由 exact-normalized → semantic near-dup", r:"Memory", p:"Phase 58" },
+        { id:"AD-Memory-Vector-Incremental-Write", d:"embed-on-write + delete 時 orphan cleanup", r:"Memory", p:"Phase 58" },
+        { id:"AD-Memory-Vector-Recall-Precision-AB / Adversarial-Corpus", d:"harder/adversarial corpus 壓 precision@k（recall@k 已穩）", r:"Memory", p:"Phase 58" },
+        { id:"AD-Memory-Vector-Inspector-Phase58", d:"chat-v2 surface：本輪 judge 看到哪些 vector 記憶", r:"Memory", p:"Phase 58" },
+        { id:"AD-Memory-Ops-Emit-Dedup-On-Reaffirm", d:"no-change re-affirm 仍 emit WRITE op → 去重", r:"Memory", p:"Phase 58" },
+        { id:"AD-Memory-Formation-AB-Robustness-MultiRun", d:"--runs N 平均以消除單次 ±5pp 變異", r:"Memory", p:"Phase 58" },
+        { id:"AD-Memory-Session-Summary-Extract-Coordination", d:"設 extracted_to_user_memory 協調 extract 與 summary", r:"Memory", p:"Phase 58" },
+        { id:"AD-Memory-Session-Summary-Incremental", d:"非全-ledger 增量式 summarization", r:"Memory", p:"Phase 58" },
+        { id:"AD-Memory-Session-Summary-Inspector-Phase58", d:"chat-v2 Inspector surface + wire event", r:"Memory", p:"Phase 58" },
+        { id:"AD-Memory-Vector-PerTenant / Combined-Formation-PerTenant", d:"vector 與 combined-formation 的 per-tenant 覆寫（C3 seam）", r:"Memory", p:"Phase 58" },
+        { id:"CARRY-029 · SessionLayer→DB", d:"SessionLayer 目前 in-memory volatile → 落 DB", r:"Memory", p:"Phase 58" },
+      ]},
+      { name: "⑤ Verification  部分", items: [
+        { id:"memory-aware in-loop verification judge", d:"judge 看得到 profile()/recent_sessions() 注入的記憶（fabrication catch 0→100%）", s:"57.153", st:"done" },
+        { id:"AD-Verification-KeyCondition-TwoPhase-Phase58", d:"key-condition 兩階段驗證", r:"Verification", p:"Phase 58" },
+        { id:"AD-Verification-Conditions-Surface-Phase58", d:"把抽取出的 per-task conditions surface 出來", r:"Verification", p:"Phase 58" },
+        { id:"AD-Verification-Correction-Strategy-PerTenant-Phase58", d:"correction context 策略 per-tenant（keep/summarize）", r:"Verification", p:"Phase 58" },
+        { id:"AD-Verification-Memory-Grounding-PerTenant-Phase58", d:"memory-grounding 判定 per-tenant 政策（C3 seam）", r:"Verification", p:"Phase 58" },
+        { id:"AD-Verification-Memory-Grounding-Inspector-Phase58", d:"chat-v2 surface「本輪 judge 看到記憶」", r:"Verification", p:"Phase 58" },
+      ]},
+      { name: "⑥ Loop / Interrupt  ⬜ 尚未動工", items: [
+        { id:"AD-Loop-CancelEvent-Poll-Phase58", d:"loop poll cancel_event（現 set-but-never-polled）→ 優雅停止 + in-flight LLM cancel", r:"Loop", p:"Phase 58" },
+        { id:"partial answer capture on abort", d:"abort 時擷取部分 assistant 串流輸出", r:"Loop", p:"Phase 58" },
+        { id:"message_events replay-ledger disconnect durability", d:"57.125/126 replay ledger 斷線持久性", r:"Loop", p:"Phase 58" },
+        { id:"leading-assistant-marker race guard", d:"Stop-before-turn-0 亞秒級 race guard（Azure 目前寬鬆）", r:"Loop", p:"Phase 58" },
+      ]},
+      { name: "⑦ Observability  ⬜ 尚未動工", items: [
+        { id:"AD-Observability-Provider-Attr-Phase58", d:"gen_ai.provider.name adapter → span 接線", r:"Obs", p:"Phase 58" },
+        { id:"AD-Observability-Content-Capture-OptIn-Phase58", d:"opt-in gen_ai.input/output.messages flag", r:"Obs", p:"Phase 58" },
+        { id:"AD-Observability-Metrics-GenAI-Labels-Phase58", d:"gen_ai.* 映射延伸到 record_metric labels", r:"Obs", p:"Phase 58" },
+      ]},
+    ]
+  },
+
+  // ---------- Grounding ----------
+  {
+    id: "grounding", label: "落地 Grounding", tag: "Phase 2 · 部分先行",
+    title: "Grounding 落地（knowledge + memory）",
+    desc: "reality-audit §9 願景支柱：連外部系統 + 真實記憶。memory formation arc 已整條關閉；knowledge connector 已到 per-tenant 隔離（3a），RBAC/citation/scale/external 仍 open。策略上 grounding 主體押後至引擎債清完後。",
+    sections: [
+      { name: "Knowledge Connector · 已完成", items: [
+        { id:"Slice 1 · first real connector", d:"knowledge_search + LocalDocsConnector 讀真 .md（願景支柱 1：0→1）", s:"57.145", st:"done" },
+        { id:"Slice 2 · embedding + Qdrant", d:"section-aware chunking + 首個 EmbeddingClient ABC + Azure text-embedding-3-large", s:"57.146", st:"done" },
+        { id:"Slice 3a · per-tenant KB isolation", d:"per-tenant Qdrant collection + payload filter + 雙向隔離", s:"57.147", st:"done" },
+      ]},
+      { name: "Knowledge Connector · 待處理", items: [
+        { id:"AD-Knowledge-Connector-RBAC-Citation-Slice3 (3b RBAC per-doc)", d:"per-doc 存取控制", r:"Knowledge", p:"Phase 58" },
+        { id:"AD-Knowledge-Connector-RBAC-Citation-Slice3 (3c citation)", d:"citation governance", r:"Knowledge", p:"Phase 58" },
+        { id:"AD-Knowledge-Connector-Ingest-Scale", d:"背景/離線 idempotent ingest（418-file 全庫，非啟動阻塞）", r:"Knowledge", p:"Phase 58" },
+        { id:"AD-Knowledge-Connector-Hybrid-Rerank", d:"keyword ∪ vector fusion 重排", r:"Knowledge", p:"Phase 58" },
+        { id:"AD-Knowledge-Connector-External-Sources", d:"HTTP / SharePoint / Confluence connector framework", r:"Knowledge", p:"Phase 58" },
+        { id:"AD-Knowledge-Connector-DocTypes", d:"PDF / Office 文件型別", r:"Knowledge", p:"Phase 58" },
+      ]},
+      { name: "Memory 落地 arc · 已完成（整條關閉）", items: [
+        { id:"identity write + always-on inject", d:"修 ILIKE query-gating「我不知道你是誰」bug", s:"57.148", st:"done" },
+        { id:"auto-extract post-send formation", d:"deterministic 安全網（即使 agent 沒呼叫 memory_write）", s:"57.149", st:"done" },
+        { id:"upsert-by-key write-side dedup", d:"dedup_key 唯一約束 + migration 0032", s:"57.150", st:"done" },
+        { id:"cross-session conversation recall", d:"reuse memory_session_summary + SessionSummarizer", s:"57.151", st:"done" },
+        { id:"combine extract + summarize into 1 call", d:"MemoryFormationWorker 合併兩次 cheap call", s:"57.152", st:"done" },
+        { id:"combined-vs-separate formation quality A/B", d:"real-Azure A/B → keep combined default ON", s:"57.154", st:"done" },
+      ]},
+    ]
+  },
+
+  // ---------- Frontend / SaaS Stage 2 ----------
+  {
+    id: "frontend", label: "Frontend / SaaS 2", tag: "獨立線 · 多數 Phase 58+",
+    title: "Frontend / SaaS Stage 2（Top Candidates #1–#46）",
+    desc: "Phase 57.19–28 累積的前端 mockup-fidelity + 後端接線 + IAM/SaaS Stage 2 carryover。selection-gated：使用者明確選取才起 sprint。僅 #32 已 shipped、#41 已 drop，其餘 44 項待處理。",
+    sections: [
+      { name: "Chat-v2 Mockup-Fidelity Phase-2 (#1)", items: [
+        { id:"#1 AD-ChatV2-Full-Mockup-Fidelity Phase-2", d:"Memory block / HITL 4-action / Composer richness+wire / Inspector Trace·Memory·SubagentTree / SessionList backend / Cat12 SSE trace-id（8 子 AD）", r:"#1", p:"Phase 58" },
+      ]},
+      { name: "Mockup-Page-Port 續作 (#2–#5)", items: [
+        { id:"#2 AD-Mockup-Direct-Port-Round-2", d:"8 頁 token 遷移 + 3 overlay 後端接線 + 5 Card polish", r:"#2", p:"Phase 58" },
+        { id:"#3 AD-Mockup-Existing-Pages-Retrofit Tier 1", d:"9 頁 retrofit（folds into Round-2）", r:"#3", p:"Phase 58" },
+        { id:"#4 Round 3 — Auth 4 頁", d:"register / invite / mfa / expired（配 IAM Block B）", r:"#4", p:"Phase 58" },
+        { id:"#5 Round 4 — Governance 3 頁", d:"redaction / error-policy / audit-log（配 Cat 9 endpoint）", r:"#5", p:"Phase 58" },
+      ]},
+      { name: "Backend Wire Bundle (#6–#9)", items: [
+        { id:"#6 AD-Backend-Wire Bundle", d:"Operations 4 頁後端：Subagent-RealList / Loop-Session-Enrich / Overview-Wire / Orchestrator-Wire", r:"#6", p:"Phase 58" },
+        { id:"#7 AD-CommandPalette-Backend-Wire", d:"tenants + sessions groups 由 fixture 接 Cat 1/12", r:"#7", p:"Phase 58" },
+        { id:"#8 AD-NotificationsPanel-Backend-Feed", d:"6 mockup 項的 Cat 12 SSE/poll feed", r:"#8", p:"Phase 58" },
+        { id:"#9 AD-UserMenu-Tenant-Switch", d:"tenant 切換（配 WorkOS SCIM）", r:"#9", p:"Phase 58" },
+      ]},
+      { name: "Tooling / Infra / Style (#10–#19)", items: [
+        { id:"#10 AD-Tailwind-v4-Config-Migration", d:"@theme inline{} 取代 @config + 刪 v3 config（~6-8 hr）", r:"#10", p:"Phase 58" },
+        { id:"#11 AD-Post-Hotfix-Token-Audit", d:"contrast-ratio（folds into #3）", r:"#11", p:"Phase 58" },
+        { id:"#12 AD-Brand-Primary-Color-Decision", d:"brand primary 定案", r:"#12", p:"Phase 58" },
+        { id:"#13 AD-Theme-Variant-Mechanism", d:"主題變體機制", r:"#13", p:"Phase 58" },
+        { id:"#14 AD-Density-Variant-Mechanism", d:"密度變體機制", r:"#14", p:"Phase 58" },
+        { id:"#15 AD-CI-7-GHA-PR-Permission", d:"playwright-e2e.yml auto-PR-create 被 repo 設定擋", r:"#15", p:"Phase 58" },
+        { id:"#16 AD-Lighthouse-Visual-Hard-Gate", d:"required CI check", r:"#16", p:"Phase 58" },
+        { id:"#17 AD-Bundle-Size code-split", d:"bundle 大小 code-split", r:"#17", p:"Phase 58" },
+        { id:"#18 AD-i18n-Feature-Namespaces", d:"i18n feature namespaces", r:"#18", p:"Phase 58" },
+        { id:"#19 AD-A11y-Structural-Nits", d:"/chat-v2 heading-order + duplicate main landmark 等", r:"#19", p:"Phase 58" },
+      ]},
+      { name: "Enterprise / SaaS Stage 2 (#20–#22)", items: [
+        { id:"#20 IAM Block B Spike", d:"WorkOS SCIM/SAML/org-level RBAC（~12-18 hr）", r:"#20", p:"Stage 2" },
+        { id:"#21 Tier 1 IaC + DR Drill", d:"IaC + 災難復原演練（~15-20 hr）", r:"#21", p:"Stage 2" },
+        { id:"#22 SOC 2 + SBOM", d:"SOC 2 合規 + SBOM（~12-15 hr）", r:"#22", p:"Stage 2" },
+      ]},
+      { name: "Auth 後端 IAM Block B/C (#23–#30)", items: [
+        { id:"#23 AD-Auth-Register-Backend-IAM-Block-B", d:"POST /tenants/register 真實作（現 501 stub）", r:"#23", p:"Phase 58" },
+        { id:"#24 AD-Auth-Invite-Backend-IAM-Block-B", d:"invite metadata + accept（現 501 stub）", r:"#24", p:"Phase 58" },
+        { id:"#25 AD-Auth-MFA-Backend-IAM-Block-C", d:"MFA verify + TOTP + WebAuthn 後端（現 501 stub）", r:"#25", p:"Phase 58" },
+        { id:"#26 AD-Auth-MFA-Recovery-Page", d:"/auth/mfa/recovery 頁 + recovery-code 後端", r:"#26", p:"Phase 58" },
+        { id:"#27 AD-Auth-Callback-Loading-UX", d:"static setTimeout → 真 SSE per-step 事件", r:"#27", p:"Phase 58" },
+        { id:"#28 AD-WorkOS-Multi-IdP", d:"SAML / Microsoft / Google SSO via WorkOS", r:"#28", p:"Phase 58" },
+        { id:"#29 AD-Sprint-57-23-Playwright-MCP-Visual-Verify-Followup", d:"12 page-state 視覺 pair-verify 重跑（low priority）", r:"#29", p:"Phase 58" },
+        { id:"#30 AD-I18n-Symmetric-Keys-Lint", d:"en/zh-TW namespace 對稱鍵自動 lint（~2-3 hr）", r:"#30", p:"Phase 58" },
+      ]},
+      { name: "Dashboard 結構重建 + 後端 (#31, #33–#40)", items: [
+        { id:"#31 AD-Memory-Structural-Rebuild", d:"/memory 頁 5-scope×3-timescale 矩陣重建（~25-30 hr + 後端）", r:"#31", p:"Phase 58" },
+        { id:"#33 AD-Mockup-Fidelity-Rebuild-Admin-Tenants", d:"/admin/tenants list 重建", r:"#33", p:"Phase 58" },
+        { id:"#34 AD-Mockup-Fidelity-Rebuild-Verification", d:"/verification 重建", r:"#34", p:"Phase 58" },
+        { id:"#35 AD-Mockup-Fidelity-Rebuild-Tenant-Settings", d:"/admin/tenants/settings 6-tab + 拆出 /feature-flags", r:"#35", p:"Phase 58" },
+        { id:"#36 AD-Cost-Dashboard-Backend-Extensions", d:"跨租戶/跨供應商聚合 + 30d history endpoint", r:"#36", p:"Phase 58" },
+        { id:"#37 AD-Playwright-MCP-Recovery", d:"3-sprint blocker：MCP browser-stuck（--isolated / cleanup hook）", r:"#37", p:"Phase 58" },
+        { id:"#38 AD-Sprint-Plan-Audit-Cross-Ref-Prong5", d:"plan-draft 紀律：Prong 5 audit cross-reference（~30 min doc）", r:"#38", p:"Phase 58" },
+        { id:"#39 AD-SLA-Dashboard-Backend-Extensions", d:"24h latency / slow-ops / error-rate / SLO endpoint", r:"#39", p:"Phase 58" },
+        { id:"#40 AD-LatencyChart-Extraction", d:"若出現 2nd consumer 才抽取（Karpathy §2）", r:"#40", p:"Phase 58" },
+      ]},
+      { name: "Foundation / Overview / Switch (#42–#46)", items: [
+        { id:"#42 AD-Day0-Prong4-Visual-Baseline-Scope", d:"Day-0 Prong 4 延伸涵蓋 visual baseline（~15 min rule）", r:"#42", p:"Phase 58" },
+        { id:"#43 AD-Overview-Backend-Extensions", d:"9 widget 真後端（含 GET /api/v1/loops 404 修復）", r:"#43", p:"Phase 58" },
+        { id:"#44 AD-CardShell-Title-Crossverify-cost-sla", d:"12.5px 標題於 cost/sla pair-verify（~15 min）", r:"#44", p:"Phase 58" },
+        { id:"#45 AD-RouteSweep-Object-Mock-Gap", d:"route-sweep object-shaped mock（subagents/memory/verification）", r:"#45", p:"Phase 58" },
+        { id:"#46 AD-Mockup-Fidelity-HexBaseline-Migration", d:"18 個 hardcoded hex → --risk-* token", r:"#46", p:"Phase 58" },
+      ]},
+    ]
+  },
+
+  // ---------- 其他散落 backlog ----------
+  {
+    id: "misc", label: "其他 Backlog", tag: "散落 · Backend / IAM / Billing / Drive-through",
+    title: "其他散落 Backlog（未歸入上列的 open 項）",
+    desc: "各 sprint retrospective 累積、未被上面工作線涵蓋的 open 項：drive-through follow-on、IAM/Auth 後端細節、subagent 真列表、billing 正確性 bundle。多數 Phase 58+。",
+    sections: [
+      { name: "Drive-Through follow-on（35-page 稽核）", items: [
+        { id:"AD-ChatV2-Inspector-Turn-Metadata-Wire", d:"tokens_out/cost 未在 SSE stream（需 event_wire_schema 改）→ 專屬 slice", r:"DT", p:"Phase 58" },
+        { id:"AD-Orchestrator-Config-Backend", d:"orchestrator config CRUD + deploy pipeline（現 BackendGapBanner）", r:"DT", p:"Phase 58" },
+        { id:"AD-Overview-TopKPI-Backend", d:"top-4 KPI 真聚合，接完後撤 banner", r:"DT", p:"Phase 58" },
+        { id:"AD-SLA-Report-CrossTenant-RLS-Check", d:"platform_admin 看他租戶時 SLAReport INSERT 的 RLS 驗證", r:"DT", p:"Phase 58" },
+        { id:"AD-SLA-Report-Endpoint-Degrade-Lenient", d:"recorder 未接時 degrade（503/empty）而非 500", r:"DT", p:"Phase 58" },
+      ]},
+      { name: "IAM / Auth 後端細節", items: [
+        { id:"AD-Register-OIDC-User-Linkage-Phase58", d:"register 依 email 建 user、OIDC callback 依 external_id → 第二列 user；改 link-by-email", r:"IAM", p:"Phase 58" },
+        { id:"AD-Tenant-Plan-Tiers-Phase58", d:"真 BASIC/STANDARD/trial tier + quota 執行（現只 ENTERPRISE）", r:"IAM", p:"Stage 2" },
+        { id:"AD-Auth-PasswordLogin-Lockout-Phase58", d:"/auth/password-login 暴力破解節流（reuse Redis rate-limit）", r:"IAM", p:"Phase 58" },
+        { id:"AD-Auth-Recovery-Page-Phase58", d:"密碼重設/recovery（需 email adapter，目前不存在）", r:"IAM", p:"Phase 58" },
+        { id:"Password-strength policy", d:"invite-accept 仍 min_length=1；min-length/複雜度/breach-check", r:"IAM", p:"Phase 58" },
+      ]},
+      { name: "Subagent / Observability 真資料", items: [
+        { id:"AD-Subagent-RealList-Phase58", d:"THE LAST Area-A item：/subagents 真列表（agent_catalog spec 已存在，需 tenant-facing GET + FE re-mount）", r:"Subagent", p:"Phase 58" },
+        { id:"AD-Subagent-Invocations-Persistence-Phase58", d:"per-spawn 執行 timeline（新 ORM + dispatcher persist hook + 讀側投影）", r:"Subagent", p:"Phase 58" },
+        { id:"Subagent budget/tools loop enforcement", d:"stored 但未 enforce（57.70 §9）", r:"Subagent", p:"Phase 58" },
+      ]},
+      { name: "Billing / 其他", items: [
+        { id:"C-15 · DevOps/data-platform billing", d:"billing-correctness bundle 最後一腿：cost_ledger 雙扣 risk", r:"Billing", p:"Phase 58" },
+        { id:"error_budgets.yaml per-tenant overrides", d:"budget.py 現用 defaults（1000/day, 20000/month）；載 per-tenant 覆寫", r:"Billing", p:"Phase 58" },
+        { id:"Multi-judge registry (safety + quality)", d:"現一個 general quality judge；疊 safety/PII 是另一決策", r:"Verification", p:"Phase 58" },
+      ]},
+    ]
+  },
+];
+
+// ============================================================
+// RENDER
+// ============================================================
+const KEY = "v2backlog.checked.v1";
+let checked = {};
+try { checked = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { checked = {}; }
+let filter = "all";
+let active = "overview";
+
+function slug(s){ return s.replace(/[^a-zA-Z0-9]+/g, "-").slice(0, 60); }
+function isOpen(it){ return it.st !== "done"; }
+
+// pre-compute counts per track
+function trackCounts(t){
+  if (t.isOverview) return {done:0, open:0, total:0};
+  let done=0, open=0;
+  t.sections.forEach(s => s.items.forEach(it => { if (isOpen(it)) open++; else done++; }));
+  return {done, open, total:done+open};
+}
+
+function allItems(){
+  const arr=[];
+  TRACKS.forEach(t => { if(!t.isOverview) t.sections.forEach(s => s.items.forEach(it => arr.push(it))); });
+  return arr;
+}
+
+function globalStats(){
+  const items = allItems();
+  const done = items.filter(it => !isOpen(it)).length;
+  const open = items.filter(isOpen).length;
+  const chk = items.filter(it => isOpen(it) && checked[slug(it.id)]).length;
+  return {done, open, total:done+open, chk};
+}
+
+function renderTabs(){
+  const nav = document.getElementById("tabs");
+  nav.innerHTML = "";
+  TRACKS.forEach(t => {
+    const b = document.createElement("button");
+    b.className = "tab"; b.setAttribute("role","tab");
+    b.setAttribute("aria-selected", t.id === active ? "true":"false");
+    const c = trackCounts(t);
+    let cntHtml = "";
+    if (!t.isOverview) {
+      const remaining = t.sections.reduce((a,s)=>a + s.items.filter(it=>isOpen(it) && !checked[slug(it.id)]).length, 0);
+      b.dataset.hasopen = remaining > 0 ? "true":"false";
+      cntHtml = `<span class="cnt">${remaining>0? remaining : "✓"}</span>`;
+    }
+    b.innerHTML = `<span>${t.label}</span>${cntHtml}`;
+    b.onclick = () => { active = t.id; render(); };
+    nav.appendChild(b);
+  });
+}
+
+function renderOverview(){
+  const g = globalStats();
+  const rows = TRACKS.filter(t=>!t.isOverview).map(t => {
+    const c = trackCounts(t);
+    const remaining = t.sections.reduce((a,s)=>a + s.items.filter(it=>isOpen(it) && !checked[slug(it.id)]).length, 0);
+    const pct = c.total ? Math.round(c.done / c.total * 100) : 100;
+    const barD = c.total ? (c.done/c.total*100) : 100;
+    return `<button class="ovrow" onclick="window.__go('${t.id}')">
+      <div class="ovtop">
+        <span class="ovname">${t.label}</span>
+        <span class="ovtag">${t.tag}</span>
+        <span class="ovnums"><b>${c.done}</b>/${c.total} 完成 · <b class="${remaining>0?'rem':'zero'}">${remaining}</b> 待處理</span>
+      </div>
+      <div class="ovbar"><i style="width:${barD}%"></i></div>
+    </button>`;
+  }).join("");
+
+  return `
+  <div class="phead">
+    <div class="meta">
+      <span class="tag">Program Status · 2026-07-14</span>
+      <h2>全專案 Pending 盤點</h2>
+      <p>五大工作線 + 散落 backlog。早期 A/B/C（10/10）、深度研究 8 項（8/8）、memory 落地 arc 已<b>完全關閉</b>；當前主線是 engine-debt 7-range（Phase 1）。下方每列點入看細節，open AD 可勾選「已處理」。</p>
+    </div>
+    <div class="num">
+      <div class="big" style="color:var(--accent)">${g.done}/${g.total}</div>
+      <div class="small">items 完成 · <b style="color:var(--partial)">${g.open}</b> open · 已勾銷 ${g.chk}</div>
+    </div>
+  </div>
+  <div class="ovlist">${rows}</div>
+  <style>
+    .ovlist{display:flex;flex-direction:column;gap:8px;}
+    .ovrow{width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:11px;
+      padding:14px 16px;cursor:pointer;box-shadow:var(--shadow);font-family:var(--sans);}
+    .ovrow:hover{border-color:var(--accent);}
+    .ovrow:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+    .ovtop{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;}
+    .ovname{font-size:15px;font-weight:700;color:var(--ink);}
+    .ovtag{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;}
+    .ovnums{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--ink-soft);}
+    .ovnums b{color:var(--ink);} .ovnums .rem{color:var(--partial);} .ovnums .zero{color:var(--done);}
+    .ovbar{height:6px;border-radius:5px;background:var(--open-soft);overflow:hidden;margin-top:10px;}
+    .ovbar i{display:block;height:100%;background:var(--done);}
+  </style>`;
+}
+
+function renderItem(it){
+  const open = isOpen(it);
+  const id = slug(it.id);
+  const isChk = open && !!checked[id];
+  const dotcls = open ? (it.r==="blocker"?"blocker":"open") : "done";
+  let meta = "";
+  if (it.r) meta += `<span class="chip range">${it.r}</span>`;
+  if (it.s) meta += `<span class="chip sprint">Sprint ${it.s}</span>`;
+  if (it.p) meta += `<span class="chip phase">${it.p}</span>`;
+  let action;
+  if (open) {
+    action = `<label class="chk"><input type="checkbox" ${isChk?"checked":""} data-id="${id}" aria-label="標記已處理"> ${isChk?"已處理":"待處理"}</label>`;
+  } else {
+    action = `<span class="st done">已 ship</span>`;
+  }
+  return `<li class="ad" data-status="${open?'open':'done'}" data-checked="${isChk}">
+    <span class="dot ${dotcls}"></span>
+    <div class="adbody">
+      <div class="adid">${it.id}</div>
+      ${it.d?`<div class="addesc">${it.d}</div>`:""}
+      ${meta?`<div class="admeta">${meta}</div>`:""}
+    </div>
+    <div class="adaction">${action}</div>
+  </li>`;
+}
+
+function renderTrack(t){
+  const c = trackCounts(t);
+  const pct = c.total ? Math.round(c.done/c.total*100) : 100;
+  const donePct = c.total ? c.done/c.total*100 : 100;
+
+  let sectionsHtml = "";
+  t.sections.forEach(s => {
+    const items = s.items.filter(it => {
+      if (filter === "open") return isOpen(it);
+      if (filter === "done") return !isOpen(it);
+      return true;
+    });
+    if (!items.length) return;
+    const sOpen = s.items.filter(isOpen).length;
+    const sDone = s.items.length - sOpen;
+    let schip = "";
+    if (sOpen === 0) schip = `<span class="schip" style="background:var(--done-soft);color:var(--done)">全完成</span>`;
+    else if (sDone === 0) schip = `<span class="schip" style="background:var(--open-soft);color:var(--ink-soft)">待動工</span>`;
+    else schip = `<span class="schip" style="background:var(--partial-soft);color:var(--partial)">進行中</span>`;
+    sectionsHtml += `<div class="sect"><h3>${s.name}</h3>${schip}<span class="miniprog">${sDone}/${s.items.length}</span></div>
+      <ul class="list">${items.map(renderItem).join("")}</ul>`;
+  });
+  if (!sectionsHtml) sectionsHtml = `<div class="empty">此篩選下無項目</div>`;
+
+  return `
+  <div class="phead">
+    <div class="meta">
+      <span class="tag">${t.tag}</span>
+      <h2>${t.title}</h2>
+      <p>${t.desc}</p>
+      <div class="pbar"><i class="d" style="width:${donePct}%"></i></div>
+    </div>
+    <div class="num">
+      <div class="big" style="color:${c.open===0?'var(--done)':'var(--accent)'}">${pct}%</div>
+      <div class="small"><b>${c.done}</b> 完成 · <b style="color:var(--partial)">${c.open}</b> open</div>
+    </div>
+  </div>
+  <div class="filter">
+    <span class="lbl">篩選</span>
+    <button class="fbtn" data-f="all" aria-pressed="${filter==='all'}">全部</button>
+    <button class="fbtn" data-f="open" aria-pressed="${filter==='open'}">只看 open</button>
+    <button class="fbtn" data-f="done" aria-pressed="${filter==='done'}">只看已完成</button>
+  </div>
+  ${sectionsHtml}`;
+}
+
+function render(){
+  renderTabs();
+  const panel = document.getElementById("panel");
+  const t = TRACKS.find(x => x.id === active);
+  panel.innerHTML = t.isOverview ? renderOverview() : renderTrack(t);
+
+  // wire filter buttons
+  panel.querySelectorAll(".fbtn").forEach(b => b.onclick = () => { filter = b.dataset.f; render(); });
+  // wire checkboxes
+  panel.querySelectorAll('input[type=checkbox][data-id]').forEach(cb => {
+    cb.onchange = () => {
+      const id = cb.dataset.id;
+      if (cb.checked) checked[id] = 1; else delete checked[id];
+      localStorage.setItem(KEY, JSON.stringify(checked));
+      render(); updateGlobal();
+    };
+  });
+  updateGlobal();
+}
+
+function updateGlobal(){
+  const g = globalStats();
+  const pct = g.total ? Math.round(g.done/g.total*100) : 0;
+  document.getElementById("gpct").textContent = pct + "%";
+  document.getElementById("gring").style.setProperty("--p", pct);
+  document.getElementById("gdone").textContent = g.done;
+  document.getElementById("gopen").textContent = g.open;
+  document.getElementById("gchecked").textContent = "已勾銷 " + g.chk + " / " + g.open;
+}
+
+window.__go = (id) => { active = id; render(); window.scrollTo({top:0, behavior:'smooth'}); };
+
+// theme toggle
+const root = document.documentElement;
+function currentTheme(){
+  if (root.dataset.theme) return root.dataset.theme;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark":"light";
+}
+document.getElementById("themebtn").onclick = () => {
+  const next = currentTheme() === "dark" ? "light":"dark";
+  root.dataset.theme = next;
+};
+document.getElementById("resetbtn").onclick = () => {
+  if (confirm("清除所有「已處理」勾選？")) { checked = {}; localStorage.removeItem(KEY); render(); }
+};
+
+render();
+</script>
