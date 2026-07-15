@@ -34,6 +34,7 @@
  * Last Modified: 2026-06-12
  *
  * Modification History:
+ *   - 2026-07-15: "New session" → newSession() (was reset()) — keep sidebar list (AD-Chat-New-Session-Wipes-Sidebar)
  *   - 2026-06-16: Sprint 57.126 — session click → loadSessionHistory (replay) replaces setActiveSessionId
  *   - 2026-06-12: Sprint 57.107 B3 — real GET /sessions via loadSessions; drop fixture + DEMO banner; +handoff-chain badge + empty state
  *   - 2026-06-06: chat-v2 honest surface — wire "New session" → store.reset() (was a no-op button) + DEMO badge on section header (fixture list honesty) (CHANGE-054)
@@ -121,9 +122,11 @@ function SessionItem({ session }: { session: Session }): JSX.Element {
 export function SessionList(): JSX.Element {
   const { t } = useTranslation("common");
   // Honest-surface: "New session" was a visual-only button (no onClick). Wire it
-  // to reset the store so it actually starts a fresh conversation (clears turns /
-  // session id / inspector slices).
-  const reset = useChatStore((s) => s.reset);
+  // to newSession() — a conversation-only reset that starts a fresh conversation
+  // (clears turns / session id / inspector slices) while PRESERVING the sidebar
+  // session list (AD-Chat-New-Session-Wipes-Sidebar: reset() blanked the list until
+  // a page refresh re-fetched GET /sessions).
+  const newSession = useChatStore((s) => s.newSession);
   const sessions = useChatStore((s) => s.sessions);
   const loadSessions = useChatStore((s) => s.loadSessions);
 
@@ -148,7 +151,7 @@ export function SessionList(): JSX.Element {
           type="button"
           className="btn primary"
           data-size="sm"
-          onClick={() => reset()}
+          onClick={() => newSession()}
         >
           <Plus size={12} aria-hidden="true" />
           {t("chat.session.newSession")}

@@ -37,6 +37,7 @@
  * Last Modified: 2026-06-16
  *
  * Modification History:
+ *   - 2026-07-15: +newSession() conversation-only reset — preserve sidebar list (AD-Chat-New-Session-Wipes-Sidebar; "New session" no longer blanks the session list)
  *   - 2026-07-07: Sprint 57.159 — context_compacted pushes a CompactionMarkerTurn (was rawEvents-only; Cat 4 L2→L3)
  *   - 2026-06-16: Sprint 57.131 — llm_request stamps per-turn model on the AgentTurn (Inspector model row)
  *   - 2026-06-16: Sprint 57.130 — +loop_terminated case (flip pending tool→error + terminated badge)
@@ -200,6 +201,9 @@ type ChatStoreState = {
   appendVerification: (event: VerificationEvent) => void;
   clearVerifications: () => void;
   clearSubagents: () => void;
+  // "New session" — conversation-only reset that PRESERVES the `sessions` sidebar
+  // list (reset() below is the full wipe used by tests).
+  newSession: () => void;
   reset: () => void;
 };
 
@@ -1168,6 +1172,19 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
   clearVerifications: () => set({ verifications: [] }),
 
   clearSubagents: () => set({ subagents: [] }),
+
+  // AD-Chat-New-Session-Wipes-Sidebar: the "New session" button is a
+  // CONVERSATION-ONLY reset — it starts a fresh chat (clears turns / sessionId /
+  // activeSessionId / inspector slices) but PRESERVES the `sessions` sidebar list
+  // that loadSessions() fetched. reset() spreads _initial() (which zeroes
+  // `sessions`), so wiring "New session" to reset() blanked the whole sidebar until
+  // a page refresh re-fetched GET /sessions. Mirrors loadSessionHistory / applyPivot
+  // (both keep sessions). `mode` is preserved automatically (not in _initial()'s
+  // Pick, so the partial set() merge leaves it untouched).
+  newSession: () => {
+    _turnCounter = 0;
+    set((s) => ({ ..._initial(), sessions: s.sessions }));
+  },
 
   reset: () => {
     // Zero the module-global turn counter so a fresh session's turns restart at
