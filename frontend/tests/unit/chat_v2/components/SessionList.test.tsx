@@ -197,13 +197,20 @@ describe("SessionList (Sprint 57.107 B3 — real backend data)", () => {
     expect(counts.length).toBeGreaterThanOrEqual(1);
   });
 
-  test("'New session' resets the store (clears active session) — honest-surface wiring", async () => {
+  test("'New session' starts a fresh chat but PRESERVES the sidebar list (AD-Chat-New-Session-Wipes-Sidebar)", async () => {
     const user = userEvent.setup();
     seedSessions(SESSIONS);
     useChatStore.setState({ activeSessionId: "sess_root" });
     expect(useChatStore.getState().activeSessionId).toBe("sess_root");
+    const idsBefore = useChatStore.getState().sessions.map((s) => s.id);
+    expect(idsBefore.length).toBeGreaterThan(0);
     render(<SessionList />);
     await user.click(screen.getByRole("button", { name: /New session/i }));
+    // Conversation reset: the active session is cleared...
     expect(useChatStore.getState().activeSessionId).toBeNull();
+    // ...but the sidebar session list SURVIVES. The bug: "New session" was wired to
+    // reset(), which spreads _initial() (sessions: []) → the whole list vanished
+    // until a page refresh re-fetched GET /sessions.
+    expect(useChatStore.getState().sessions.map((s) => s.id)).toEqual(idsBefore);
   });
 });
