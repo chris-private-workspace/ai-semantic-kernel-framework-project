@@ -3,10 +3,11 @@
 **Purpose**: `claudedocs/5-status/` 全部文件的總索引（每檔 1 行主題 + 狀態），解決「靠檔名認不出主題」問題。
 **Category / Scope**: Status index (cross-cutting)
 **Created**: 2026-06-12
-**Last Modified**: 2026-07-14
+**Last Modified**: 2026-07-15
 **Status**: Active
 
 > **Modification History**
+> - 2026-07-15: 群組 2 +1 行 — `v2-reality-audit-engine-vs-grounding-20260715.md`(6-26 重掃 v2:引擎 7→9 L3、落地 17.5%→28% 全來自 memory、過度開發指數 78%、§9 go/no-go 裁決傾向轉落地);6-26 標為前身
 > - 2026-07-14: 群組 2 +1 行 — `v2-pending-backlog-dashboard-20260714.html`(互動式 pending 盤點操作台 Artifact source;7 分頁完成度 + 剩餘 AD 可勾選)
 > - 2026-06-26: 群組 2 +1 行 — `v2-reality-audit-engine-vs-grounding-20260626.md`(誠實全現狀審計:引擎 ~80% L3 vs 落地 ~17%;§9 決策錨點 — 開引擎 sprint 前對照「落地維度動了沒」)
 > - 2026-06-25: 群組 2 +1 行 — `user-interrupt-resume-context-gap-20260625.md`(user-stop→continue 失憶實證缺口 + CC 藍本 + 根因；候選 `AD-UserStop-Resume-Context`)
@@ -76,7 +77,8 @@
 | `ai-agent-harness-consolidated-analysis-20260622.md` | ⭐ **三份綜合主文件（讀這一份 = 讀完三份）**：執行摘要 9 條 + 8 維度全景 + 11+1 範疇落地對照（✅/⚠️/❌/💡 + file:line）+ 6 跨維度主題 + 8 優先機會 + 證據品質 + thinking×self-conditioning 矛盾調和 | ⭐ 入口 |
 | `ai-agent-harness-market-research-panorama-20260622.md` | 2026 外部市場/學術研究全景（中立）：14 findings（reliability≠capability、self-conditioning、任務拆解最高槓桿、naive memory 有害、6 種抗注入結構模式…）+ 證據強度分級 + 30 來源 | Active（外部研究·細節後備） |
 | `ai-agent-harness-research-vs-v2-mapping-20260622.md` | 上述 14 findings × V2（11+1 範疇 + server-side governance + max_turns=8）落地對照（✅/⚠️/❌/💡）+ 5 大機會（任務原語 / 可靠性實測 / 安全結構限制 / verify 清 context / 壓縮階梯）| Active（對照） |
-| `v2-reality-audit-engine-vs-grounding-20260626.md` | ⭐ **誠實全現狀審計（決策錨點）**：驗證層級盤點（L3/L2/L1/Mock/L0）× 引擎 11+1（7 L3）+ 願景四支柱（~17%）+ Potemkin（2 確認：business mock-as-real + Filter 死鈕）+ 前端 39 頁（L3 9 頁/23%）；§9 落地維度 Gate 5 問供開引擎 sprint 前對照「落地維度動了沒」| ⭐ Active 錨點 |
+| `v2-reality-audit-engine-vs-grounding-20260626.md` | 誠實全現狀審計 v1（baseline，Sprint 57.144）：引擎 11+1（7 L3）+ 願景四支柱（~17%）+ Potemkin（2 確認）+ 前端 39 頁（9/39 L3）；§9 落地 Gate。**已被 07-15 v2 重掃更新** | 前身（見 v2）|
+| `v2-reality-audit-engine-vs-grounding-20260715.md` | ⭐⭐ **誠實全現狀審計 v2（決策錨點，Sprint 57.165）**：6-26 重掃 delta（引擎 7→9 L3；落地 17.5%→28% **但全來自 memory 一格**；2 核心 Potemkin 原封不動）+ 新增 **carryover 拉力閘（過度開發指數 78%）** + engine-debt 87% 完備性驅動 + **§9 go/no-go 裁決（傾向轉落地）+ 停損機制**；回答「有沒有過度開發」（有，非 V1 假車，是精修不上路的引擎）| ⭐⭐ Active 錨點 |
 | `v2-pending-backlog-dashboard-20260714.html` | 🖥️ **互動式 pending 盤點操作台**（Artifact source）：7 分頁（A/B/C 區 10/10 ✅ · 研究 8 項 8/8 ✅ · engine-debt 7-range · grounding · Frontend/SaaS 2 · 其他）× 完成度 + 剩餘 AD，open 項可勾選（localStorage）。凍結盤點，資料源 `next-phase-candidates.md` + engine-debt program memory | Active（操作台）|
 
 ## 群組 3｜Cat 10 Verification 量測
