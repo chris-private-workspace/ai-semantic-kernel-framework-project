@@ -35,9 +35,10 @@ Description:
     actual loop run lives in the worker.
 
 Created: 2026-04-30 (Sprint 50.2 Day 1.5)
-Last Modified: 2026-06-25
+Last Modified: 2026-07-16
 
 Modification History (newest-first):
+    - 2026-07-16: Sprint 57.166 — cross-burst turn/token aggregate in final loop_end + audit
     - 2026-06-25: Sprint 57.143 — cancel persists interrupt marker (AD-UserStop-Resume-Context)
     - 2026-06-16: Sprint 57.128 — persist post-resume SSE events to message_events (resume replay)
     - 2026-06-16: Sprint 57.126 — persist user_message row + main_seq seed from MAX (multi-turn)
@@ -880,6 +881,18 @@ async def _stream_loop_events(
     compaction_in = 0
     compaction_out = 0
     compaction_model: str | None = None
+    # Sprint 57.166 (AD-Scheduler-Burst-Stats-Aggregate): the scheduler runs the loop
+    # across N bursts, each yielding its OWN LoopCompleted with only that burst's
+    # counters. Accumulate them so the FINAL loop_end (the FE turn-count badge + the
+    # conversation_completed audit row) reflects the whole run's totals, not just the
+    # last burst. These aggregates feed ONLY the final wire payload + audit; per-burst
+    # billing keeps reading event.* below (mutating the event would double-bill —
+    # Day-0 D-billing-per-burst-ungated). Single burst (scheduler OFF) → agg == the one
+    # burst → byte-identical.
+    agg_turns = 0
+    agg_total_tokens = 0
+    agg_input_tokens = 0
+    agg_output_tokens = 0
     try:
         async for event, _swallow in _scheduled_loop_events(
             loop,
@@ -905,6 +918,14 @@ async def _stream_loop_events(
                 )
             for _frame in _drain_subagent_frames(subagent_event_buffer):
                 yield _frame
+            # Sprint 57.166: accumulate the per-burst turn/token counters (swallowed
+            # AND final bursts) so the aggregate is ready when the final loop_end is
+            # patched below + fed to the audit row.
+            if isinstance(event, LoopCompleted):
+                agg_turns += event.total_turns
+                agg_total_tokens += event.total_tokens
+                agg_input_tokens += event.input_tokens
+                agg_output_tokens += event.output_tokens
             try:
                 payload = serialize_loop_event(event)
             except NotImplementedError:
@@ -925,6 +946,13 @@ async def _stream_loop_events(
             # the field stays null → chat-v2 renders no chip.
             if active_skill and isinstance(event, LoopStarted):
                 payload["data"]["active_skill"] = active_skill
+            # Sprint 57.166 (AD-Scheduler-Burst-Stats-Aggregate): the final loop_end
+            # reports the cross-burst aggregate turn count. A swallowed intermediate
+            # loop_end is neither persisted nor yielded (the `if not _swallow` below),
+            # so only the final one is patched. Single burst → agg_turns ==
+            # event.total_turns → byte-identical.
+            if isinstance(event, LoopCompleted) and not _swallow:
+                payload["data"]["total_turns"] = agg_turns
             # Sprint 57.125: persist the main-session event BEFORE the yield (the
             # persisted payload == the streamed frame, incl. active_skill). The
             # best-effort SAVEPOINT inside the helper never blocks/breaks the stream.
@@ -1155,10 +1183,13 @@ async def _stream_loop_events(
                                 resource_type="session",
                                 resource_id=str(session_id),
                                 operation_data={
-                                    "total_turns": event.total_turns,
-                                    "total_tokens": event.total_tokens,
-                                    "input_tokens": event.input_tokens,
-                                    "output_tokens": event.output_tokens,
+                                    # Sprint 57.166: cross-burst aggregate (not just the
+                                    # last burst's counters); billing above stays
+                                    # per-burst on event.*.
+                                    "total_turns": agg_turns,
+                                    "total_tokens": agg_total_tokens,
+                                    "input_tokens": agg_input_tokens,
+                                    "output_tokens": agg_output_tokens,
                                     "model": event.model or "",
                                     "provider": event.provider or "",
                                     "outcome": "completed",
