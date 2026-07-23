@@ -7,6 +7,7 @@
  * Created: 2026-05-17 (Sprint 57.21 Day 3 §3.1)
  *
  * Modification History:
+ *   - 2026-07-23: Sprint 57.167 — Filter control honest-disable + tooltip (de-Potemkin 2)
  *   - 2026-06-16: Sprint 57.126 — click now calls loadSessionHistory (mock fetchSessionEvents) + new trigger test
  *   - 2026-06-12: Sprint 57.107 B3 — converted fixture assertions to mock the store (real session data + loadSessions); +empty state + chain badge + no-DEMO-banner cases
  *   - 2026-05-17: Initial creation (Sprint 57.21 Day 3 §3.1)
@@ -212,5 +213,40 @@ describe("SessionList (Sprint 57.107 B3 — real backend data)", () => {
     // reset(), which spreads _initial() (sessions: []) → the whole list vanished
     // until a page refresh re-fetched GET /sessions.
     expect(useChatStore.getState().sessions.map((s) => s.id)).toEqual(idsBefore);
+  });
+});
+
+describe("SessionList Filter control (Sprint 57.167 — de-Potemkin 2)", () => {
+  beforeEach(() => {
+    useChatStore.getState().reset();
+    vi.mocked(fetchSessionEvents).mockResolvedValue([]);
+  });
+  afterEach(() => {
+    useChatStore.getState().reset();
+    vi.restoreAllMocks();
+  });
+
+  test("Filter is disabled and declares why, instead of silently doing nothing", () => {
+    seedSessions(SESSIONS);
+    render(<SessionList />);
+
+    const filter = screen.getByRole("button", { name: /filter/i });
+    expect(filter).toBeDisabled();
+    // The tooltip is the honest surface: the control's inertness is declared, not hidden.
+    expect(filter).toHaveAttribute("title", expect.stringMatching(/not available yet/i));
+  });
+
+  test("clicking Filter changes nothing (the AP-4 dead-control walk)", async () => {
+    seedSessions(SESSIONS);
+    render(<SessionList />);
+
+    const before = useChatStore.getState().sessions;
+    const filter = screen.getByRole("button", { name: /filter/i });
+    // userEvent refuses to click a disabled control — that refusal IS the assertion
+    // that a user cannot trigger a no-op. Verify no state moved either way.
+    await userEvent.click(filter, { pointerEventsCheck: 0 });
+
+    expect(useChatStore.getState().sessions).toBe(before);
+    expect(screen.getAllByTestId(/session-item|session-list/).length).toBeGreaterThan(0);
   });
 });

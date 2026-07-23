@@ -156,11 +156,22 @@ export function SessionList(): JSX.Element {
           <Plus size={12} aria-hidden="true" />
           {t("chat.session.newSession")}
         </button>
+        {/* Honest-surface (Sprint 57.167, de-Potemkin 2): this button had no
+            onClick — a dead control on the 主流量 (reality audit 2026-06-26,
+            still unfixed at the 2026-07-15 re-scan). It is DISABLED rather than
+            wired because the mockup it was ported from (page-chat.jsx:127,
+            `<Button variant="ghost" size="sm" icon="filter" />`) defines no
+            filter behaviour at all — inventing a filter UI here would breach the
+            mockup-fidelity 禁止項「自創 widget」. The widget stays (deleting a
+            mockup widget is also forbidden); only its inertness is now declared.
+            Real filtering needs a mockup spec first → AD-SessionList-Filter-Real-Implementation. */}
         <button
           type="button"
           className="btn ghost"
           data-size="sm"
+          disabled
           aria-label={t("chat.session.filter") ?? "Filter"}
+          title={t("chat.session.filterUnavailable") ?? "Session filtering is not available yet"}
         >
           <Filter size={12} aria-hidden="true" />
         </button>

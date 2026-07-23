@@ -22,9 +22,10 @@ Lifecycle:
     each domain's mock_executor.py gets swapped.
 
 Created: 2026-04-30 (Sprint 51.0 Day 3)
-Last Modified: 2026-06-18
+Last Modified: 2026-07-23
 
 Modification History:
+    - 2026-07-23: Sprint 57.167 — mark mock-mode business results `_mock` (de-Potemkin 1)
     - 2026-06-26: Sprint 57.145 — opt-in knowledge_root (registers knowledge_search tool)
     - 2026-06-24: Sprint 57.140 — opt-in todo_store (registers write_todos task-primitive tool)
     - 2026-06-18: FIX-033 — chat python_sandbox → Docker default_sandbox() (Win Selector fail)
@@ -42,6 +43,7 @@ Modification History:
 
 from __future__ import annotations
 
+import functools
 import json
 from collections.abc import Awaitable, Callable, Sequence
 from typing import TYPE_CHECKING, Any
@@ -155,6 +157,11 @@ def register_all_business_tools(
     if mode == "service" and factory_provider is None:
         raise ValueError("register_all_business_tools(mode='service') requires factory_provider")
 
+    # Sprint 57.167: snapshot the keys so the mock-marking pass below can act on
+    # EXACTLY the tools these 5 calls add (callers pass a `handlers` dict that
+    # already holds echo / sandbox / memory / write_todos / knowledge).
+    _before = set(handlers)
+
     # All 5 domains: mode-aware as of Sprint 55.2.
     register_patrol_tools(
         registry,
@@ -191,6 +198,80 @@ def register_all_business_tools(
         mode=mode,
         factory_provider=factory_provider,
     )
+
+    # de-Potemkin 1 (Sprint 57.167): mark every mock-sourced result so the agent
+    # AND the human reading it can tell fabricated data from real. Applied by
+    # KEY-DIFF — only the tools these 5 calls just added — so co-registered
+    # builtins (echo / python_sandbox / memory / write_todos / knowledge) are
+    # never touched. mode="service" wraps nothing → byte-identical to pre-57.167.
+    if mode == "mock":
+        for name in set(handlers) - _before:
+            handlers[name] = _mark_mock_result(handlers[name])
+
+
+# === Mock-result marking (de-Potemkin 1, Sprint 57.167) ===
+# Why: `business_domain_mode` defaults to "mock", and NOTHING distinguished a
+# fabricated answer from a real one (grep for [MOCK]/is_mock across the repo:
+# 0 hits before this sprint) — the reality audit's most trust-damaging Potemkin.
+#
+# Why HERE and not in the 5 mock_executor.py: this is the one place that already
+# knows `mode` and owns all 18 handlers; per-domain marking would be 10 edit
+# sites over differing payload shapes, and a future service-mode swap would then
+# need un-marking work. Here, `mode` alone decides.
+#
+# Why an in-JSON key and NOT a "[MOCK] " string prefix (Day-0 revision): every
+# domain handler returns json.dumps(...), and integration tests + real consumers
+# json.loads the result (test_business_tools_via_registry.py, 6+ sites). A prefix
+# would emit `[MOCK] {...}` — no longer valid JSON. Marking inside keeps the
+# payload parseable while staying visible in chat-v2's ToolBlock output.
+#
+# Why functools.wraps is load-bearing: ToolExecutorImpl detects 1-arg vs 2-arg
+# handlers via inspect.signature (executor.py:320) — which follows __wrapped__.
+# A naked `async def w(*args)` would report 0 positional params → a context-taking
+# handler would be dispatched with the wrong arity.
+_MOCK_PREFIX = "[MOCK] "
+_MOCK_KEY = "_mock"
+
+
+def _marked_payload(parsed: Any) -> Any:  # noqa: ANN401 — arbitrary decoded JSON
+    """Add the mock marker to decoded JSON, preserving its shape.
+
+    A dict gains the key. A LIST gains it on each dict element — list results are
+    the common shape for the `*_list` / `*_query` tools (drive-through 2026-07-23
+    found `mock_incident_list` returning a bare JSON array, so an object-only
+    branch would have shipped those tools UNMARKED). Anything else (scalar, list
+    of scalars) is returned untouched: there is nowhere to put the key, and
+    reshaping would break callers that json.loads the result.
+    """
+    if isinstance(parsed, dict):
+        return {**parsed, _MOCK_KEY: True}
+    if isinstance(parsed, list):
+        return [{**item, _MOCK_KEY: True} if isinstance(item, dict) else item for item in parsed]
+    return parsed
+
+
+def _mark_mock_result(handler: ToolHandler) -> ToolHandler:
+    """Wrap a business handler so its result declares that it came from the mock backend."""
+
+    @functools.wraps(handler)
+    async def marked(*args: Any) -> Any:  # noqa: ANN401 — passthrough of ToolHandler's union
+        result = await handler(*args)
+        if isinstance(result, dict | list):
+            return _marked_payload(result)
+        if isinstance(result, str):
+            try:
+                parsed = json.loads(result)
+            except (ValueError, TypeError):
+                return _MOCK_PREFIX + result
+            marked_payload = _marked_payload(parsed)
+            if marked_payload is parsed:
+                # Nothing could be marked (scalar / list of scalars) — return the
+                # original string rather than a re-serialized equivalent.
+                return result
+            return json.dumps(marked_payload)
+        return result
+
+    return marked
 
 
 # === Subagent tool adapter (Cat 11 → Cat 2) ===

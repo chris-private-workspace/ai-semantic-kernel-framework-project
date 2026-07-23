@@ -17,6 +17,7 @@ Description:
 Created: 2026-05-08 (Sprint 57.6 Day 1)
 
 Modification History:
+    - 2026-07-23: Sprint 57.167 — business-domain MOCK startup warning tests (de-Potemkin 1)
     - 2026-06-17: Sprint 57.135 — transcript-retention job default-off + start-enabled tests
     - 2026-06-07: FIX-028 — add test_lifespan_wires_sla_recorder (sla-report 500 regression)
     - 2026-05-31: FIX-022 — add test_lifespan_wires_pricing_loader_from_yaml (§5.1 H1)
@@ -158,3 +159,46 @@ async def test_transcript_retention_job_starts_enabled(monkeypatch: pytest.Monke
     await asyncio.wait_for(started.wait(), timeout=1)
     stop.set()
     await asyncio.wait_for(task, timeout=1)
+
+
+def test_lifespan_warns_when_business_domain_is_mock() -> None:
+    """`_lifespan` startup must announce MOCK business data (Sprint 57.167, de-Potemkin 1).
+
+    `business_domain_mode` defaults to "mock", so the default deployment answers
+    business questions from a fabricated backend. Before this sprint nothing said
+    so anywhere — an operator could run what looks like production for weeks. The
+    warning is the ops half of the fix (the tool-result marker is the user half).
+    """
+    from api.main import create_app
+
+    with patch("api.main.logger") as mock_logger:
+        with TestClient(create_app()):
+            pass
+
+    warned = " ".join(str(c.args) for c in mock_logger.warning.call_args_list)
+    assert "BUSINESS DOMAIN IS MOCK" in warned, "startup did not warn about mock business data"
+    assert "BUSINESS_DOMAIN_MODE=service" in warned, "warning must name the way out"
+
+
+def test_lifespan_confirms_service_mode_positively(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Service mode logs a positive confirmation — silence must not be ambiguous.
+
+    If mock warned and service said nothing, a missing warning would be
+    indistinguishable from a broken warning.
+    """
+    from api.main import create_app
+    from core.config import get_settings
+
+    monkeypatch.setenv("BUSINESS_DOMAIN_MODE", "service")
+    get_settings.cache_clear()
+    try:
+        with patch("api.main.logger") as mock_logger:
+            with TestClient(create_app()):
+                pass
+
+        infos = " ".join(str(c.args) for c in mock_logger.info.call_args_list)
+        warned = " ".join(str(c.args) for c in mock_logger.warning.call_args_list)
+        assert "business domain mode = service" in infos
+        assert "BUSINESS DOMAIN IS MOCK" not in warned
+    finally:
+        get_settings.cache_clear()

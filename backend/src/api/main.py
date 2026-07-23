@@ -24,9 +24,10 @@ Description:
     - Static / CORS config (depends on frontend deploy decision; Phase 55)
 
 Created: 2026-04-29 (Sprint 49.4 Day 5)
-Last Modified: 2026-06-17
+Last Modified: 2026-07-23
 
 Modification History (newest-first):
+    - 2026-07-23: Sprint 57.167 — _warn_business_domain_mock() at startup (de-Potemkin 1)
     - 2026-06-17: Sprint 57.135 — scheduled transcript-retention sweep job (billing-drainer mirror)
     - 2026-06-13: Sprint 57.112 — mount mfa router (TOTP enroll/confirm/verify; IAM Block C)
     - 2026-06-07: FIX-028 — _wire_sla_recorder() at startup (sla-report 500 fix; twin of FIX-022)
@@ -267,6 +268,37 @@ def _wire_billing_outbox() -> None:
         )
 
 
+def _warn_business_domain_mock() -> None:
+    """Announce at startup whether the 18 business tools are MOCK or real.
+
+    Sprint 57.167 (de-Potemkin 1): `business_domain_mode` defaults to "mock", so
+    the default deployment answers business questions from a fabricated HTTP
+    backend — and nothing anywhere said so. The reality audit (2026-06-26, re-scanned
+    2026-07-15) named this the most trust-damaging Potemkin: an operator could run
+    what looks like production and never learn the data is invented.
+
+    Both branches log deliberately: silence must not be ambiguous, so "service"
+    emits a positive confirmation rather than nothing. Fail-open like the sibling
+    _wire_* helpers — a settings read must never block startup.
+    """
+    try:
+        from core.config import get_settings
+
+        mode = get_settings().business_domain_mode
+        if mode == "mock":
+            logger.warning(
+                "api.main: BUSINESS DOMAIN IS MOCK — the 18 business tools "
+                "(patrol/correlation/rootcause/audit/incident) return FABRICATED "
+                "data from the mock backend, not real systems. Tool results are "
+                'marked with "_mock": true. Set BUSINESS_DOMAIN_MODE=service for '
+                "the DB-backed production pathway."
+            )
+        else:
+            logger.info("api.main: business domain mode = service (DB-backed, real data)")
+    except Exception:  # noqa: BLE001 — fail-open: never block startup on a settings read
+        logger.warning("api.main: business domain mode not resolved (fail-open)", exc_info=True)
+
+
 async def _billing_outbox_poll_loop(
     drainer: BillingOutboxDrainer,
     interval_s: int,
@@ -437,6 +469,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     _wire_error_budget()
     _wire_sla_recorder()
     _wire_billing_outbox()
+    _warn_business_domain_mock()
     await _start_billing_outbox_drainer(app)
     await _start_transcript_retention_job(app)
     await _warm_knowledge_index(app)

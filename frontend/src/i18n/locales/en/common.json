@@ -422,6 +422,7 @@
       "title": "Sessions",
       "newSession": "New session",
       "filter": "Filter",
+      "filterUnavailable": "Session filtering is not available yet",
       "status": {
         "running": "running",
         "hitl": "HITL",

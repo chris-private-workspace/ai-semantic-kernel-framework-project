@@ -91,8 +91,8 @@
 
 | # | Potemkin | 類型 | 近似錨點 | 6-26 狀態 | 嚴重度 |
 |---|----------|------|---------|-----------|--------|
-| 1 | `business_domain_mode` 預設 `"mock"` → 18 工具全打 mock_services（seed.json 假資料）| mock-as-real | `core/config/__init__.py:114` | **6-26 就有，未修** | 🔴 高 |
-| 2 | SessionList「Filter」鈕無 onClick | 死控件 | `chat_v2/components/SessionList.tsx:156` | **6-26 就有，未修** | 🟡 中 |
+| 1 | `business_domain_mode` 預設 `"mock"` → 18 工具全打 mock_services（seed.json 假資料）| mock-as-real | `core/config/__init__.py:114` | ~~6-26 就有，未修~~ ✅ **修復 Sprint 57.167**（啟動 `logger.warning` 明示 FABRICATED + 每筆 mock 結果帶 `"_mock": true`；drive-through 10 處實證）| 🔴 高 |
+| 2 | SessionList「Filter」鈕無 onClick | 死控件 | `chat_v2/components/SessionList.tsx:156` | ~~6-26 就有，未修~~ ✅ **修復 Sprint 57.167**（誠實禁用 + 雙語 tooltip；mockup 本身未定義 filter 行為 → 不自創、不刪 widget）| 🟡 中 |
 | 3 | ChatHeader「Audit」鈕無 onClick | 死控件 | `chat_v2/components/ChatHeader.tsx:177` | 6-26 漏掉 | 🟡 中 |
 | 4 | ChatHeader「Loop」鈕→無 hashchange 消費者 | 死控件 | `ChatHeader.tsx:166` | 6-26 漏掉 | 🟢 低-中 |
 | 5–6 | InspectorTurn「Open audit entry」+「Open in Loop Debug」無 onClick | 死控件 | `inspector/InspectorTurn.tsx:238,242` | 6-26 漏掉 | 🟡 中 |
@@ -102,7 +102,10 @@
 
 **#3–6 全在 chat-v2 主流量**、周圍無 banner——6-26 §7 曾誤寫 chat-v2「零死控件」與事實不符。
 
-**淨判斷**：6-26 tracked 的 2 個核心 Potemkin **0 修 2 留**；死控件實數 2→6。**正向抵銷**：6-26 記的「memory/skills 接了沒人用」已被 57.148–155 + skills epic 接進主流量、57.164 chip 可達性已修——真進步，但**不觸及** #1/#2 兩個核心。前端整體「標示紀律」守得好（BackendGapBanner 45 檔覆蓋）。
+**淨判斷（原文，2026-07-15）**：6-26 tracked 的 2 個核心 Potemkin **0 修 2 留**；死控件實數 2→6。
+
+> ✅ **2026-07-23 更新（Sprint 57.167）**：**#1 + #2 已修復並 drive-through 實證**（CHANGE-136）。**但 #3-#7 五個死控件仍在**（ChatHeader Audit / ChatHeader Loop / InspectorTurn ×2 / SLA TimeRangeTabs）——本 sprint 只處理 6-26 tracked 的那 2 個核心項，7-15 新發現的 4-5 個未納入範圍。核心 Potemkin 計數 2→**0**；死控件總數 6→**5**。
+**正向抵銷**：6-26 記的「memory/skills 接了沒人用」已被 57.148–155 + skills epic 接進主流量、57.164 chip 可達性已修——真進步，但**不觸及** #1/#2 兩個核心。前端整體「標示紀律」守得好（BackendGapBanner 45 檔覆蓋）。
 
 ---
 

@@ -422,6 +422,7 @@
       "title": "工作階段",
       "newSession": "新增工作階段",
       "filter": "篩選",
+      "filterUnavailable": "工作階段篩選功能尚未提供",
       "status": {
         "running": "進行中",
         "hitl": "待審",
