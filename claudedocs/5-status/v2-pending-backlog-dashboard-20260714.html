@@ -11,6 +11,16 @@
   Regenerate: 重新從上述來源推導 TRACKS[] 資料陣列。本檔為 Artifact source file
     (發布於 claude.ai/code/artifact)；重新發布同一路徑即更新同一 URL。
   Note: checkbox「已處理」狀態僅存於瀏覽器 localStorage（視覺追蹤，不寫回 repo）。
+
+  Modification History (newest-first):
+    - 2026-07-22: Sprint 57.166 closeout + grep 稽核 — (a) Task range `AD-Scheduler-Burst-Stats-Aggregate`
+      → done (57.166); +3 新 carryover（CacheRate / AwaitingApproval-TurnCount / DriveThrough-Lever-Plan-At-Day0）;
+      (b) **4 項 stale-open 更正為 done**（清單失真，非新完成）：#23 register (57.87, api/v1/tenants.py) ·
+      #24 invite (57.85, invites.py:189) · #25 MFA (57.112, mfa.py:155) · AD-Subagent-RealList (57.78,
+      subagents.py:72)。三者原記「現 501 stub」與程式碼不符。**連帶影響**：
+      v2-reality-audit-...-20260715.md §7 的「8 個 YES 真實拉力」含此 4 項 → 實際 YES ≈ 5
+      （knowledge connector 4 + AD-Loop-CancelEvent-Poll）；過度開發指數 78% 為保守下界。
+    - 2026-07-14: Initial creation (105 open AD baseline)
 -->
 <title>V2 Pending Backlog 操作台</title>
 <style>
@@ -329,7 +339,7 @@ const TRACKS = [
   {
     id: "engine", label: "引擎債 7 Range", tag: "Phase 1 · 進行中主線",
     title: "Engine-Debt 7-Range Program（引擎內部債）",
-    desc: "2026-07-06 使用者拍板：先清 7 個引擎內部 range，再做 grounding。已推進 11 個 sprint（57.155–165）。Tool range 已 4/4；Task primitive 近收官；Loop-interrupt 與 Observability 兩個 range 尚未動工。",
+    desc: "2026-07-06 使用者拍板：先清 7 個引擎內部 range，再做 grounding。已推進 12 個 sprint（57.155–166）。Tool range 已 4/4；Task primitive 近收官（57.166 關掉 burst-stats，但同時新增 3 個 carryover）；Loop-interrupt 與 Observability 兩個 range 尚未動工。⚠️ reality-audit 7-15：本線 39 open 中僅 1 個（Loop CancelEvent-Poll）有真實 user-facing 拉力，~87% 是完備性驅動。",
     sections: [
       { name: "① Tool  ✅ 核心 4/4 完成", items: [
         { id:"reflection rare-path verify + weaker-model A/B", d:"③1 + ④；reflection tier-dependent（弱模型 +12.5%）", s:"57.163", st:"done" },
@@ -346,8 +356,11 @@ const TRACKS = [
         { id:"DAG task primitive (depends_on)", d:"Todo.depends_on DAG + ready/blocked", s:"57.156", st:"done" },
         { id:"cross-burst auto-continue scheduler", d:"kickoff；突破 max_turns=8 短命上限（default OFF）", s:"57.157", st:"done" },
         { id:"DAG enforce(soft) + cycle report + Inspector Viz", d:"closes 57.156 的 3 個 DAG carryover", s:"57.162", st:"done" },
+        { id:"cross-burst turn/token aggregate in final loop_end", d:"4 個 accumulator 加總每個 burst → 終端 loop_end + audit 帶全run 總計（billing 刻意維持 per-burst，避免雙扣）", s:"57.166", st:"done" },
         { id:"AD-TaskPrimitive-Saturation-DriveThrough-Phase58", d:"5+ send 飽和 drive-through 測試", r:"Task", p:"Phase 58" },
-        { id:"AD-Scheduler-Burst-Stats-Aggregate-Phase58", d:"loop_end 只反映最後一 burst 的 counter，非跨-burst 總計", r:"Task", p:"Phase 58" },
+        { id:"AD-Scheduler-Burst-CacheRate-Aggregate", d:"cached_input_tokens 可加總、但 cache_hit_rate 是比率需加權重算；兩者仍只反映最後一 burst", r:"Task", p:"Phase 58" },
+        { id:"AD-Scheduler-AwaitingApproval-Burst-Turn-Count", d:"停在 HITL 閘的 burst 回報 total_turns=0 → 總計靜默漏掉該部分 turn；確認是否為預期語意", r:"Task", p:"Phase 58" },
+        { id:"AD-DriveThrough-Determinism-Lever-Plan-At-Day0", d:"驗收需要 RARE runtime 路徑時，Day 0 就在 plan §Risks 寫明 lever + 還原證明（57.166 Day 3 才臨時想 → 燒了 6 legs）", r:"Task", p:"Phase 58" },
         { id:"AD-Scheduler-Burst-Boundary-Wire-Phase58", d:"無 wire event 標記 burst 邊界（FE burst counter 需要）", r:"Task", p:"Phase 58" },
         { id:"AD-Scheduler-PerTenant-Phase58", d:"global env → per-tenant policy（刻意避 AP-6）", r:"Task", p:"Phase 58" },
         { id:"AD-Scheduler-TokenBudget-Continue-Phase58", d:"只有 max_turns 續跑；token_budget 保守停止", r:"Task", p:"Phase 58" },
@@ -433,7 +446,7 @@ const TRACKS = [
   {
     id: "frontend", label: "Frontend / SaaS 2", tag: "獨立線 · 多數 Phase 58+",
     title: "Frontend / SaaS Stage 2（Top Candidates #1–#46）",
-    desc: "Phase 57.19–28 累積的前端 mockup-fidelity + 後端接線 + IAM/SaaS Stage 2 carryover。selection-gated：使用者明確選取才起 sprint。僅 #32 已 shipped、#41 已 drop，其餘 44 項待處理。",
+    desc: "Phase 57.19–28 累積的前端 mockup-fidelity + 後端接線 + IAM/SaaS Stage 2 carryover。selection-gated：使用者明確選取才起 sprint。#32 已 shipped、#41 已 drop；2026-07-22 grep 稽核再更正 #23/#24/#25（register / invite / MFA 後端早已實作，非 501 stub）→ 其餘 41 項待處理。",
     sections: [
       { name: "Chat-v2 Mockup-Fidelity Phase-2 (#1)", items: [
         { id:"#1 AD-ChatV2-Full-Mockup-Fidelity Phase-2", d:"Memory block / HITL 4-action / Composer richness+wire / Inspector Trace·Memory·SubagentTree / SessionList backend / Cat12 SSE trace-id（8 子 AD）", r:"#1", p:"Phase 58" },
@@ -468,9 +481,9 @@ const TRACKS = [
         { id:"#22 SOC 2 + SBOM", d:"SOC 2 合規 + SBOM（~12-15 hr）", r:"#22", p:"Stage 2" },
       ]},
       { name: "Auth 後端 IAM Block B/C (#23–#30)", items: [
-        { id:"#23 AD-Auth-Register-Backend-IAM-Block-B", d:"POST /tenants/register 真實作（現 501 stub）", r:"#23", p:"Phase 58" },
-        { id:"#24 AD-Auth-Invite-Backend-IAM-Block-B", d:"invite metadata + accept（現 501 stub）", r:"#24", p:"Phase 58" },
-        { id:"#25 AD-Auth-MFA-Backend-IAM-Block-C", d:"MFA verify + TOTP + WebAuthn 後端（現 501 stub）", r:"#25", p:"Phase 58" },
+        { id:"#23 AD-Auth-Register-Backend-IAM-Block-B", d:"POST /tenants/register 真實作（2026-07-22 grep 更正：api/v1/tenants.py 已實作，非 501 stub）", s:"57.87", st:"done" },
+        { id:"#24 AD-Auth-Invite-Backend-IAM-Block-B", d:"invite metadata + accept（2026-07-22 grep 更正：api/v1/invites.py:189 accept_invite 已實作）", s:"57.85", st:"done" },
+        { id:"#25 AD-Auth-MFA-Backend-IAM-Block-C", d:"MFA verify + TOTP（2026-07-22 grep 更正：api/v1/mfa.py:155 verify + challenge cookie 已實作；WebAuthn 仍缺 → 見 #26/misc）", s:"57.112", st:"done" },
         { id:"#26 AD-Auth-MFA-Recovery-Page", d:"/auth/mfa/recovery 頁 + recovery-code 後端", r:"#26", p:"Phase 58" },
         { id:"#27 AD-Auth-Callback-Loading-UX", d:"static setTimeout → 真 SSE per-step 事件", r:"#27", p:"Phase 58" },
         { id:"#28 AD-WorkOS-Multi-IdP", d:"SAML / Microsoft / Google SSO via WorkOS", r:"#28", p:"Phase 58" },
@@ -519,7 +532,7 @@ const TRACKS = [
         { id:"Password-strength policy", d:"invite-accept 仍 min_length=1；min-length/複雜度/breach-check", r:"IAM", p:"Phase 58" },
       ]},
       { name: "Subagent / Observability 真資料", items: [
-        { id:"AD-Subagent-RealList-Phase58", d:"THE LAST Area-A item：/subagents 真列表（agent_catalog spec 已存在，需 tenant-facing GET + FE re-mount）", r:"Subagent", p:"Phase 58" },
+        { id:"AD-Subagent-RealList-Phase58", d:"/subagents 真列表（2026-07-22 grep 更正：api/v1/subagents.py:72 router 已 re-point 到 agent_catalog registry；README-integration-gap-abc 亦記為 57.78 CLOSED = Area-A COMPLETE 的最後一項）", s:"57.78", st:"done" },
         { id:"AD-Subagent-Invocations-Persistence-Phase58", d:"per-spawn 執行 timeline（新 ORM + dispatcher persist hook + 讀側投影）", r:"Subagent", p:"Phase 58" },
         { id:"Subagent budget/tools loop enforcement", d:"stored 但未 enforce（57.70 §9）", r:"Subagent", p:"Phase 58" },
       ]},

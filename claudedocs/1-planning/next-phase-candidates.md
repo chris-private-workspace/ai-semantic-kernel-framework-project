@@ -213,6 +213,8 @@ This list follows the canonical research §5 ranked order (#6 → #3 → #8 → 
 ## 🌱 Open Carryover ADs (raw per-sprint seeds)
 
 > Un-curated AD seeds lifted verbatim from each sprint's closeout `NEW carryover` / `Still-open` lists. **Some may since have been closed** (any `✅ CLOSED` / strike-through markers are preserved verbatim — trust the marker). Full context per AD → the archive block + the sprint's memory subfile. For the curated, prioritized candidate list see §Top Candidates (#1–#46) below.
+>
+> ⚠️ **Stale-open is real — verify before selecting** (2026-07-22 grep audit). A spot-check of 4 "open" ADs found **all 4 already shipped**, un-flipped for weeks: #23 register (57.87 `api/v1/tenants.py`) · #24 invite (57.85 `invites.py:189`) · #25 MFA (57.112 `mfa.py:155`) · `AD-Subagent-RealList` (57.78 `subagents.py:72`). Root cause: an AD is echoed into 2-4 places (this section + §Top Candidates + §6 bundle + the dashboard) but only ONE gets flipped at closeout. **Before drafting a plan from any entry here, grep the claimed gap in `backend/src` first** — that is Day-0 Prong 2 applied to the backlog itself. Knock-on: `5-status/v2-reality-audit-engine-vs-grounding-20260715.md` §7's "8 YES real-pull" includes these 4 → the real YES count is ≈ 5 (knowledge-connector 4 + `AD-Loop-CancelEvent-Poll`), and its 78% over-engineering index is a **conservative lower bound**.
 
 #### 🆕 Drive-Through 2026-07-15 — production persona + memory presentation gap
 **NEW `AD-Chat-Default-Persona-Demo-Leak`** (✅ FIXED 2026-07-15 — drive-through PASS 4/4, **method A**, branch `feature/chat-production-default-persona`, PR-pending): the real-chat 主流量 default system prompt IS `DEMO_SYSTEM_PROMPT` ("Sprint 50.2 demonstration agent"; `handler.py:154/301/915`, `resolve_session_persona:1017-1050` all fail-open to it) → unless a tenant sets an `agent_role` persona, **every ordinary user gets the demo persona**: self-identifies as a demonstration agent + is instructed to put "confidential" in any answer sharing something confidential (the 57.93 output-ESCALATE demo trigger) + echo/note triggers. AND it **never teaches the agent to USE injected memory** (57.148 `profile()` identity + 57.151 `recent_sessions()` session recall) to answer identity/history questions → the agent DENIES having memory + confuses timeline (prior session read as current). **Drive-through evidence** (jamie dev-login asked "what have we discussed before" → every fact tagged (confidential) + "I don't have access to complete chat history" + INC-99999 (a 07-09/10 PRIOR session) mislabeled "in this session"); **DB disproves the denial**: recall IS wired (`memory_session_summary` 24 rows + `memory_user` facts always-on inject via `builder.py:301`; the agent could name INC-99999 which exists ONLY in the session summary, not user facts). **Characterization**: a Potemkin variant (function is real, the PERSONA is a demo placeholder); audit pillar-3 ~40% verdict UNCHANGED (recall mechanism works), this is a persona/presentation gap the 4 audit facets all missed. **Method A** (user-selected 2026-07-15): new `DEFAULT_SYSTEM_PROMPT` (keep write_todos/knowledge_search guidance + ADD memory-usage guidance "use the identity/prior-session summary in your context to answer; do NOT deny having memory; do NOT tag things confidential without cause"; drop demonstration-agent identity + confidential mandate + echo/note) + `CHAT_DEMO_MODE` env flag (default False = clean production; demo triggers move behind the flag so 57.91/92/93 drive-through tests stay green) + session-summary hint gets a time marker (`retrieval.py:236`, fixes the timeline confusion). File change (actual): `handler.py` (`DEFAULT_SYSTEM_PROMPT` + `_default_persona()` + 5 `resolve_session_persona` fallbacks repointed) + `core/config` (`chat_demo_mode`) + `retrieval.py` (dated `[Prior session, YYYY-MM-DD]` marker) + **only 2** test files' compat (build_*handler defaults kept `= DEMO_SYSTEM_PROMPT` so the demo-test entry points stay untouched — 主流量 fixed via router-passed `resolve_session_persona`) + 3 new tests + drive-through PASS 4/4. CHANGE-133. Gates: mypy 400 · V2 lints 12/12 · pytest 16 unit + 28 demo-path integration green. Detail: CHANGE-133 + `5-status/v2-reality-audit-engine-vs-grounding-20260715.md` (§tracking to append).
@@ -257,15 +259,15 @@ This list follows the canonical research §5 ranked order (#6 → #3 → #8 → 
 - **`AD-Register-OIDC-User-Linkage-Phase58`** (NEW) — register creates the user by `email` (no `external_id`); the OIDC callback upserts by `(tenant_id, external_id)` → a later login creates a SECOND user row. Fix: callback link-by-email OR register OIDC-initiated.
 - **`AD-Tenant-Plan-Tiers-Phase58`** (NEW) — `TenantPlan` only has ENTERPRISE; the wizard's trial/pro/enterprise choice is stored in `meta_data` only. Real BASIC/STANDARD/trial tiers + quota enforcement are Phase 56+ Stage 2.
 - **Process (single occurrence — fold into `sprint-workflow.md` only if recurs)**: a concurrent Claude session sharing the repo working directory switched the branch mid-sprint (to `chore/drive-through-acceptance-principle`), stranding uncommitted Day-3 edits + hiding `registration.py` → a phantom mypy `import-untyped` first mis-chased as editable-install staleness. Diagnostic lesson: when a first-party import reads "installed missing py.typed" + the mypy source-file count doesn't increment → check `git branch` FIRST. Root cause = two-sessions-one-worktree (recommend separate git worktrees/clones per session); not a workflow gap.
-- **`AD-Auth-MFA-Backend-IAM-Block-C-Phase58`** — Block C MFA TOTP + WebAuthn; `/auth/mfa` still stub 501.
+- ~~**`AD-Auth-MFA-Backend-IAM-Block-C-Phase58`** — Block C MFA TOTP + WebAuthn; `/auth/mfa` still stub 501.~~ ✅ **CLOSED** **Sprint 57.112** (stale corrected 2026-07-22 — `api/v1/mfa.py:155` is real; TOTP only, **WebAuthn still open**).
 - **`AD-Auth-Recovery-Page-Phase58`** — password reset/recovery; needs an email adapter (none exists); `/auth/recovery` does not exist.
 - **`AD-Auth-PasswordLogin-Lockout-Phase58`** — brute-force throttle on `/auth/password-login` (+ register-spam throttle); reuse the Redis rate-limit infra.
 - **Calibration — `iam-backend-spike` 0.65 1st validation**: ratio ≈1.0 core (≈1.1-1.2 incl. the branch-collision anomaly) → KEEP single data point; flag the next IAM backend spike (MFA/recovery) for the 2nd validation per the 3-sprint window.
 ---
 
 #### 57.86
-- **`AD-Auth-Register-Backend-IAM-Block-B-Phase58`** — self-service tenant registration (POST /tenants/register: create tenant + first admin user + password; reuses `passwords.py` + `CredentialsService.set_password`). The register page is still fixture/501.
-- **`AD-Auth-MFA-Backend-IAM-Block-C-Phase58`** — Block C MFA TOTP + WebAuthn (password-login lands the user via `consumePostLoginRedirect()`; `/auth/mfa` still stub 501).
+- ~~**`AD-Auth-Register-Backend-IAM-Block-B-Phase58`** — self-service tenant registration … The register page is still fixture/501.~~ ✅ **CLOSED** **Sprint 57.87** (stale corrected 2026-07-22 — `api/v1/tenants.py` is real).
+- ~~**`AD-Auth-MFA-Backend-IAM-Block-C-Phase58`** — Block C MFA TOTP + WebAuthn (…; `/auth/mfa` still stub 501).~~ ✅ **CLOSED** **Sprint 57.112** (stale corrected 2026-07-22; WebAuthn still open).
 - **`AD-Auth-PasswordLogin-Lockout-Phase58`** (NEW) — brute-force / lockout throttle on `/auth/password-login` (no per-tenant login-attempt counter this spike; bcrypt cost=12 + generic-401 raise per-guess cost but no rate limit). Candidate substrate: the Redis rate-limit-counter infra (57.48/57.58).
 - **Password-strength policy** — invite-accept keeps `min_length=1`; password fields gain only `max_length=72` (bcrypt safety). Min length / complexity / breach-check is a follow-up.
 - **`AD-Auth-Recovery-Page-Phase58`** — password reset / recovery; `/auth/recovery` does not exist.
@@ -275,8 +277,8 @@ This list follows the canonical research §5 ranked order (#6 → #3 → #8 → 
 
 #### 57.85
 - **`AD-Auth-Credentials-PasswordLogin-Phase58`** (NEW, next obvious = 57.86) — local-password credentials table + bcrypt + a tenant-scoped password-login endpoint. The accept's `password` is accepted-not-stored until then; the created user authenticates via OIDC/dev-login. (Login-page UI wiring further gated by mockup-fidelity — mockup login has no password field.)
-- **`AD-Auth-Register-Backend-IAM-Block-B-Phase58`** — self-service tenant registration (POST /tenants/register: create tenant + first admin user).
-- **`AD-Auth-MFA-Backend-IAM-Block-C-Phase58`** — Block C MFA TOTP + WebAuthn (accept navigates to `/auth/mfa`, still stub 501).
+- ~~**`AD-Auth-Register-Backend-IAM-Block-B-Phase58`** — self-service tenant registration (POST /tenants/register: create tenant + first admin user).~~ ✅ **CLOSED** **Sprint 57.87** (stale corrected 2026-07-22).
+- ~~**`AD-Auth-MFA-Backend-IAM-Block-C-Phase58`** — Block C MFA TOTP + WebAuthn (accept navigates to `/auth/mfa`, still stub 501).~~ ✅ **CLOSED** **Sprint 57.112** (stale corrected 2026-07-22; WebAuthn still open).
 - **Invite email delivery** — no email facility exists; create returns the raw token in-response. Phase-58 follow-up (e.g. SMTP/SES adapter).
 - **Admin invites-list / resend UI** — `revoke` service method exists (US-4 revocable); a full management surface (list pending / resend / revoke UI) is a follow-up.
 - **Calibration**: `medium-backend` 0.80 greenfield-IAM data point ran ratio ~1.25 (over-band, as the plan flagged). Single outlier (ignored for the multiplier); if 57.86 (also greenfield IAM) confirms > 1.0 → propose a new `iam-backend-spike` class (~0.55-0.65). Track in `sprint-workflow.md §Scope-class matrix` if it recurs.
@@ -324,7 +326,7 @@ This list follows the canonical research §5 ranked order (#6 → #3 → #8 → 
 #### 57.77
 - ✅ #1+#2 Inspector Trace + Memory (57.75) · #3 admin-tenants stats (57.74)
 - ✅ `AD-Memory-OpsHistory-Backend` **fully closed** (backend 57.76 + frontend 57.77)
-- ⏳ **FE `/subagents` real list (`AD-Subagent-RealList-Phase58`) — THE LAST Area-A remaining item** (agent_catalog specs exist; needs tenant-facing GET + FE re-mount, like 57.73)
+- ✅ ~~FE `/subagents` real list (`AD-Subagent-RealList-Phase58`) — THE LAST Area-A remaining item~~ **CLOSED Sprint 57.78** (stale `⏳` corrected 2026-07-22 by grep audit: `backend/src/api/v1/subagents.py:72` router is re-pointed STUB → `agent_catalog` registry per its own header `Sprint 57.78 (re-point STUB → agent_catalog registry)`; `README-integration-gap-abc.md:41` already recorded it as the closing item of **Area-A COMPLETE**). The row survived here + in the §6 Backend-Wire bundle + the misc dashboard track purely as un-flipped copies.
 - (A-4 Tier 2 real Jaeger export = EXCLUDED per user program → Area-C/DevOps)
 - **READ-path ops** — write/evict only (57.76 backend); sampled reads a future option (row-volume tradeoff).
 - **role/session/system layer ops** — those layers raise / in-memory (57.76); not recorded → never appear in RecentOps/marks.
@@ -600,7 +602,7 @@ Sprint 57.19 carryover. Pages:
 ### 6. AD-Backend-Wire Bundle
 
 Sprint 57.19 4 NEW ADs:
-- Subagent-RealList-Phase58
+- ~~Subagent-RealList-Phase58~~ ✅ **CLOSED Sprint 57.78** (stale copy corrected 2026-07-22 — see #⏳ 57.77 block above)
 - Loop-Session-Enrich-Phase58
 - Overview-Backend-Wire
 - Orchestrator-Backend-Wire
@@ -681,14 +683,14 @@ Sprint 57.16 carryover. `/chat-v2` 的 `heading-order` + duplicate `<main>` land
 
 7 ADs from Sprint 57.23 AD-Auth-Page-Full-Rebuild-Round-2 closeout. Frontend rebuild shipped 8/8 USs with stub-501 demo banners; backend wiring deferred to Phase 58+ IAM Block B/C per Q2 frontend-only decision.
 
-### 23. AD-Auth-Register-Backend-IAM-Block-B-Phase58
-`POST /api/v1/tenants/register` real implementation. Currently 501 stub. Frontend `/auth/register` 4-step wizard fully shipped + i18n + Vitest 5 cases. Phase 58+ IAM Block B scope.
+### 23. ✅ CLOSED — AD-Auth-Register-Backend-IAM-Block-B (shipped Sprint 57.87)
+~~`POST /api/v1/tenants/register` real implementation. Currently 501 stub.~~ **Stale-open corrected 2026-07-22** (grep audit): the endpoint is REAL — `backend/src/api/v1/tenants.py` (header `Scope: Sprint 57.87 / US-1 + US-3 + US-4`, guest-exempt path, tenant + first admin user + password). The 2026-06-07 drive-through already recorded it green (register wizard → **201 + DB write + slug-unique 409**, later hardened by FIX-030's `IntegrityError → 409`). Frontend `/auth/register` 4-step wizard + i18n + Vitest 5 cases were already shipped 57.23. This entry (and the 57.85/57.86/57.87 carryover echoes of it) was never flipped at the time.
 
-### 24. AD-Auth-Invite-Backend-IAM-Block-B-Phase58
-`GET /api/v1/invites/:token` (metadata) + `POST /api/v1/invites/:token/accept`. Currently 501 stubs; frontend falls back to fixture metadata silently for GET, surfaces explicit error for POST. Frontend `/auth/invite/:token` shipped + Vitest 4 cases. Phase 58+ IAM Block B scope.
+### 24. ✅ CLOSED — AD-Auth-Invite-Backend-IAM-Block-B (shipped Sprint 57.85)
+~~`GET /api/v1/invites/:token` (metadata) + `POST /api/v1/invites/:token/accept`. Currently 501 stubs.~~ **Stale-open corrected 2026-07-22** (grep audit): `backend/src/api/v1/invites.py` (header `Scope: Sprint 57.85 / US-1 + US-2 + US-3`, admin create + guest view/accept; `accept_invite` at :189) is REAL. Frontend `/auth/invite/:token` + Vitest 4 cases shipped 57.23. **Still genuinely open** (separate ADs, NOT this one): invite **email delivery** (no email adapter exists — create returns the raw token in-response) + the admin invites-list / resend UI.
 
-### 25. AD-Auth-MFA-Backend-IAM-Block-C-Phase58
-`POST /api/v1/mfa/verify` + TOTP secret enrollment + WebAuthn credential registration backend. Currently 501 stub. Frontend `/auth/mfa` Roll-own UI shipped (TOTP 6-digit grid + WebAuthn conic ring + Simulate button) + Vitest 7 cases. Phase 58+ IAM Block C scope.
+### 25. ✅ CLOSED — AD-Auth-MFA-Backend-IAM-Block-C (shipped Sprint 57.112)
+~~`POST /api/v1/mfa/verify` + TOTP secret enrollment + WebAuthn credential registration backend. Currently 501 stub.~~ **Stale-open corrected 2026-07-22** (grep audit): `backend/src/api/v1/mfa.py` (header `Scope: Sprint 57.112 / US-2` — enroll / confirm / verify; `verify` at :155) is REAL, with the `v2_mfa_challenge` short-lived JWT cookie swapped for the real session on a valid TOTP (`auth.py:117-122`, `issue_session()` shared). Frontend `/auth/mfa` + Vitest 7 cases shipped 57.23. **Still genuinely open** (narrower than this AD's original scope): **WebAuthn** credential registration (TOTP only today) → tracked by #26 recovery + the misc IAM rows.
 
 ### 26. AD-Auth-MFA-Recovery-Page-Phase58
 `/auth/mfa/recovery` page wire — currently displayed as `<span pointer-events-none>` with tooltip "Recovery flow pending Phase 58+ IAM Block C". Backend recovery-code generation + verification. Phase 58+ IAM Block C scope.
@@ -867,6 +869,7 @@ NEW Sprint 57.28. `check-mockup-fidelity.mjs` grep guard baselines `HEX_OKLCH_BA
 
 ## Modification History
 
+- 2026-07-22: **Stale-open audit** — 4 ADs flipped to CLOSED after grepping `backend/src` (they were shipped weeks earlier but never un-listed): #23 register → 57.87 · #24 invite → 57.85 · #25 MFA → 57.112 (WebAuthn still genuinely open) · `AD-Subagent-RealList` → 57.78 (also struck in §6 bundle + the 57.77 block + 5 echoed lines in the 57.85/86/87 carryover blocks). Added a §Open Carryover ADs warning banner (grep before selecting). Also Sprint 57.166 closeout: `AD-Scheduler-Burst-Stats-Aggregate` CLOSED + 3 new Task-range carryovers. Same corrections applied to `5-status/v2-pending-backlog-dashboard-20260714.html`. **Not applied** (dated point-in-time report, left intact): `5-status/v2-reality-audit-...-20260715.md` §7 — its "8 YES" over-counts by these 4.
 - 2026-07-07: REFACTOR-010 tier ① — 103 per-sprint SHIPPED carryover blocks (57.29→57.161) moved **verbatim** to `next-phase-candidates-shipped-archive.md`; replaced by §Shipped Sprints Pointer Index + §Open Carryover ADs; file 445 KB → ~155 KB (−66%). Zero deletion (moved, not deleted; also single-sourced in memory subfiles + retrospectives). Closeout append contract added (§Maintenance Notes) + sprint-workflow.md §Sprint Closeout self-check. See `claudedocs/4-changes/refactoring/REFACTOR-010-*.md`.
 - 2026-05-22: Sprint 57.28 Day 4 closeout — verbatim-CSS foundation switch SHIPPED (22-route sweep 0 catastrophic / 0 structural regression); +2 ADs (#45 `AD-RouteSweep-Object-Mock-Gap` + #46 `AD-Mockup-Fidelity-HexBaseline-Migration`); the Phase-2 per-page re-point epic now runs on a correct verbatim foundation
 - 2026-05-21: Sprint 57.27 Day 3 closeout — `/overview` rebuild SHIPPED (DRIFT verdict PARITY); +2 ADs (#43 `AD-Overview-Backend-Extensions-Phase58` + #44 `AD-CardShell-Title-Crossverify-cost-sla`); RESOLVED #41 (rich-dashboard sub-class DROPPED — 57.27 `/overview` 4th `frontend-mockup-strict-rebuild` data point ratio ≈0.95 in-band; rich-subset 3-pt mean ~1.01 → no split, KEEP single 0.60 baseline)
